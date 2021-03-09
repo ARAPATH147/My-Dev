@@ -1,0 +1,1623 @@
+    1: 	    \*******************************************************************
+>*****
+    2: 	    \***
+    3: 	    \***    DRWATSON          Ranjith Gopalankutty          22/03/2018  
+    4: 	    \***                                                                
+    5: 	    \***    This program will read OS pipe ADXCSOUP and start dumping   
+    6: 	    \***    the data to D:/ADX_UDT1/DRWATSON.BIN                        
+>  
+    7: 	    \***                                                                
+    8: 	    \***    From DRWATSON.BIN , C program named SHERHOLME will start    
+>  
+    9: 	    \***    putting the data in to the socket                           
+   10: 	    \***                                                                
+   11: 	    \***                                                                
+   12: 	    
+   13: 	    \*******************************************************************
+>****
+   14: 	    \***
+   15: 	    \***    Function globals
+   16: 	    \***
+   17: 	    \*******************************************************************
+>****
+   18: 	    
+   19: 	    
+   20: 	    %INCLUDE BEMFDEC.J86  
+   21=a	    \*******************************************************************
+>***********
+   22=a	    \***
+   23=a	    \***      %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+   24=a	    \***                                             - FILE REFERENCE PA
+>RAMETERS
+   25=a	    \***
+   26=a	    \***                         FILE TYPE : Direct
+   27=a	    \***
+   28=a	    \***                         REFERENCE : BEMFDEC
+   29=a	    \***
+   30=a	    \***   Version A               Mark Walker                  1st Nove
+>mber 1993
+   31=a	    \***
+   32=a	    \*******************************************************************
+>***********
+   33=a	    
+   34=a	           STRING GLOBAL                   BEMF.MESSAGE$,          
+>\
+   35=a	                                           BEMF.FILE.NAME$
+   36=a	    
+   37=a	           INTEGER*2 GLOBAL                BEMF.RECL%,             
+>\
+   38=a	                                           BEMF.REPORT.NUM%,       
+>\
+   39=a	                                           BEMF.SESS.NUM%
+   40=a	    
+   41=a	           INTEGER*4 GLOBAL                BEMF.REC.NO%
+   42: 	    %INCLUDE BOOTSDEC.J86 
+   43=a	    \*******************************************************************
+>***********
+   44=a	    \*******************************************************************
+>***********
+   45=a	    \***
+   46=a	    \***
+   47=a	    \***
+   48=a	    \*******************************************************************
+>***********
+   49=a	    
+   50=a	    
+   51: 	    %INCLUDE PSBF01G.J86  
+   52=a	    REM \
+   53=a	    \*******************************************************************
+>************
+   54=a	    \*******************************************************************
+>************
+   55=a	    \***
+   56=a	    \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.
+>LOG
+   57=a	    \***
+   58=a	    \***                FUNCTION NUMBER    : PSBF01
+   59=a	    \***
+   60=a	    \***                REFERENCE          : PSBF01G.J86
+   61=a	    \***
+   62=a	    \***                DATE OF LAST AMENDMENT  - 27/2/86
+   63=a	    \***
+   64=a	    \***
+   65=a	    \*******************************************************************
+>************
+   66=a	    
+   67=a	          INTEGER GLOBAL  F01.RETURN.CODE%
+   68=a	    
+   69=a	    
+   70: 	    %INCLUDE PSBF20G.J86  
+   71=a	    REM\
+   72=a	    \*******************************************************************
+>************
+   73=a	    \*******************************************************************
+>************
+   74=a	    \***
+   75=a	    \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY F
+>UNCTION
+   76=a	    \***
+   77=a	    \***                       REFERENCE     : PSBF20G.J86
+   78=a	    \*** 
+   79=a	    \***     Version A              Bruce Scrive                   5th M
+>ay 1988   
+   80=a	    \*** 
+   81=a	    \***     Version B              Robert Cowey                   7th M
+>ay 1991
+   82=a	    \***     Global variable F20.INTEGER.FILE.NO% changed from one byte 
+>integer
+   83=a	    \***     to two byte integer.
+   84=a	    \***
+   85=a	    \***     Version D              Andrew Wedgeworth             1st Ju
+>ly 1992
+   86=a	    \***     F20.RETURN.CODE% removed as it is no longer required.
+   87=a	    \***
+   88=a	    \*******************************************************************
+>************
+   89=a	    \*******************************************************************
+>************
+   90=a	    
+   91=a	          STRING    GLOBAL F20.FILE.NAME$,                              
+>   \
+   92=a	                           F20.STRING.FILE.NO$,                         
+>   \
+   93=a	                           F20.TABLE.DIMENSIONED.FLAG$,                 
+>   \
+   94=a	                           SESS.NUM.TABLE$(1)
+   95=a	    
+   96=a	          INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+   97=a	    
+   98=a	          ! 1 line deleted from here                                    
+>   ! DAW 
+   99=a	    
+  100: 	       
+  101: 	    
+  102: 	    \*******************************************************************
+>****
+  103: 	    \*
+  104: 	    \*    Global variable definitions
+  105: 	    \*
+  106: 	    \*******************************************************************
+>****
+  107: 	    
+  108: 	    STRING     GLOBAL        \
+  109: 	         FILE.OPERATION$,    \
+  110: 	         PINFO.TABLE$,       \
+  111: 	         PASSED.STRING$,     \
+  112: 	         SVC.PARAM$          
+  113: 	    
+  114: 	    INTEGER*4  GLOBAL        \
+  115: 	       ADX.FUNCTION%,        \
+  116: 	       ADX.PARAM%,           \
+  117: 	       CURRENT.REPORT.NUM%,  \
+  118: 	       EVENT.NO%,            \
+  119: 	       PASSED.INTEGER%,      \
+  120: 	       EVENT.DATE%,          \
+  121: 	       RC%
+  122: 	    
+  123: 	    \*******************************************************************
+>****
+  124: 	    \*
+  125: 	    \*    Local Variables
+  126: 	    \*
+  127: 	    \*******************************************************************
+>****
+  128: 	    
+  129: 	    STRING                    \
+  130: 	         ADX.COMMAND$,        \
+  131: 	         COMM.TAIL$,          \
+  132: 	         CURRENT.CODE$,       \
+  133: 	         FLAG$,               \
+  134: 	         FUNCTION.FLAG$,      \
+  135: 	         OK.STRING$,          \
+  136: 	         PROG.NAME$,          \
+  137: 	         TEMP.ARR$(1),        \
+  138: 	         TEMP.FORM$,          \
+  139: 	         VAR.STRING.1$,       \
+  140: 	         VAR.STRING.2$
+  141: 	                               
+  142: 	    INTEGER*4                 \
+  143: 	         ADX.INTEGER%,        \
+  144: 	         ARR.COUNT%,          \
+  145: 	         I%,                  \
+  146: 	         EOF%,                \
+  147: 	         ERROR.CNT%,          \
+  148: 	         K%,                  \
+  149: 	         FOUND%,              \
+  150: 	         FOUND1%,             \
+  151: 	         J%,                  \
+  152: 	         MESSAGE.NO%,         \
+  153: 	         RPS%,                \
+  154: 	         RC1%,                \
+  155: 	         TEMP.COUNT%  
+  156: 	    
+  157: 	    
+  158: 	    
+  159: 	    \*******************************************************************
+>****
+  160: 	    \*
+  161: 	    \*    Included code defining external Boots functions
+  162: 	    \*
+  163: 	    \*******************************************************************
+>****
+  164: 	        
+  165: 	    %INCLUDE BEMFEXT.J86
+  166=a	    \*******************************************************************
+>***********
+  167=a	    \***
+  168=a	    \***        EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FIL
+>E
+  169=a	    \***                                                            
+  170=a	    \***                        REFERENCE : BEMFEXT
+  171=a	    \***
+  172=a	    \***    Version A               Mark Walker                   1st No
+>vember 1993
+  173=a	    \***
+  174=a	    \***    Version B       Stuart William McConnachie          25th Sep
+>tember 2000
+  175=a	    \***    READ.BEMF function has got lost!
+  176=a	    \***
+  177=a	    \*******************************************************************
+>***********
+  178=a	    
+  179=a	        FUNCTION BEMF.SET EXTERNAL
+  180=a	        END FUNCTION
+  181=a	        
+  182=a	        FUNCTION READ.BEMF EXTERNAL
+  183=a	        INTEGER*1 READ.BEMF
+  184=a	        END FUNCTION
+  185=a	        
+  186=a	        
+  187: 	    %INCLUDE BASROUT.J86
+  188=a	    \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+  189=a	    \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR343
+>52
+  190=a	    \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR343
+>52
+  191=a	    \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR343
+>52
+  192=a	    \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASO
+>NAR
+  193=a	    \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASO
+>NAR
+  194=a	    ! BASROUT.J86 - this file is to be included in any BASIC code which 
+>utilizes
+  195=a	    !   the BASROUT.OBJ routines.  These routines were written
+  196=a	    !  using Metaware C and are intended to provide functions which
+  197=a	    !         are either not available in 4680 CBASIC or which can be mo
+>re
+  198=a	    !               efficiently handled by the C language.  Their usage 
+>is
+  199=a	    !  offered on an "AT YOUR OWN RISK" basis.
+  200=a	    !
+  201=a	    !               The insert/extract routines usefulness may not be im
+>mediately
+  202=a	    !               apparent.  Their intention is that they be used in c
+>onjunction
+  203=a	    !               with a read/write form command.  They can more effic
+>iently
+  204=a	    !               parse a string into many different variables than ca
+>n the
+  205=a	    !               read form statement.  So instead of a long list of d
+>ata var's
+  206=a	    !               it may be more efficient to just read/write one long
+> string
+  207=a	    !               and then use the insert/extract routines to parse ou
+>t the
+  208=a	    !   data.
+  209=a	    
+  210=a	    ! ******************* SUB PROCESS FUNCTIONS ************************
+>*********
+  211=a	    
+  212=a	    function osshell(cmd.line$) external   ! routine to start
+  213=a	           ! another program.
+  214=a	               integer*4    osshell    ! Upon completion of
+  215=a	               string       cmd.line$   ! program, control is
+  216=a	           ! returned to calling
+  217=a	    end function      ! program.
+  218=a	    !
+  219=a	    ! NOTES:  Program must be a 286 type file.  This does not exclude
+  220=a	    !         the capability to execute a batch file however.  Simply pa
+>ss the
+  221=a	    !         following:
+  222=a	    !              c:\adx_spgm\command.286 batfile
+  223=a	    !         where batfile is the name of the batch file to be executed
+>.
+  224=a	    !
+  225=a	    ! IMPORTANT: When using osshell to execute a batch file as described
+> above,
+  226=a	    !            the final command in the batch file must be "exit".  If
+> not,
+  227=a	    !       control is never given back to the calling program.
+  228=a	    
+  229=a	    ! ************************ MEMORY RELATED FUNCTIONS ****************
+>********
+  230=a	    
+  231=a	    function memfree(choice) external   ! routine to que the
+  232=a	           ! status of the
+  233=a	     integer*4 memfree    ! machine's memory:
+  234=a	     integer*2 choice    ! Options:
+  235=a	           !    1 - free
+  236=a	    end function      !    2 - total
+  237=a	           !    3 - system
+  238=a	    
+  239=a	    ! ********************** TIMEDATE RELATED FUNCTIONS ****************
+>********
+  240=a	    
+  241=a	    function timedate(choice) external   ! routine to que the
+  242=a	           ! OS's timedate table
+  243=a	     integer*4 timedate   ! Choices:
+  244=a	     integer*2 choice    !    1 - millisec's
+  245=a	           !        since midnight
+  246=a	    end function      !    2 - minutes from
+  247=a	           !  UCT (timezone)
+  248=a	           !    3 - day of week
+  249=a	           !   0-Sunday
+  250=a	           !  6-Saturday
+  251=a	    
+  252=a	    function settime(msecs) external   ! routine to set the
+  253=a	           ! time on the controller
+  254=a	     integer*4  settime    ! msecs is the desired
+  255=a	     integer*4 msecs    ! number of milliseconds
+  256=a	           ! since midnight
+  257=a	    end function      ! Returns negative on
+  258=a	           ! error
+  259=a	    ! NOTE:  This routine sets the time only on the controller.  The ter
+>minals'
+  260=a	    ! time will not be updated until 1 AM or unless a terminal is STC'd.
+  261=a	    ! At 1 AM the controller broadcasts the new time to all terminals.
+  262=a	    ! Insure this is taken into consideration when using this routine.
+  263=a	    
+  264=a	    !******************** DISK FILE RELATED FUNCTIONS ******************
+>*******
+  265=a	    
+  266=a	    function truncate(name,length) external   ! routine to truncate
+  267=a	           ! the specified file
+  268=a	     integer*4 truncate   ! to a given length.
+  269=a	     string  name
+  270=a	     integer*4 length
+  271=a	    
+  272=a	    end function
+  273=a	    
+  274=a	    !******************** STRING VALUE RELATED FUNCTIONS ***************
+>*******
+  275=a	    
+  276=a	    function isalpha(bstrn) external   ! routine to identify
+  277=a	           ! if the specified
+  278=a	     integer*1 isalpha    ! string contains all
+  279=a	     string  bstrn    ! alphabetic char's
+  280=a	           ! Returns:
+  281=a	    end function      !     0 - all alpha
+  282=a	           !     X - byte of 1st
+  283=a	           !         non-alpha
+  284=a	           !   char
+  285=a	    
+  286=a	    function isdigit(bstrn) external   ! routine to identify
+  287=a	           ! if the specified
+  288=a	     integer*1 isdigit    ! string contains all
+  289=a	     string  bstrn    ! numeric char's
+  290=a	           ! Returns:
+  291=a	    end function      !     0 - all numeric
+  292=a	           !     X - byte of 1st
+  293=a	           !         non-numeric
+  294=a	           !   char
+  295=a	    
+  296=a	    function islower(bstrn) external   ! routine to identify
+  297=a	           ! if the specified
+  298=a	     integer*1 islower    ! string contains all
+  299=a	     string  bstrn    ! lower case char's
+  300=a	           ! Returns:
+  301=a	    end function      !     0 - all lowercase
+  302=a	           !     X - byte of 1st
+  303=a	           !         non-lowercase
+  304=a	           !   char
+  305=a	    
+  306=a	    function isupper(bstrn) external   ! routine to identify
+  307=a	           ! if the specified
+  308=a	     integer*1 isupper    ! string contains all
+  309=a	     string  bstrn    ! upper case char's
+  310=a	           ! Returns:
+  311=a	    end function      !     0 - all uppercase
+  312=a	           !     X - byte of 1st
+  313=a	           !         non-uppercase
+  314=a	           !   char
+  315=a	    
+  316=a	    function toalpha(bstrn) external   ! routine to convert
+  317=a	           ! non-alpha or non-num
+  318=a	       integer*2 toalpha    ! char's to spaces
+  319=a	     string  bstrn    ! Returns:
+  320=a	    end function      !   x - no. of char's
+  321=a	           !       changed
+  322=a	    
+  323=a	    ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS ************
+>*********
+  324=a	    
+  325=a	    function idlecount(choice) external   ! routine to either
+  326=a	           ! set to zero or queue
+  327=a	     integer*4 idlecount   ! the value of the
+  328=a	     integer*1 choice    ! processor's idlecount
+  329=a	           ! Choice:
+  330=a	    end function      !     0 - set to zero
+  331=a	    !       !     1 - get value
+  332=a	    ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+  333=a	    ! TO WORK - This level is not available unless  !     X - idlecount
+  334=a	    ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error cod
+>e
+  335=a	    ! is highly unrecommended.
+  336=a	    
+  337=a	    function logical(actname,logname,choice) external ! routine to set a
+  338=a	           ! a logical name.
+  339=a	     integer*4 logical    ! parms are self
+  340=a	            string  logname    ! explanatory except
+  341=a	     string  actname    ! for choice:
+  342=a	     integer*1 choice    !   0 - set process
+  343=a	           !   1 - set system
+  344=a	    end function      !   2 - get process
+  345=a	           !   3 - get system
+  346=a	    
+  347=a	    ! NOTE:  Only the setting of a system level of logical name requires
+  348=a	    ! user/group zero level of authorization.  Any application may query
+> any
+  349=a	    ! logical name.  Setting of a system logical name is only applicable
+> until
+  350=a	    ! the system is IPL'd.  A process logical name is only active when t
+>hat
+  351=a	    ! process is active.
+  352=a	    
+  353=a	    !******************** STRING PARSING FUNCTIONS *********************
+>********
+  354=a	    
+  355=a	    function inserts(whole,part,offset) external  ! routine to insert a
+  356=a	           ! string (part) into
+  357=a	     integer*2 INSERTS    ! another string (whole)
+  358=a	     string  whole    ! starting at specified
+  359=a	     string  part    ! character (offset)
+  360=a	     integer*2 offset
+  361=a	    
+  362=a	    end function
+  363=a	    
+  364=a	    function cinsert4(integer4,bstring,offset) external   ! routine to i
+>nsert
+  365=a	           ! a 4-byte integer into
+  366=a	     integer*1 cinsert4   ! a string starting at
+  367=a	     integer*4 integer4   ! byte specified by
+  368=a	     string  bstring    ! offset (1-based)
+  369=a	     integer*2 offset    ! Returns:
+  370=a	           !     0 - Success
+  371=a	    end function      !    -1 - String overrun
+  372=a	    
+  373=a	    function cinsert2(integer2,bstring,offset) external  ! routine to in
+>sert
+  374=a	           ! a 2-byte integer into
+  375=a	     integer*1 cinsert2   ! a string starting at
+  376=a	     integer*2 integer2   ! byte specified by
+  377=a	     string  bstring    ! offset (1-based)
+  378=a	     integer*2 offset    ! Returns:
+  379=a	           !     0 - Success
+  380=a	    end function      !    -1 - String overrun
+  381=a	    
+  382=a	    function cinsert1(bstring,integer1,offset) external  ! routine to in
+>sert
+  383=a	           ! a 1-byte integer into
+  384=a	     integer*1 cinsert1   ! a string starting at
+  385=a	     integer*1 integer1   ! byte specified by
+  386=a	     string  bstring    ! offset (1-based)
+  387=a	     integer*2 offset    ! Returns:
+  388=a	           !     0 - Success
+  389=a	    end function      !    -1 - String overrun
+  390=a	    
+  391=a	    function extracts(whole,part,offset) external  ! routine to extract 
+>a
+  392=a	           ! string (part) from
+  393=a	     integer*2 EXTRACTS   ! another string (whole)
+  394=a	     string  whole    ! starting at specified
+  395=a	     string  part    ! character (offset)
+  396=a	     integer*2 offset
+  397=a	    
+  398=a	    end function
+  399=a	    
+  400=a	    function cextract4(bstring,offset) external  ! routine to extract
+  401=a	           ! a 4-byte integer from
+  402=a	     integer*4 cextract4   ! a string starting at
+  403=a	                           ! byte specified by
+  404=a	     string  bstring    ! offset (1-based)
+  405=a	     integer*2 offset    ! Returns:
+  406=a	           !     X - 4 byte integer
+  407=a	    end function      !    -1 - String overrun
+  408=a	    
+  409=a	    function cextract2(bstring,offset) external  ! routine to extract
+  410=a	           ! a 2-byte integer from
+  411=a	     integer*2 cextract2   ! a string starting at
+  412=a	                           ! byte specified by
+  413=a	     string  bstring    ! offset (1-based)
+  414=a	     integer*2 offset    ! Returns:
+  415=a	           !     X - 2 byte integer
+  416=a	    end function      !    -1 - String overrun
+  417=a	    
+  418=a	    function cextract1(bstring,offset) external  ! routine to extract
+  419=a	           ! a 1-byte integer from
+  420=a	     integer*1 cextract1   ! a string starting at
+  421=a	                           ! byte specified by
+  422=a	     string  bstring    ! offset (1-based)
+  423=a	     integer*2 offset    ! Returns:
+  424=a	           !     X - 1 byte integer
+  425=a	    end function      !    -1 - String overrun
+  426=a	    
+  427=a	    
+  428=a	    function srchdir (file.name$,dtbl.buffer$) external ! routine to ret
+>urn
+  429=a	           ! file names and sizes
+  430=a	           ! Return values:
+  431=a	           !    -1  no matches
+  432=a	           !        found on first
+  433=a	           !        call
+  434=a	           !    0   no matches
+  435=a	           !        found on sub-
+  436=a	           !        sequent calls
+  437=a	           !    Pos Success
+  438=a	           !    Neg OS Rtn Code
+  439=a	    ! Usage Note:  If searching for all occurences of a particular file 
+>name,
+  440=a	    ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue 
+>a call
+  441=a	    ! to srchdir.  If any matches are found, a positive value will be re
+>turned.
+  442=a	    ! To see if any more matches exist, just issue another call to srchd
+>ir without
+  443=a	    ! resetting the values of dtbl.buffer$.  If any are found, a positiv
+>e value
+  444=a	    ! will be returned.  This can be repeated until a Zero is returned. 
+> All data
+  445=a	    ! describing file will be returned in the dtbl.buffer$ after each ca
+>ll.  Format
+  446=a	    ! of this data is defined below.
+  447=a	    
+  448=a	     integer*4 srchdir
+  449=a	    
+  450=a	     string  file.name$   ! file name to start
+  451=a	           ! search (18 bytes max)
+  452=a	           ! Wild cards and logical
+  453=a	           ! names supported.
+  454=a	    
+  455=a	     string  dtbl.buffer$   ! must be initialized
+  456=a	           ! to 48 bytes.  Contains
+  457=a	           ! all of directory info
+  458=a	           ! Initialize to nulls
+  459=a	           ! each time a new file
+  460=a	           ! name is used.
+  461=a	    
+  462=a	    ! NOTE:  Format of dtbl.buffer$ string is as follows:
+  463=a	    !
+  464=a	    ! Offs  Type                    Description Notes
+  465=a	    !  0 integer*4  key  use extract4 to access
+  466=a	    !  4  string (18 bytes) file name
+  467=a	    ! 22 integer*2  attributes use extract2 to access
+  468=a	    !      0x01 - Read Only
+  469=a	    !      0x02 - Hidden
+  470=a	    !      0x04 - System
+  471=a	    !      0x08 - Volume Label
+  472=a	    !      0x10 - Subdirectory
+  473=a	    !      0x20 - Archive (Files)
+  474=a	    !      0x40 - Security enabled
+  475=a	    !      0x80 - Reserved
+  476=a	    !      0x0000 - Local
+  477=a	    !      0x4000 - Mirrored/Update
+  478=a	    !      0xC000 - Mirrored/Close
+  479=a	    !
+  480=a	    !      0x6000 - Compound/Update
+  481=a	    !      0xE000 - Compound/Close
+  482=a	    ! 24 integer*2  record size use extract2 to access
+  483=a	    ! 26 integer*1  User ID of Owner
+  484=a	    ! 27 integer*1  Group ID of Owner
+  485=a	    ! 28 integer*2  File Security
+  486=a	    ! 30 string (6 bytes) Reserved
+  487=a	    ! 36 integer*4  File Size use extract4 to access
+  488=a	    ! 40 integer*2  Year  use extract2 to access
+  489=a	    ! 42 integer*1  Month
+  490=a	    ! 43 integer*1  Day
+  491=a	    ! 44 integer*1  Hour
+  492=a	    ! 45 integer*1  Minute
+  493=a	    ! 46 integer*1  Second
+  494=a	    ! 47 integer*1  Reserved
+  495=a	    
+  496=a	    end function
+  497=a	    
+  498=a	    function srchproc (proc.name$,ptbl.buffer$) external ! routine to re
+>turn
+  499=a	           ! process names and
+  500=a	           ! status.  Handy to
+  501=a	           ! determine if a
+  502=a	           ! program is currently
+  503=a	           ! running.
+  504=a	           ! Return values:
+  505=a	           !    -1  no matches
+  506=a	           !        found on first
+  507=a	           !        call
+  508=a	           !    0   no matches
+  509=a	           !        found on sub-
+  510=a	           !        sequent calls
+  511=a	           !    Pos Success
+  512=a	           !    Neg Failure
+  513=a	           !        OS Rtn Code
+  514=a	           ! 80000001h - Insuff
+  515=a	            !        ptbl buffer
+  516=a	           !        Length
+  517=a	    ! Usage Note:  If searching for all occurences of a particular proce
+>ss name,
+  518=a	    ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue 
+>a call
+  519=a	    ! to srchproc.  If any matches are found, a positive value will be r
+>eturned.
+  520=a	    ! To see if any more matches exist, just issue another call to srchp
+>roc without
+  521=a	    ! resetting the values of ptbl.buffer$.  If any are found, a positiv
+>e value
+  522=a	    ! will be returned.  This can be repeated until a Zero is returned. 
+> All data
+  523=a	    ! describing file will be returned in the ptbl.buffer$ after each ca
+>ll.  Format
+  524=a	    ! of this data is defined as follows:
+  525=a	    !
+  526=a	    !       --------------------------------------------------------
+  527=a	    !   0   |                         PID                          |
+  528=a	    !       --------------------------------------------------------
+  529=a	    !   4   |           FID             |   CID        |   VCID    |
+  530=a	    !       --------------------------------------------------------
+  531=a	    !   8   |                         NAME                         |
+  532=a	    !       --------------------------------------------------------
+  533=a	    !  12   |                         NAME cont'd                  |
+  534=a	    !       --------------------------------------------------------
+  535=a	    !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+  536=a	    !       --------------------------------------------------------
+  537=a	    !  20   |                         MAXMEM                       |
+  538=a	    !       --------------------------------------------------------
+  539=a	    !  24   |       FLAGS               |   USER        |  GROUP   |
+  540=a	    !       --------------------------------------------------------
+  541=a	    !  28   |                         PARENT                       |
+  542=a	    !       --------------------------------------------------------
+  543=a	    !  32   |                         EVENTS                       |
+  544=a	    !       --------------------------------------------------------
+  545=a	    !  36   |                         CODE                         |
+  546=a	    !       --------------------------------------------------------
+  547=a	    !  40   |                         CSIZE                        |
+  548=a	    !       --------------------------------------------------------
+  549=a	    !  44   |                         DATA                         |
+  550=a	    !       --------------------------------------------------------
+  551=a	    !  48   |                         DSIZE                        |
+  552=a	    !       --------------------------------------------------------
+  553=a	    !  52   |                         HEAP                         |
+  554=a	    !       --------------------------------------------------------
+  555=a	    !  56   |                         HSIZE                        |
+  556=a	    !       --------------------------------------------------------
+  557=a	    !
+  558=a	    !       PID   Process ID
+  559=a	    !       FID  Process's Family ID
+  560=a	    !       CID   Physical Console Device Number
+  561=a	    !       VCID  Process's Virtual Console Number
+  562=a	    !       NAME  Process Name (Application Running)
+  563=a	    ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+  564=a	    ! PRIOR    Priority
+  565=a	    !       MAXMEM  Maximum Memory Allowed
+  566=a	    !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+  567=a	    !   Bit 1 (1-Locked in Memory, 0-Swappable)
+  568=a	    !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+  569=a	    !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+  570=a	    ! USER  User Number
+  571=a	    ! GROUP  Group Number
+  572=a	    !       PARENT   Parent Process ID
+  573=a	    !       EVENTS   Bit Map of events that have completed but not retri
+>eved
+  574=a	    !       CODE  Start of code area in user space
+  575=a	    ! CSIZE  Size in bytes of code area
+  576=a	    !       DATA  Start of data area in user space
+  577=a	    ! DSIZE  Size in bytes of data area
+  578=a	    !       HEAP  Start of heap area in user space
+  579=a	    ! HSIZE  Size in bytes of heap area
+  580=a	    !
+  581=a	     integer*4 srchproc
+  582=a	    
+  583=a	     string  proc.name$   ! process name to start
+  584=a	           ! search (10 bytes max)
+  585=a	           ! Wild cards and logical
+  586=a	           ! names supported.
+  587=a	    
+  588=a	     string  ptbl.buffer$   ! must be initialized
+  589=a	           ! to 60 bytes.  Contains
+  590=a	           ! all of process info
+  591=a	           ! Initialize to nulls
+  592=a	           ! each time a new
+  593=a	           ! process name is used.
+  594=a	    
+  595=a	    end function
+  596=a	    
+  597=a	    function cconstat(timeout) external       ! function similar
+  598=a	                                                  ! to BASIC constat%
+  599=a	     integer*2 cconstat   ! waits for either a
+  600=a	     integer*4 timeout    ! key being hit or
+  601=a	           ! the timer expiring
+  602=a	           ! before returning
+  603=a	           ! returns:
+  604=a	           !   -1 error
+  605=a	           !    0 timer expired
+  606=a	           !    x scan code of
+  607=a	           !      key hit
+  608=a	    end function
+  609=a	    
+  610=a	    function disksize(disk.name$) external   ! function to find
+  611=a	           ! the total size of
+  612=a	     integer*4 disksize   ! the specified disk
+  613=a	     string  disk.name$   ! name (e.g. "h0:")
+  614=a	           ! if return value is
+  615=a	           ! negative, error
+  616=a	    end function      ! was received
+  617=a	    
+  618=a	    
+  619: 	    %INCLUDE BOOTSEXT.J86
+  620=a	    \*******************************************************************
+>***********
+  621=a	    \*******************************************************************
+>***********
+  622=a	    SUB LOG.ERROR(F.1$) EXTERNAL
+  623=a	        STRING  F.1$
+  624=a	    END SUB
+  625=a	    
+  626=a	    \*******************************************************************
+>***********
+  627=a	    \*******************************************************************
+>***********
+  628=a	    FUNCTION FORCE.CASE$(DATA$,TYPE%) EXTERNAL
+  629=a	        STRING      FORCE.CASE$
+  630=a	        STRING      DATA$
+  631=a	        INTEGER*2   TYPE%
+  632=a	        STRING      IN$, OUT$
+  633=a	        STRING      LWR$, UPR$
+  634=a	    END FUNCTION
+  635=a	    
+  636=a	    \*******************************************************************
+>***********
+  637=a	    \*******************************************************************
+>***********
+  638=a	    FUNCTION REMOVE.CHARACTER$(DATA$,F.CHR$) EXTERNAL
+  639=a	        STRING      DATA$
+  640=a	        STRING      F.CHR$
+  641=a	        STRING      REMOVE.CHARACTER$
+  642=a	        INTEGER*2   START%
+  643=a	        INTEGER*2   END%
+  644=a	        INTEGER*2   POS%
+  645=a	        INTEGER*2   F.LEN%
+  646=a	    END FUNCTION
+  647=a	    
+  648=a	    \*******************************************************************
+>***********
+  649=a	    \*******************************************************************
+>***********
+  650=a	    FUNCTION REMOVE.SPACES$(DATA$) EXTERNAL
+  651=a	        STRING      DATA$
+  652=a	        STRING      REMOVE.SPACES$
+  653=a	        INTEGER*2   START%
+  654=a	        INTEGER*2   END%
+  655=a	        INTEGER*2   POS%
+  656=a	    END FUNCTION
+  657=a	    
+  658=a	    \*******************************************************************
+>************
+  659=a	    \***
+  660=a	    \***    FUNCTION     :    TIME.STAMP$
+  661=a	    \***    
+  662=a	    \***    Returns a string with formatted date and/or time detail
+  663=a	    \***                 Passed values are 1 = Date, 2 = Time
+  664=a	    \*******************************************************************
+>************
+  665=a	    FUNCTION TIME.STAMP$(F.TYPE%) EXTERNAL
+  666=a	        STRING      TIME.STAMP$
+  667=a	        INTEGER*2   F.TYPE%
+  668=a	        STRING      F.DT$
+  669=a	        STRING      F.RET$
+  670=a	    END FUNCTION
+  671=a	    \*******************************************************************
+>************
+  672=a	    
+  673=a	    
+  674=a	    \*******************************************************************
+>************
+  675=a	    \*******************************************************************
+>************
+  676=a	    FUNCTION PRINT.MSG$(MSG$,F%,L%) EXTERNAL
+  677=a	    STRING      PRINT.MSG$
+  678=a	    STRING      MSG$
+  679=a	    INTEGER*2   F%
+  680=a	    INTEGER*2   L%
+  681=a	    STRING      IN$
+  682=a	    STRING      F.FORM$
+  683=a	    END FUNCTION
+  684=a	    \*******************************************************************
+>************
+  685=a	    
+  686=a	    \*******************************************************************
+>************
+  687=a	    \***
+  688=a	    \***    SUBROUTINE     :    BACKGROUND.MSG(B.MSG$)
+  689=a	    \***    
+  690=a	    \***    Displays passed message to the background message.
+  691=a	    \*******************************************************************
+>************
+  692=a	    SUB BACKGROUND.MSG(B.MSG$) EXTERNAL
+  693=a	        STRING      B.MSG$
+  694=a	        INTEGER*4   B.RET%
+  695=a	    END SUB
+  696=a	    \*******************************************************************
+>************
+  697=a	    
+  698=a	    !*******************************************************************
+>**********!
+  699=a	    !***                                                                
+>          !
+  700=a	    !*** SUBROUTINE :   NO.OPEN.FILE                                    
+>          !
+  701=a	    !***                    F.REPORT%       - Passed report number for l
+>ogging    !
+  702=a	    !***                    F.OPEN.FLAG$    - Returned flag for not-open
+>ed        !
+  703=a	    !***                                                                
+>          !
+  704=a	    !*** This subroutine logs an application 106 error with the passed r
+>eport     !
+  705=a	    !*** number. It also sets a return variable to "N" to flag that the 
+>file is   !
+  706=a	    !*** not Open because of the failure.                               
+>          !
+  707=a	    !***                                                                
+>          !
+  708=a	    !*******************************************************************
+>**********!
+  709=a	    SUB NO.OPEN.FILE(F.REPORT%,F.OPEN.FLAG$) EXTERNAL                   
+>                   
+  710=a	        INTEGER*2   F.REPORT%                                           
+>              
+  711=a	        STRING      F.OPEN.FLAG$                                        
+>              
+  712=a	        STRING      F.1$, F.2$
+  713=a	        INTEGER*2   F.EVENT%
+  714=a	    END SUB                                                             
+>          
+  715=a	    !*******************************************************************
+>**********!
+  716=a	    
+  717=a	    
+  718=a	    FUNCTION NUMBER.OF.DAYS%(START$,END$) EXTERNAL
+  719=a	    INTEGER*2   NUMBER.OF.DAYS%
+  720=a	    STRING      START$
+  721=a	    STRING      END$
+  722=a	    INTEGER*2   F.DAYS%
+  723=a	    INTEGER*4   S.DAYS%
+  724=a	    INTEGER*4   E.DAYS%
+  725=a	    END FUNCTION
+  726=a	    
+  727=a	    FUNCTION HEX.FORMAT$(F.DATA$) EXTERNAL
+  728=a	    STRING  HEX.FORMAT$
+  729=a	    STRING  F.DATA$
+  730=a	    STRING      F.RET$
+  731=a	    INTEGER*2   F.LEN%
+  732=a	    STRING      F.TMP$(2)
+  733=a	    STRING      F.FORM$
+  734=a	    STRING      F.ASCII$
+  735=a	    STRING      F.ASC$
+  736=a	    STRING      F.HEX$
+  737=a	    STRING      F.WORK$, F.W2$
+  738=a	    INTEGER*2   F.LOOP%, F.L2%
+  739=a	    END FUNCTION
+  740=a	    
+  741=a	    FUNCTION FORMAT.NUMBER$(F.NUM$,F.DEC%) EXTERNAL
+  742=a	    STRING      FORMAT.NUMBER$
+  743=a	    STRING      F.NUM$
+  744=a	    INTEGER*2   F.DEC%
+  745=a	    INTEGER*4   F.NUM%
+  746=a	    END FUNCTION
+  747=a	    
+  748=a	    \*******************************************************************
+>************
+  749=a	    FUNCTION FORMAT.BOOTS.CODE$(F.CODE$) EXTERNAL
+  750=a	    STRING  FORMAT.BOOTS.CODE$
+  751=a	    STRING  F.CODE$
+  752=a	    END FUNCTION
+  753=a	    
+  754=a	    FUNCTION FORMAT.STRING$(F.STRING$,F.L%,F.P$,F.J%) EXTERNAL
+  755=a	    STRING    FORMAT.STRING$
+  756=a	    STRING    F.STRING$
+  757=a	    INTEGER*2 F.L%
+  758=a	    STRING    F.P$
+  759=a	    INTEGER*2 F.J%
+  760=a	    END FUNCTION
+  761=a	    
+  762=a	    SUB GET.BLOCK.SIZE(F.BLOCK.SIZE%,F.FILENAME$,F.SIZE%) EXTERNAL
+  763=a	    INTEGER*4   F.BLOCK.SIZE%
+  764=a	    STRING      F.FILENAME$
+  765=a	    INTEGER*4   F.SIZE%
+  766=a	    INTEGER*4   F.BLOCK%
+  767=a	    INTEGER*2   F.SECTOR%
+  768=a	    INTEGER*2   F.LOOP%
+  769=a	    STRING      F.BLOCK.LENGTH$
+  770=a	    END SUB
+  771: 	    %INCLUDE BTCMEM.J86
+  772=a	    !*******************************************************************
+>*
+  773=a	    !***
+  774=a	    !***    INCLUDED CODE:  BTCMEM.J86
+  775=a	    !***    AUTHOR:         Stuart William McConnachie
+  776=a	    !***    DATE:           26th February 2006
+  777=a	    !***
+  778=a	    !*******************************************************************
+>*
+  779=a	    !***
+  780=a	    !***    Controller CBASIC Memory Functions
+  781=a	    !***
+  782=a	    !*******************************************************************
+>*
+  783=a	    
+  784=a	    !Get a single byte integer from a string offset
+  785=a	    FUNCTION GETN1 (S$, P%) EXTERNAL
+  786=a	        STRING S$
+  787=a	        INTEGER*2 P%
+  788=a	        INTEGER*2 GETN1
+  789=a	    END FUNCTION
+  790=a	    
+  791=a	    !Get a two byte integer from a string offset
+  792=a	    FUNCTION GETN2 (S$, P%) EXTERNAL
+  793=a	        STRING S$
+  794=a	        INTEGER*2 P%
+  795=a	        INTEGER*2 GETN2
+  796=a	    END FUNCTION
+  797=a	    
+  798=a	    !Get a four byte integer from a string offset
+  799=a	    FUNCTION GETN4 (S$, P%) EXTERNAL
+  800=a	        STRING S$
+  801=a	        INTEGER*2 P%
+  802=a	        INTEGER*4 GETN4
+  803=a	    END FUNCTION
+  804=a	    
+  805=a	    !Get a 10 byte CBASIC real from a string offset
+  806=a	    FUNCTION GETR10 (S$, P%) EXTERNAL
+  807=a	        STRING S$
+  808=a	        INTEGER*2 P%
+  809=a	        REAL GETR10
+  810=a	    END FUNCTION
+  811=a	    
+  812=a	    !Put a single byte integer into a string at offset
+  813=a	    FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+  814=a	        STRING S$
+  815=a	        INTEGER*2 P%
+  816=a	        INTEGER*1 N%
+  817=a	        INTEGER*1 PUTN1
+  818=a	    END FUNCTION
+  819=a	    
+  820=a	    !Put a two byte integer into a string at offset
+  821=a	    FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+  822=a	        STRING S$
+  823=a	        INTEGER*2 P%
+  824=a	        INTEGER*2 N%
+  825=a	        INTEGER*1 PUTN2
+  826=a	    END FUNCTION
+  827=a	    
+  828=a	    !Put a four byte integer into a string at offset
+  829=a	    FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+  830=a	        STRING S$
+  831=a	        INTEGER*2 P%
+  832=a	        INTEGER*4 N%
+  833=a	        INTEGER*1 PUTN4
+  834=a	    END FUNCTION
+  835=a	    
+  836=a	    !Put a 10 byte CBASIC real into a string at offset
+  837=a	    FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+  838=a	        STRING S$
+  839=a	        INTEGER*2 P%
+  840=a	        REAL R
+  841=a	        INTEGER*1 PUTR10
+  842=a	    END FUNCTION
+  843=a	    
+  844=a	    !Peek a two byte integer from a memory address
+  845=a	    FUNCTION PEEKN2 (A%) EXTERNAL
+  846=a	        INTEGER*4 A%
+  847=a	        INTEGER*2 PEEKN2
+  848=a	    END FUNCTION
+  849=a	    
+  850=a	    !Peek a four byte integer from a memory address
+  851=a	    FUNCTION PEEKN4 (A%) EXTERNAL
+  852=a	        INTEGER*4 A%
+  853=a	        INTEGER*4 PEEKN4
+  854=a	    END FUNCTION
+  855=a	    
+  856=a	    !Peek a 10 byte CBASIC real from a memory address
+  857=a	    FUNCTION PEEKR10 (A%) EXTERNAL
+  858=a	        INTEGER*4 A%
+  859=a	        REAL PEEKR10
+  860=a	    END FUNCTION
+  861=a	    
+  862=a	    !Poke a two byte integer to a memory address
+  863=a	    FUNCTION POKEN2 (A%, N%) EXTERNAL
+  864=a	        INTEGER*4 A%
+  865=a	        INTEGER*2 N%
+  866=a	        INTEGER*1 POKEN2
+  867=a	    END FUNCTION
+  868=a	    
+  869=a	    !Poke a four byte integer to a memory address
+  870=a	    FUNCTION POKEN4 (A%, N%) EXTERNAL
+  871=a	        INTEGER*4 A%
+  872=a	        INTEGER*4 N%
+  873=a	        INTEGER*1 POKEN4
+  874=a	    END FUNCTION
+  875=a	    
+  876=a	    !Poke a 10 byte CBASIC real to a memory address
+  877=a	    FUNCTION POKER10 (A%, R) EXTERNAL
+  878=a	        INTEGER*4 A%
+  879=a	        REAL R
+  880=a	        INTEGER*1 POKER10
+  881=a	    END FUNCTION
+  882=a	    
+  883: 	    %INCLUDE PSBF01E.J86 
+  884=a	    REM \
+  885=a	    \*******************************************************************
+>************
+  886=a	    \*******************************************************************
+>************
+  887=a	    \***
+  888=a	    \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.L
+>OG
+  889=a	    \***
+  890=a	    \***                      FUNCTION NUMBER   : PSBF01
+  891=a	    \***
+  892=a	    \***                    INCLUDE REFERENCE : PSBF01E.J86
+  893=a	    \*** 
+  894=a	    \***      Version B           Andrew Wedgeworth          1st July 19
+>92
+  895=a	    \***      Three parameters which passed to the function have been re
+>moved.
+  896=a	    \***      APPLICATION.LOG has been added as a variable name (this ho
+>lds the
+  897=a	    \***      return code).
+  898=a	    \***
+  899=a	    \*******************************************************************
+>************
+  900=a	    
+  901=a	    
+  902=a	       FUNCTION APPLICATION.LOG (MESSAGE.NO%,                           
+>          \
+  903=a	                                 VAR.STRING.1$,                         
+>          \
+  904=a	                                 VAR.STRING.2$,                         
+>          \
+  905=a	                                 EVENT.NO%)  EXTERNAL
+  906=a	    
+  907=a	          INTEGER*1 EVENT.NO%
+  908=a	    
+  909=a	          INTEGER*2 APPLICATION.LOG,                                    
+>   \ GAW
+  910=a	                    MESSAGE.NO%
+  911=a	    
+  912=a	          STRING VAR.STRING.1$,                                         
+>   \
+  913=a	                 VAR.STRING.2$
+  914=a	    
+  915=a	       END FUNCTION
+  916=a	    
+  917=a	    \*******************************************************************
+>************
+  918: 	    %INCLUDE PSBF20E.J86 
+  919=a	    REM\
+  920=a	    \*******************************************************************
+>************
+  921=a	    \*******************************************************************
+>************
+  922=a	    \***
+  923=a	    \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+  924=a	    \***
+  925=a	    \***                  REFERENCE     : PSBF20E.J86
+  926=a	    \***
+  927=a	    \***     VERSION C            Janet Smith                13th May 19
+>92
+  928=a	    \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+  929=a	    \***     128 files.
+  930=a	    \***
+  931=a	    \***     VERSION D.           Andrew Wedgeworth          1st July 19
+>92
+  932=a	    \***     Removal of redundant parameters and addition of SESS.NUM.UT
+>ILITY
+  933=a	    \***     as a variable.  This new variable contains the function's r
+>eturn
+  934=a	    \***     code.
+  935=a	    \***
+  936=a	    \*******************************************************************
+>************
+  937=a	    \*******************************************************************
+>************
+  938=a	    
+  939=a	       FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                       
+>   \
+  940=a	                                  PASSED.INTEGER%,                      
+>   \
+  941=a	                                  PASSED.STRING$)                       
+>   \
+  942=a	       EXTERNAL
+  943=a	    
+  944=a	       STRING    FUNCTION.FLAG$,                                        
+>   \
+  945=a	                 PASSED.STRING$
+  946=a	       ! 3 variables removed from here                                  
+>   ! CAW
+  947=a	    
+  948=a	    
+  949=a	       INTEGER*2 SESS.NUM.UTILITY,                                      
+>   \ CAW
+  950=a	                 PASSED.INTEGER%                                        
+>  ! CJAS
+  951=a	    
+  952=a	       END FUNCTION
+  953=a	    
+  954: 	    %INCLUDE PSBF24E.J86
+  955=a	    REM \
+  956=a	    \*******************************************************************
+>************
+  957=a	    \*******************************************************************
+>************
+  958=a	    \***
+  959=a	    \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED 
+>FUNCTION
+  960=a	    \***
+  961=a	    \***                      REFERENCE     : PSBF24E.J86
+  962=a	    \***
+  963=a	    \***    Version A                 Janet Smith                  13th 
+>May 1992
+  964=a	    \***
+  965=a	    \*******************************************************************
+>************
+  966=a	    \*******************************************************************
+>************
+  967=a	    
+  968=a	       FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+  969=a	                                       ERRFILE%,              \
+  970=a	                                       ERRL%,                 \
+  971=a	                                       ERR$)        EXTERNAL
+  972=a	                                       
+  973=a	              STRING    ERR$
+  974=a	    
+  975=a	              INTEGER*2 ERRFILE%,              \
+  976=a	                       ERRL%,                 \
+  977=a	                       STANDARD.ERROR.DETECTED
+  978=a	                       
+  979=a	              INTEGER*4 ERRN%
+  980=a	                               
+  981=a	       END FUNCTION
+  982=a	    
+  983=a	    
+  984: 	    
+  985: 	    \*******************************************************************
+>****
+  986: 	    \*
+  987: 	    \*    INITIALISATION : This Sub-routine does all the initial process
+>ing
+  988: 	    \*                     before starting the main process
+  989: 	    \*
+  990: 	    \*******************************************************************
+>****
+  991: 	    
+  992: 	    FUNCTION FLEXOSSVC(COMMAND%, PARAM$) EXTERNAL                       
+>    
+  993: 	                                                                        
+>    
+  994: 	          STRING PARAM$                                                 
+>    
+  995: 	          INTEGER*2 COMMAND%, FLEXOSSVC                                 
+>    
+  996: 	                                                                        
+>    
+  997: 	    END FUNCTION  
+  998: 	    
+  999: 	    FUNCTION HEX.TEXT$(H$) PUBLIC                                       
+>                                                           
+ 1000: 	                                                                        
+>    
+ 1001: 	        STRING HEX.TEXT$,H$                                             
+>   
+ 1002: 	                                                                        
+>   
+ 1003: 	        HEX.TEXT$ = TRANSLATE$(H$,":;<=>?","ABCDEF")                    
+>   
+ 1004: 	                                                                        
+>   
+ 1005: 	    END FUNCTION                                                        
+>   
+ 1006: 	    \*******************************************************************
+>***
+ 1007: 	    
+ 1008: 	    SUB ADXSERVE (RET, FUNC, PARM1, PARM2$) EXTERNAL
+ 1009: 	    
+ 1010: 	        INTEGER*4  RET
+ 1011: 	        INTEGER*2  FUNC,PARM1
+ 1012: 	        STRING     PARM2$
+ 1013: 	    
+ 1014: 	    END SUB
+ 1015: 	    
+ 1016: 	    \*******************************************************************
+>***
+ 1017: 	    \***
+ 1018: 	    \***    ADXCOPYF
+ 1019: 	    \***    IBM routine to request Application Services.
+ 1020: 	    \***
+ 1021: 	    \*******************************************************************
+>***
+ 1022: 	    
+ 1023: 	    SUB ADXCOPYF (RETC,INFILE,OUTFILE,OPT0,OPT1) EXTERNAL
+ 1024: 	    
+ 1025: 	        INTEGER*4 RETC
+ 1026: 	        STRING    INFILE,OUTFILE
+ 1027: 	        INTEGER*2 OPT0,OPT1
+ 1028: 	    
+ 1029: 	    END SUB 
+ 1030: 	    
+ 1031: 	    \*******************************************************************
+>****
+ 1032: 	    \*                                                                  
+>   *
+ 1033: 	    \*          S T A R T   O F   M A I N L I N E   C O D E             
+>   *
+ 1034: 	    \*                                                                  
+>   *
+ 1035: 	    \*******************************************************************
+>****
+ 1036: 	    \*******************************************************************
+>****
+ 1037: 	    
+ 1038: 	    ON ERROR GOTO ERROR.DETECTED         
+ 1039: 	    
+ 1040: 	        DRWATSON.FILE.NAME$ = "D:/ADX_UDT1/DRWATSON.DAT"
+*** error			  ^8
+ 1041: 	           DRWATSON.BIN.NAME$ = "D:/ADX_UDT1/DRWATSON.BIN"
+*** error			     ^8
+ 1042: 	           EVLOG.FILE.NAME$ = "D:/ADX_IDT1/EVLOG00"
+*** error			   ^8
+ 1043: 	           GOSUB ALLOCATE.SESSION.NUMBERS
+ 1044: 	        GOSUB MAIN.PROCESSING
+ 1045: 	              
+ 1046: 	    STOP.PROGRAM:
+ 1047: 	        
+ 1048: 	           STOP
+ 1049: 	    
+ 1050: 	    \*******************************************************************
+>****
+ 1051: 	    \*
+ 1052: 	    \*    ALLOCATE.SESSION.NUMBERS:   
+ 1053: 	    \*                
+ 1054: 	    \*
+ 1055: 	    \*******************************************************************
+>****
+ 1056: 	    ALLOCATE.SESSION.NUMBERS:
+ 1057: 	    
+ 1058: 	        FUNCTION.FLAG$ = "O"                                            
+>    
+ 1059: 	        
+ 1060: 	        PASSED.INTEGER% = 456                              
+ 1061: 	        PASSED.STRING$  = DRWATSON.FILE.NAME$                           
+>       
+*** error					    ^8
+ 1062: 	        GOSUB CALL.F20.SESS.NUM.UTILITY                                 
+>    
+ 1063: 	        DRWATSON.SESS.NUM% = F20.INTEGER.FILE.NO% 
+*** error			 ^8
+ 1064: 	     
+ 1065: 	        PASSED.INTEGER% = 457                             
+ 1066: 	        PASSED.STRING$  = DRWATSON.BIN.NAME$                            
+>      
+*** error					   ^8
+ 1067: 	        GOSUB CALL.F20.SESS.NUM.UTILITY                                 
+>    
+ 1068: 	        DRWATSON.BIN.NUM% = F20.INTEGER.FILE.NO%   
+*** error			^8
+ 1069: 	           
+ 1070: 	           PASSED.INTEGER% = 458                             
+ 1071: 	        PASSED.STRING$  = EVLOG.FILE.NAME$                              
+> 
+*** error					 ^8
+ 1072: 	        GOSUB CALL.F20.SESS.NUM.UTILITY                                 
+>    
+ 1073: 	        EVLOG.SESS.NUM% = F20.INTEGER.FILE.NO% 
+*** error		      ^8
+ 1074: 	    
+ 1075: 	         
+ 1076: 	    RETURN
+ 1077: 	    
+ 1078: 	    \*******************************************************************
+>****
+ 1079: 	    \*
+ 1080: 	    \*    CALL.F20.SESS.NUM.UTILITY:  
+ 1081: 	    \*                
+ 1082: 	    \*
+ 1083: 	    \*******************************************************************
+>****
+ 1084: 	    CALL.F20.SESS.NUM.UTILITY: 
+ 1085: 	            
+ 1086: 	       FILE.OPERATION$ = FUNCTION.FLAG$
+ 1087: 	       CURRENT.REPORT.NUM% = PASSED.INTEGER%
+ 1088: 	       RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+ 1089: 	                                     PASSED.STRING$)
+ 1090: 	       IF RC% <> 0 THEN GOTO ERROR.DETECTED
+ 1091: 	    
+ 1092: 	    RETURN 
+ 1093: 	     
+ 1094: 	    \*******************************************************************
+>****
+ 1095: 	    \*
+ 1096: 	    \*    MAIN.PROCESSING
+ 1097: 	    \*
+ 1098: 	    \*******************************************************************
+>****
+ 1099: 	    MAIN.PROCESSING:   
+ 1100: 	    
+ 1101: 	            PRINT "Real Time Event Generator is running" 
+ 1102: 	    
+ 1103: 	            OPEN EVLOG.FILE.NAME$ DIRECT RECL 36 AS EVLOG.SESS.NUM% 
+*** error				 ^8				   ^8
+ 1104: 	            
+ 1105: 	            OPEN DRWATSON.FILE.NAME$ AS DRWATSON.SESS.NUM% LOCKED NODEL 
+>APPEND    
+*** error				    ^8			  ^8
+ 1106: 	     
+ 1107: 	            OPEN DRWATSON.BIN.NAME$ DIRECT RECL 4 AS DRWATSON.BIN.NUM% N
+>ODEL
+*** error				   ^8				      ^8
+ 1108: 	            
+ 1109: 	            CREATE "pi:drwatson" as 64 BUFFSIZE 56 
+ 1110: 	       
+ 1111: 	         I% = 1
+ 1112: 	           
+ 1113: 	            WHILE 1 = 1 
+ 1114: 	           
+ 1115: 	                    RC% = SIZE(EVLOG.FILE.NAME$)
+*** error					       ^8
+ 1116: 	           
+ 1117: 	                    NUM.RECORDS% = RC% / 36
+*** error				^8
+ 1118: 	                    
+ 1119: 	                    IF RC% > 0  THEN BEGIN 
+ 1120: 	           
+ 1121: 	                            WHILE I% <  NUM.RECORDS%           
+*** error							  ^8
+ 1122: 	            
+ 1123: 	                                READ FORM "C36" ;#EVLOG.SESS.NUM%, I%;  
+>RECORD$           
+*** error								 ^8		  
+>^8
+ 1124: 	                   
+ 1125: 	                                    I% = I% + 1      
+ 1126: 	      
+ 1127: 	                                    IF RIGHT$( RECORD$,28) = STRING$(28,
+>CHR$(0)) THEN BEGIN    
+*** error						      ^8
+ 1128: 	                           
+ 1129: 	                            
+ 1130: 	                                    ENDIF ELSE BEGIN
+ 1131: 	                   
+ 1132: 	                                            EVENT.DATE% =  GETN2(RECORD$
+>,0)
+*** error									
+>^8
+ 1133: 	                                            EVENT.TIME%  = GETN2(RECORD$
+>,2)                                         
+*** error						       ^8		
+>^8
+ 1134: 	                                            EVENT.NODE$  = MID$(RECORD$,
+>5,2)      
+*** error						       ^8	       ^8
+ 1135: 	                                            EVENT.NODE$ = RIGHT$(EVENT.N
+>ODE$,1) + LEFT$(EVENT.NODE$,1)               
+*** error						       ^8		    
+>^8													   
+>^8
+ 1136: 	                                            EVENT.TERMINAL% = GETN2(RECO
+>RD$,6)               
+*** error							   ^8		   
+>^8
+ 1137: 	                                            EVENT.SOURCE%  = ASC(MID$(RE
+>CORD$,9,1)) 
+*** error							 ^8		     
+>^8
+ 1138: 	                                            EVENT.GROUP$   = MID$(RECORD
+>$,10,1)                      
+*** error							^8		 
+>^8
+ 1139: 	                                            EVENT.NUMB% = GETN2(RECORD$,
+>10)                  
+*** error						       ^8	       ^8
+ 1140: 	                                            EVENT.SEV%  = GETN1(RECORD$,
+>12)   
+*** error						      ^8	       ^8
+ 1141: 	                                            LIBRARY$  = MID$(EVENT.UNIQU
+>E.DATA$,13,1)
+*** error						    ^8			       
+>^8
+ 1142: 	                                            EVENT.UNIQUE$ = MID$(RECORD$
+>,14,18)
+*** error							 ^8		
+>^8
+ 1143: 	                                            EVENT.TIME% = EVENT.TIME% AN
+>D 0FFE0H  
+*** error						       ^8	     ^8
+ 1144: 	                                            EVENT.DAY%   = EVENT.DATE% A
+>ND 0001FH
+*** error						      ^8
+ 1145: 	                                            EVENT.MONTH% = SHIFT(EVENT.D
+>ATE% AND 001E0H,5)
+*** error							^8
+ 1146: 	                                            EVENT.YEAR%  = SHIFT(EVENT.D
+>ATE% AND 0FE00H,9) + 1980
+*** error						       ^8
+ 1147: 	                                            EVENT.HOUR% = SHIFT(EVENT.TI
+>ME% AND 0F800H,11)
+*** error						       ^8		   
+>^8
+ 1148: 	                                            EVENT.MIN%  = SHIFT(EVENT.TI
+>ME% AND 007E0H,5)  
+*** error						      ^8		   
+>^8
+ 1149: 	                                                      
+ 1150: 	                                        SOCKET.STRING$ = STR$(EVENT.DAY%
+>) + "/" + STR$(EVENT.MONTH%) + "/" + STR$(EVENT.YEAR%)  + "-" +  STR$(EVENT.HOU
+>R%) + ":" + STR$(EVENT.MIN%) + "-" + EVENT.NODE$ + "-" +  STR$(EVENT.TERMINAL%)
+> + \
+*** error						      ^8		
+>^8													   
+>^8																     
+>^8																				 
+>^8																							  
+>^8																									       
+>^8																													     
+>^8
+ 1151: 	                                                                    STR$
+>(EVENT.SOURCE%) + "-" + EVENT.GROUP$  + STR$(EVENT.NUMB%) + "-" + STR$(EVENT.SE
+>V%) + "-" + \
+*** error										      
+>^8														    
+>^8																	
+>^8																				 
+>^8
+ 1152: 	                                                                    UNPA
+>CK$(MID$(EVENT.UNIQUE$,1,1)) + UNPACK$(MID$(EVENT.UNIQUE$,2,1)) + UNPACK$(MID$(
+>EVENT.UNIQUE$,3,1)) + \
+*** error											      
+>^8																	 
+>^8																					    
+>^8
+ 1153: 	                                                                    UNPA
+>CK$(MID$(EVENT.UNIQUE$,4,1)) +    UNPACK$(MID$(EVENT.UNIQUE$,5,1)) +      UNPAC
+>K$(MID$(EVENT.UNIQUE$,6,1)) + \
+*** error											      
+>^8																	     
+>^8																						     
+>^8
+ 1154: 	                                                                    UNPA
+>CK$(MID$(EVENT.UNIQUE$,7,1))  + UNPACK$(MID$(EVENT.UNIQUE$,8,1)) + MID$(EVENT.U
+>NIQUE$,9,1)        + \
+*** error											      
+>^8																	  
+>^8																				     
+>^8
+ 1155: 	                                                                    MID$
+>(EVENT.UNIQUE$,10,1) + MID$(EVENT.UNIQUE$,11,1) + MID$(EVENT.UNIQUE$,12,8)
+>
+>
+>
+>
+>
+>
+>
+*** error										      
+>^8															 
+>^8																		    
+>^8
+ 1156: 	                           
+ 1157: 	                                                                    PRIN
+>T USING "&"; #64 ; SOCKET.STRING$
+*** error													 
+>^8
+ 1158: 	    
+ 1159: 	                                     read #64,                     
+>
+>
+>
+>
+> read.string
+*** error														       
+>^8															       
+>^74															       
+>^15
+ 1160: 	                                     print read.string             
+>
+>
+>
+>
+>
+> 
+*** error						     ^8
+ 1161: 	                                                                    
+ 1162: 	                                                           
+ 1163: 	                                                                    
+ 1164: 	                                                                   
+>
+>
+>
+>
+>
+>                                                                          
+ 1165: 	                             
+ 1166: 	                                    ENDIF
+ 1167: 	                                                           
+ 1168: 	                        WEND
+ 1169: 	    
+ 1170: 	                ENDIF              
+ 1171: 	           
+ 1172: 	            WEND
+ 1173: 	    
+ 1174: 	           
+ 1175: 	    RETURN
+ 1176: 	    
+ 1177: 	    
+ 1178: 	    
+ 1179: 	    
+ 1180: 	    
+ 1181: 	    \*******************************************************************
+>****
+ 1182: 	    \*
+ 1183: 	    \*    ERROR.LOG  
+ 1184: 	    \*               
+ 1185: 	    \*
+ 1186: 	    \*******************************************************************
+>****
+ 1187: 	    ERROR.LOG: 
+ 1188: 	            
+ 1189: 	             VAR.STRING.1$ = FILE.OPERATION$                     +      
+>    \
+ 1190: 	                    CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +      
+>    \
+ 1191: 	                    CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +      
+>    \
+ 1192: 	                    CURRENT.CODE$
+ 1193: 	             VAR.STRING.2$ = "DRWATSON"
+ 1194: 	             MESSAGE.NO%   = 0
+ 1195: 	             EVENT.NO%     = 106
+ 1196: 	    
+ 1197: 	             RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,           
+>    \
+ 1198: 	                          VAR.STRING.2$,EVENT.NO%)
+ 1199: 	    
+ 1200: 	       
+ 1201: 	    
+ 1202: 	             GOTO END.PROGRAM
+ 1203: 	    
+ 1204: 	    RETURN
+ 1205: 	    
+ 1206: 	    \*******************************************************************
+>****
+ 1207: 	    \*
+ 1208: 	    \*    CLOSE.FILES:
+ 1209: 	    \*                
+ 1210: 	    \*
+ 1211: 	    \*******************************************************************
+>****
+ 1212: 	    
+ 1213: 	    CLOSE.FILES:
+ 1214: 	       
+ 1215: 	       CLOSE DRWASTON.SESS.NUM%
+*** error			      ^8
+ 1216: 	       
+ 1217: 	    RETURN  
+ 1218: 	    \*******************************************************************
+>****
+ 1219: 	    \*
+ 1220: 	    \*    DEALLOCATE.SESS.NUM  
+ 1221: 	    \*                
+ 1222: 	    \*
+ 1223: 	    \*******************************************************************
+>****
+ 1224: 	    DEALLOCATE.SESS.NUM: 
+ 1225: 	    
+ 1226: 	        FUNCTION.FLAG$ = "C"   
+ 1227: 	    
+ 1228: 	    RETURN
+ 1229: 	    
+ 1230: 	    ERROR.DETECTED:
+ 1231: 	    
+ 1232: 	       PRINT ERR
+ 1233: 	       PRINT ERRF%
+ 1234: 	       PRINT ERRL
+ 1235: 	    
+ 1236: 	    
+ 1237: 	        IF ERR= "OE" AND ERRF% = DRWATSON.SESS.NUM% THEN BEGIN
+*** error						  ^8
+ 1238: 	                   CREATE POSFILE DRWATSON.FILE.NAME$ AS DRWATSON.SESS.N
+>UM% 
+*** error						     ^8			   
+>^8
+ 1239: 	                   RESUME 
+ 1240: 	        ENDIF 
+ 1241: 	           
+ 1242: 	           IF ERR= "OE" AND ERRF% = DRWATSON.BIN.NUM% THEN BEGIN
+*** error						     ^8
+ 1243: 	                   CREATE POSFILE DRWATSON.BIN.NAME$ DIRECT 1 RECL 4  AS
+> DRWATSON.BIN.NUM%
+*** error						    ^8					  
+>^8
+ 1244: 	                   RESUME
+ 1245: 	           ENDIF 
+ 1246: 	    
+ 1247: 	    \*******************************************************************
+>****
+ 1248: 	    \*
+ 1249: 	    \*    STOP.PROGRAM 
+ 1250: 	    \*              
+ 1251: 	    \*
+ 1252: 	    \*******************************************************************
+>****
+ 1253: 	    
+ 1254: 	       END.PROGRAM:
+ 1255: 	    
+ 1256: 	       END 
+ 1257: 	           
+ 1258: 	    
+End of Compilation
