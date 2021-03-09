@@ -1,0 +1,242 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***              RF PICKING LIST OF LISTS FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***               REFERENCE    : PLLOLFUN.BAS
+   8: 0000: \***
+   9: 0000: \***         VERSION A            Julia Stones                  11th August 2004
+  10: 0000: \***
+  11: 0000: \***         VERSION B            Mark Goode                    17th January 2005
+  12: 0000: \***         Additional field required to state the lists status ('S' - Shelf Monitor
+  13: 0000: \***         'F' - Fast Fill, 'O' - OSSR or 'E' - excess stock.
+  14: 0000: \***
+  15: 0000: \***         VERSION C            Neil Bennett                     3rd June 2009
+  16: 0000: \***         Added functions for READ.PLLOL.LOCK and WRITE.PLLOL.UNLOCK
+  17: 0000: \***
+  18: 0000: \*******************************************************************************
+  19: 0000: \*******************************************************************************
+  20: 0000: 
+  21: 0000:     INTEGER*2 GLOBAL                \
+  22: 0000:        CURRENT.REPORT.NUM%
+  23: 0000: 
+  24: 0000:     STRING GLOBAL                    \
+  25: 0000:        CURRENT.CODE$,                \
+  26: 0000:        FILE.OPERATION$
+  27: 0000: 
+  28: 0000:     %INCLUDE PLLOLDEC.J86
+  29: 0000: 
+  30: 0000: \******************************************************************************
+  31: 0000: \******************************************************************************
+  32: 0000: \***
+  33: 0000: \***         %INCLUDE FOR RF PICKING LIST OF LISTS FILE FIELD DECLARATIONS
+  34: 0000: \***
+  35: 0000: \***               FILE TYPE    : DIRECT
+  36: 0000: \***
+  37: 0000: \***               REFERENCE    : PLLOLDEC.J86
+  38: 0000: \***
+  39: 0000: \***    VERSION A.           Julia Stones.               11 August 2004
+  40: 0000: \***               New file for RF system. Holds list of picking lists.
+  41: 0000: \***
+  42: 0000: \***    VERSION B            Mark Goode                  17th January 2005
+  43: 0000: \***    Additional field required to state the lists status ('S' - Shelf Monitor
+  44: 0000: \***    'F' - Fast Fill, 'O' - OSSR or 'E' - excess stock.
+  45: 0000: \*******************************************************************************
+  46: 0000: \*******************************************************************************
+  47: 0000: 
+  48: 0000: STRING GLOBAL                                                  \
+  49: 0000:    PLLOL.FILE.NAME$,           \
+  50: 0000:    PLLOL.LISTID$,              \ 3 bytes unpacked list ID
+  51: 0000:    PLLOL.CREATOR.ID$,          \ 3 bytes unpacked Creator user ID
+  52: 0000:    PLLOL.PICKER.ID$,           \ 3 bytes unpacked Picker user ID
+  53: 0000:    PLLOL.ITEM.STATUS$,         \ 1 byte item status " "
+  54: 0000:                                \                    "P" = Picked
+  55: 0000:                                \                    "U" = Unpicked
+  56: 0000:                                \                    "A" = List is active (someone is picking it)
+  57: 0000:                                \                    "X" = List is cancelled
+  58: 0000:    PLLOL.CREATE.DATE$,         \ 6 bytes unpacked create date YYMMDD
+  59: 0000:    PLLOL.CREATE.TIME$,         \ 4 bytes unpacked create time HH:MM
+  60: 0000:    PLLOL.PICK.START.TIME$,     \ 4 bytes unpacked pick start time HH:MM
+  61: 0000:    PLLOL.PICK.END.TIME$,       \ 4 bytes unpacked pick end time HH:MM
+  62: 0000:    PLLOL.ITEM.COUNT$,          \ 4 bytes unpacked item count (max number of items in list
+  63: 0000:                                \                              duplicates will cobine to 1 record
+  64: 0000:                                \                              on the PLLDB file)
+  65: 0000:    PLLOL.OSSR.PICKING$,        \ 1 byte Marked for OSSR picking "Y" = marked for OSSR picking
+  66: 0000:                                \                                "N" = not marked for OSSR picking
+  67: 0000:    PLLOL.OSSR.STATUS$          ! 1 byte mark the status of the list.         ! BMG         
+  68: 0000: 
+  69: 0000: 
+  70: 0000: INTEGER*4 GLOBAL               \
+  71: 0000:        PLLOL.RECORD.NUM%
+  72: 0000: 
+  73: 0000: INTEGER*2 GLOBAL                \
+  74: 0000:    PLLOL.REPORT.NUM%,           \
+  75: 0000:    PLLOL.SESS.NUM%
+  76: 0000: 
+  77: 0000: 
+  78: 0000: INTEGER*1 GLOBAL                \
+  79: 0000:    PLLOL.RECL%
+  80: 0000: 
+  81: 0000: 
+  82: 0000: 
+  83: 0000:   FUNCTION PLLOL.SET PUBLIC
+  84: 0014: \***************************
+  85: 0014: 
+  86: 0014:     PLLOL.REPORT.NUM% = 510
+  87: 001d:     PLLOL.RECL%       = 34
+  88: 0025:     PLLOL.FILE.NAME$  = "PLLOL"
+  89: 0034: 
+  90: 0034:   END FUNCTION
+  91: 0040: 
+  92: 0040: \-----------------------------------------------------------------------------
+  93: 0040: 
+  94: 0040: FUNCTION READ.PLLOL PUBLIC
+  95: 0054: \****************************
+  96: 0054: 
+  97: 0054:     INTEGER*2 READ.PLLOL
+  98: 0054: 
+  99: 0054:     READ.PLLOL = 1
+ 100: 0059: 
+ 101: 0059:     IF END #PLLOL.SESS.NUM% THEN READ.PLLOL.ERROR
+ 102: 006d:     READ FORM "3C3,C1,C6,4C4,2C1"; #PLLOL.SESS.NUM%, PLLOL.RECORD.NUM%; \
+ 103: 010d:        PLLOL.LISTID$,                          \
+ 104: 010d:        PLLOL.CREATOR.ID$,                      \
+ 105: 010d:        PLLOL.PICKER.ID$,                       \
+ 106: 010d:        PLLOL.ITEM.STATUS$,                     \
+ 107: 010d:        PLLOL.CREATE.DATE$,                     \
+ 108: 010d:        PLLOL.CREATE.TIME$,                     \
+ 109: 010d:        PLLOL.PICK.START.TIME$,                 \
+ 110: 010d:        PLLOL.PICK.END.TIME$,                   \
+ 111: 010d:        PLLOL.ITEM.COUNT$,                      \
+ 112: 010d:        PLLOL.OSSR.PICKING$,                    \
+ 113: 010d:        PLLOL.OSSR.STATUS$
+ 114: 010d: 
+ 115: 010d: 
+ 116: 010d:     READ.PLLOL = 0
+ 117: 0112:     EXIT FUNCTION
+ 118: 0114: 
+ 119: 0114: READ.PLLOL.ERROR:
+ 120: 0114: 
+ 121: 0114: 
+ 122: 0114:        FILE.OPERATION$ = "R"
+ 123: 0123:        CURRENT.REPORT.NUM% = PLLOL.REPORT.NUM%
+ 124: 0131: 
+ 125: 0131:        EXIT FUNCTION
+ 126: 0133: 
+ 127: 0133: END FUNCTION
+ 128: 0142: 
+ 129: 0142: \-----------------------------------------------------------------------------
+ 130: 0142: 
+ 131: 0142: FUNCTION READ.PLLOL.LOCK PUBLIC                                        ! CNB
+ 132: 0156: \******************************                                        ! CNB
+ 133: 0156: 
+ 134: 0156:     INTEGER*2 READ.PLLOL.LOCK                                          ! CNB
+ 135: 0156: 
+ 136: 0156:     READ.PLLOL.LOCK = 1                                                ! CNB
+ 137: 015b: 
+ 138: 015b:     IF END #PLLOL.SESS.NUM% THEN READ.PLLOL.LOCK.ERROR                 ! CNB
+ 139: 016f:     READ FORM "3C3,C1,C6,4C4,2C1"; #PLLOL.SESS.NUM% AUTOLOCK, PLLOL.RECORD.NUM%; \! CNB
+ 140: 020f:        PLLOL.LISTID$,                          \                       ! CNB
+ 141: 020f:        PLLOL.CREATOR.ID$,                      \                       ! CNB
+ 142: 020f:        PLLOL.PICKER.ID$,                       \                       ! CNB
+ 143: 020f:        PLLOL.ITEM.STATUS$,                     \                       ! CNB
+ 144: 020f:        PLLOL.CREATE.DATE$,                     \                       ! CNB
+ 145: 020f:        PLLOL.CREATE.TIME$,                     \                       ! CNB
+ 146: 020f:        PLLOL.PICK.START.TIME$,                 \                       ! CNB
+ 147: 020f:        PLLOL.PICK.END.TIME$,                   \                       ! CNB
+ 148: 020f:        PLLOL.ITEM.COUNT$,                      \                       ! CNB
+ 149: 020f:        PLLOL.OSSR.PICKING$,                    \                       ! CNB
+ 150: 020f:        PLLOL.OSSR.STATUS$                                              ! CNB
+ 151: 020f: 
+ 152: 020f: 
+ 153: 020f:     READ.PLLOL.LOCK = 0                                                ! CNB
+ 154: 0214:     EXIT FUNCTION                                                      ! CNB
+ 155: 0216: 
+ 156: 0216: READ.PLLOL.LOCK.ERROR:                                                 ! CNB
+ 157: 0216: 
+ 158: 0216: 
+ 159: 0216:        FILE.OPERATION$ = "R"                                           ! CNB
+ 160: 0225:        CURRENT.REPORT.NUM% = PLLOL.REPORT.NUM%                         ! CNB
+ 161: 0233: 
+ 162: 0233:        EXIT FUNCTION                                                   ! CNB
+ 163: 0235: 
+ 164: 0235: END FUNCTION                                                           ! CNB
+ 165: 0244: 
+ 166: 0244: \-----------------------------------------------------------------------------
+ 167: 0244: 
+ 168: 0244: 
+ 169: 0244: FUNCTION WRITE.PLLOL PUBLIC
+ 170: 0258: \****************************
+ 171: 0258: 
+ 172: 0258:     INTEGER*2 WRITE.PLLOL
+ 173: 0258: 
+ 174: 0258:     WRITE.PLLOL = 1
+ 175: 025d: 
+ 176: 025d:     IF END #PLLOL.SESS.NUM% THEN WRITE.PLLOL.ERROR
+ 177: 0271:     WRITE FORM "3C3,C1,C6,4C4,2C1"; #PLLOL.SESS.NUM%, PLLOL.RECORD.NUM%; \
+ 178: 0343:        PLLOL.LISTID$,                          \
+ 179: 0343:        PLLOL.CREATOR.ID$,                      \
+ 180: 0343:        PLLOL.PICKER.ID$,                       \
+ 181: 0343:        PLLOL.ITEM.STATUS$,                     \
+ 182: 0343:        PLLOL.CREATE.DATE$,                     \
+ 183: 0343:        PLLOL.CREATE.TIME$,                     \
+ 184: 0343:        PLLOL.PICK.START.TIME$,                 \
+ 185: 0343:        PLLOL.PICK.END.TIME$,                   \
+ 186: 0343:        PLLOL.ITEM.COUNT$,                      \
+ 187: 0343:        PLLOL.OSSR.PICKING$,                    \
+ 188: 0343:        PLLOL.OSSR.STATUS$
+ 189: 0343: 
+ 190: 0343: 
+ 191: 0343:     WRITE.PLLOL = 0
+ 192: 0348:     EXIT FUNCTION
+ 193: 034a: 
+ 194: 034a: WRITE.PLLOL.ERROR:
+ 195: 034a: 
+ 196: 034a: 
+ 197: 034a:        FILE.OPERATION$ = "R"
+ 198: 0359:        CURRENT.REPORT.NUM% = PLLOL.REPORT.NUM%
+ 199: 0367: 
+ 200: 0367:        EXIT FUNCTION
+ 201: 0369: 
+ 202: 0369: END FUNCTION
+ 203: 0378: 
+ 204: 0378: \-----------------------------------------------------------------------------
+ 205: 0378: 
+ 206: 0378: 
+ 207: 0378: FUNCTION WRITE.PLLOL.UNLOCK PUBLIC                                     ! CNB
+ 208: 038c: \*********************************                                     ! CNB
+ 209: 038c: 
+ 210: 038c:     INTEGER*2 WRITE.PLLOL.UNLOCK                                       ! CNB
+ 211: 038c: 
+ 212: 038c:     WRITE.PLLOL.UNLOCK = 1                                             ! CNB
+ 213: 0391: 
+ 214: 0391:     IF END #PLLOL.SESS.NUM% THEN WRITE.PLLOL.UNLOCK.ERROR              ! CNB
+ 215: 03a5:     WRITE FORM "3C3,C1,C6,4C4,2C1"; #PLLOL.SESS.NUM% AUTOUNLOCK, PLLOL.RECORD.NUM%; \! CNB
+ 216: 0477:        PLLOL.LISTID$,                          \                       ! CNB
+ 217: 0477:        PLLOL.CREATOR.ID$,                      \                       ! CNB
+ 218: 0477:        PLLOL.PICKER.ID$,                       \                       ! CNB
+ 219: 0477:        PLLOL.ITEM.STATUS$,                     \                       ! CNB
+ 220: 0477:        PLLOL.CREATE.DATE$,                     \                       ! CNB
+ 221: 0477:        PLLOL.CREATE.TIME$,                     \                       ! CNB
+ 222: 0477:        PLLOL.PICK.START.TIME$,                 \                       ! CNB
+ 223: 0477:        PLLOL.PICK.END.TIME$,                   \                       ! CNB
+ 224: 0477:        PLLOL.ITEM.COUNT$,                      \                       ! CNB
+ 225: 0477:        PLLOL.OSSR.PICKING$,                    \                       ! CNB
+ 226: 0477:        PLLOL.OSSR.STATUS$                                              ! CNB
+ 227: 0477: 
+ 228: 0477: 
+ 229: 0477:     WRITE.PLLOL.UNLOCK = 0                                             ! CNB
+ 230: 047c:     EXIT FUNCTION                                                      ! CNB
+ 231: 047e: 
+ 232: 047e: WRITE.PLLOL.UNLOCK.ERROR:                                              ! CNB
+ 233: 047e: 
+ 234: 047e: 
+ 235: 047e:        FILE.OPERATION$ = "R"                                           ! CNB
+ 236: 048d:        CURRENT.REPORT.NUM% = PLLOL.REPORT.NUM%                         ! CNB
+ 237: 049b: 
+ 238: 049b:        EXIT FUNCTION                                                   ! CNB
+ 239: 049d: 
+ 240: 049d: END FUNCTION                                                           ! CNB
+ 241: 04ac: 
+ 242: 04ac: End of Compilation

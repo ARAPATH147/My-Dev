@@ -1,0 +1,196 @@
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***               %INCLUDE FOR BCF - FIELD DECLARATIONS
+\***                                  FILE REFERENCE PARAMETERS
+\***
+\***                      FILE TYPE    : SEQUENTIAL
+\***
+\***                      REFERENCE    : BCFDEC.J86
+\***
+\***      Version A             Steve Windsor          5th Jan 1993
+\***
+\***      Version B             Michael J. Kelsall    01st Dec 1993
+\***      Addition to file of CCMVT serial number as part of
+\***      RETURNS/AUTOMATIC CREDIT CLAIMING package.
+\***
+\***      Version C           Stuart William McConnachie 23rd Jan 1995
+\***      Addition of TXR serial number as part of the TRANSACTION RETRIEVAL
+\***      project.
+\***
+\***      Version D           Stuart William McConnachie  7th June 1995
+\***      Converted calls to enable more than 1 record on the BCF.
+\***      The second record is to be used for the No7 customer card trial.
+\***
+\***      Version E                 Stuart Highley        7th April 1999
+\***      Added new fields for cash accounting.
+\***
+\***      Version F                 Mark Goode            20th May 2000
+\***      Added new fields for Dentistry project.
+\***
+\***      Version G                 Mark Goode            18th July 2000
+\***      Added new fields for Well-Being project.
+\***
+\***      Version I                 Amy Hoggard           13th Oct 2000
+\***      Added new fields for ECO project.
+\***
+\***      Version K                 Brian Greenfield      1st May 2001
+\***      Added new field for Wellbeing Services record 13.
+\***
+\***      Version L                 Amy Hoggard           4th Jan 2002
+\***      Added new field for ETOPUP project.
+\***
+\***      Version M                 Julia Stones          22nd July 2002
+\***      Added new fields for Deals rewrite project record 14.
+\***
+\***    Revision 4.6            ROBERT COWEY.            19 MAY 2003.
+\***    Modifications for All Txn Data To CDAS project.
+\***    Removed redundant variables ...
+\***      BCF.CTSL1.SERIAL.NUM$, BCF.CTSL2,SERIAL.NUM$
+\***    Defined new variable ...
+\***      BCF.MTSLQ.DAYS$, BCF.FILLER67$
+\***
+\***    Revision 4.7           Julia Stones              9th July 2003.
+\***    Modifications for New Lines Report project.
+\***    Defined new variable
+\***    BCF.NEWLINES.WEEKS$
+\***
+\***    Revision 4.8           Julia Stones              3rd October 2003.
+\***    Modifications for New Lines Report project.
+\***    Defined new variable
+\***    BCF.NEWLINES.LINES$
+\***
+\***    Version N              Jamie Thorpe             27th June 2006
+\***    Added BCF.DVCHR.SERIAL.NUM$
+\***
+\***    Revision 4.10          Charles Skadorwa            4th July 2011
+\***    CORE Heritage Stores Release 2 (Outbound) Project.
+\***    New variables defined: BCF.ECC.DATETIMESTAMP$
+\***                           BCF.IUF.DATETIMESTAMP$
+\***
+\***    Revision 4.11          Arun Sudhakaran             10th April 2013
+\***    Added new variables for including Supplier Number lengths
+\***    as part of Automatic Booking In of Chilled Food ASNs project
+\***
+\***    Revision 4.12          Charles Skadorwa            5th Sept 2013
+\***    F261 Gift Card Mall IIN Range Extension Project - Commented !4.12 CSk
+\***    Defined new variables for GCM Product Group Number and Record 22
+\***    lengths.
+\***
+\***    Version O              Mark Walker                  3rd Feb 2014
+\***    F337 Centralised View of Stock
+\***    - Defined variables for record 23 (stock snapshot parameters).
+\***    - Minor formatting changes (uncommented).
+\***
+\***    Revision O             Charles Skadorwa             25th June 2014
+\***    F353 Deal Limits Increase Project.
+\***    Renamed 3 variables in function BCF.RECORD.14.W -
+\***        BCF.DINF.NUM.REC$ becomes BCF.ITMDL.NUM.REC$
+\***        BCF.DINF.KEY.LEN$ becomes BCF.ITMDL.KEY.LEN$
+\***        BCF.ECC.DATETIMESTAMP$ becomes BCF.FILLER.DATETIMESTAMP$
+\*****************************************************************************
+\*****************************************************************************
+
+    STRING GLOBAL                                                       \
+        BCF.FILE.NAME$
+
+    INTEGER*2 GLOBAL                                                    \
+        BCF.RECL%,                                                      \   !OMW
+        BCF.REPORT.NUM%,                                                \
+        BCF.SESS.NUM%
+
+    STRING GLOBAL                                                       \
+    BCF.RECORD$,          \ 80 bytes
+    BCF.IUF.SERIAL.NO$,   \ 5 bytes, IUF serial number
+    BCF.OPEN.DATE$,       \ 6 bytes, Last store opening date (YYMMDD)
+    BCF.FILLER.DATE$,     \ 3 bytes, filler
+    BCF.LABEL.DATE$,      \ 6 bytes, label print date (YYMMDD)
+    BCF.SALES.SERIAL.NO$ ,\ 5 bytes, sales serial number
+    BCF.STMVB.SERIAL.NO$, \ 5 bytes, current serial number          \
+                              \     of Stock Movement Backup file       \
+    BCF.TOF.DAYS$,        \ 2 bytes, number of days' worth of sales to \
+                          \       be held on the TIF at re-build       \
+        BCF.EPS.BATCH$,       \ 2 bytes, highest batch number to have   \
+                              \     been reported upon by PSE31         \
+    BCF.NO.EPF.COPIES$,   \ 2 bytes, no. of copies of EPS payment file \
+    BCF.CCMVT.SERIAL.NUM$,\ 5 bytes ASC                                ! BMJK
+    BCF.TXR.SERIAL.NUM$,  \ 5 bytes transaction retrieval serial number!SWM
+    BCF.CUSTD.SERIAL.NUM$,\ 5 bytes customer data file serial number   !SWM
+    BCF.PSB58.DATE$,      \ 6 bytes date of last MTSL/CUSTW cut-off    !SWM
+    BCF.CTSL1.SERIAL.NUM$,\ 5 bytes serial number on first MTSLQ (and  ! 4.6 RC
+                          \         thereore CTSL1) batch header       ! 4.6 RC
+    BCF.MTSLQ.DAYS$,      \ 2 byte MTSLQ data retention period (PSB14) ! 4.6 RC
+    BCF.FILLER67$,        \ 8 bytes filler beginning at byte 67        ! 4.6 RC
+        BCF.NTIUF.SERIAL.NO$,                                           \   !FMG
+        BCF.DENTISTRY.PSAUDIT.SERIAL.NO$,                               \   !FMG
+        BCF.WELL.SERIAL.NO$,                                            \   !GMG
+        BCF.WELL.PSAUDIT.SERIAL.NO$,                                    \   !GMG
+    BCF.ACSAL.SERIAL.NUM$,\ 5 bytes serial number on ACSAL             !ESDH
+    BCF.DENTISTRY.PRODUCT.GROUP$,                                      \FMG
+    BCF.WELL.PRODUCT.GROUP$,                                           \GMG
+    BCF.FILLER$,         \! 1 byte, filler                             !BMJK
+    BCF.WELL.SERV.PRODUCT.GROUP$,                                      \KBG
+        BCF.ETOPUP.PROD.GRP$,                                           \   !LAH
+        BCF.END.FILLER$,                                                \   !LAH
+    BCF.TBAG.BATCH.NO$,                                                \IAH
+    BCF.TBAG.DAYS.KEPT$,                                               \IAH
+    BCF.NEWLINES.WEEKS$,                                               \4.7JAS
+    BCF.NEWLINES.LINES$,                                               \4.8JAS
+    BCF.TBAG.FILLER$,                                                  \ 79 Bytes filler !IAH 70 Bytes filler 4.7JAS ! 65 Bytes fille 4.8JAS
+    BCF.DEALDIR.SERIAL.NUM$, \ 4 bytes serial number                   !MJAS
+    BCF.DIDIR.SERIAL.NUM$,   \ 4 bytes serial number                   !MJAS
+    BCF.DEAL.NUM.REC$,       \ 6 bytes number of records in deal file  !MJAS
+    BCF.ITMDL.NUM.REC$,      \ 6 bytes number of records in ITMDL file !OCS
+    BCF.DEAL.KEY.LEN$,       \ 3 bytes key length of deal file         !MJAS
+    BCF.ITMDL.KEY.LEN$,      \ 3 bytes bytes ITMDL record key length   !OCS
+    BCF.DVCHR.SERIAL.NUM$,   \ 4 bytes serial numbr                    !NJT !4.10CSk
+    BCF.FILLER.DATETIMESTAMP$,\17 bytes filler for future use          !OCS
+    BCF.IUF.DATETIMESTAMP$, \ !17 bytes timestamp YYYYMMDDHHMMSSsss     !4.10CSk
+                            \ !   Last successfully processed IUF from SAP.
+        BCF.ITEM.STATUS$(1),     \1 byte array, item status             \   !OMW
+        BCF.NEGATIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+                                 \   to include items with a negative   \   !OMW
+                                 \   stock figure in the initial stock  \   !OMW
+                                 \   snapshot messages.                 \   !OMW
+        BCF.POSITIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+                                 \   to include items with a positive   \   !OMW
+                                 \   stock figure in the initial stock  \   !OMW
+                                 \   snapshot messages.                 \   !OMW
+        BCF.ZERO.STOCK.FLAG$(1)  !1 byte array, Flag (Y/N) whether to   \   !OMW
+                                 \   include items with a zero          \   !OMW
+                                 \   stock figure in the initial stock  \   !OMW
+                                 !   snapshot messages.                     !OMW
+                
+    INTEGER*1                                                           \
+        BCF.NO.CPM.COPIES%
+
+    INTEGER*2 GLOBAL                                                    \
+    BCF.CC.SERIAL.NO,        \ 1 byte UPD, CC serial number
+        BCF.MAX.STATUS.COUNT%,        \ Maximum number of item status   \   !OMW
+    BCF.REC21.REC.LEN%,      \ Total Supplier number length            !4.11 AS
+    BCF.REC21.SUPPLIER.LEN%, \ Length of the supplier number           !4.11 AS
+        BCF.MAX.STOCK.INIT.MESSAGES%, \ Maximum number of initial       \   !OMW
+                                      \ stock snapshot message to       \   !OMW
+                                      \ send per day.                   \   !OMW
+        BCF.MAX.STOCK.INIT.ITEMS%,    \ Maximum number of items to      \   !OMW
+                                      \ include in a single initial     \   !OMW
+                                      \ stock snapshot message.         \   !OMW
+        BCF.NEGATIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+                                      \ a negative stock figure to      \   !OMW
+                                      \ include in the initial stock    \   !OMW
+                                      \ snapshot messages.              \   !OMW
+        BCF.POSITIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+                                      \ a positive stock figure to      \   !OMW
+                                      \ include in the initial stock    \   !OMW
+                                      \ snapshot messages.              \   !OMW
+        BCF.REC22.REC.LEN%,           \                                 \   !4.12 CSk
+        BCF.REC22.PROD.GROUP.LEN%,    \ Length of GCM Product Group No  \   !4.12 CSk
+        BCF.ZERO.DAYS%(1)             \ Number of days' movements with  \   !OMW
+                                      \ a zero stock figure to include  \   !OMW
+                                      \ in the initial stock snapshot   \   !OMW
+                                      ! messages.                           !OMW
+
+
+    INTEGER*4 GLOBAL                                                    \
+        BCF.REC.NO%
+

@@ -1,0 +1,383 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***         ITEM SHELF EDGE DESCRIPTION FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***                 REFERENCE    : ISFFUN.BAS
+   8: 0000: \***             
+   9: 0000: \***
+  10: 0000: \***   VERSION A       Jamie Thorpe            25th June 1997
+  11: 0000: \***   Removed version letter from ISFDEC function.
+  12: 0000: \***
+  13: 0000: \***   VERSION B       Rebecca Dakin           23rd June 1999
+  14: 0000: \***   Changes have been made to data held on the ISF to include new Unit Pricing 
+  15: 0000: \***   details. Extra processing has been included to fit the new data into the 
+  16: 0000: \***   6 bytes of available space previously taken up by filler. This means the 
+  17: 0000: \***   file size will not need to change, eliminating disk space problems.
+  18: 0000: \***   Processing of a new file, Item Unit Price Description file (IUDF), has been 
+  19: 0000: \***   included. This file holds details of the Unit Name (eg. ml).
+  20: 0000: \***   The new details will be held in the ISF as follows:-
+  21: 0000: \***   INTEGER.4% (4 bytes) :-  
+  22: 0000: \***       ISF.UNIT.NAME$ (1st byte) number referencing the Unit Name on the IUDF.
+  23: 0000: \***       ISF.ITEM.QTY$  (remaining 3 bytes) 
+  24: 0000: \***   INTEGER.2% (2 bytes) :-
+  25: 0000: \***       ISF.SEL.PRINTED.FLAG$ (leftmost bit if 2 bytes) indicates ON or OFF
+  26: 0000: \***       ISF.UNIT.MEASUREMENT$ (value of the rest of ISF.INTEGER.2%)
+  27: 0000: \***   
+  28: 0000: \***   VERSION C       David Artiss            18th November 2002
+  29: 0000: \***   ISF.ITEM.QTY$ read modified to allow the full 24 bits to be used as 
+  30: 0000: \***   a number, rather than the old method of 23 bits and a single bit for
+  31: 0000: \***   a sign.
+  32: 0000: \***
+  33: 0000: \******************************************************************************
+  34: 0000: \*******************************************************************************
+  35: 0000: 
+  36: 0000:                           
+  37: 0000:   %INCLUDE ISFDEC.J86
+  38: 0000: REM \
+  39: 0000: \******************************************************************************
+  40: 0000: \******************************************************************************
+  41: 0000: \***
+  42: 0000: \***         %INCLUDE FOR ITEM SHELF EDGE DESCRIPTION FILE 
+  43: 0000: \***
+  44: 0000: \***               - FILE REFERENCE PARAMETERS
+  45: 0000: \***               - FIELD DECLARATIONS
+  46: 0000: \***
+  47: 0000: \***               FILE TYPE    : Keyed  
+  48: 0000: \***
+  49: 0000: \***               REFERENCE    : ISFDEC.J86
+  50: 0000: \***
+  51: 0000: \******************************************************************************
+  52: 0000: \******************************************************************************
+  53: 0000: 
+  54: 0000:   INTEGER*4 GLOBAL        \
+  55: 0000:     ISF.INTEGER.4%,       \ BRD
+  56: 0000:     IUDF.FILE.SIZE%       ! BRD
+  57: 0000:   
+  58: 0000:   INTEGER*2 GLOBAL        \
+  59: 0000:     ISF.SESS.NUM%,        \
+  60: 0000:     ISF.REPORT.NUM%,      \ 
+  61: 0000:     ISF.RECL%,            \
+  62: 0000:     ISF.INTEGER.2%        ! BRD
+  63: 0000:     
+  64: 0000:   INTEGER*2               \ BRD
+  65: 0000:     IUDF.REPORT.NUM%,     \ BRD
+  66: 0000:     IUDF.SESS.NUM%,       \ BRD
+  67: 0000:     IUDF.RECL%,           \ BRD
+  68: 0000:     UNIT.NAME.COUNTER%,   \ BRD
+  69: 0000:     IUDF.RECORD.POSITION%,\ BRD
+  70: 0000:     PRINT.FLAG%           ! BRD
+  71: 0000:     
+  72: 0000:     
+  73: 0000:   STRING GLOBAL           \
+  74: 0000:     ISF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+  75: 0000:     ISF.S.E.DESC$,        \ 45 bytes. Shelf edge description
+  76: 0000:     ISF.ITEM.QTY$,        \ 4 byte UPD. Shelf Item Qty
+  77: 0000:     ISF.UNIT.MEASUREMENT$,\ 2 byte UPD. Unit Measurement
+  78: 0000:     ISF.UNIT.NAME$,       \ 10 bytes. Unit Name eg. 'ml'
+  79: 0000:     ISF.SEL.PRINTED.FLAG$,\ 1 byte UPD. Last printed version
+  80: 0000:     ISF.FILE.NAME$,       \
+  81: 0000:     IUDF.RECORD$          ! CCS
+  82: 0000:     
+  83: 0000:   STRING                  \
+  84: 0000:     RECORD.FORMAT$,       \ BRD
+  85: 0000:     IUDF.FILE.NAME$ !,      \ BRD
+  86: 0000:     ! IUDF.RECORD$          ! BRD
+  87: 0000: 
+  88: 0000:                
+  89: 0000:   STRING GLOBAL                                                        \
+  90: 0000:      FILE.OPERATION$,                                                  \
+  91: 0000:      CURRENT.CODE$,                                                    \
+  92: 0000:      F20.FUNCTION$,                                                    \ BRD
+  93: 0000:      F20.STRING$                                                       ! BRD
+  94: 0000:      
+  95: 0000:   INTEGER*2 GLOBAL                                                     \
+  96: 0000:      CURRENT.REPORT.NUM%,                                              \
+  97: 0000:      F20.INTEGER%                                                      ! BRD
+  98: 0000:      
+  99: 0000:   INTEGER*2                                                            \ BRD
+ 100: 0000:      RC%                                                               ! BRD
+ 101: 0000:      
+ 102: 0000:   %INCLUDE PSBF20G.J86                                                 ! BRD 
+ 103: 0000: REM\
+ 104: 0000: \*******************************************************************************
+ 105: 0000: \*******************************************************************************
+ 106: 0000: \***
+ 107: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 108: 0000: \***
+ 109: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 110: 0000: \*** 
+ 111: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 112: 0000: \*** 
+ 113: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 114: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 115: 0000: \***     to two byte integer.
+ 116: 0000: \***
+ 117: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 118: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 119: 0000: \***
+ 120: 0000: \*******************************************************************************
+ 121: 0000: \*******************************************************************************
+ 122: 0000: 
+ 123: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 124: 0000:                        F20.STRING.FILE.NO$,                            \
+ 125: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 126: 0000:                        SESS.NUM.TABLE$(1)
+ 127: 0000: 
+ 128: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 129: 0000: 
+ 130: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 131: 0000: 
+ 132: 0000:   
+ 133: 0000:   %INCLUDE PSBF20E.J86                                                 ! BRD 
+ 134: 0000: REM\
+ 135: 0000: \*******************************************************************************
+ 136: 0000: \*******************************************************************************
+ 137: 0000: \***
+ 138: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 139: 0000: \***
+ 140: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 141: 0000: \***
+ 142: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 143: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 144: 0000: \***     128 files.
+ 145: 0000: \***
+ 146: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 147: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 148: 0000: \***     as a variable.  This new variable contains the function's return
+ 149: 0000: \***     code.
+ 150: 0000: \***
+ 151: 0000: \*******************************************************************************
+ 152: 0000: \*******************************************************************************
+ 153: 0000: 
+ 154: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 155: 0000:                               PASSED.INTEGER%,                         \
+ 156: 0000:                               PASSED.STRING$)                          \
+ 157: 0000:    EXTERNAL
+ 158: 0000: 
+ 159: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 160: 0000:              PASSED.STRING$
+ 161: 0000:    ! 3 variables removed from here                                     ! CAW
+ 162: 0000: 
+ 163: 0000: 
+ 164: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 165: 0000:              PASSED.INTEGER%				               ! CJAS
+ 166: 0000: 
+ 167: 0000:    END FUNCTION
+ 168: 0000: 
+ 169: 0000:   %INCLUDE PSBF24E.J86                                                 ! BRD     
+ 170: 0000: REM \
+ 171: 0000: \*******************************************************************************
+ 172: 0000: \*******************************************************************************
+ 173: 0000: \***
+ 174: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 175: 0000: \***
+ 176: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 177: 0000: \***
+ 178: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 179: 0000: \***
+ 180: 0000: \*******************************************************************************
+ 181: 0000: \*******************************************************************************
+ 182: 0000: 
+ 183: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 184: 0000: 				    ERRFILE%,              \
+ 185: 0000: 				    ERRL%,                 \
+ 186: 0000: 				    ERR$)        EXTERNAL
+ 187: 0000: 				    
+ 188: 0000:           STRING    ERR$
+ 189: 0000: 
+ 190: 0000:           INTEGER*2 ERRFILE%,              \
+ 191: 0000: 	            ERRL%,                 \
+ 192: 0000: 		    STANDARD.ERROR.DETECTED
+ 193: 0000: 		    
+ 194: 0000:           INTEGER*4 ERRN%
+ 195: 0000: 	  		    
+ 196: 0000:    END FUNCTION
+ 197: 0000: 
+ 198: 0000: 
+ 199: 0000:                                                                  
+ 200: 0000:   
+ 201: 0000:   FUNCTION ISF.SET PUBLIC
+ 202: 0014: \*************************
+ 203: 0014: 
+ 204: 0014:     INTEGER*2 ISF.SET 
+ 205: 0014:     
+ 206: 0014:     ISF.SET = 1                                                           ! BRD
+ 207: 0019:     
+ 208: 0019:     ON ERROR GOTO ERROR.DETECTED                                          ! BRD
+ 209: 0026:     
+ 210: 0026:     ISF.REPORT.NUM% = 9  
+ 211: 002f:     ISF.RECL%       = 55
+ 212: 0038:     ISF.FILE.NAME$  = "ISF"
+ 213: 0047:     
+ 214: 0047:     IUDF.REPORT.NUM%= 586                                                 ! BRD
+ 215: 004d:     IUDF.RECL%      = 10                                                  ! BRD
+ 216: 0053:     IUDF.FILE.NAME$ = "IUDF"                                              ! BRD
+ 217: 0060:     
+ 218: 0060:     ! ALLOCATE SESSION NUMBER for IUDF                                    ! BRD
+ 219: 0060:     F20.FUNCTION$ = "O"                                                   
+ 220: 006f:     F20.INTEGER% = IUDF.REPORT.NUM%                                       ! BRD
+ 221: 0079:     F20.STRING$ = IUDF.FILE.NAME$                                         ! BRD
+ 222: 008c:     RC% = SESS.NUM.UTILITY(F20.FUNCTION$,                                 \ BRD
+ 223: 00b4:                            F20.INTEGER%,                                  \ BRD
+ 224: 00b4:                            F20.STRING$)                                   ! BRD
+ 225: 00b4:     IUDF.SESS.NUM% = F20.INTEGER.FILE.NO%                                 ! BRD
+ 226: 00bf:     
+ 227: 00bf:     IUDF.FILE.SIZE% = SIZE(IUDF.FILE.NAME$)                               ! BRD
+ 228: 00db:     
+ 229: 00db:     OPEN IUDF.FILE.NAME$ DIRECT RECL IUDF.FILE.SIZE% AS IUDF.SESS.NUM%    \ BRD
+ 230: 00fe:          LOCKED                                                           ! BRD
+ 231: 00fe:     
+ 232: 00fe:     RECORD.FORMAT$ = "C" + STR$(IUDF.FILE.SIZE%)                          ! BRD
+ 233: 011e:     READ FORM RECORD.FORMAT$; # IUDF.SESS.NUM%, 1; IUDF.RECORD$           ! BRD
+ 234: 014e:     
+ 235: 014e:     CLOSE IUDF.SESS.NUM%                                                  ! BRD
+ 236: 0157:     
+ 237: 0157:     ! DE-ALLOCATE SESSION NUMBER                                          ! BRD
+ 238: 0157:     F20.FUNCTION$ = "C"                                                   ! BRD
+ 239: 0166:     F20.INTEGER% = IUDF.SESS.NUM%                                         ! BRD
+ 240: 0170:     RC% = SESS.NUM.UTILITY(F20.FUNCTION$,                                 \ BRD
+ 241: 0198:                               F20.INTEGER%,                               \ BRD
+ 242: 0198:                               F20.STRING$)                                ! BRD
+ 243: 0198:                               
+ 244: 0198:     ISF.SET = 0                                                           ! BRD
+ 245: 019d:     
+ 246: 019d:     END.OF.FUNCTION:                                                      ! BRD
+ 247: 019d:                               
+ 248: 019d:     EXIT FUNCTION                                                         ! BRD
+ 249: 019f:     
+ 250: 019f: \******************************************************************************  
+ 251: 019f: \***   ERROR.DETECTED
+ 252: 019f: \******************************************************************************
+ 253: 019f:  
+ 254: 019f: ERROR.DETECTED:                                                           ! BRD
+ 255: 019f: 
+ 256: 019f:    CALL STANDARD.ERROR.DETECTED (ERRN,                                    \ BRD
+ 257: 01c4:                                  ERRF%,                                   \ BRD
+ 258: 01c4:                                  ERRL,                                    \ BRD
+ 259: 01c4:                                  ERR)                                     ! BRD
+ 260: 01c4: 
+ 261: 01c4:    RESUME END.OF.FUNCTION                                                 ! BRD                       
+ 262: 01d3:                                                                            
+ 263: 01d3:    EXIT FUNCTION                                                          ! BRD
+ 264: 01d5:    
+ 265: 01d5:    END FUNCTION                                                           ! BRD
+ 266: 01e4:    
+ 267: 01e4: \------------------------------------------------------------------------------
+ 268: 01e4: REM EJECT^L      
+ 269: 01e4: 
+ 270: 01e4: 
+ 271: 01e4:    
+ 272: 01e4:   FUNCTION READ.ISF PUBLIC
+ 273: 01f8: \**************************
+ 274: 01f8: 
+ 275: 01f8:     INTEGER*2 READ.ISF 
+ 276: 01f8:     
+ 277: 01f8:     READ.ISF = 1    
+ 278: 01fd:     
+ 279: 01fd:     IF END #ISF.SESS.NUM% THEN READ.ERROR
+ 280: 0211:     READ FORM "T5,C45,I4,I2"; #ISF.SESS.NUM%                              \
+ 281: 0259:          KEY ISF.BOOTS.CODE$;                                             \
+ 282: 0259:              ISF.S.E.DESC$,                                               \
+ 283: 0259:              ISF.INTEGER.4%,                                              \ BRD
+ 284: 0259:              ISF.INTEGER.2%                                               ! BRD
+ 285: 0259:              
+ 286: 0259:     READ.ISF = 0
+ 287: 025e:     
+ 288: 025e:     IF ISF.INTEGER.4% = 20202020H AND ISF.INTEGER.2% = 2020H THEN BEGIN   ! BRD
+ 289: 028d:        ISF.INTEGER.4% = 0                                                 ! BRD
+ 290: 029c:        ISF.INTEGER.2% = 0                                                 ! BRD
+ 291: 02a5:     ENDIF                                                                 ! BRD   
+ 292: 02a5:        
+ 293: 02a5:     ! Extract ISF.UNIT.NAME$                                              ! BRD
+ 294: 02a5:     UNIT.NAME.COUNTER% = ISF.INTEGER.4% AND 000000FFH                     ! BRD
+ 295: 02c2:     
+ 296: 02c2:     IF UNIT.NAME.COUNTER% > 0 THEN BEGIN
+ 297: 02c7:        IUDF.RECORD.POSITION% = ((UNIT.NAME.COUNTER% - 1) * IUDF.RECL%) + 1! BRD
+ 298: 02d3:        ISF.UNIT.NAME$ = MID$(IUDF.RECORD$,IUDF.RECORD.POSITION%,IUDF.RECL%)! BRD
+ 299: 02f5:     ENDIF ELSE BEGIN                                                      ! BRD
+ 300: 02f5:        ISF.UNIT.NAME$ = "          "                                      ! BRD
+ 301: 0304:     ENDIF   
+ 302: 0304:     
+ 303: 0304:     ! Extract ISF.ITEM.QTY$                                               ! BRD
+ 304: 0304:     ISF.ITEM.QTY$ = STR$(SHIFT(ISF.INTEGER.4%, 8) AND 0FFFFFFH)           ! CDA
+ 305: 0347:     ISF.ITEM.QTY$ = PACK$(RIGHT$("00000000" + ISF.ITEM.QTY$,8))           ! BRD
+ 306: 037f:     
+ 307: 037f:     ! Extract ISF.SEL.PRINTED.FLAG$                                       ! BRD
+ 308: 037f:     PRINT.FLAG% = ISF.INTEGER.2% AND 8000H                                ! BRD
+ 309: 038c:     IF PRINT.FLAG% = 0 THEN BEGIN                                         ! BRD
+ 310: 0391:        ISF.SEL.PRINTED.FLAG$ = "N"                                        ! BRD
+ 311: 03a2:     ENDIF ELSE BEGIN                                                      ! BRD
+ 312: 03a2:        ISF.SEL.PRINTED.FLAG$ = "Y"                                        ! BRD
+ 313: 03b1:     ENDIF                                                                 ! BRD
+ 314: 03b1:    
+ 315: 03b1:     ! Extract ISF.UNIT.MEASUREMENT$                                       ! BRD
+ 316: 03b1:     ISF.UNIT.MEASUREMENT$ = STR$(ISF.INTEGER.2% AND 7FFFH)                ! BRD
+ 317: 03ce:     ISF.UNIT.MEASUREMENT$ = PACK$(RIGHT$("0000" + ISF.UNIT.MEASUREMENT$,4))!BRD
+ 318: 0406:     
+ 319: 0406:     EXIT FUNCTION
+ 320: 0408:     
+ 321: 0408:     
+ 322: 0408:     READ.ERROR:
+ 323: 0408:     
+ 324: 0408:        FILE.OPERATION$     = "R"
+ 325: 0417:        CURRENT.CODE$       = PACK$("00000000") + ISF.BOOTS.CODE$
+ 326: 0444:        CURRENT.REPORT.NUM% = ISF.REPORT.NUM% 
+ 327: 0452:        
+ 328: 0452:        EXIT FUNCTION    
+ 329: 0454:         
+ 330: 0454: 
+ 331: 0454:   END FUNCTION
+ 332: 0463: \------------------------------------------------------------------------------
+ 333: 0463: REM EJECT^L  
+ 334: 0463: 
+ 335: 0463:   FUNCTION WRITE.ISF PUBLIC
+ 336: 0477: \***************************  
+ 337: 0477: 
+ 338: 0477:     INTEGER*2 WRITE.ISF
+ 339: 0477:     
+ 340: 0477:     WRITE.ISF = 1
+ 341: 047c:     
+ 342: 047c:     ! ISF.INTEGER.4% CALCULATIONS:                                        ! BRD
+ 343: 047c:     IUDF.RECORD.POSITION% = MATCH(ISF.UNIT.NAME$,IUDF.RECORD$,1)          ! BRD
+ 344: 049c:     
+ 345: 049c:     IF IUDF.RECORD.POSITION% > 0 THEN BEGIN                               ! BRD
+ 346: 04a1:        ISF.INTEGER.4% = ((IUDF.RECORD.POSITION% - 1) / 10) + 1            ! BRD
+ 347: 04bc:     ENDIF ELSE BEGIN                                                      ! BRD
+ 348: 04bc:        ISF.INTEGER.4% = 0                                                 ! BRD
+ 349: 04cb:     ENDIF                                                                 ! BRD
+ 350: 04cb:           
+ 351: 04cb:     ISF.INTEGER.4% = ISF.INTEGER.4% + (VAL(UNPACK$(ISF.ITEM.QTY$)) * 256) ! BRD    
+ 352: 053f:                                                         
+ 353: 053f:     ! ISF.INTEGER.2% CALCULATIONS:                                        ! BRD
+ 354: 053f:     ISF.INTEGER.2% = VAL(UNPACK$(ISF.UNIT.MEASUREMENT$))                  ! BRD
+ 355: 0560:     IF ISF.SEL.PRINTED.FLAG$ = "Y" THEN BEGIN                             ! BRD
+ 356: 0576:        ISF.INTEGER.2% = 8000H OR ISF.INTEGER.2%                           ! BRD
+ 357: 0589:     ENDIF                                                                 ! BRD
+ 358: 0589:     
+ 359: 0589:     IF END #ISF.SESS.NUM% THEN WRITE.ERROR
+ 360: 059d:     WRITE FORM "C4,C45,I4,I2"; #ISF.SESS.NUM%;                            \
+ 361: 05eb:              ISF.BOOTS.CODE$,                                             \
+ 362: 05eb:              ISF.S.E.DESC$,                                               \
+ 363: 05eb:              ISF.INTEGER.4%,                                              \ BRD
+ 364: 05eb:              ISF.INTEGER.2%                                               ! BRD
+ 365: 05eb:              
+ 366: 05eb:     WRITE.ISF = 0    
+ 367: 05f0:     
+ 368: 05f0:     EXIT FUNCTION
+ 369: 05f2:     
+ 370: 05f2:     
+ 371: 05f2:     WRITE.ERROR:
+ 372: 05f2:     
+ 373: 05f2:        FILE.OPERATION$     = "W"
+ 374: 0601:        CURRENT.CODE$       = PACK$("00000000") + ISF.BOOTS.CODE$
+ 375: 062e:        CURRENT.REPORT.NUM% = ISF.REPORT.NUM%                  
+ 376: 063c:     
+ 377: 063c:        EXIT FUNCTION                 
+ 378: 063e: 
+ 379: 063e:   END FUNCTION
+ 380: 064d:   
+ 381: 064d:   
+ 382: 064d: 
+ 383: 064d: End of Compilation

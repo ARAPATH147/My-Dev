@@ -1,0 +1,1498 @@
+   1: 0002: \******************************************************************************
+   2: 0002: \******************************************************************************
+   3: 0002: \***
+   4: 0002: \***
+   5: 0002: \***   FILECHCK utility     01/12/2015                    Ranjith Gopalankutty
+   6: 0002: \***
+   7: 0002: \***   Original version
+   8: 0002: \***
+   9: 0002: \***
+  10: 0002: \***    
+  11: 0002: \***   This utility helps to check if a controller/Store has all the required
+  12: 0002: \***   files it should be. Program will be running against an input file 
+  13: 0002: \***   FILECHCK.cfg which will be a snapshot of an ideal file. 
+  14: 0002: \***
+  15: 0002: \***   Also using the utility, user can build a new input list of file will
+  16: 0002: \***   basically dumps all the files in to new input file. This is for enabling
+  17: 0002: \***   the utility to be updated without the need to manually edit the file 
+  18: 0002: \***   every time. 
+  19: 0002: \***
+  20: 0002: \***   Usage :
+  21: 0002: \***
+  22: 0002: \***   FILECHCK <> - Will check the Controller/Store against the provided
+  23: 0002: \***   input file and reports the output into FILECHCK.ERR
+  24: 0002: \***
+  25: 0002: \***   FILECHCK <Dump> - In this mode program will build a new input file
+  26: 0002: \***   FILECHCK.CFG which can be used for future reference.
+  27: 0002: \***
+  28: 0002: \***   FILECHCK <Help> - Displays the Help Screen to guide the user
+  29: 0002: \***
+  30: 0002: \******************************************************************************
+  31: 0002: \******************************************************************************
+  32: 0002: \******************************************************************************
+  33: 0002: \***
+  34: 0002: \***    Included code defining function related Global variables
+  35: 0002: \***
+  36: 0002: \******************************************************************************
+  37: 0002: 
+  38: 0002:     %INCLUDE BEMFDEC.J86    !   Message Dec
+  39: 0002: \******************************************************************************
+  40: 0002: \***
+  41: 0002: \***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+  42: 0002: \***                                             - FILE REFERENCE PARAMETERS
+  43: 0002: \***
+  44: 0002: \***                         FILE TYPE : Direct
+  45: 0002: \***
+  46: 0002: \***                         REFERENCE : BEMFDEC
+  47: 0002: \***
+  48: 0002: \***	Version A               Mark Walker                  1st November 1993
+  49: 0002: \***
+  50: 0002: \******************************************************************************
+  51: 0002: 
+  52: 0002: 	STRING GLOBAL			BEMF.MESSAGE$,			\
+  53: 0002: 					BEMF.FILE.NAME$
+  54: 0002: 
+  55: 0002: 	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+  56: 0002: 					BEMF.REPORT.NUM%,		\
+  57: 0002: 					BEMF.SESS.NUM%
+  58: 0002: 
+  59: 0002: 	INTEGER*4 GLOBAL		BEMF.REC.NO%
+  60: 0002:     %INCLUDE BOOTSDEC.J86   !   Reusable Functions
+  61: 0002: \******************************************************************************
+  62: 0002: \******************************************************************************
+  63: 0002: \***
+  64: 0002: \***
+  65: 0002: \***
+  66: 0002: \******************************************************************************
+  67: 0002: 
+  68: 0002: 
+  69: 0002:     %INCLUDE PSBF01G.J86    !   APPLICATION.LOG
+  70: 0002: REM \
+  71: 0002: \*******************************************************************************
+  72: 0002: \*******************************************************************************
+  73: 0002: \***
+  74: 0002: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+  75: 0002: \***
+  76: 0002: \***                FUNCTION NUMBER    : PSBF01
+  77: 0002: \***
+  78: 0002: \***                REFERENCE          : PSBF01G.J86
+  79: 0002: \***
+  80: 0002: \***                DATE OF LAST AMENDMENT  - 27/2/86
+  81: 0002: \***
+  82: 0002: \***
+  83: 0002: \*******************************************************************************
+  84: 0002: 
+  85: 0002:       INTEGER GLOBAL  F01.RETURN.CODE%
+  86: 0002: 
+  87: 0002: 
+  88: 0002:     %INCLUDE PSBF20G.J86    !   ALLOCATE.DEALLOCATE.SESS.NUM
+  89: 0002: REM\
+  90: 0002: \*******************************************************************************
+  91: 0002: \*******************************************************************************
+  92: 0002: \***
+  93: 0002: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+  94: 0002: \***
+  95: 0002: \***                       REFERENCE     : PSBF20G.J86
+  96: 0002: \*** 
+  97: 0002: \***     Version A              Bruce Scrive                   5th May 1988   
+  98: 0002: \*** 
+  99: 0002: \***     Version B              Robert Cowey                   7th May 1991
+ 100: 0002: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 101: 0002: \***     to two byte integer.
+ 102: 0002: \***
+ 103: 0002: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 104: 0002: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 105: 0002: \***
+ 106: 0002: \*******************************************************************************
+ 107: 0002: \*******************************************************************************
+ 108: 0002: 
+ 109: 0002:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 110: 0002:                        F20.STRING.FILE.NO$,                            \
+ 111: 0002:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 112: 0002:                        SESS.NUM.TABLE$(1)
+ 113: 0002: 
+ 114: 0002:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 115: 0002: 
+ 116: 0002:       ! 1 line deleted from here                                       ! DAW 
+ 117: 0002: 
+ 118: 0002: 
+ 119: 0002: 
+ 120: 0002: \******************************************************************************
+ 121: 0002: \***
+ 122: 0002: \***    Global Variable definitions
+ 123: 0002: \***
+ 124: 0002: \******************************************************************************
+ 125: 0002: 
+ 126: 0002:      STRING GLOBAL                                                      \
+ 127: 0002:          BATCH.SCREEN.FLAG$,                                            \
+ 128: 0002:          CURRENT.CODE$,                                                 \
+ 129: 0002:          CURRENT.CODE.LOGGED$,                                          \
+ 130: 0002:          FILE.OPERATION$,                                               \
+ 131: 0002:          FUNCTION.FLAG$,                                                \
+ 132: 0002:          MODULE$,                                                       \
+ 133: 0002:          MODULE.NUMBER$,                                                \
+ 134: 0002:          PROGRAM$,                                                      \
+ 135: 0002:          PASSED.STRING$,                                                \
+ 136: 0002:          VAR.STRING.1$,                                                 \
+ 137: 0002:          VAR.STRING.2$                                                  !
+ 138: 0002: 
+ 139: 0002:      INTEGER*1 GLOBAL                                                   \
+ 140: 0002:          ERROR.COUNT%,                                                  \
+ 141: 0002:          FALSE,                                                         \
+ 142: 0002:          TRUE                                                           !
+ 143: 0002: 
+ 144: 0002:      INTEGER*2 GLOBAL                                                   \
+ 145: 0002:          CURRENT.REPORT.NUM%,                                           \
+ 146: 0002:          EVENT.NO%,                                                     \
+ 147: 0002:          MESSAGE.NO%,                                                   \
+ 148: 0002:          PASSED.INTEGER%                                                !
+ 149: 0002: 
+ 150: 0002: \******************************************************************************
+ 151: 0002: \***
+ 152: 0002: \***   VARIABLE DECLARATIONS
+ 153: 0002: \***
+ 154: 0002: \******************************************************************************
+ 155: 0002: 
+ 156: 0002:     STRING                                                              \
+ 157: 0002:          BUILD.LIST$,                                                   \
+ 158: 0002:          CMD$,                                                          \
+ 159: 0002:          CFG.FILE.NAME$,                                                \
+ 160: 0002:          DAT.LIST$,                                                     \
+ 161: 0002:          DD$,                                                           \
+ 162: 0002:          DIRECTORY.NAME$,                                               \
+ 163: 0002:          DQ2CE.FILE.NAME$,                                              \
+ 164: 0002:          DQ2CE.FILE.PREFIX$,                                            \
+ 165: 0002:          DQ2CE.FILE.SUFFIX$,                                            \
+ 166: 0002:          ERR.FILE.NAME$,                                                \
+ 167: 0002:          ERR.MESSAGE$,                                                  \
+ 168: 0002:          FILECHCK.BULD.CFG$,                                            \
+ 169: 0002:          FILE.PATH.C$,                                                  \
+ 170: 0002:          FILE.PATH.D$,                                                  \
+ 171: 0002:          FORMAT.FILE.FIRST$,                                            \
+ 172: 0002:          FORMAT.FILE.MIDDLE$,                                           \
+ 173: 0002:          FORMAT.FILE.LAST$,                                             \
+ 174: 0002:          FORMAT.FILE.NAME$,                                             \
+ 175: 0002:          FILECHCK.CFG.FILE$,                                            \
+ 176: 0002:          FILECHCK.DAT.FILE$,                                            \
+ 177: 0002:          LINE.CHR$,                                                     \
+ 178: 0002:          SPACE$,                                                        \
+ 179: 0002:          SWITCH$                                                        !
+ 180: 0002: 
+ 181: 0002:      INTEGER*1                                                          \
+ 182: 0002:          EOB,                                                           \
+ 183: 0002:          EOD,                                                           \
+ 184: 0002:          EOF,                                                           \
+ 185: 0002:          FILECHCK.CFG.CHCK,                                             \
+ 186: 0002:          RC%                                                            !
+ 187: 0002: 
+ 188: 0002:      INTEGER*2                                                          \
+ 189: 0002:          COUNT%,                                                        \
+ 190: 0002:          ERR.SESS.NUM%,                                                 \
+ 191: 0002:          FOUND%,                                                        \
+ 192: 0002:          I%,                                                            \
+ 193: 0002:          LEN%,                                                          \
+ 194: 0002:          FILECHCK.BULD.SESS%,                                           \
+ 195: 0002:          FILECHCK.CFG.SESS%,                                            \
+ 196: 0002:          FILECHCK.DAT.SESS%                                             !
+ 197: 0002: 
+ 198: 0002: 
+ 199: 0002: \******************************************************************************
+ 200: 0002: \***
+ 201: 0002: \***    FUNCTION DECLARATIONS
+ 202: 0002: \***
+ 203: 0002: \******************************************************************************
+ 204: 0002: 
+ 205: 0002:      %INCLUDE BASROUT.J86   ! OSShell function
+ 206: 0002: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+ 207: 0002: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+ 208: 0002: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+ 209: 0002: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+ 210: 0002: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+ 211: 0002: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+ 212: 0002: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+ 213: 0002: !   the BASROUT.OBJ routines.  These routines were written
+ 214: 0002: !  using Metaware C and are intended to provide functions which
+ 215: 0002: !         are either not available in 4680 CBASIC or which can be more
+ 216: 0002: !               efficiently handled by the C language.  Their usage is
+ 217: 0002: !  offered on an "AT YOUR OWN RISK" basis.
+ 218: 0002: !
+ 219: 0002: !               The insert/extract routines usefulness may not be immediately
+ 220: 0002: !               apparent.  Their intention is that they be used in conjunction
+ 221: 0002: !               with a read/write form command.  They can more efficiently
+ 222: 0002: !               parse a string into many different variables than can the
+ 223: 0002: !               read form statement.  So instead of a long list of data var's
+ 224: 0002: !               it may be more efficient to just read/write one long string
+ 225: 0002: !               and then use the insert/extract routines to parse out the
+ 226: 0002: !   data.
+ 227: 0002: 
+ 228: 0002: ! ******************* SUB PROCESS FUNCTIONS *********************************
+ 229: 0002: 
+ 230: 0002: function osshell(cmd.line$) external   ! routine to start
+ 231: 0002:        ! another program.
+ 232: 0002:            integer*4    osshell    ! Upon completion of
+ 233: 0002:            string       cmd.line$   ! program, control is
+ 234: 0002:        ! returned to calling
+ 235: 0002: end function      ! program.
+ 236: 0002: !
+ 237: 0002: ! NOTES:  Program must be a 286 type file.  This does not exclude
+ 238: 0002: !         the capability to execute a batch file however.  Simply pass the
+ 239: 0002: !         following:
+ 240: 0002: !              c:\adx_spgm\command.286 batfile
+ 241: 0002: !         where batfile is the name of the batch file to be executed.
+ 242: 0002: !
+ 243: 0002: ! IMPORTANT: When using osshell to execute a batch file as described above,
+ 244: 0002: !            the final command in the batch file must be "exit".  If not,
+ 245: 0002: !       control is never given back to the calling program.
+ 246: 0002: 
+ 247: 0002: ! ************************ MEMORY RELATED FUNCTIONS ************************
+ 248: 0002: 
+ 249: 0002: function memfree(choice) external   ! routine to que the
+ 250: 0002:        ! status of the
+ 251: 0002:  integer*4 memfree    ! machine's memory:
+ 252: 0002:  integer*2 choice    ! Options:
+ 253: 0002:        !    1 - free
+ 254: 0002: end function      !    2 - total
+ 255: 0002:        !    3 - system
+ 256: 0002: 
+ 257: 0002: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+ 258: 0002: 
+ 259: 0002: function timedate(choice) external   ! routine to que the
+ 260: 0002:        ! OS's timedate table
+ 261: 0002:  integer*4 timedate   ! Choices:
+ 262: 0002:  integer*2 choice    !    1 - millisec's
+ 263: 0002:        !        since midnight
+ 264: 0002: end function      !    2 - minutes from
+ 265: 0002:        !  UCT (timezone)
+ 266: 0002:        !    3 - day of week
+ 267: 0002:        !   0-Sunday
+ 268: 0002:        !  6-Saturday
+ 269: 0002: 
+ 270: 0002: function settime(msecs) external   ! routine to set the
+ 271: 0002:        ! time on the controller
+ 272: 0002:  integer*4  settime    ! msecs is the desired
+ 273: 0002:  integer*4 msecs    ! number of milliseconds
+ 274: 0002:        ! since midnight
+ 275: 0002: end function      ! Returns negative on
+ 276: 0002:        ! error
+ 277: 0002: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+ 278: 0002: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+ 279: 0002: ! At 1 AM the controller broadcasts the new time to all terminals.
+ 280: 0002: ! Insure this is taken into consideration when using this routine.
+ 281: 0002: 
+ 282: 0002: !******************** DISK FILE RELATED FUNCTIONS *************************
+ 283: 0002: 
+ 284: 0002: function truncate(name,length) external   ! routine to truncate
+ 285: 0002:        ! the specified file
+ 286: 0002:  integer*4 truncate   ! to a given length.
+ 287: 0002:  string  name
+ 288: 0002:  integer*4 length
+ 289: 0002: 
+ 290: 0002: end function
+ 291: 0002: 
+ 292: 0002: !******************** STRING VALUE RELATED FUNCTIONS **********************
+ 293: 0002: 
+ 294: 0002: function isalpha(bstrn) external   ! routine to identify
+ 295: 0002:        ! if the specified
+ 296: 0002:  integer*1 isalpha    ! string contains all
+ 297: 0002:  string  bstrn    ! alphabetic char's
+ 298: 0002:        ! Returns:
+ 299: 0002: end function      !     0 - all alpha
+ 300: 0002:        !     X - byte of 1st
+ 301: 0002:        !         non-alpha
+ 302: 0002:        !   char
+ 303: 0002: 
+ 304: 0002: function isdigit(bstrn) external   ! routine to identify
+ 305: 0002:        ! if the specified
+ 306: 0002:  integer*1 isdigit    ! string contains all
+ 307: 0002:  string  bstrn    ! numeric char's
+ 308: 0002:        ! Returns:
+ 309: 0002: end function      !     0 - all numeric
+ 310: 0002:        !     X - byte of 1st
+ 311: 0002:        !         non-numeric
+ 312: 0002:        !   char
+ 313: 0002: 
+ 314: 0002: function islower(bstrn) external   ! routine to identify
+ 315: 0002:        ! if the specified
+ 316: 0002:  integer*1 islower    ! string contains all
+ 317: 0002:  string  bstrn    ! lower case char's
+ 318: 0002:        ! Returns:
+ 319: 0002: end function      !     0 - all lowercase
+ 320: 0002:        !     X - byte of 1st
+ 321: 0002:        !         non-lowercase
+ 322: 0002:        !   char
+ 323: 0002: 
+ 324: 0002: function isupper(bstrn) external   ! routine to identify
+ 325: 0002:        ! if the specified
+ 326: 0002:  integer*1 isupper    ! string contains all
+ 327: 0002:  string  bstrn    ! upper case char's
+ 328: 0002:        ! Returns:
+ 329: 0002: end function      !     0 - all uppercase
+ 330: 0002:        !     X - byte of 1st
+ 331: 0002:        !         non-uppercase
+ 332: 0002:        !   char
+ 333: 0002: 
+ 334: 0002: function toalpha(bstrn) external   ! routine to convert
+ 335: 0002:        ! non-alpha or non-num
+ 336: 0002:    integer*2 toalpha    ! char's to spaces
+ 337: 0002:  string  bstrn    ! Returns:
+ 338: 0002: end function      !   x - no. of char's
+ 339: 0002:        !       changed
+ 340: 0002: 
+ 341: 0002: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+ 342: 0002: 
+ 343: 0002: function idlecount(choice) external   ! routine to either
+ 344: 0002:        ! set to zero or queue
+ 345: 0002:  integer*4 idlecount   ! the value of the
+ 346: 0002:  integer*1 choice    ! processor's idlecount
+ 347: 0002:        ! Choice:
+ 348: 0002: end function      !     0 - set to zero
+ 349: 0002: !       !     1 - get value
+ 350: 0002: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+ 351: 0002: ! TO WORK - This level is not available unless  !     X - idlecount
+ 352: 0002: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+ 353: 0002: ! is highly unrecommended.
+ 354: 0002: 
+ 355: 0002: function logical(actname,logname,choice) external ! routine to set a
+ 356: 0002:        ! a logical name.
+ 357: 0002:  integer*4 logical    ! parms are self
+ 358: 0002:         string  logname    ! explanatory except
+ 359: 0002:  string  actname    ! for choice:
+ 360: 0002:  integer*1 choice    !   0 - set process
+ 361: 0002:        !   1 - set system
+ 362: 0002: end function      !   2 - get process
+ 363: 0002:        !   3 - get system
+ 364: 0002: 
+ 365: 0002: ! NOTE:  Only the setting of a system level of logical name requires
+ 366: 0002: ! user/group zero level of authorization.  Any application may query any
+ 367: 0002: ! logical name.  Setting of a system logical name is only applicable until
+ 368: 0002: ! the system is IPL'd.  A process logical name is only active when that
+ 369: 0002: ! process is active.
+ 370: 0002: 
+ 371: 0002: !******************** STRING PARSING FUNCTIONS *****************************
+ 372: 0002: 
+ 373: 0002: function inserts(whole,part,offset) external  ! routine to insert a
+ 374: 0002:        ! string (part) into
+ 375: 0002:  integer*2 INSERTS    ! another string (whole)
+ 376: 0002:  string  whole    ! starting at specified
+ 377: 0002:  string  part    ! character (offset)
+ 378: 0002:  integer*2 offset
+ 379: 0002: 
+ 380: 0002: end function
+ 381: 0002: 
+ 382: 0002: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+ 383: 0002:        ! a 4-byte integer into
+ 384: 0002:  integer*1 cinsert4   ! a string starting at
+ 385: 0002:  integer*4 integer4   ! byte specified by
+ 386: 0002:  string  bstring    ! offset (1-based)
+ 387: 0002:  integer*2 offset    ! Returns:
+ 388: 0002:        !     0 - Success
+ 389: 0002: end function      !    -1 - String overrun
+ 390: 0002: 
+ 391: 0002: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+ 392: 0002:        ! a 2-byte integer into
+ 393: 0002:  integer*1 cinsert2   ! a string starting at
+ 394: 0002:  integer*2 integer2   ! byte specified by
+ 395: 0002:  string  bstring    ! offset (1-based)
+ 396: 0002:  integer*2 offset    ! Returns:
+ 397: 0002:        !     0 - Success
+ 398: 0002: end function      !    -1 - String overrun
+ 399: 0002: 
+ 400: 0002: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+ 401: 0002:        ! a 1-byte integer into
+ 402: 0002:  integer*1 cinsert1   ! a string starting at
+ 403: 0002:  integer*1 integer1   ! byte specified by
+ 404: 0002:  string  bstring    ! offset (1-based)
+ 405: 0002:  integer*2 offset    ! Returns:
+ 406: 0002:        !     0 - Success
+ 407: 0002: end function      !    -1 - String overrun
+ 408: 0002: 
+ 409: 0002: function extracts(whole,part,offset) external  ! routine to extract a
+ 410: 0002:        ! string (part) from
+ 411: 0002:  integer*2 EXTRACTS   ! another string (whole)
+ 412: 0002:  string  whole    ! starting at specified
+ 413: 0002:  string  part    ! character (offset)
+ 414: 0002:  integer*2 offset
+ 415: 0002: 
+ 416: 0002: end function
+ 417: 0002: 
+ 418: 0002: function cextract4(bstring,offset) external  ! routine to extract
+ 419: 0002:        ! a 4-byte integer from
+ 420: 0002:  integer*4 cextract4   ! a string starting at
+ 421: 0002:                        ! byte specified by
+ 422: 0002:  string  bstring    ! offset (1-based)
+ 423: 0002:  integer*2 offset    ! Returns:
+ 424: 0002:        !     X - 4 byte integer
+ 425: 0002: end function      !    -1 - String overrun
+ 426: 0002: 
+ 427: 0002: function cextract2(bstring,offset) external  ! routine to extract
+ 428: 0002:        ! a 2-byte integer from
+ 429: 0002:  integer*2 cextract2   ! a string starting at
+ 430: 0002:                        ! byte specified by
+ 431: 0002:  string  bstring    ! offset (1-based)
+ 432: 0002:  integer*2 offset    ! Returns:
+ 433: 0002:        !     X - 2 byte integer
+ 434: 0002: end function      !    -1 - String overrun
+ 435: 0002: 
+ 436: 0002: function cextract1(bstring,offset) external  ! routine to extract
+ 437: 0002:        ! a 1-byte integer from
+ 438: 0002:  integer*1 cextract1   ! a string starting at
+ 439: 0002:                        ! byte specified by
+ 440: 0002:  string  bstring    ! offset (1-based)
+ 441: 0002:  integer*2 offset    ! Returns:
+ 442: 0002:        !     X - 1 byte integer
+ 443: 0002: end function      !    -1 - String overrun
+ 444: 0002: 
+ 445: 0002: 
+ 446: 0002: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+ 447: 0002:        ! file names and sizes
+ 448: 0002:        ! Return values:
+ 449: 0002:        !    -1  no matches
+ 450: 0002:        !        found on first
+ 451: 0002:        !        call
+ 452: 0002:        !    0   no matches
+ 453: 0002:        !        found on sub-
+ 454: 0002:        !        sequent calls
+ 455: 0002:        !    Pos Success
+ 456: 0002:        !    Neg OS Rtn Code
+ 457: 0002: ! Usage Note:  If searching for all occurences of a particular file name,
+ 458: 0002: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+ 459: 0002: ! to srchdir.  If any matches are found, a positive value will be returned.
+ 460: 0002: ! To see if any more matches exist, just issue another call to srchdir without
+ 461: 0002: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+ 462: 0002: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 463: 0002: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+ 464: 0002: ! of this data is defined below.
+ 465: 0002: 
+ 466: 0002:  integer*4 srchdir
+ 467: 0002: 
+ 468: 0002:  string  file.name$   ! file name to start
+ 469: 0002:        ! search (18 bytes max)
+ 470: 0002:        ! Wild cards and logical
+ 471: 0002:        ! names supported.
+ 472: 0002: 
+ 473: 0002:  string  dtbl.buffer$   ! must be initialized
+ 474: 0002:        ! to 48 bytes.  Contains
+ 475: 0002:        ! all of directory info
+ 476: 0002:        ! Initialize to nulls
+ 477: 0002:        ! each time a new file
+ 478: 0002:        ! name is used.
+ 479: 0002: 
+ 480: 0002: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+ 481: 0002: !
+ 482: 0002: ! Offs  Type                    Description Notes
+ 483: 0002: !  0 integer*4  key  use extract4 to access
+ 484: 0002: !  4  string (18 bytes) file name
+ 485: 0002: ! 22 integer*2  attributes use extract2 to access
+ 486: 0002: !      0x01 - Read Only
+ 487: 0002: !      0x02 - Hidden
+ 488: 0002: !      0x04 - System
+ 489: 0002: !      0x08 - Volume Label
+ 490: 0002: !      0x10 - Subdirectory
+ 491: 0002: !      0x20 - Archive (Files)
+ 492: 0002: !      0x40 - Security enabled
+ 493: 0002: !      0x80 - Reserved
+ 494: 0002: !      0x0000 - Local
+ 495: 0002: !      0x4000 - Mirrored/Update
+ 496: 0002: !      0xC000 - Mirrored/Close
+ 497: 0002: !
+ 498: 0002: !      0x6000 - Compound/Update
+ 499: 0002: !      0xE000 - Compound/Close
+ 500: 0002: ! 24 integer*2  record size use extract2 to access
+ 501: 0002: ! 26 integer*1  User ID of Owner
+ 502: 0002: ! 27 integer*1  Group ID of Owner
+ 503: 0002: ! 28 integer*2  File Security
+ 504: 0002: ! 30 string (6 bytes) Reserved
+ 505: 0002: ! 36 integer*4  File Size use extract4 to access
+ 506: 0002: ! 40 integer*2  Year  use extract2 to access
+ 507: 0002: ! 42 integer*1  Month
+ 508: 0002: ! 43 integer*1  Day
+ 509: 0002: ! 44 integer*1  Hour
+ 510: 0002: ! 45 integer*1  Minute
+ 511: 0002: ! 46 integer*1  Second
+ 512: 0002: ! 47 integer*1  Reserved
+ 513: 0002: 
+ 514: 0002: end function
+ 515: 0002: 
+ 516: 0002: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+ 517: 0002:        ! process names and
+ 518: 0002:        ! status.  Handy to
+ 519: 0002:        ! determine if a
+ 520: 0002:        ! program is currently
+ 521: 0002:        ! running.
+ 522: 0002:        ! Return values:
+ 523: 0002:        !    -1  no matches
+ 524: 0002:        !        found on first
+ 525: 0002:        !        call
+ 526: 0002:        !    0   no matches
+ 527: 0002:        !        found on sub-
+ 528: 0002:        !        sequent calls
+ 529: 0002:        !    Pos Success
+ 530: 0002:        !    Neg Failure
+ 531: 0002:        !        OS Rtn Code
+ 532: 0002:        ! 80000001h - Insuff
+ 533: 0002:         !        ptbl buffer
+ 534: 0002:        !        Length
+ 535: 0002: ! Usage Note:  If searching for all occurences of a particular process name,
+ 536: 0002: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+ 537: 0002: ! to srchproc.  If any matches are found, a positive value will be returned.
+ 538: 0002: ! To see if any more matches exist, just issue another call to srchproc without
+ 539: 0002: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+ 540: 0002: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 541: 0002: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+ 542: 0002: ! of this data is defined as follows:
+ 543: 0002: !
+ 544: 0002: !       --------------------------------------------------------
+ 545: 0002: !   0   |                         PID                          |
+ 546: 0002: !       --------------------------------------------------------
+ 547: 0002: !   4   |           FID             |   CID        |   VCID    |
+ 548: 0002: !       --------------------------------------------------------
+ 549: 0002: !   8   |                         NAME                         |
+ 550: 0002: !       --------------------------------------------------------
+ 551: 0002: !  12   |                         NAME cont'd                  |
+ 552: 0002: !       --------------------------------------------------------
+ 553: 0002: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+ 554: 0002: !       --------------------------------------------------------
+ 555: 0002: !  20   |                         MAXMEM                       |
+ 556: 0002: !       --------------------------------------------------------
+ 557: 0002: !  24   |       FLAGS               |   USER        |  GROUP   |
+ 558: 0002: !       --------------------------------------------------------
+ 559: 0002: !  28   |                         PARENT                       |
+ 560: 0002: !       --------------------------------------------------------
+ 561: 0002: !  32   |                         EVENTS                       |
+ 562: 0002: !       --------------------------------------------------------
+ 563: 0002: !  36   |                         CODE                         |
+ 564: 0002: !       --------------------------------------------------------
+ 565: 0002: !  40   |                         CSIZE                        |
+ 566: 0002: !       --------------------------------------------------------
+ 567: 0002: !  44   |                         DATA                         |
+ 568: 0002: !       --------------------------------------------------------
+ 569: 0002: !  48   |                         DSIZE                        |
+ 570: 0002: !       --------------------------------------------------------
+ 571: 0002: !  52   |                         HEAP                         |
+ 572: 0002: !       --------------------------------------------------------
+ 573: 0002: !  56   |                         HSIZE                        |
+ 574: 0002: !       --------------------------------------------------------
+ 575: 0002: !
+ 576: 0002: !       PID   Process ID
+ 577: 0002: !       FID  Process's Family ID
+ 578: 0002: !       CID   Physical Console Device Number
+ 579: 0002: !       VCID  Process's Virtual Console Number
+ 580: 0002: !       NAME  Process Name (Application Running)
+ 581: 0002: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+ 582: 0002: ! PRIOR    Priority
+ 583: 0002: !       MAXMEM  Maximum Memory Allowed
+ 584: 0002: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+ 585: 0002: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+ 586: 0002: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+ 587: 0002: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+ 588: 0002: ! USER  User Number
+ 589: 0002: ! GROUP  Group Number
+ 590: 0002: !       PARENT   Parent Process ID
+ 591: 0002: !       EVENTS   Bit Map of events that have completed but not retrieved
+ 592: 0002: !       CODE  Start of code area in user space
+ 593: 0002: ! CSIZE  Size in bytes of code area
+ 594: 0002: !       DATA  Start of data area in user space
+ 595: 0002: ! DSIZE  Size in bytes of data area
+ 596: 0002: !       HEAP  Start of heap area in user space
+ 597: 0002: ! HSIZE  Size in bytes of heap area
+ 598: 0002: !
+ 599: 0002:  integer*4 srchproc
+ 600: 0002: 
+ 601: 0002:  string  proc.name$   ! process name to start
+ 602: 0002:        ! search (10 bytes max)
+ 603: 0002:        ! Wild cards and logical
+ 604: 0002:        ! names supported.
+ 605: 0002: 
+ 606: 0002:  string  ptbl.buffer$   ! must be initialized
+ 607: 0002:        ! to 60 bytes.  Contains
+ 608: 0002:        ! all of process info
+ 609: 0002:        ! Initialize to nulls
+ 610: 0002:        ! each time a new
+ 611: 0002:        ! process name is used.
+ 612: 0002: 
+ 613: 0002: end function
+ 614: 0002: 
+ 615: 0002: function cconstat(timeout) external       ! function similar
+ 616: 0002:                                               ! to BASIC constat%
+ 617: 0002:  integer*2 cconstat   ! waits for either a
+ 618: 0002:  integer*4 timeout    ! key being hit or
+ 619: 0002:        ! the timer expiring
+ 620: 0002:        ! before returning
+ 621: 0002:        ! returns:
+ 622: 0002:        !   -1 error
+ 623: 0002:        !    0 timer expired
+ 624: 0002:        !    x scan code of
+ 625: 0002:        !      key hit
+ 626: 0002: end function
+ 627: 0002: 
+ 628: 0002: function disksize(disk.name$) external   ! function to find
+ 629: 0002:        ! the total size of
+ 630: 0002:  integer*4 disksize   ! the specified disk
+ 631: 0002:  string  disk.name$   ! name (e.g. "h0:")
+ 632: 0002:        ! if return value is
+ 633: 0002:        ! negative, error
+ 634: 0002: end function      ! was received
+ 635: 0002: 
+ 636: 0002: 
+ 637: 0002:      %INCLUDE BOOTSEXT.J86  ! Reusable Functions
+ 638: 0002: \******************************************************************************
+ 639: 0002: \******************************************************************************
+ 640: 0002: SUB LOG.ERROR(F.1$) EXTERNAL
+ 641: 0002:     STRING  F.1$
+ 642: 0002: END SUB
+ 643: 0002: 
+ 644: 0002: \******************************************************************************
+ 645: 0002: \******************************************************************************
+ 646: 0002: FUNCTION FORCE.CASE$(DATA$,TYPE%) EXTERNAL
+ 647: 0002:     STRING      FORCE.CASE$
+ 648: 0002:     STRING      DATA$
+ 649: 0002:     INTEGER*2   TYPE%
+ 650: 0002:     STRING      IN$, OUT$
+ 651: 0002:     STRING      LWR$, UPR$
+ 652: 0002: END FUNCTION
+ 653: 0002: 
+ 654: 0002: \******************************************************************************
+ 655: 0002: \******************************************************************************
+ 656: 0002: FUNCTION REMOVE.CHARACTER$(DATA$,F.CHR$) EXTERNAL
+ 657: 0002:     STRING      DATA$
+ 658: 0002:     STRING      F.CHR$
+ 659: 0002:     STRING      REMOVE.CHARACTER$
+ 660: 0002:     INTEGER*2   START%
+ 661: 0002:     INTEGER*2   END%
+ 662: 0002:     INTEGER*2   POS%
+ 663: 0002:     INTEGER*2   F.LEN%
+ 664: 0002: END FUNCTION
+ 665: 0002: 
+ 666: 0002: \******************************************************************************
+ 667: 0002: \******************************************************************************
+ 668: 0002: FUNCTION REMOVE.SPACES$(DATA$) EXTERNAL
+ 669: 0002:     STRING      DATA$
+ 670: 0002:     STRING      REMOVE.SPACES$
+ 671: 0002:     INTEGER*2   START%
+ 672: 0002:     INTEGER*2   END%
+ 673: 0002:     INTEGER*2   POS%
+ 674: 0002: END FUNCTION
+ 675: 0002: 
+ 676: 0002: \*******************************************************************************
+ 677: 0002: \***
+ 678: 0002: \***    FUNCTION     :    TIME.STAMP$
+ 679: 0002: \***    
+ 680: 0002: \***    Returns a string with formatted date and/or time detail
+ 681: 0002: \***                 Passed values are 1 = Date, 2 = Time
+ 682: 0002: \*******************************************************************************
+ 683: 0002: FUNCTION TIME.STAMP$(F.TYPE%) EXTERNAL
+ 684: 0002:     STRING      TIME.STAMP$
+ 685: 0002:     INTEGER*2   F.TYPE%
+ 686: 0002:     STRING      F.DT$
+ 687: 0002:     STRING      F.RET$
+ 688: 0002: END FUNCTION
+ 689: 0002: \*******************************************************************************
+ 690: 0002: 
+ 691: 0002: 
+ 692: 0002: \*******************************************************************************
+ 693: 0002: \*******************************************************************************
+ 694: 0002: FUNCTION PRINT.MSG$(MSG$,F%,L%) EXTERNAL
+ 695: 0002: STRING      PRINT.MSG$
+ 696: 0002: STRING      MSG$
+ 697: 0002: INTEGER*2   F%
+ 698: 0002: INTEGER*2   L%
+ 699: 0002: STRING      IN$
+ 700: 0002: STRING      F.FORM$
+ 701: 0002: END FUNCTION
+ 702: 0002: \*******************************************************************************
+ 703: 0002: 
+ 704: 0002: \*******************************************************************************
+ 705: 0002: \***
+ 706: 0002: \***    SUBROUTINE     :    BACKGROUND.MSG(B.MSG$)
+ 707: 0002: \***    
+ 708: 0002: \***    Displays passed message to the background message.
+ 709: 0002: \*******************************************************************************
+ 710: 0002: SUB BACKGROUND.MSG(B.MSG$) EXTERNAL
+ 711: 0002:     STRING      B.MSG$
+ 712: 0002:     INTEGER*4   B.RET%
+ 713: 0002: END SUB
+ 714: 0002: \*******************************************************************************
+ 715: 0002: 
+ 716: 0002: !*****************************************************************************!
+ 717: 0002: !***                                                                          !
+ 718: 0002: !*** SUBROUTINE :   NO.OPEN.FILE                                              !
+ 719: 0002: !***                    F.REPORT%       - Passed report number for logging    !
+ 720: 0002: !***                    F.OPEN.FLAG$    - Returned flag for not-opened        !
+ 721: 0002: !***                                                                          !
+ 722: 0002: !*** This subroutine logs an application 106 error with the passed report     !
+ 723: 0002: !*** number. It also sets a return variable to "N" to flag that the file is   !
+ 724: 0002: !*** not Open because of the failure.                                         !
+ 725: 0002: !***                                                                          !
+ 726: 0002: !*****************************************************************************!
+ 727: 0002: SUB NO.OPEN.FILE(F.REPORT%,F.OPEN.FLAG$) EXTERNAL                                      
+ 728: 0002:     INTEGER*2   F.REPORT%                                                         
+ 729: 0002:     STRING      F.OPEN.FLAG$                                                      
+ 730: 0002:     STRING      F.1$, F.2$
+ 731: 0002:     INTEGER*2   F.EVENT%
+ 732: 0002: END SUB                                                                       
+ 733: 0002: !*****************************************************************************!
+ 734: 0002: 
+ 735: 0002: 
+ 736: 0002: FUNCTION NUMBER.OF.DAYS%(START$,END$) EXTERNAL
+ 737: 0002: INTEGER*2   NUMBER.OF.DAYS%
+ 738: 0002: STRING      START$
+ 739: 0002: STRING      END$
+ 740: 0002: INTEGER*2   F.DAYS%
+ 741: 0002: INTEGER*4   S.DAYS%
+ 742: 0002: INTEGER*4   E.DAYS%
+ 743: 0002: END FUNCTION
+ 744: 0002: 
+ 745: 0002: FUNCTION HEX.FORMAT$(F.DATA$) EXTERNAL
+ 746: 0002: STRING  HEX.FORMAT$
+ 747: 0002: STRING  F.DATA$
+ 748: 0002: STRING      F.RET$
+ 749: 0002: INTEGER*2   F.LEN%
+ 750: 0002: STRING      F.TMP$(2)
+ 751: 0002: STRING      F.FORM$
+ 752: 0002: STRING      F.ASCII$
+ 753: 0002: STRING      F.ASC$
+ 754: 0002: STRING      F.HEX$
+ 755: 0002: STRING      F.WORK$, F.W2$
+ 756: 0002: INTEGER*2   F.LOOP%, F.L2%
+ 757: 0002: END FUNCTION
+ 758: 0002: 
+ 759: 0002: FUNCTION FORMAT.NUMBER$(F.NUM$,F.DEC%) EXTERNAL
+ 760: 0002: STRING      FORMAT.NUMBER$
+ 761: 0002: STRING      F.NUM$
+ 762: 0002: INTEGER*2   F.DEC%
+ 763: 0002: INTEGER*4   F.NUM%
+ 764: 0002: END FUNCTION
+ 765: 0002: 
+ 766: 0002: \*******************************************************************************
+ 767: 0002: FUNCTION FORMAT.BOOTS.CODE$(F.CODE$) EXTERNAL
+ 768: 0002: STRING  FORMAT.BOOTS.CODE$
+ 769: 0002: STRING  F.CODE$
+ 770: 0002: END FUNCTION
+ 771: 0002: 
+ 772: 0002: FUNCTION FORMAT.STRING$(F.STRING$,F.L%,F.P$,F.J%) EXTERNAL
+ 773: 0002: STRING    FORMAT.STRING$
+ 774: 0002: STRING    F.STRING$
+ 775: 0002: INTEGER*2 F.L%
+ 776: 0002: STRING    F.P$
+ 777: 0002: INTEGER*2 F.J%
+ 778: 0002: END FUNCTION
+ 779: 0002: 
+ 780: 0002: SUB GET.BLOCK.SIZE(F.BLOCK.SIZE%,F.FILENAME$,F.SIZE%) EXTERNAL
+ 781: 0002: INTEGER*4   F.BLOCK.SIZE%
+ 782: 0002: STRING      F.FILENAME$
+ 783: 0002: INTEGER*4   F.SIZE%
+ 784: 0002: INTEGER*4   F.BLOCK%
+ 785: 0002: INTEGER*2   F.SECTOR%
+ 786: 0002: INTEGER*2   F.LOOP%
+ 787: 0002: STRING      F.BLOCK.LENGTH$
+ 788: 0002: END SUB
+ 789: 0002:      %INCLUDE BTCSTR.J86    ! For Trimming Functions
+ 790: 0002: !********************************************************************
+ 791: 0002: !***
+ 792: 0002: !***    INCLUDED CODE:  BTCSTR.J86
+ 793: 0002: !***    AUTHOR:         Stuart William McConnachie
+ 794: 0002: !***    DATE:           26th February 2006
+ 795: 0002: !***
+ 796: 0002: !********************************************************************
+ 797: 0002: !***
+ 798: 0002: !***    Controller CBASIC String Functions
+ 799: 0002: !***
+ 800: 0002: !********************************************************************
+ 801: 0002: 
+ 802: 0002: !Swaps to CBASIC strings
+ 803: 0002: SUB SWAPSTR (S1$, S2$) EXTERNAL
+ 804: 0002:     STRING S1$, S2$
+ 805: 0002: END SUB
+ 806: 0002: 
+ 807: 0002: !Left trim a string of spaces
+ 808: 0002: SUB LTRIM (S$) EXTERNAL
+ 809: 0002:     STRING S$
+ 810: 0002: END SUB
+ 811: 0002: 
+ 812: 0002: !Right trim a string of spaces
+ 813: 0002: SUB RTRIM (S$) EXTERNAL
+ 814: 0002:     STRING S$
+ 815: 0002: END SUB
+ 816: 0002: 
+ 817: 0002: !Left and right trim a string of spaces
+ 818: 0002: SUB TRIM (S$) EXTERNAL
+ 819: 0002:     STRING S$
+ 820: 0002: END SUB
+ 821: 0002: 
+ 822: 0002: !Left trim a string of a given ASCII character
+ 823: 0002: SUB LTRIMC (S$, C%) EXTERNAL
+ 824: 0002:     STRING S$
+ 825: 0002:     INTEGER*1 C%
+ 826: 0002: END SUB
+ 827: 0002: 
+ 828: 0002: !Right trim a string of a given ASCII character
+ 829: 0002: SUB RTRIMC (S$, C%) EXTERNAL
+ 830: 0002:     STRING S$
+ 831: 0002:     INTEGER*1 C%
+ 832: 0002: END SUB
+ 833: 0002: 
+ 834: 0002: !Left and right trim a string of a given ASCII character
+ 835: 0002: SUB TRIMC (S$, C%) EXTERNAL
+ 836: 0002:     STRING S$
+ 837: 0002:     INTEGER*1 C%
+ 838: 0002: END SUB
+ 839: 0002: 
+ 840: 0002: !Insert one string into another
+ 841: 0002: FUNCTION SUBSTR(S1$, O1%, S2$, O2%, L2%) EXTERNAL
+ 842: 0002:     STRING    S1$, S2$
+ 843: 0002:     INTEGER*2 O1%, O2%, L2%
+ 844: 0002:     INTEGER*1 SUBSTR
+ 845: 0002: END FUNCTION
+ 846: 0002:     
+ 847: 0002: 
+ 848: 0002: \******************************************************************************
+ 849: 0002: \***
+ 850: 0002: \***    Included code defining external Boots functions
+ 851: 0002: \***
+ 852: 0002: \******************************************************************************
+ 853: 0002: 
+ 854: 0002:      %INCLUDE PSBF01E.J86   ! APPLICATION.LOG
+ 855: 0002: REM \
+ 856: 0002: \*******************************************************************************
+ 857: 0002: \*******************************************************************************
+ 858: 0002: \***
+ 859: 0002: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 860: 0002: \***
+ 861: 0002: \***                      FUNCTION NUMBER   : PSBF01
+ 862: 0002: \***
+ 863: 0002: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 864: 0002: \*** 
+ 865: 0002: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 866: 0002: \***      Three parameters which passed to the function have been removed.
+ 867: 0002: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 868: 0002: \***      return code).
+ 869: 0002: \***
+ 870: 0002: \*******************************************************************************
+ 871: 0002: 
+ 872: 0002: 
+ 873: 0002:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 874: 0002:                              VAR.STRING.1$,                                   \
+ 875: 0002:                              VAR.STRING.2$,                                   \
+ 876: 0002:                              EVENT.NO%)  EXTERNAL
+ 877: 0002: 
+ 878: 0002:       INTEGER*1 EVENT.NO%
+ 879: 0002: 
+ 880: 0002:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 881: 0002:                 MESSAGE.NO%
+ 882: 0002: 
+ 883: 0002:       STRING VAR.STRING.1$,                                            \
+ 884: 0002:              VAR.STRING.2$
+ 885: 0002: 
+ 886: 0002:    END FUNCTION
+ 887: 0002: 
+ 888: 0002: \*******************************************************************************
+ 889: 0002:      %INCLUDE PSBF20E.J86   ! ALLOCATE.DEALLOCATE.SESS.NUM
+ 890: 0002: REM\
+ 891: 0002: \*******************************************************************************
+ 892: 0002: \*******************************************************************************
+ 893: 0002: \***
+ 894: 0002: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 895: 0002: \***
+ 896: 0002: \***                  REFERENCE     : PSBF20E.J86
+ 897: 0002: \***
+ 898: 0002: \***     VERSION C            Janet Smith                13th May 1992
+ 899: 0002: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 900: 0002: \***     128 files.
+ 901: 0002: \***
+ 902: 0002: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 903: 0002: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 904: 0002: \***     as a variable.  This new variable contains the function's return
+ 905: 0002: \***     code.
+ 906: 0002: \***
+ 907: 0002: \*******************************************************************************
+ 908: 0002: \*******************************************************************************
+ 909: 0002: 
+ 910: 0002:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 911: 0002:                               PASSED.INTEGER%,                         \
+ 912: 0002:                               PASSED.STRING$)                          \
+ 913: 0002:    EXTERNAL
+ 914: 0002: 
+ 915: 0002:    STRING    FUNCTION.FLAG$,                                           \
+ 916: 0002:              PASSED.STRING$
+ 917: 0002:    ! 3 variables removed from here                                     ! CAW
+ 918: 0002: 
+ 919: 0002: 
+ 920: 0002:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 921: 0002:              PASSED.INTEGER%				               ! CJAS
+ 922: 0002: 
+ 923: 0002:    END FUNCTION
+ 924: 0002: 
+ 925: 0002: 
+ 926: 0002: \******************************************************************************
+ 927: 0002: \***
+ 928: 0002: \***    MAIN PROGRAM
+ 929: 0002: \***
+ 930: 0002: \******************************************************************************
+ 931: 0002: 
+ 932: 0002:      MAIN.PROGRAM:
+ 933: 0024: 
+ 934: 0024:          ON ERROR GOTO ERROR.DETECTED
+ 935: 0039:          GOSUB INITIALISATION
+ 936: 004b:          GOSUB MAIN.PROCESSING
+ 937: 005d:          GOSUB TERMINATION
+ 938: 006f: 
+ 939: 006f:      STOP
+ 940: 007c: 
+ 941: 007c: \******************************************************************************
+ 942: 007c: \***
+ 943: 007c: \***   SUBROUTINE : INITIALISATION
+ 944: 007c: \***
+ 945: 007c: \******************************************************************************
+ 946: 007c: 
+ 947: 007c:      INITIALISATION:       
+ 948: 008c:         
+ 949: 008c:          FILECHCK.CFG.CHCK   = FALSE
+ 950: 009e:          FILE.PATH.C$        = "ADXLXAAN::C:\"    
+ 951: 00b3:          ERR.FILE.NAME$      = FILE.PATH.C$ + "FILECHCK.ERR"        
+ 952: 00d3:          FILECHCK.CFG.FILE$  = FILE.PATH.C$ + "FILECHCK.CFG"
+ 953: 00f3:          FILECHCK.DAT.FILE$  = FILE.PATH.C$ + "FILECHCK.DAT"
+ 954: 0113:          FILECHCK.BULD.CFG$  = FILE.PATH.C$ + "FILEBULD.CFG"
+ 955: 0133: 
+ 956: 0133: 
+ 957: 0133:          EOB                 = FALSE 
+ 958: 0145:          EOD                 = FALSE
+ 959: 0157:          FORMAT.FILE.MIDDLE$ = "."
+ 960: 016c:          FOUND%              = 0
+ 961: 017a: 
+ 962: 017a:          SPACE$              = " "
+ 963: 018f: 
+ 964: 018f:          GOSUB ALLOCATE.SESSION.NUMBERS
+ 965: 01a1: 
+ 966: 01a1:          CALL  OSSHELL("IF EXIST C:\FILECHCK.OK       DEL C:\FILECHCK.OK")
+ 967: 01b5:          CALL  OSSHELL("IF EXIST C:\FILECHCK.DAT      DEL C:\FILECHCK.DAT")
+ 968: 01c9: 
+ 969: 01c9:          CREATE POSFILE ERR.FILE.NAME$ AS ERR.SESS.NUM%	           
+ 970: 01e9: 
+ 971: 01e9:      RETURN
+ 972: 01f9: 
+ 973: 01f9: \******************************************************************************
+ 974: 01f9: \***
+ 975: 01f9: \***    ALLOCATE.SESSION.NUMBERS:
+ 976: 01f9: \***
+ 977: 01f9: \***    Use the session number utility to allocate file numbers for the
+ 978: 01f9: \***    files used by the program.
+ 979: 01f9: \***
+ 980: 01f9: \******************************************************************************
+ 981: 01f9: 
+ 982: 01f9:      ALLOCATE.SESSION.NUMBERS:
+ 983: 0209: 
+ 984: 0209:          FUNCTION.FLAG$ = "O"
+ 985: 0220: 
+ 986: 0220:          PASSED.INTEGER%     = ERR.SESS.NUM%
+ 987: 0232:          PASSED.STRING$      = ERR.FILE.NAME$
+ 988: 024d:          GOSUB CALL.F20.SESS.NUM.UTILITY
+ 989: 025f:          ERR.SESS.NUM%       = F20.INTEGER.FILE.NO%
+ 990: 0271: 
+ 991: 0271:          PASSED.INTEGER%     = FILECHCK.CFG.SESS%
+ 992: 0283:          PASSED.STRING$      = FILECHCK.CFG.FILE$
+ 993: 029e:          GOSUB CALL.F20.SESS.NUM.UTILITY
+ 994: 02b0:          FILECHCK.CFG.SESS%  = F20.INTEGER.FILE.NO%
+ 995: 02c2: 
+ 996: 02c2:          PASSED.INTEGER%     = FILECHCK.DAT.SESS%
+ 997: 02d4:          PASSED.STRING$      = FILECHCK.DAT.FILE$
+ 998: 02ef:          GOSUB CALL.F20.SESS.NUM.UTILITY
+ 999: 0301:          FILECHCK.DAT.SESS%  = F20.INTEGER.FILE.NO%
+1000: 0313: 
+1001: 0313: 
+1002: 0313:          PASSED.INTEGER%     = FILECHCK.BULD.SESS%
+1003: 0325:          PASSED.STRING$      = FILECHCK.BULD.CFG$
+1004: 0340:          GOSUB CALL.F20.SESS.NUM.UTILITY
+1005: 0352:          FILECHCK.BULD.SESS% = F20.INTEGER.FILE.NO%      
+1006: 0364: 
+1007: 0364:      RETURN
+1008: 0374:  
+1009: 0374: \******************************************************************************
+1010: 0374: \***
+1011: 0374: \***    CALL.F20.SESS.NUM.UTILITY:
+1012: 0374: \***
+1013: 0374: \******************************************************************************
+1014: 0374: 
+1015: 0374:      CALL.F20.SESS.NUM.UTILITY: 
+1016: 0384:         
+1017: 0384:          FILE.OPERATION$ = FUNCTION.FLAG$
+1018: 03a2:          CURRENT.REPORT.NUM% = PASSED.INTEGER%
+1019: 03b8:          RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+1020: 03e8:                                  PASSED.STRING$)
+1021: 03e8:          IF RC% <> 0 THEN GOTO FILE.ERROR
+1022: 03fa: 
+1023: 03fa:      RETURN
+1024: 040a: 
+1025: 040a: \******************************************************************************
+1026: 040a: \***
+1027: 040a: \***   SUBROUTINE : MAIN PROCESSING
+1028: 040a: \***
+1029: 040a: \******************************************************************************
+1030: 040a: 
+1031: 040a:     MAIN.PROCESSING:  
+1032: 041a: 
+1033: 041a:         SWITCH$    = UCASE$(COMMAND$)
+1034: 0435:         
+1035: 0435:         IF SWITCH$ = " "  THEN BEGIN                                 
+1036: 0453:                     
+1037: 0453:             GOSUB FIND.MISSING.PROCESS
+1038: 0465: 
+1039: 0465:             PRINT  COUNT% ; "FILES HAVE BEEN CHECKED"
+1040: 047f:             PRINT  FOUND% ; "MISSING FILES"
+1041: 0499: 
+1042: 0499:             PRINT #ERR.SESS.NUM%;COUNT%,"TOTAL FILES" 
+1043: 04be:             PRINT #ERR.SESS.NUM%;FOUND%,"MISSING FILES" 
+1044: 04e3:              
+1045: 04e3: 
+1046: 04e3:             IF FOUND% = 0 THEN BEGIN
+1047: 04f2:                 CALL OSSHELL("REN" + SPACE$ + ERR.FILE.NAME$ + SPACE$ + "C:/FILECHCK.OK")
+1048: 052d:             ENDIF  
+1049: 0538: 
+1050: 0538: 
+1051: 0538:         ENDIF ELSE IF SWITCH$ = "DUMP" THEN BEGIN
+1052: 0553:            
+1053: 0553:             GOSUB BUILD.NEW.LIST
+1054: 0565:             GOSUB FORMAT.DUMP
+1055: 0577:             GOSUB TIDY.UP
+1056: 058b:         
+1057: 058b:         ENDIF ELSE IF SWITCH$ = "HELP" THEN BEGIN
+1058: 05a6:              
+1059: 05a6:             GOSUB FILECHCK.HELP.MENU
+1060: 05ba: 
+1061: 05ba:         ENDIF ELSE BEGIN
+1062: 05c2:               
+1063: 05c2:             PRINT "INVALID PARAMETERS PASSED, PROGRAM ENDING"
+1064: 05d3: 
+1065: 05d3:             GOSUB TERMINATION
+1066: 05e5: 
+1067: 05e5:         ENDIF
+1068: 05ed: 
+1069: 05ed:     RETURN
+1070: 05fd: 
+1071: 05fd: \******************************************************************************
+1072: 05fd: \***
+1073: 05fd: \***   SUBROUTINE : FIND.MISSING.PROCESS
+1074: 05fd: \***
+1075: 05fd: \******************************************************************************	 
+1076: 05fd: 
+1077: 05fd:     FIND.MISSING.PROCESS:   
+1078: 060d: 
+1079: 060d:         PRINT  TIME.STAMP$(2) + "-CONFIGURATION FILE IS BEING OPENED"    
+1080: 063b: 
+1081: 063b: 
+1082: 063b:         OPEN FILECHCK.CFG.FILE$ AS FILECHCK.CFG.SESS% NOWRITE NODEL
+1083: 065d:         IF END #FILECHCK.CFG.SESS% THEN ERROR.DETECTED
+1084: 0676: 
+1085: 0676:         PRINT TIME.STAMP$(2) + "-READING THE CONFIGURATION FILE"
+1086: 06a4:         PRINT TIME.STAMP$(2) + "-CHECKING THE FILES,PLEASE WAIT"
+1087: 06d2: 
+1088: 06d2:         WHILE EOF = FALSE
+1089: 06dd: 
+1090: 06dd:             IF END #FILECHCK.CFG.SESS% THEN FILECHCK.CFG.END
+1091: 06f6:             READ #FILECHCK.CFG.SESS%; LINE LINE.CHR$
+1092: 0712: 
+1093: 0712:             LINE.CHR$ = MID$(LINE.CHR$,2,(LEN(LINE.CHR$)-2))
+1094: 0744: 
+1095: 0744: 
+1096: 0744:             IF LINE.CHR$ <> " " OR LINE.CHR$ <> "." OR LINE.CHR$ <>     \
+1097: 07b5:                                                  ".." THEN BEGIN
+1098: 07b5:                 GOSUB FILE.EXISTENCE.CHECK
+1099: 07c9:             ENDIF ELSE BEGIN
+1100: 07d1: 
+1101: 07d1:                 WRITE #ERR.SESS.NUM% ;                                  \
+1102: 07fa:                 "INVALID FILE NAME IN THE INPUT FILE" , LINE.CHR$
+1103: 07fa:             ENDIF
+1104: 0802: 
+1105: 0802:         WEND
+1106: 081a: 
+1107: 081a:     FILECHCK.CFG.END:
+1108: 082a: 
+1109: 082a:         EOF  = TRUE
+1110: 083c:         PRINT TIME.STAMP$(2) + "-EOF REACHED QUITTING"   
+1111: 086a: 
+1112: 086a:     RETURN
+1113: 087a: 
+1114: 087a: \******************************************************************************
+1115: 087a: \***
+1116: 087a: \***   SUBROUTINE : FILE.EXISTENCE.CHECK
+1117: 087a: \***
+1118: 087a: \******************************************************************************	 
+1119: 087a: 
+1120: 087a:     FILE.EXISTENCE.CHECK:   
+1121: 088a:         
+1122: 088a:         COUNT% = COUNT% + 1
+1123: 0896: 
+1124: 0896:         ! Below command will check the size of the file.if particular file
+1125: 0896:         ! is not present in the controller,Program will call error routine.
+1126: 0896:         RC% = SIZE(LINE.CHR$)         
+1127: 08b0: 
+1128: 08b0:     RETURN
+1129: 08c0:    
+1130: 08c0: \******************************************************************************
+1131: 08c0: \***
+1132: 08c0: \***   SUBROUTINE : FIND.MISSING.PROCESS
+1133: 08c0: \***
+1134: 08c0: \******************************************************************************	 
+1135: 08c0: 
+1136: 08c0:     BUILD.NEW.LIST:   
+1137: 08d0: 
+1138: 08d0:         PRINT TIME.STAMP$(2) + "-BUILDING NEW LIST OF FILES"        
+1139: 08fe: 
+1140: 08fe:         GOSUB BACKUP.EXISTING 
+1141: 0910: 
+1142: 0910:         GOSUB OPEN.BUILD.FILE
+1143: 0922: 
+1144: 0922:         WHILE EOB = FALSE
+1145: 092d: 
+1146: 092d:             IF END #FILECHCK.BULD.SESS% THEN FILE.BUILD.END
+1147: 0946:             READ #FILECHCK.BULD.SESS%; LINE BUILD.LIST$
+1148: 0962: 
+1149: 0962:             IF BUILD.LIST$ = "OMC" THEN BEGIN
+1150: 097d:                 PRINT TIME.STAMP$(2) + "-CREATING LIST OF FILES FOR C DRIVE"
+1151: 09ad:             ENDIF ELSE IF BUILD.LIST$ = "OMD" THEN BEGIN 
+1152: 09c8:                 PRINT TIME.STAMP$(2) + "-CREATING LIST OF FILES FOR D DRIVE"
+1153: 09f8:             ENDIF ELSE BEGIN
+1154: 0a00:                 GOSUB DUMP.FILES
+1155: 0a12:             ENDIF
+1156: 0a1a: 
+1157: 0a1a:         WEND
+1158: 0a32: 
+1159: 0a32:     FILE.BUILD.END:
+1160: 0a42: 
+1161: 0a42:         EOB = TRUE  
+1162: 0a54: 
+1163: 0a54:     RETURN
+1164: 0a64: \******************************************************************************
+1165: 0a64: \***
+1166: 0a64: \***   SUBROUTINE : BACKUP.EXISTING
+1167: 0a64: \***
+1168: 0a64: \******************************************************************************	
+1169: 0a64: 
+1170: 0a64:     BACKUP.EXISTING:
+1171: 0a74: 
+1172: 0a74:         PRINT TIME.STAMP$(2) + "-CHECKING EXISTING FILES "
+1173: 0aa2:          
+1174: 0aa2: 
+1175: 0aa2:         IF END #FILECHCK.CFG.SESS% THEN CREATE.NEW.FILE
+1176: 0abb:         OPEN FILECHCK.CFG.FILE$ AS FILECHCK.CFG.SESS% NOWRITE NODEL    
+1177: 0add:         CLOSE FILECHCK.CFG.SESS%
+1178: 0aee: 
+1179: 0aee:         PRINT TIME.STAMP$(2) + "-BACKING UP EXISTING FILES "
+1180: 0b1c: 
+1181: 0b1c:         CALL  OSSHELL("IF EXIST C:\FILECHCK.BAK       DEL C:\FILECHCK.BAK") 
+1182: 0b30:         CALL  OSSHELL("IF EXIST C:\FILECHCK.OK        DEL C:\FILECHCK.OK") 
+1183: 0b44:         CALL  OSSHELL("REN C:\FILECHCK.CFG C:\FILECHCK.BAK" )  
+1184: 0b58: 
+1185: 0b58:         PRINT TIME.STAMP$(2) + "-CREATING NEW CONFIGURATION FILE"
+1186: 0b86:         CREATE POSFILE FILECHCK.CFG.FILE$ AS FILECHCK.CFG.SESS%
+1187: 0ba6: 
+1188: 0ba6:     RETURN
+1189: 0bb6: 
+1190: 0bb6:  \******************************************************************************
+1191: 0bb6: \***
+1192: 0bb6: \***   SUBROUTINE : CREATE.NEW.FILE
+1193: 0bb6: \***
+1194: 0bb6: \******************************************************************************	
+1195: 0bb6: 
+1196: 0bb6:     CREATE.NEW.FILE:
+1197: 0bc6: 
+1198: 0bc6:         PRINT TIME.STAMP$(2) + "-CREATING NEW CONFIGURATION FILE"
+1199: 0bf4:         CREATE POSFILE FILECHCK.CFG.FILE$ AS FILECHCK.CFG.SESS%
+1200: 0c14: 
+1201: 0c14:     RETURN
+1202: 0c24: 
+1203: 0c24: \******************************************************************************
+1204: 0c24: \***
+1205: 0c24: \***   SUBROUTINE : OPEN.BUILD.FILE
+1206: 0c24: \***
+1207: 0c24: \******************************************************************************	
+1208: 0c24: 
+1209: 0c24:     OPEN.BUILD.FILE:   
+1210: 0c34: 
+1211: 0c34:         OPEN FILECHCK.BULD.CFG$ AS FILECHCK.BULD.SESS% NOWRITE NODEL
+1212: 0c56: 
+1213: 0c56:     RETURN
+1214: 0c66: 
+1215: 0c66: \******************************************************************************
+1216: 0c66: \***
+1217: 0c66: \***   SUBROUTINE :  DUMP.FILES
+1218: 0c66: \***
+1219: 0c66: \******************************************************************************
+1220: 0c66:     
+1221: 0c66:     DUMP.FILES:     
+1222: 0c76: 
+1223: 0c76:         CALL OSSHELL ( "DIR" + SPACE$ + BUILD.LIST$ + SPACE$ +   ">>"   \
+1224: 0cc1:                                   +         SPACE$ +  FILECHCK.DAT.FILE$)
+1225: 0cc1:     RETURN 
+1226: 0cd1: 
+1227: 0cd1: 
+1228: 0cd1: \******************************************************************************
+1229: 0cd1: \***
+1230: 0cd1: \***   SUBROUTINE :  FORMAT.DUMP
+1231: 0cd1: \***
+1232: 0cd1: \******************************************************************************
+1233: 0cd1:     
+1234: 0cd1:     FORMAT.DUMP:
+1235: 0ce1: 
+1236: 0ce1:         PRINT TIME.STAMP$(2) + "-FORMATTING STARTED PLEASE WAIT"
+1237: 0d0f:         IF END #FILECHCK.DAT.SESS% THEN ERROR.DETECTED
+1238: 0d28:  
+1239: 0d28:         OPEN FILECHCK.DAT.FILE$ AS FILECHCK.DAT.SESS% NOWRITE NODEL  
+1240: 0d4a: 
+1241: 0d4a:         WHILE EOD = FALSE  
+1242: 0d55:    
+1243: 0d55:             IF END #FILECHCK.DAT.SESS% THEN FILE.DATA.END
+1244: 0d6e:             READ #FILECHCK.DAT.SESS%; LINE DAT.LIST$
+1245: 0d8a: 
+1246: 0d8a:             IF MID$(DAT.LIST$,1,1) <> "." THEN BEGIN
+1247: 0dbf: 
+1248: 0dbf:             IF UCASE$(MID$(DAT.LIST$,3,9)) = "DIRECTORY" THEN BEGIN
+1249: 0e01:                 DIRECTORY.NAME$ = MID$(DAT.LIST$,16,12)
+1250: 0e23:                 READ #FILECHCK.DAT.SESS%; LINE DAT.LIST$
+1251: 0e3f:             ENDIF
+1252: 0e47: 
+1253: 0e47: 
+1254: 0e47:             IF MID$(DAT.LIST$,1,1) <> SPACE$ AND MID$(DAT.LIST$,1,1) <> "."  \
+1255: 0ec5:                                                                 THEN BEGIN
+1256: 0ec5: 
+1257: 0ec5:                 FORMAT.FILE.FIRST$ = MID$(DAT.LIST$,1,8) 
+1258: 0ee7: 
+1259: 0ee7:                 CALL LTRIM(FORMAT.FILE.FIRST$)
+1260: 0efb:                 CALL RTRIM(FORMAT.FILE.FIRST$)
+1261: 0f0f: 
+1262: 0f0f:                 FORMAT.FILE.LAST$ = MID$(DAT.LIST$,10,3)
+1263: 0f31: 
+1264: 0f31:                 CALL LTRIM(FORMAT.FILE.LAST$)
+1265: 0f45:                 CALL RTRIM(FORMAT.FILE.LAST$)
+1266: 0f59: 
+1267: 0f59:                 IF MID$(DAT.LIST$,1,8) <> " " OR MID$(DAT.LIST$,10,3)   \
+1268: 1045:                                        <> " " OR MID$(DAT.LIST$,1,1)    \
+1269: 1045:                                        <> "." OR MID$(DAT.LIST$,1,2)    \
+1270: 1045:                                        <> ".." THEN BEGIN
+1271: 1045: 
+1272: 1045:                     IF MID$(DAT.LIST$,1,8)  = " " AND                   \
+1273: 10bc:                         MID$(DAT.LIST$,10,3) <> " " THEN BEGIN
+1274: 10bc:                         FORMAT.FILE.NAME$ = DIRECTORY.NAME$     +       \
+1275: 10e0:                                             FORMAT.FILE.LAST$
+1276: 10e0:                         GOSUB WRITE.FILECHCK.CFG 
+1277: 10f5:                     ENDIF ELSE IF MID$(DAT.LIST$,1,8) <> " " AND        \
+1278: 116c:                         MID$(DAT.LIST$,10,3) = " "  THEN BEGIN           
+1279: 116c: 
+1280: 116c:                         FORMAT.FILE.NAME$ = DIRECTORY.NAME$ +           \
+1281: 1190:                                                 FORMAT.FILE.FIRST$
+1282: 1190:                         GOSUB WRITE.FILECHCK.CFG
+1283: 11a5:                     ENDIF ELSE IF MID$(DAT.LIST$,1,8) <> " " AND        \
+1284: 121c:                     MID$(DAT.LIST$,10,3) <> " " THEN BEGIN
+1285: 121c: 
+1286: 121c: 
+1287: 121c:                         FORMAT.FILE.NAME$ = DIRECTORY.NAME$ +           \
+1288: 1250:                         FORMAT.FILE.FIRST$ + FORMAT.FILE.MIDDLE$ +      \
+1289: 1250:                                              FORMAT.FILE.LAST$
+1290: 1250:                         GOSUB WRITE.FILECHCK.CFG
+1291: 1262: 
+1292: 1262:                     ENDIF
+1293: 126a: 
+1294: 126a:                 ENDIF
+1295: 1272: 
+1296: 1272:             ENDIF
+1297: 127a: 
+1298: 127a:             ENDIF
+1299: 1282: 
+1300: 1282:         WEND
+1301: 129a: 
+1302: 129a:     FILE.DATA.END:
+1303: 12aa: 
+1304: 12aa:         EOD = TRUE
+1305: 12bc: 
+1306: 12bc:     RETURN
+1307: 12cc: 
+1308: 12cc: \******************************************************************************
+1309: 12cc: \***
+1310: 12cc: \***   SUBROUTINE :  WRITE.FILE.LIST
+1311: 12cc: \***
+1312: 12cc: \******************************************************************************
+1313: 12cc: 
+1314: 12cc:     WRITE.FILECHCK.CFG: 
+1315: 12dc: 
+1316: 12dc:         WRITE #FILECHCK.CFG.SESS% ; FORMAT.FILE.NAME$
+1317: 12fc: 
+1318: 12fc:     RETURN
+1319: 130c: 
+1320: 130c: \******************************************************************************
+1321: 130c: \***
+1322: 130c: \***   SUBROUTINE : CLOSE.PROCESSING
+1323: 130c: \***
+1324: 130c: \******************************************************************************
+1325: 130c: 
+1326: 130c:     CLOSE.PROCESSING:
+1327: 131c: 
+1328: 131c:         CLOSE FILECHCK.CFG.SESS%        
+1329: 132d:         CLOSE FILECHCK.BULD.SESS%
+1330: 133e: 
+1331: 133e:     RETURN
+1332: 134e: \******************************************************************************
+1333: 134e: \***
+1334: 134e: \***   SUBROUTINE : DEALLOCATE.SESSION.NUMBERS
+1335: 134e: \***
+1336: 134e: \******************************************************************************
+1337: 134e: 
+1338: 134e:     DEALLOCATE.SESSION.NUMBERS:
+1339: 135e: 
+1340: 135e:         FUNCTION.FLAG$   = "C"
+1341: 1375: 
+1342: 1375:         PASSED.INTEGER%   = ERR.SESS.NUM%
+1343: 1387:         PASSED.STRING$    = ERR.FILE.NAME$
+1344: 13a2:         GOSUB CALL.F20.SESS.NUM.UTILITY
+1345: 13b4:         ERR.SESS.NUM%     = F20.INTEGER.FILE.NO%
+1346: 13c6: 
+1347: 13c6:         PASSED.INTEGER%   = FILECHCK.CFG.SESS%
+1348: 13d8:         PASSED.STRING$    = FILECHCK.CFG.FILE$
+1349: 13f3:         GOSUB CALL.F20.SESS.NUM.UTILITY
+1350: 1405:         FILECHCK.CFG.SESS% = F20.INTEGER.FILE.NO%  
+1351: 1417: 
+1352: 1417:         PASSED.INTEGER%     = FILECHCK.DAT.SESS%
+1353: 1429:         PASSED.STRING$      = FILECHCK.DAT.FILE$
+1354: 1444:         GOSUB CALL.F20.SESS.NUM.UTILITY
+1355: 1456:         FILECHCK.DAT.SESS%  = F20.INTEGER.FILE.NO%
+1356: 1468: 
+1357: 1468:         PASSED.INTEGER%     = FILECHCK.BULD.SESS%
+1358: 147a:         PASSED.STRING$      = FILECHCK.BULD.CFG$
+1359: 1495:         GOSUB CALL.F20.SESS.NUM.UTILITY
+1360: 14a7:         FILECHCK.BULD.SESS% = F20.INTEGER.FILE.NO%
+1361: 14b9: 
+1362: 14b9:     RETURN
+1363: 14c9: 
+1364: 14c9: \******************************************************************************
+1365: 14c9: \***
+1366: 14c9: \***   SUBROUTINE : TIDY.UP
+1367: 14c9: \***
+1368: 14c9: \******************************************************************************	
+1369: 14c9:     TIDY.UP:
+1370: 14d9: 
+1371: 14d9:         PRINT TIME.STAMP$(2) + "-PROCESSING COMPLETED SUCCESSFULLY"
+1372: 1507: 
+1373: 1507:         PRINT #ERR.SESS.NUM% ; "NEW LIST OF FILES BEEN CREATED SUCCESSFULLY"
+1374: 1523:         CLOSE ERR.SESS.NUM%   
+1375: 1534:         CALL OSSHELL("REN" + SPACE$ + ERR.FILE.NAME$ + SPACE$ + "C:/FILECHCK.OK")
+1376: 156f:         CLOSE FILECHCK.DAT.SESS%
+1377: 1580:         CALL OSSHELL("DEL" + SPACE$ + FILECHCK.DAT.FILE$)
+1378: 15af: 
+1379: 15af:     RETURN
+1380: 15bf: \******************************************************************************
+1381: 15bf: \***
+1382: 15bf: \***   SUBROUTINE : FILECHCK.HELP.MENU
+1383: 15bf: \***
+1384: 15bf: \******************************************************************************
+1385: 15bf: 
+1386: 15bf:     FILECHCK.HELP.MENU:
+1387: 15cf: 
+1388: 15cf:          PRINT "                                                             "
+1389: 15e0:          PRINT "   **********************************************************"
+1390: 15f1:          PRINT "   *                                                        *"
+1391: 1602:          PRINT "   *           FILECHCK UTILITY - V1.0                      *"
+1392: 1613:          PRINT "   *                                                        *"
+1393: 1624:          PRINT "   *                                                        *"
+1394: 1635:          PRINT "   *  FILECHCK Utility Help                                 *"
+1395: 1646:          PRINT "   *                                                        *"
+1396: 1657:          PRINT "   *  FILECHCK <> - Program runs against FILECHCK.CFG and   *"
+1397: 1668:          PRINT "   *  checks the existence of the files in the controller.  *"
+1398: 1679:          PRINT "   *  FILECHCK.CFG should be present in the root drive with *"
+1399: 168a:          PRINT "   *  valid list of files.                                  *"
+1400: 169b:          PRINT "   *                                                        *"
+1401: 16ac:          PRINT "   *  FILECHCK <DUMP> - Please run the program in this      *"
+1402: 16bd:          PRINT "   *  mode only if you want to create a new list of files   *"
+1403: 16ce:          PRINT "   *  in FILECHCK.CFG . But please make sure you are        *"
+1404: 16df:          PRINT "   *  keeping  FILEBULD.CFG with valid list of directory    *"
+1405: 16f0:          PRINT "   *  names in root drive. As new list will be made based   *"
+1406: 1701:          PRINT "   *  on the directory names supplied                       *"
+1407: 1712:          PRINT "   *                                                        *"
+1408: 1723:          PRINT "   **********************************************************"
+1409: 1734: 
+1410: 1734:          GOSUB STOP.PROGRAM
+1411: 1746: 
+1412: 1746: \******************************************************************************
+1413: 1746: \***                                                                           
+1414: 1746: \***   ERROR ROUTINE  :  FILE.ERROR                                            
+1415: 1746: \***                                                                           
+1416: 1746: \***   Call APPLICATION.LOG to log an event 106 with                           
+1417: 1746: \***   flag, current report number and current key                             
+1418: 1746: \***                                                                           
+1419: 1746: \***                                                                           
+1420: 1746: \******************************************************************************
+1421: 1746: 
+1422: 1746:      FILE.ERROR:
+1423: 1756:         
+1424: 1756:          VAR.STRING.1$ = FILE.OPERATION$                     +          \
+1425: 17e0:                 CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +          \
+1426: 17e0:                 CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +          \
+1427: 17e0:                 CURRENT.CODE$
+1428: 17e0:          VAR.STRING.2$ = "FILECHCK"
+1429: 17f7:          MESSAGE.NO%   = 0
+1430: 1808:          EVENT.NO%     = 106
+1431: 1819: 
+1432: 1819:          RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,               \
+1433: 1852:                       VAR.STRING.2$,EVENT.NO%)
+1434: 1852: 
+1435: 1852:          GOTO STOP.PROGRAM
+1436: 185d: 
+1437: 185d: \******************************************************************************
+1438: 185d: \***
+1439: 185d: \***   SUBROUTINE : TERMINATION
+1440: 185d: \***
+1441: 185d: \******************************************************************************
+1442: 185d: 
+1443: 185d:      TERMINATION:       
+1444: 186d:               
+1445: 186d: 
+1446: 186d:          GOSUB CLOSE.PROCESSING
+1447: 187f:          GOSUB DEALLOCATE.SESSION.NUMBERS
+1448: 1891:          GOSUB STOP.PROGRAM
+1449: 18a3: 
+1450: 18a3: \******************************************************************************
+1451: 18a3: \***
+1452: 18a3: \***   SUBROUTINE : ERROR.DETECTED
+1453: 18a3: \***
+1454: 18a3: \******************************************************************************
+1455: 18a3: 
+1456: 18a3:     ERROR.DETECTED:
+1457: 18b3: 
+1458: 18b3: 
+1459: 18b3:         IF ERR = "OE" AND ERRF% = FILECHCK.BULD.SESS% THEN BEGIN
+1460: 18fc:             PRINT TIME.STAMP$(2) + "-BUILD CONFIGURATION FILE IS MISSING"
+1461: 192a:             GOSUB STOP.PROGRAM
+1462: 193c:         ENDIF
+1463: 1944: 
+1464: 1944: 
+1465: 1944:         IF ERR = "OE" AND ERRF% = FILECHCK.CFG.SESS% THEN BEGIN 
+1466: 198d:             PRINT TIME.STAMP$(2) + "-CONFIGURATION FILE IS MISSING"
+1467: 19bb:             GOSUB STOP.PROGRAM
+1468: 19cd:         ENDIF
+1469: 19d5: 
+1470: 19d5:         IF ERR = "OE" THEN BEGIN
+1471: 19fb: 
+1472: 19fb:             PRINT #ERR.SESS.NUM% ; LINE.CHR$ + " IS MISSING IN THE CONTROLLER"
+1473: 1a2a:             FOUND% = FOUND% + 1
+1474: 1a36:             RESUME 
+1475: 1a4d: 
+1476: 1a4d:         ENDIF
+1477: 1a55: 
+1478: 1a55: 
+1479: 1a55:         GOSUB FILE.ERROR
+1480: 1a67: 
+1481: 1a67: \******************************************************************************
+1482: 1a67: \***
+1483: 1a67: \***   SUBROUTINE : STOP.PROGRAM
+1484: 1a67: \***
+1485: 1a67: \******************************************************************************
+1486: 1a67: 
+1487: 1a67:      STOP.PROGRAM:
+1488: 1a7c: 
+1489: 1a7c:      END
+1490: 1a7c: 
+1491: 1a7c: \******************************************************************************
+1492: 1a7c: \******************************************************************************
+1493: 1a7c: \***
+1494: 1a7c: \***    End of program 
+1495: 1a7c: \***
+1496: 1a7c: \******************************************************************************
+1497: 1a7c: \******************************************************************************
+1498: 1a7c: End of Compilation

@@ -1,0 +1,270 @@
+   1: 0000:   
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  KEYED
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  CCRSNFUN.BAS
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***                               FILE OF RETURN REASON CODES
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***      VERSION A : Michael J. Kelsall      14th September 1993
+  16: 0000: \***
+  17: 0000: \***      VERSION B : Andy Cotton             17th November 2003
+  18: 0000: \***      
+  19: 0000: \*****************************************************************************
+  20: 0000: \*****************************************************************************
+  21: 0000: 
+  22: 0000:   INTEGER*2 GLOBAL            \
+  23: 0000:          CURRENT.REPORT.NUM% 
+  24: 0000:          
+  25: 0000:   STRING GLOBAL               \
+  26: 0000:          CURRENT.CODE$,       \
+  27: 0000:          FILE.OPERATION$           
+  28: 0000: 
+  29: 0000:   %INCLUDE CCRSNDEC.J86
+  30: 0000: 
+  31: 0000: \*****************************************************************************
+  32: 0000: \*****************************************************************************
+  33: 0000: \***
+  34: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  35: 0000: \***
+  36: 0000: \***                   FILE TYPE:  KEYED
+  37: 0000: \***
+  38: 0000: \***                   REFERENCE:  CCRSNDEC.J86
+  39: 0000: \***
+  40: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  41: 0000: \***                               FILE OF RETURN REASON CODES 
+  42: 0000: \***
+  43: 0000: \***
+  44: 0000: \***      VERSION A : Michael J. Kelsall      14th September 1993
+  45: 0000: \***
+  46: 0000: \***      Version B : Andy Cotton             16th June 2000
+  47: 0000: \***
+  48: 0000: \***      Version C : Andy Cotton             17th November 2003
+  49: 0000: \***      Added alternate reason code
+  50: 0000: \***      
+  51: 0000: \*****************************************************************************
+  52: 0000: \*****************************************************************************
+  53: 0000: 
+  54: 0000: STRING GLOBAL                   \
+  55: 0000:    CCRSN.FILE.NAME$,            \
+  56: 0000:    CCRSN.REASON$,               \  1 byte UPD;UK/TAI -1 = Faulty,          
+  57: 0000:                                 \                     2 = Damage in transit,
+  58: 0000:                                 \                 *   3 = Recall, Supplier Recall                       
+  59: 0000:                                 \                     4 = Out of date,
+  60: 0000:                                 \                     5 = 100% returns,
+  61: 0000:                                 \                     6 = Damaged in store,
+  62: 0000:                                 \                 *   7 = Fire/Flood damage, Customer Return (Not Stocked)
+  63: 0000:                                 \                 *   8 = Cust. special waste, Customer Return(damaged)
+  64: 0000:                                 \                 *   9 = Chilled food, Promotional Remainder
+  65: 0000:                                 \                    10 = Chiller breakdown, 
+  66: 0000:                                 \                 *  11 = Out of date (C Foods), End of Season Recall
+  67: 0000:                                 \                 *  12 = Company / Shop use, Store Use
+  68: 0000:                                 \                    13 = Assured Shopping,
+  69: 0000:                                 \                 *  14 = Promise of Satisfaction, Tester
+  70: 0000:                                 \                 *  15 = Known Theft, Known Theft
+  71: 0000:                                 \                 *  16 = Beauty Consult allowance, Damaged on Receipt
+  72: 0000:                                 \                 *  17 = Stolen in transit, Damaged in Store
+  73: 0000:                                 \                 *  18 = Inter Store transfer, Inter Store Transfer
+  74: 0000:                                 \                    19 = Rejected photowork,
+  75: 0000:                                 \                    20 = Other transfers,
+  76: 0000:                                 \                    21 = Missing,
+  77: 0000:                                 \                 *  22 = Excess, Excess Delivery
+  78: 0000:                                 \                 *  23 = Repair, Range Change
+  79: 0000:                                 \                    24 = Other.
+  80: 0000:                                 \                    25 = Faulty Deliv (Ch Fds)
+  81: 0000:                                 \                    26 = Plan4
+  82: 0000:                                 \                 *  27 = Breakage and Loss, Out of Age
+  83: 0000:    CCRSN.DESC$,                 \ 30 byte ASC
+  84: 0000:    CCRSN.PSS30.REQ$,            \ 1  byte ASC - Set to "Y" if reason required in program
+  85: 0000:                                 \               Set to " " if reason not required in program
+  86: 0000:    CCRSN.PSS93.REQ$,            \ 1  byte ASC - Set to numeric value of on screen position if required for PSS93
+  87: 0000:                                 \               Set to zero if reason not required in program
+  88: 0000:    CCRSN.ALTERNATE.REASON$,     \ 1  byte UPD   This holds the alternate reason code (e.g. if the key is the head
+  89: 0000:                                 \               office Reason then this value will be the controller reason                                
+  90: 0000:    CCRSN.FILLER$                ! 17 byte ASC
+  91: 0000:    
+  92: 0000: 
+  93: 0000: INTEGER*2 GLOBAL                \
+  94: 0000:    CCRSN.RECL%,                 \
+  95: 0000:    CCRSN.REPORT.NUM%,           \
+  96: 0000:    CCRSN.SESS.NUM%
+  97: 0000: 
+  98: 0000: 
+  99: 0000: 
+ 100: 0000: 
+ 101: 0000:   FUNCTION CCRSN.SET PUBLIC
+ 102: 0014: 
+ 103: 0014:      INTEGER*2 CCRSN.SET
+ 104: 0014:      CCRSN.SET = 1
+ 105: 0019: 
+ 106: 0019:        CCRSN.REPORT.NUM% = 319
+ 107: 0022:        CCRSN.RECL%       = 50
+ 108: 002b:        CCRSN.FILE.NAME$  = "CCRSN"
+ 109: 003a:   
+ 110: 003a:      CCRSN.SET = 0
+ 111: 003f: 
+ 112: 003f:   END FUNCTION
+ 113: 004e: 
+ 114: 004e: 
+ 115: 004e: 
+ 116: 004e:   FUNCTION READ.CCRSN PUBLIC
+ 117: 0062: 
+ 118: 0062:     INTEGER*2 READ.CCRSN
+ 119: 0062:        READ.CCRSN = 1    
+ 120: 0067:        IF END #CCRSN.SESS.NUM% THEN READ.ERROR   
+ 121: 007b:        READ FORM "T2,C30,C1,C1,C1,C16"; #CCRSN.SESS.NUM%                         \
+ 122: 00d9:          KEY CCRSN.REASON$;                                             \         
+ 123: 00d9:              CCRSN.DESC$,                                               \
+ 124: 00d9:              CCRSN.PSS30.REQ$,                                          \ 
+ 125: 00d9:              CCRSN.PSS93.REQ$,                                          \
+ 126: 00d9:              CCRSN.ALTERNATE.REASON$,                                   \ BAC 
+ 127: 00d9:              CCRSN.FILLER$              
+ 128: 00d9:        READ.CCRSN = 0
+ 129: 00de:        EXIT FUNCTION     
+ 130: 00e0: 
+ 131: 00e0:     READ.ERROR:
+ 132: 00e0:        CURRENT.CODE$ = CCRSN.REASON$
+ 133: 00f6:        FILE.OPERATION$ = "R"
+ 134: 0105:        CURRENT.REPORT.NUM% = CCRSN.REPORT.NUM%
+ 135: 0113:        EXIT FUNCTION
+ 136: 0115: 
+ 137: 0115:   END FUNCTION
+ 138: 0124:   
+ 139: 0124: 
+ 140: 0124: 
+ 141: 0124:   FUNCTION READ.CCRSN.LOCKED PUBLIC
+ 142: 0138: 
+ 143: 0138:     INTEGER*2 READ.CCRSN.LOCKED
+ 144: 0138:     
+ 145: 0138:        READ.CCRSN.LOCKED = 1    
+ 146: 013d:        IF END #CCRSN.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 147: 0151:        READ FORM "T2,C30,C1,C1,C1,C16"; #CCRSN.SESS.NUM% AUTOLOCK                \
+ 148: 01af:          KEY CCRSN.REASON$;                                             \         
+ 149: 01af:              CCRSN.DESC$,                                               \
+ 150: 01af:              CCRSN.PSS30.REQ$,                                          \ 
+ 151: 01af:              CCRSN.PSS93.REQ$,                                          \
+ 152: 01af:              CCRSN.ALTERNATE.REASON$,                                   \ BAC 
+ 153: 01af:              CCRSN.FILLER$              
+ 154: 01af:        READ.CCRSN.LOCKED = 0
+ 155: 01b4:        EXIT FUNCTION     
+ 156: 01b6:         
+ 157: 01b6:     READ.LOCKED.ERROR:
+ 158: 01b6: 
+ 159: 01b6:         CURRENT.CODE$ = CCRSN.REASON$
+ 160: 01cc:         FILE.OPERATION$ = "R"
+ 161: 01db:         CURRENT.REPORT.NUM% = CCRSN.REPORT.NUM%
+ 162: 01e9:            
+ 163: 01e9:         EXIT FUNCTION
+ 164: 01eb: 
+ 165: 01eb:   END FUNCTION  
+ 166: 01fa: 
+ 167: 01fa: 
+ 168: 01fa: 
+ 169: 01fa:   FUNCTION WRITE.HOLD.CCRSN PUBLIC
+ 170: 020e: 
+ 171: 020e:     INTEGER*2 WRITE.HOLD.CCRSN
+ 172: 020e:     
+ 173: 020e:        WRITE.HOLD.CCRSN = 1
+ 174: 0213:        IF END #CCRSN.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 175: 0227:        WRITE FORM "C1,C30,C1,C1,C1,C16"; HOLD #CCRSN.SESS.NUM%;                  \        
+ 176: 0299:              CCRSN.REASON$,                                             \         
+ 177: 0299:              CCRSN.DESC$,                                               \
+ 178: 0299:              CCRSN.PSS30.REQ$,                                          \ 
+ 179: 0299:              CCRSN.PSS93.REQ$,                                          \
+ 180: 0299:              CCRSN.ALTERNATE.REASON$,                                   \ BAC 
+ 181: 0299:              CCRSN.FILLER$              
+ 182: 0299:        WRITE.HOLD.CCRSN = 0
+ 183: 029e:        EXIT FUNCTION         
+ 184: 02a0:      
+ 185: 02a0:     WRITE.HOLD.ERROR:
+ 186: 02a0:        FILE.OPERATION$ = "W"
+ 187: 02af:        CURRENT.REPORT.NUM% = CCRSN.REPORT.NUM%
+ 188: 02bd:        CURRENT.CODE$ = CCRSN.REASON$
+ 189: 02d3:        EXIT FUNCTION    
+ 190: 02d5: 
+ 191: 02d5:   END FUNCTION
+ 192: 02e4: 
+ 193: 02e4: 
+ 194: 02e4: 
+ 195: 02e4:   FUNCTION WRITE.UNLOCK.CCRSN PUBLIC
+ 196: 02f8: 
+ 197: 02f8:     INTEGER*2 WRITE.UNLOCK.CCRSN
+ 198: 02f8:     
+ 199: 02f8:        WRITE.UNLOCK.CCRSN = 1
+ 200: 02fd:        IF END #CCRSN.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 201: 0311:        WRITE FORM "C1,C30,C1,C1,C1,C16"; #CCRSN.SESS.NUM% AUTOUNLOCK;                    \        
+ 202: 0383:              CCRSN.REASON$,                                             \         
+ 203: 0383:              CCRSN.DESC$,                                               \
+ 204: 0383:              CCRSN.PSS30.REQ$,                                          \ 
+ 205: 0383:              CCRSN.PSS93.REQ$,                                          \
+ 206: 0383:              CCRSN.ALTERNATE.REASON$,                                   \ BAC 
+ 207: 0383:              CCRSN.FILLER$              
+ 208: 0383:        WRITE.UNLOCK.CCRSN = 0
+ 209: 0388:        EXIT FUNCTION         
+ 210: 038a:      
+ 211: 038a:     WRITE.UNLOCK.ERROR:
+ 212: 038a:        FILE.OPERATION$ = "W"
+ 213: 0399:        CURRENT.REPORT.NUM% = CCRSN.REPORT.NUM%
+ 214: 03a7:        CURRENT.CODE$ = CCRSN.REASON$
+ 215: 03bd:        EXIT FUNCTION    
+ 216: 03bf: 
+ 217: 03bf:   END FUNCTION
+ 218: 03ce: 
+ 219: 03ce: 
+ 220: 03ce: 
+ 221: 03ce:   FUNCTION WRITE.HOLD.UNLOCK.CCRSN PUBLIC
+ 222: 03e2: 
+ 223: 03e2:     INTEGER*2 WRITE.HOLD.UNLOCK.CCRSN
+ 224: 03e2:     
+ 225: 03e2:        WRITE.HOLD.UNLOCK.CCRSN = 1
+ 226: 03e7:        IF END #CCRSN.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 227: 03fb:        WRITE FORM "C1,C30,C1,C1,C1,C16"; HOLD #CCRSN.SESS.NUM% AUTOUNLOCK;       \        
+ 228: 046d:              CCRSN.REASON$,                                             \         
+ 229: 046d:              CCRSN.DESC$,                                               \
+ 230: 046d:              CCRSN.PSS30.REQ$,                                          \ 
+ 231: 046d:              CCRSN.PSS93.REQ$,                                          \
+ 232: 046d:              CCRSN.ALTERNATE.REASON$,                                   \ BAC 
+ 233: 046d:              CCRSN.FILLER$              
+ 234: 046d:        WRITE.HOLD.UNLOCK.CCRSN = 0
+ 235: 0472:        EXIT FUNCTION         
+ 236: 0474:      
+ 237: 0474:     WRITE.HOLD.UNLOCK.ERROR:
+ 238: 0474:        FILE.OPERATION$ = "W"
+ 239: 0483:        CURRENT.REPORT.NUM% = CCRSN.REPORT.NUM%
+ 240: 0491:        CURRENT.CODE$ = CCRSN.REASON$
+ 241: 04a7:        EXIT FUNCTION    
+ 242: 04a9: 
+ 243: 04a9:   END FUNCTION
+ 244: 04b8: 
+ 245: 04b8: 
+ 246: 04b8: 
+ 247: 04b8:   FUNCTION WRITE.CCRSN PUBLIC
+ 248: 04cc: 
+ 249: 04cc:     INTEGER*2 WRITE.CCRSN
+ 250: 04cc:        WRITE.CCRSN = 1
+ 251: 04d1:        IF END #CCRSN.SESS.NUM% THEN WRITE.ERROR
+ 252: 04e5:        WRITE FORM "C1,C30,C1,C1,C1,C16"; #CCRSN.SESS.NUM%;               \        
+ 253: 0557:              CCRSN.REASON$,                                             \         
+ 254: 0557:              CCRSN.DESC$,                                               \
+ 255: 0557:              CCRSN.PSS30.REQ$,                                          \ 
+ 256: 0557:              CCRSN.PSS93.REQ$,                                          \ 
+ 257: 0557:              CCRSN.ALTERNATE.REASON$,                                   \ BAC
+ 258: 0557:              CCRSN.FILLER$              
+ 259: 0557:        WRITE.CCRSN = 0
+ 260: 055c:        EXIT FUNCTION         
+ 261: 055e:      
+ 262: 055e:     WRITE.ERROR:
+ 263: 055e:        FILE.OPERATION$ = "W"
+ 264: 056d:        CURRENT.REPORT.NUM% = CCRSN.REPORT.NUM%
+ 265: 057b:        CURRENT.CODE$ = CCRSN.REASON$
+ 266: 0591:        EXIT FUNCTION    
+ 267: 0593: 
+ 268: 0593:   END FUNCTION
+ 269: 05a2: 
+ 270: 05a2: End of Compilation

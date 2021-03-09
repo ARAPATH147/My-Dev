@@ -1,0 +1,307 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* Advanced Shipping Notification (ASN) FILE FUNCTIONS            */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : ASNFUN.BAS                                       */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.           12 DECEMBER 2006   */
+   8: 0000: \/*                                                                */
+   9: 0000: \/* VERSION B           Harpal Matharu          28 November 2007   */
+  10: 0000: \/*                                                                */
+  11: 0000: \/* VERSION C           Stuart Highley          11 July 2008       */
+  12: 0000: \/* Reconverted 1-byte to 2-byte integer.                          */
+  13: 0000: \/                                                                 */
+  14: 0000: \/******************************************************************/
+  15: 0000: 
+  16: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  17: 0000: 
+  18: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  19: 0000:                     FILE.OPERATION$
+  20: 0000: 
+  21: 0000:    %INCLUDE ASNDEC.J86
+  22: 0000: \/******************************************************************/
+  23: 0000: \/*                                                                */
+  24: 0000: \/* Advanced Shiping Notification FILE GLOBAl VARIABLE DECLARATIONS*/
+  25: 0000: \/*                                                                */
+  26: 0000: \/* REFERENCE   : ASNDEC.J86                                       */
+  27: 0000: \/*                                                                */
+  28: 0000: \/* VERSION A.          Neil Bennett.           12 DECEMBER 2006   */
+  29: 0000: \/*                                                                */
+  30: 0000: \/******************************************************************/
+  31: 0000: 
+  32: 0000:    STRING GLOBAL                \
+  33: 0000:       ASN.FILE.NAME$,           \
+  34: 0000:                                 \
+  35: 0000:       ASN.CRTN.NO$(1),          \ PD 4 (20 per record)
+  36: 0000:       ASN.NO$,                  \ PD 35
+  37: 0000:       ASN.SUP.REF$,             \ PD 37
+  38: 0000:       ASN.FILLER$               ! ASC 6
+  39: 0000: 
+  40: 0000:    INTEGER*2 GLOBAL             \
+  41: 0000:       ASN.RECL%,                \
+  42: 0000:       ASN.REPORT.NUM%,          \
+  43: 0000:       ASN.SESS.NUM%,            \
+  44: 0000:                                 \
+  45: 0000:       ASN.CHAIN%                !
+  46: 0000: 
+  47: 0000:    INTEGER*2 GLOBAL             \
+  48: 0000:       ASN.TOT.CNT%              !
+  49: 0000: 
+  50: 0000: \/******************************************************************/
+  51: 0000: 
+  52: 0000:    %INCLUDE BTCMEM.J86
+  53: 0000: !********************************************************************
+  54: 0000: !***
+  55: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+  56: 0000: !***    AUTHOR:         Stuart William McConnachie
+  57: 0000: !***    DATE:           26th February 2006
+  58: 0000: !***
+  59: 0000: !********************************************************************
+  60: 0000: !***
+  61: 0000: !***    Controller CBASIC Memory Functions
+  62: 0000: !***
+  63: 0000: !********************************************************************
+  64: 0000: 
+  65: 0000: !Get a single byte integer from a string offset
+  66: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+  67: 0000:     STRING S$
+  68: 0000:     INTEGER*2 P%
+  69: 0000:     INTEGER*2 GETN1
+  70: 0000: END FUNCTION
+  71: 0000: 
+  72: 0000: !Get a two byte integer from a string offset
+  73: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+  74: 0000:     STRING S$
+  75: 0000:     INTEGER*2 P%
+  76: 0000:     INTEGER*2 GETN2
+  77: 0000: END FUNCTION
+  78: 0000: 
+  79: 0000: !Get a four byte integer from a string offset
+  80: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+  81: 0000:     STRING S$
+  82: 0000:     INTEGER*2 P%
+  83: 0000:     INTEGER*4 GETN4
+  84: 0000: END FUNCTION
+  85: 0000: 
+  86: 0000: !Get a 10 byte CBASIC real from a string offset
+  87: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+  88: 0000:     STRING S$
+  89: 0000:     INTEGER*2 P%
+  90: 0000:     REAL GETR10
+  91: 0000: END FUNCTION
+  92: 0000: 
+  93: 0000: !Put a single byte integer into a string at offset
+  94: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+  95: 0000:     STRING S$
+  96: 0000:     INTEGER*2 P%
+  97: 0000:     INTEGER*1 N%
+  98: 0000:     INTEGER*1 PUTN1
+  99: 0000: END FUNCTION
+ 100: 0000: 
+ 101: 0000: !Put a two byte integer into a string at offset
+ 102: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 103: 0000:     STRING S$
+ 104: 0000:     INTEGER*2 P%
+ 105: 0000:     INTEGER*2 N%
+ 106: 0000:     INTEGER*1 PUTN2
+ 107: 0000: END FUNCTION
+ 108: 0000: 
+ 109: 0000: !Put a four byte integer into a string at offset
+ 110: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 111: 0000:     STRING S$
+ 112: 0000:     INTEGER*2 P%
+ 113: 0000:     INTEGER*4 N%
+ 114: 0000:     INTEGER*1 PUTN4
+ 115: 0000: END FUNCTION
+ 116: 0000: 
+ 117: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 118: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 119: 0000:     STRING S$
+ 120: 0000:     INTEGER*2 P%
+ 121: 0000:     REAL R
+ 122: 0000:     INTEGER*1 PUTR10
+ 123: 0000: END FUNCTION
+ 124: 0000: 
+ 125: 0000: !Peek a two byte integer from a memory address
+ 126: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 127: 0000:     INTEGER*4 A%
+ 128: 0000:     INTEGER*2 PEEKN2
+ 129: 0000: END FUNCTION
+ 130: 0000: 
+ 131: 0000: !Peek a four byte integer from a memory address
+ 132: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 133: 0000:     INTEGER*4 A%
+ 134: 0000:     INTEGER*4 PEEKN4
+ 135: 0000: END FUNCTION
+ 136: 0000: 
+ 137: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 138: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 139: 0000:     INTEGER*4 A%
+ 140: 0000:     REAL PEEKR10
+ 141: 0000: END FUNCTION
+ 142: 0000: 
+ 143: 0000: !Poke a two byte integer to a memory address
+ 144: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 145: 0000:     INTEGER*4 A%
+ 146: 0000:     INTEGER*2 N%
+ 147: 0000:     INTEGER*1 POKEN2
+ 148: 0000: END FUNCTION
+ 149: 0000: 
+ 150: 0000: !Poke a four byte integer to a memory address
+ 151: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 152: 0000:     INTEGER*4 A%
+ 153: 0000:     INTEGER*4 N%
+ 154: 0000:     INTEGER*1 POKEN4
+ 155: 0000: END FUNCTION
+ 156: 0000: 
+ 157: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 158: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 159: 0000:     INTEGER*4 A%
+ 160: 0000:     REAL R
+ 161: 0000:     INTEGER*1 POKER10
+ 162: 0000: END FUNCTION
+ 163: 0000: 
+ 164: 0000: 
+ 165: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 166: 0000: \/* FUNCTION GET.ASN.KEY                                           */
+ 167: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 168: 0000: 
+ 169: 0000:    FUNCTION GET.ASN.KEY$
+ 170: 0014: 
+ 171: 0014:       STRING    GET.ASN.KEY$
+ 172: 0014:       STRING    work$
+ 173: 0014: 
+ 174: 0014:       work$ = ASN.NO$ + STRING$(2, CHR$(0))
+ 175: 0039:       CALL PUTN2(work$, 18, ASN.CHAIN%)
+ 176: 0052: 
+ 177: 0052:       GET.ASN.KEY$ = work$
+ 178: 0064:       work$ = ""
+ 179: 0071: 
+ 180: 0071:    END FUNCTION
+ 181: 0082: 
+ 182: 0082: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 183: 0082: \/* FUNCTION ASN.SET                                               */
+ 184: 0082: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 185: 0082: 
+ 186: 0082:    FUNCTION ASN.SET PUBLIC
+ 187: 0096: 
+ 188: 0096:       INTEGER*1 ASN.SET
+ 189: 0096: 
+ 190: 0096:       ASN.REPORT.NUM% = 734
+ 191: 009f:       ASN.RECL%       = 127
+ 192: 00a8:       ASN.FILE.NAME$  = "ASN"
+ 193: 00b7: 
+ 194: 00b7:    END FUNCTION
+ 195: 00c6: 
+ 196: 00c6: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 197: 00c6: \/* FUNCTION READ.ASN                                              */
+ 198: 00c6: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 199: 00c6: 
+ 200: 00c6:    FUNCTION READ.ASN PUBLIC
+ 201: 00da: 
+ 202: 00da:       INTEGER*2 READ.ASN
+ 203: 00da:       INTEGER*2 i%
+ 204: 00da:       STRING    ASN.KEY$
+ 205: 00da:       STRING    work$
+ 206: 00da: 
+ 207: 00da:       READ.ASN = 1
+ 208: 00df: 
+ 209: 00df:       ASN.KEY$ = GET.ASN.KEY$
+ 210: 00ec: 
+ 211: 00ec:       DIM ASN.CRTN.NO$(20)
+ 212: 0113: 
+ 213: 0113:       IF END #ASN.SESS.NUM% THEN READ.ERROR
+ 214: 0127:       READ FORM "T21,C3,I1,C80,C23";                                \
+ 215: 0175:            #ASN.SESS.NUM%                                           \
+ 216: 0175:            KEY ASN.KEY$;                                            \
+ 217: 0175:                ASN.SUP.REF$,                                        \
+ 218: 0175:                ASN.TOT.CNT%,                                        \
+ 219: 0175:                work$,                                               \
+ 220: 0175:                ASN.FILLER$
+ 221: 0175: 
+ 222: 0175:       ! Converts single byte to 2 byte integer                      ! CSH
+ 223: 0175:       IF ASN.TOT.CNT% < 0 THEN ASN.TOT.CNT% = ASN.TOT.CNT% + 256    ! CSH
+ 224: 0188: 
+ 225: 0188:       FOR i% = 0 TO 19
+ 226: 0190:          ASN.CRTN.NO$(i% +1) = MID$(work$, (i%*4) +1, 4)
+ 227: 01c1:       NEXT i%
+ 228: 01cf: 
+ 229: 01cf:       READ.ASN = 0
+ 230: 01d4:    EXIT FUNCTION
+ 231: 01d6: 
+ 232: 01d6: 
+ 233: 01d6: READ.ERROR:
+ 234: 01d6: 
+ 235: 01d6:       FILE.OPERATION$     = "R"
+ 236: 01e5:       CURRENT.REPORT.NUM% = ASN.REPORT.NUM%
+ 237: 01f3:       CURRENT.CODE$       = ""
+ 238: 0202: 
+ 239: 0202:    END FUNCTION
+ 240: 0211: 
+ 241: 0211: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 242: 0211: \/* FUNCTION WRITE.ASN                                             */
+ 243: 0211: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 244: 0211: 
+ 245: 0211:    FUNCTION WRITE.ASN PUBLIC
+ 246: 0225: 
+ 247: 0225:       INTEGER*2 WRITE.ASN
+ 248: 0225:       INTEGER*2 i%
+ 249: 0225:       STRING    ASN.KEY$
+ 250: 0225:       STRING    work$
+ 251: 0225: 
+ 252: 0225:       WRITE.ASN = 1
+ 253: 022a: 
+ 254: 022a:       ASN.KEY$ = GET.ASN.KEY$
+ 255: 0237: 
+ 256: 0237:       work$ = ""
+ 257: 0244:       FOR i% = 1 TO 20
+ 258: 024c:          work$ = work$                                              \
+ 259: 02b6:                + RIGHT$(STRING$(4,CHR$(0)) + ASN.CRTN.NO$(i%), 4)
+ 260: 02b6:       NEXT i%
+ 261: 02c4: 
+ 262: 02c4:       IF END #ASN.SESS.NUM% THEN WRITE.ERROR
+ 263: 02d8:       WRITE FORM "C20,C3,I1,C80,C23";                               \
+ 264: 0330:            #ASN.SESS.NUM%;                                          \
+ 265: 0330:                ASN.KEY$,                                            \
+ 266: 0330:                ASN.SUP.REF$,                                        \
+ 267: 0330:                ASN.TOT.CNT%,                                        \
+ 268: 0330:                work$,                                               \
+ 269: 0330:                ASN.FILLER$
+ 270: 0330: 
+ 271: 0330:       WRITE.ASN = 0
+ 272: 0335:       EXIT FUNCTION
+ 273: 0337: 
+ 274: 0337: WRITE.ERROR:
+ 275: 0337: 
+ 276: 0337:       FILE.OPERATION$ = "W"
+ 277: 0346:       CURRENT.REPORT.NUM% = ASN.REPORT.NUM%
+ 278: 0354:       CURRENT.CODE$ = ""
+ 279: 0363: 
+ 280: 0363:    END FUNCTION
+ 281: 0372: 
+ 282: 0372: \/******************************************************************/
+ 283: 0372: 
+ 284: 0372: FUNCTION DELETE.ASN PUBLIC
+ 285: 0386: 
+ 286: 0386:       INTEGER*2 DELETE.ASN
+ 287: 0386:       INTEGER*2 i%
+ 288: 0386:       STRING    ASN.KEY$
+ 289: 0386:       STRING    work$
+ 290: 0386: 
+ 291: 0386:       DELETE.ASN = 1
+ 292: 038b: 
+ 293: 038b:       ASN.KEY$ = GET.ASN.KEY$
+ 294: 0398:       DELREC ASN.SESS.NUM%;ASN.KEY$
+ 295: 03ac: 
+ 296: 03ac:       DELETE.ASN = 0
+ 297: 03b1:    EXIT FUNCTION
+ 298: 03b3: 
+ 299: 03b3: 
+ 300: 03b3: DELETE.ERROR:
+ 301: 03b3: 
+ 302: 03b3:       FILE.OPERATION$     = "D"
+ 303: 03c2:       CURRENT.REPORT.NUM% = ASN.REPORT.NUM%
+ 304: 03d0:       CURRENT.CODE$       = ""
+ 305: 03df: 
+ 306: 03df:    END FUNCTION
+ 307: 03ee: End of Compilation

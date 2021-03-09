@@ -1,0 +1,211 @@
+%INCLUDE PSBF01G.J86
+%INCLUDE PSBF20G.J86
+%INCLUDE IRFDEC.J86 
+%INCLUDE IDFDEC.J86
+%INCLUDE BOOTSDEC.J86  
+%INCLUDE BEMFDEC.J86 
+
+
+%INCLUDE PSBF01E.J86                                                   !HSMG
+%INCLUDE IRFEXT.J86                                                    !BMJK                                                   
+%INCLUDE PSBF20E.J86
+%INCLUDE IDFEXT.J86 
+%INCLUDE BOOTSEXT.J86
+%INCLUDE BEMFEXT.J86
+%INCLUDE BTCMEM.J86
+%INCLUDE KFASMEXT.J86
+
+ON ERROR GOTO ERROR.DETECTED
+
+ 
+
+	GOSUB INITIALIZATION
+	GOSUB MAIN.PROGRAM
+ 
+
+STOP
+
+INITIALIZATION:
+
+ 
+
+	CALL IRF.SET
+	CALL IDF.SET
+	 
+	FILE.NAME$ = "IDF"
+    FILE.RECL% = RECLKF(FILE.NAME$)
+	PATTERN$   = ""
+    OFFSET%    = 0
+    MODE%      = 0
+	
+	 CREATE POSFILE "C:/ITEMUB.TXT" AS 150
+	 CREATE POSFILE "C:/ITEMB.TXT" AS 200
+
+	 FUNCTION.FLAG$ EQ "O" 
+
+     PASSED.INTEGER% EQ IRF.REPORT.NUM% 
+     PASSED.STRING$ EQ IRF.FILE.NAME$
+     GOSUB CALL.F20.SESS.NUM.UTILITY
+     IRF.SESS.NUM% EQ F20.INTEGER.FILE.NO% 
+	 
+	 PASSED.INTEGER% EQ IDF.REPORT.NUM% 
+     PASSED.STRING$ EQ IDF.FILE.NAME$
+     GOSUB CALL.F20.SESS.NUM.UTILITY
+     IDF.SESS.NUM% EQ F20.INTEGER.FILE.NO%	 
+	 
+	 
+
+RETURN
+
+CALL.F20.SESS.NUM.UTILITY: 
+        
+         FILE.OPERATION$ = FUNCTION.FLAG$
+         CURRENT.REPORT.NUM% = PASSED.INTEGER%
+         RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+                                 PASSED.STRING$)
+         IF RC% <> 0 THEN GOTO ERROR.DETECTED
+
+RETURN
+
+
+
+MAIN.PROGRAM:
+
+	IF END #IRF.SESS.NUM% THEN IRF.END
+	OPEN IRF.FILE.NAME$ KEYED RECL IRF.RECL% AS IRF.SESS.NUM% NODEL
+	
+	OPTIONS%   = 201AH
+    FID% = INITKF(FILE.NAME$,OPTIONS%)
+
+    ! Check for errors opening file
+    IF FID% <= 0 THEN BEGIN
+        
+        STOP
+    ENDIF
+
+		RECORD.COUNT% = 0
+
+    END.OF.FILE = 0
+
+    ! Continue until end of file reached
+	
+    WHILE NOT EOF
+
+        FILE.RECORD$ = STRING$(FILE.RECL%,CHR$(0))
+
+        READKF.RC% = READKF(FILE.RECORD$,PATTERN$,OFFSET%,MODE%)
+
+        IF READKF.RC% = 0 THEN BEGIN
+             
+                  ITEM.CODE$ = MID$(FILE.RECORD$,1,4)
+				  DESC$ = MID$(FILE.RECORD$,22,24)
+				  IDF.FIRST.BAR.CODE$ = MID$(FILE.RECORD$,5,6)
+				  IDF.SECOND.BAR.CODE$ = MID$(FILE.RECORD$,12,6)
+				  GOSUB READ.FILE
+				   
+	    ENDIF ELSE BEGIN
+		    IF READKF.RC% = -1 THEN BEGIN
+                EOF = -1
+            ENDIF ELSE BEGIN
+               
+	        ENDIF
+	   ENDIF
+	   
+	   WEND 
+	   
+TERMKF.RC% = TERMKF(FID%)
+
+    IF TERMKF.RC% < 0 THEN BEGIN
+         
+    ENDIF
+
+RETURN	
+
+IRF.END:   
+ 
+ 
+   CLOSE IRF.SESS.NUM%
+
+RETURN
+
+READ.FILE:
+	 
+    	  
+	  
+	        IRF.BAR.CODE$ = PACK$(RIGHT$(STRING$(22,"0") +               \
+            UNPACK$(IDF.FIRST.BAR.CODE$),22)) 
+	        RC% = READ.IRF
+	        IF RC% = 0 THEN BEGIN	 
+			     IF (IRF.INDICAT1% AND 10H) THEN BEGIN
+					PRINT "BLOCKED" + " " + UNPACK$(ITEM.CODE$) + " " + DESC$
+				 ENDIF ELSE BEGIN
+				    PRINT "NOT BLOCKED"+ " " + UNPACK$(ITEM.CODE$) + " " + DESC$
+				 ENDIF 
+		  
+				  
+			ENDIF ELSE BEGIN	
+	  
+	            IRF.BAR.CODE$ = PACK$(RIGHT$(STRING$(22,"0") +               \
+                UNPACK$(IDF.SECOND.BAR.CODE$),22)) 
+			    RC% = READ.IRF
+			  IF (IRF.INDICAT1% AND 10H) THEN BEGIN
+					PRINT "BLOCKED" + " " + UNPACK$(ITEM.CODE$) + " " + DESC$
+				 ENDIF ELSE BEGIN
+				    PRINT "NOT BLOCKED"+ " " + UNPACK$(ITEM.CODE$) + " " + DESC$
+				 ENDIF  
+			    
+			 	 
+		  
+				  
+			ENDIF	
+    
+ 
+ 
+	  
+RETURN
+
+
+TERMINATION:
+
+    FUNCTION.FLAG$ EQ "C"
+	PASSED.INTEGER% EQ IRF.REPORT.NUM% 
+    PASSED.STRING$ EQ IRF.FILE.NAME$
+    GOSUB CALL.F20.SESS.NUM.UTILITY
+    IRF.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+	
+	FUNCTION.FLAG$ EQ "C"
+	PASSED.INTEGER% EQ IDF.REPORT.NUM% 
+    PASSED.STRING$ EQ IDF.FILE.NAME$
+    GOSUB CALL.F20.SESS.NUM.UTILITY
+    UODOT.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+
+	CLOSE IDF.SESS.NUM%
+
+	CLOSE IRF.SESS.NUM%
+
+RETURN
+
+
+
+ERROR.DETECTED:
+ 
+ 
+ HX% = ERRN
+    ERRFX$ = ""
+    FOR S% = 28 TO 0 STEP -4
+        SX% = SHIFT(HX%,S%)
+        THE.SUM% = SX% AND 000FH
+        IF THE.SUM% > 9 THEN \
+            THE.SUM%=THE.SUM%+55 \
+        ELSE \
+            THE.SUM%=THE.SUM%+48
+            Z$=CHR$(THE.SUM%)
+            ERRFX$ = ERRFX$ + Z$
+    NEXT S%
+    !END OF CONVERT 
+PRINT   "An Error Occurred "   + ERR   ,  ERRFX$   , STR$(ERRF%)   , STR$(ERRL)
+
+END
+
+
+

@@ -1,0 +1,153 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***
+   3: 0000: \*** FILE FUNCTION DEFINITION Parcel Status Update Control File (PSUCF)  
+   4: 0000: \***
+   5: 0000: \***           REFERENCE    : PSUCFFUN.BAS
+   6: 0000: \***
+   7: 0000: \***         VERSION A         Kiran Krishnan        28th July 2017
+   8: 0000: \***         PRJ2002- Order & Collect Parcel Management - Phase 2
+   9: 0000: \***         Initial version for User Story PMLA-377 
+  10: 0000: \***
+  11: 0000: \***         VERSION B         Kiran Krishnan        14th August 2017
+  12: 0000: \***         PMLA-397:- Added logical name to the file function
+  13: 0000: \***
+  14: 0000: \***********************************************************************
+  15: 0000: \***********************************************************************
+  16: 0000: 
+  17: 0000: 
+  18: 0000:     INTEGER*2 GLOBAL                  \
+  19: 0000:        CURRENT.REPORT.NUM%
+  20: 0000: 
+  21: 0000:     STRING GLOBAL                     \
+  22: 0000:        CURRENT.CODE$,                 \
+  23: 0000:        FILE.OPERATION$
+  24: 0000: 
+  25: 0000:     %INCLUDE PSUCFDEC.J86                                       
+  26: 0000: \***********************************************************************
+  27: 0000: \***********************************************************************
+  28: 0000: \***
+  29: 0000: \***    FILE DECLARATION  Parcel Status Update Control File (PSUCF)
+  30: 0000: \***
+  31: 0000: \***         REFERENCE:   PSUCFDEC.J86
+  32: 0000: \***
+  33: 0000: \***         VERSION A         Kiran Krishnan        28th July 2017
+  34: 0000: \***         PRJ2002- Order & Collect Parcel Management - Phase 2
+  35: 0000: \***         Initial version for User Story PMLA-377 
+  36: 0000: \***        
+  37: 0000: \***********************************************************************
+  38: 0000: \***********************************************************************
+  39: 0000: 
+  40: 0000: \***********************************************************************
+  41: 0000: \*** File variables
+  42: 0000: \***********************************************************************
+  43: 0000:     INTEGER*1   GLOBAL  PSUCF.OPEN                  ! File Open Flag
+  44: 0000:     INTEGER*1   GLOBAL  PSUCF.REC.NUM%              ! PSUCF record no.
+  45: 0000: 
+  46: 0000:     INTEGER*2   GLOBAL  PSUCF.RECL%                 ! Record length
+  47: 0000:     INTEGER*2   GLOBAL  PSUCF.REPORT.NUM%           ! Report number
+  48: 0000:     INTEGER*2   GLOBAL  PSUCF.SESS.NUM%             ! Session number
+  49: 0000: 
+  50: 0000:     STRING      GLOBAL  PSUCF.FILE.NAME$            ! File Name
+  51: 0000:     STRING      GLOBAL  PSUCF.FILLER$               ! Filler
+  52: 0000: 
+  53: 0000: \********************************************************************
+  54: 0000: \*** Record variables listed in field order
+  55: 0000: \********************************************************************
+  56: 0000:     INTEGER*2   GLOBAL  PSUCF.RECORD.NUM%          ! Record number
+  57: 0000:     STRING      GLOBAL  PSD86.PSUTQ.STATUS$        ! Status of PSD86
+  58: 0000:                                                    ! application     
+  59: 0000:     INTEGER*4   GLOBAL  PSUCF.PSUTQ.POINTER%       ! Pointer field 
+  60: 0000: 
+  61: 0000: 
+  62: 0000: 
+  63: 0000: \***********************************************************************
+  64: 0000: \***
+  65: 0000: \***    PSUCF.SET
+  66: 0000: \***
+  67: 0000: \***    Set PSUCF file variables
+  68: 0000: \***
+  69: 0000: \***********************************************************************
+  70: 0000: 
+  71: 0000: FUNCTION PSUCF.SET PUBLIC
+  72: 0014: 
+  73: 0014:     PSUCF.REPORT.NUM%  = 914
+  74: 001d:     PSUCF.RECL%        =  25
+  75: 0026:     PSUCF.FILE.NAME$   = "PSUCF"                                        ! BKK
+  76: 0035:     PSUCF.REC.NUM%     = 1
+  77: 003d:     
+  78: 003d:     PSUCF.FILLER$      = STRING$(20," ")
+  79: 0053: 
+  80: 0053: END FUNCTION
+  81: 005f:                                                                      
+  82: 005f: \***********************************************************************
+  83: 005f: \***
+  84: 005f: \***    READ.PSUCF
+  85: 005f: \***
+  86: 005f: \***    Read PSUCF file record
+  87: 005f: \***
+  88: 005f: \***********************************************************************
+  89: 005f: 
+  90: 005f: FUNCTION READ.PSUCF PUBLIC
+  91: 0073: 
+  92: 0073:     INTEGER*1 READ.PSUCF
+  93: 0073: 
+  94: 0073:     READ.PSUCF = 1
+  95: 0077: 
+  96: 0077:     IF END#PSUCF.SESS.NUM% THEN READ.PSUCF.ERROR
+  97: 008b: 
+  98: 008b:     READ FORM "I4,C1,C20"; #PSUCF.SESS.NUM%,                         \                        
+  99: 00d6:                            PSUCF.REC.NUM%;                           \ 
+ 100: 00d6:                            PSUCF.PSUTQ.POINTER%,                     \
+ 101: 00d6:                            PSD86.PSUTQ.STATUS$,                      \          
+ 102: 00d6:                            PSUCF.FILLER$
+ 103: 00d6:               
+ 104: 00d6:     READ.PSUCF = 0
+ 105: 00da:     EXIT FUNCTION
+ 106: 00dc: 
+ 107: 00dc: READ.PSUCF.ERROR:
+ 108: 00dc: 
+ 109: 00dc:     CURRENT.REPORT.NUM% = PSUCF.REPORT.NUM%
+ 110: 00ea:     FILE.OPERATION$ = "R"
+ 111: 00f9:     CURRENT.CODE$ = STR$(PSUCF.REC.NUM%)
+ 112: 0117: 
+ 113: 0117:     EXIT FUNCTION
+ 114: 0119:     
+ 115: 0119: END FUNCTION
+ 116: 0128: 
+ 117: 0128: \***********************************************************************
+ 118: 0128: \***
+ 119: 0128: \***    WRITE.PSUCF
+ 120: 0128: \***
+ 121: 0128: \***    Write PSUCF file record
+ 122: 0128: \***
+ 123: 0128: \***********************************************************************
+ 124: 0128: 
+ 125: 0128: 
+ 126: 0128: FUNCTION WRITE.PSUCF PUBLIC
+ 127: 013c: 
+ 128: 013c:     INTEGER*1 WRITE.PSUCF        
+ 129: 013c: 
+ 130: 013c:     WRITE.PSUCF = 1
+ 131: 0140: 
+ 132: 0140:     IF END#PSUCF.SESS.NUM% THEN WRITE.PSUCF.ERROR
+ 133: 0154: 
+ 134: 0154:     WRITE FORM "I4,C1,C20"; #PSUCF.SESS.NUM%,                \
+ 135: 01a9:                             PSUCF.REC.NUM%;                  \
+ 136: 01a9:                             PSUCF.PSUTQ.POINTER%,            \
+ 137: 01a9:                             PSD86.PSUTQ.STATUS$,             \          
+ 138: 01a9:                             PSUCF.FILLER$                         
+ 139: 01a9: 
+ 140: 01a9:     WRITE.PSUCF = 0
+ 141: 01ad:     EXIT FUNCTION
+ 142: 01af: 
+ 143: 01af: WRITE.PSUCF.ERROR:
+ 144: 01af: 
+ 145: 01af:     CURRENT.REPORT.NUM% = PSUCF.REPORT.NUM%
+ 146: 01bd:     FILE.OPERATION$ = "W"
+ 147: 01cc:     CURRENT.CODE$ = STR$(PSUCF.REC.NUM%)
+ 148: 01ea: 
+ 149: 01ea:     EXIT FUNCTION
+ 150: 01ec:    
+ 151: 01ec: END FUNCTION
+ 152: 01fb: 
+ 153: 01fb: End of Compilation

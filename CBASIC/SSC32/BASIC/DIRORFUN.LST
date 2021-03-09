@@ -1,0 +1,1175 @@
+   1: 0000: REM \
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***            STORE DIRECT ORDERS FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***               REFERENCE       : DIRORFUN.BAS
+   7: 0000: \***
+   8: 0000: \***  VERSION B                 Neil Bennett                21st December 2006
+   9: 0000: \***  New variable added to hold superceded flag for ASN Carton Support.
+  10: 0000: \***
+  11: 0000: \*****************************************************************************
+  12: 0000: \*****************************************************************************
+  13: 0000: 
+  14: 0000:   INTEGER*2 GLOBAL                 \
+  15: 0000:        CURRENT.REPORT.NUM%
+  16: 0000: 
+  17: 0000:   STRING GLOBAL                    \
+  18: 0000:           CURRENT.CODE$,           \
+  19: 0000:           FILE.OPERATION$
+  20: 0000: 
+  21: 0000:    %INCLUDE DIRORDEC.J86
+  22: 0000: REM \
+  23: 0000: \******************************************************************************
+  24: 0000: \******************************************************************************
+  25: 0000: \***
+  26: 0000: \***     %INCLUDE FOR STORE DIRECT ORDERS FILE  - FIELD DECLARATIONS
+  27: 0000: \***                                              FILE REFERENCE PARAMETERS
+  28: 0000: \***
+  29: 0000: \***               FILE TYPE    : Keyed
+  30: 0000: \***
+  31: 0000: \***               REFERENCE    : DIRORDEC.J86
+  32: 0000: \***
+  33: 0000: \***               DATE OF LAST AMENDMENT - 14/08/1992
+  34: 0000: \***
+  35: 0000: \***               VERSION A    : Les Cook    14th August 1992
+  36: 0000: \***
+  37: 0000: \***  VERSION B                 Neil Bennett                21st December 2006
+  38: 0000: \***  New variable added to hold superceded flag for ASN Carton Support.
+  39: 0000: \***
+  40: 0000: \******************************************************************************
+  41: 0000: \******************************************************************************
+  42: 0000: 
+  43: 0000:   STRING GLOBAL               \
+  44: 0000:       DIRORD.FILE.NAME$,      \
+  45: 0000:     DIRORD.RECKEY$,           \ 9 byte key which comprises the following fields
+  46: 0000:     DIRORD.SUPPLIER$,         \ 3 bytes UPD (key)
+  47: 0000:     DIRORD.ORDER.NO$,         \ 2 bytes UPD (key)
+  48: 0000:     DIRORD.ORDER.SUF$,        \ 1 byte ASCII (key)
+  49: 0000:     DIRORD.BUS.CENTRE$,       \ 1 byte ASCII (key)
+  50: 0000:     DIRORD.SOURCE$,           \ 1 byte ASCII (key), 'D' if from PSS57
+  51: 0000:                               \                     ' ' for head office order
+  52: 0000:     DIRORD.PAGE.NO$,          \ 1 byte UPD (key)
+  53: 0000:                               \
+  54: 0000:     DIRORD.CONF.END.TIME$,    \ 2 bytes UPD - Ending time of last update
+  55: 0000:     DIRORD.CONF.STRT.TIME$,   \ 2 bytes UPD - Starting time of last update
+  56: 0000:     DIRORD.CONFIRM.DATE$,     \ 3 bytes UPD. YYMMDD - set to low values if
+  57: 0000:                               \                       confirm flag is blank
+  58: 0000:     DIRORD.CONFIRM.FLAG$,     \ 1 byte ASCII. C=Complete, A=Amended,
+  59: 0000:                               \               blank = not confirmed
+  60: 0000:     DIRORD.DRRF.LAST.DATE$,   \ 3 bytes UPD Date of last run
+  61: 0000:     DIRORD.DRRF.LAST.TIME$,   \ 2 bytes UPD Time of last run
+  62: 0000:     DIRORD.EXP.DELV.DATE$,    \ 3 bytes UPD. YYMMDD - Expected date of order's
+  63: 0000:                               \                       delivery
+  64: 0000:     DIRORD.FILLER1$,          \ 494 bytes ASCII set to spaces
+  65: 0000:     DIRORD.FILLER2$,          \ 474 bytes ASCII set to spaces
+  66: 0000:     DIRORD.FILLER3$,          \ 15 bytes ASCII set to spaces
+  67: 0000:     DIRORD.ITEM.COUNT$,       \ 1 byte UPD  - Number of items on record
+  68: 0000:     DIRORD.ITEM.DETAILS$(2),  \ 256 bytes containing the repeated item string
+  69: 0000:                               \ details. The first dimension has 16 elements
+  70: 0000:                               \ corresponding to lines on the invoice.  The
+  71: 0000:                               \ second dimension has 4 elements:-
+  72: 0000:                               \   1. Boots Code - 4 bytes UPD (0 if bar code
+  73: 0000:                               \                                has no matching
+  74: 0000:                               \                                Boots code on
+  75: 0000:                               \                                file)
+  76: 0000:                               \   2. Bar Code   - 6 bytes UPD
+  77: 0000:                               \   2. Price      - 4 bytes UPD
+  78: 0000:                               \   3. Filler     - 2 bytes ASCII spaces
+  79: 0000:                               \ Any unused entries are set to spaces
+  80: 0000:     DIRORD.NO.ITEMS.BOOKED$,  \ 2 bytes UPD - Total number of items booked in
+  81: 0000:     DIRORD.NO.ITEMS.LST.BKD$, \ 2 bytes UPD - Number of items booked in during
+  82: 0000:                               \               last date of update
+  83: 0000:     DIRORD.NO.ORDER.ITEM$,    \ 2 bytes UPD - Total number of items in order
+  84: 0000:     DIRORD.NO.ORDER.SNGL$,    \ 2 bytes UPD - Total single quantity in order
+  85: 0000:     DIRORD.ON.SALE.DATE$,     \ 3 bytes UPD. YYMMDD - Date stock should be on
+  86: 0000:                               \                       sale
+  87: 0000:     DIRORD.ORDER.DATE$,       \ 3 bytes UPD. YYMMDD Date of order
+  88: 0000:     DIRORD.SUPERCEDED$        ! 1 byte ASCII (Y/N) default to N             !BNWB
+  89: 0000: 
+  90: 0000:     INTEGER*2 GLOBAL       \
+  91: 0000:       DIRORD.ITEM.QTY%(2), \ contains the repeated item integer details. The
+  92: 0000:                            \ first dimension has 16 elements corresponding to
+  93: 0000:                            \ lines on the invoice.  The second dimension has 7
+  94: 0000:                            \ elements:-
+  95: 0000:                            \   1. Quantity expected from order
+  96: 0000:                            \   2. Quantity booked in in good condition
+  97: 0000:                            \   3. Quantity booked in in damaged condition
+  98: 0000:                            \   4. Quantity booked in as stolen
+  99: 0000:                            \   5. Quantity last booked in in good condition
+ 100: 0000:                            \   6. Quantity last booked in in damaged condition
+ 101: 0000:                            \   7. Quantity last booked in as stolen
+ 102: 0000:                            \   Fields 2 to 4 are running totals, fields 5 to 7
+ 103: 0000:                            \   are the values associated with the confirm/amend
+ 104: 0000:                            \   date.
+ 105: 0000:       DIRORD.RECL%,        \
+ 106: 0000:       DIRORD.SESS.NUM%,    \
+ 107: 0000:       DIRORD.REPORT.NUM%
+ 108: 0000: 
+ 109: 0000:     INTEGER*4 GLOBAL       \
+ 110: 0000:       DIRORD.NO.RECS%
+ 111: 0000: 
+ 112: 0000: 
+ 113: 0000:   FUNCTION DIRORD.SET PUBLIC
+ 114: 0014: \***************************
+ 115: 0014: 
+ 116: 0014:     DIRORD.REPORT.NUM%  = 229
+ 117: 001d:     DIRORD.RECL%      = 508
+ 118: 0026:     DIRORD.FILE.NAME$ = "DIROR"
+ 119: 0035:     DIRORD.NO.RECS%   = 2000
+ 120: 0044: 
+ 121: 0044:     DIM DIRORD.ITEM.DETAILS$(16,4)
+ 122: 006d:     DIM DIRORD.ITEM.QTY%(16,7)
+ 123: 0096: 
+ 124: 0096:   END FUNCTION
+ 125: 00a2: 
+ 126: 00a2: \-----------------------------------------------------------------------------
+ 127: 00a2: REM EJECT
+ 128: 00a2: 
+ 129: 00a2:   FUNCTION READ.DIRORD.LOCK PUBLIC
+ 130: 00b6: \**********************************
+ 131: 00b6: 
+ 132: 00b6:      INTEGER*2 READ.DIRORD.LOCK
+ 133: 00b6: 
+ 134: 00b6:      STRING         FORMAT$
+ 135: 00b6: 
+ 136: 00b6:      READ.DIRORD.LOCK = 1
+ 137: 00bb: 
+ 138: 00bb: \***
+ 139: 00bb: \*** Read Order header record
+ 140: 00bb: \***
+ 141: 00bb:      IF MID$(DIRORD.RECKEY$,9,1) = PACK$("00") THEN BEGIN
+ 142: 00f0: \       FORMAT$ = "T10,4C2,2C3,C1,C3,2C2,C3,C474"
+ 143: 00f0:         FORMAT$ = "T10,4C2,2C3,C1,C3,2C2,C3,C1,C473"                     ! BNWB
+ 144: 00fd:         IF END #DIRORD.SESS.NUM% THEN READ.LOCK.ERROR
+ 145: 0111:         READ FORM FORMAT$; #DIRORD.SESS.NUM% AUTOLOCK                    \
+ 146: 01ce:             KEY DIRORD.RECKEY$;                                          \
+ 147: 01ce:                 DIRORD.NO.ORDER.ITEM$,                                   \
+ 148: 01ce:                 DIRORD.NO.ORDER.SNGL$,                                   \
+ 149: 01ce:                 DIRORD.NO.ITEMS.BOOKED$,                                 \
+ 150: 01ce:                 DIRORD.NO.ITEMS.LST.BKD$,                                \
+ 151: 01ce:                 DIRORD.ORDER.DATE$,                                      \
+ 152: 01ce:                 DIRORD.EXP.DELV.DATE$,                                   \
+ 153: 01ce:                 DIRORD.CONFIRM.FLAG$,                                    \
+ 154: 01ce:                 DIRORD.CONFIRM.DATE$,                                    \
+ 155: 01ce:                 DIRORD.CONF.STRT.TIME$,                                  \
+ 156: 01ce:                 DIRORD.CONF.END.TIME$,                                   \
+ 157: 01ce:                 DIRORD.ON.SALE.DATE$,                                    \
+ 158: 01ce:                 DIRORD.SUPERCEDED$,                                      \ BNWB
+ 159: 01ce:                 DIRORD.FILLER2$
+ 160: 01ce:      ENDIF                                                               \
+ 161: 01ce:      ELSE                                                                \
+ 162: 01ce: \***
+ 163: 01ce: \*** Read Order Detail record
+ 164: 01ce: \***
+ 165: 01ce:      IF DIRORD.RECKEY$ <> PACK$(STRING$(9,"99")) THEN BEGIN
+ 166: 01f6:         FORMAT$ = "T10,C1,C3,C15" + STRING$(16,",C4,C6,C4,7I2,C2")
+ 167: 0211:         IF END #DIRORD.SESS.NUM% THEN READ.LOCK.ERROR
+ 168: 0225:         READ FORM FORMAT$; #DIRORD.SESS.NUM% AUTOLOCK                    \
+ 169: 13a3:                 KEY DIRORD.RECKEY$;                                      \
+ 170: 13a3:                     DIRORD.ITEM.COUNT$,                                  \
+ 171: 13a3:                     DIRORD.CONFIRM.DATE$,                                \
+ 172: 13a3:                     DIRORD.FILLER3$,                                     \
+ 173: 13a3:                     DIRORD.ITEM.DETAILS$(1,1),                           \
+ 174: 13a3:                     DIRORD.ITEM.DETAILS$(1,2),                           \
+ 175: 13a3:                     DIRORD.ITEM.DETAILS$(1,3),                           \
+ 176: 13a3:                     DIRORD.ITEM.QTY%(1,1),                               \
+ 177: 13a3:                     DIRORD.ITEM.QTY%(1,2),                               \
+ 178: 13a3:                     DIRORD.ITEM.QTY%(1,3),                               \
+ 179: 13a3:                     DIRORD.ITEM.QTY%(1,4),                               \
+ 180: 13a3:                     DIRORD.ITEM.QTY%(1,5),                               \
+ 181: 13a3:                     DIRORD.ITEM.QTY%(1,6),                               \
+ 182: 13a3:                     DIRORD.ITEM.QTY%(1,7),                               \
+ 183: 13a3:                     DIRORD.ITEM.DETAILS$(1,4),                           \
+ 184: 13a3:                     DIRORD.ITEM.DETAILS$(2,1),                           \
+ 185: 13a3:                     DIRORD.ITEM.DETAILS$(2,2),                           \
+ 186: 13a3:                     DIRORD.ITEM.DETAILS$(2,3),                           \
+ 187: 13a3:                     DIRORD.ITEM.QTY%(2,1),                               \
+ 188: 13a3:                     DIRORD.ITEM.QTY%(2,2),                               \
+ 189: 13a3:                     DIRORD.ITEM.QTY%(2,3),                               \
+ 190: 13a3:                     DIRORD.ITEM.QTY%(2,4),                               \
+ 191: 13a3:                     DIRORD.ITEM.QTY%(2,5),                               \
+ 192: 13a3:                     DIRORD.ITEM.QTY%(2,6),                               \
+ 193: 13a3:                     DIRORD.ITEM.QTY%(2,7),                               \
+ 194: 13a3:                     DIRORD.ITEM.DETAILS$(2,4),                           \
+ 195: 13a3:                     DIRORD.ITEM.DETAILS$(3,1),                           \
+ 196: 13a3:                     DIRORD.ITEM.DETAILS$(3,2),                           \
+ 197: 13a3:                     DIRORD.ITEM.DETAILS$(3,3),                           \
+ 198: 13a3:                     DIRORD.ITEM.QTY%(3,1),                               \
+ 199: 13a3:                     DIRORD.ITEM.QTY%(3,2),                               \
+ 200: 13a3:                     DIRORD.ITEM.QTY%(3,3),                               \
+ 201: 13a3:                     DIRORD.ITEM.QTY%(3,4),                               \
+ 202: 13a3:                     DIRORD.ITEM.QTY%(3,5),                               \
+ 203: 13a3:                     DIRORD.ITEM.QTY%(3,6),                               \
+ 204: 13a3:                     DIRORD.ITEM.QTY%(3,7),                               \
+ 205: 13a3:                     DIRORD.ITEM.DETAILS$(3,4),                           \
+ 206: 13a3:                     DIRORD.ITEM.DETAILS$(4,1),                           \
+ 207: 13a3:                     DIRORD.ITEM.DETAILS$(4,2),                           \
+ 208: 13a3:                     DIRORD.ITEM.DETAILS$(4,3),                           \
+ 209: 13a3:                     DIRORD.ITEM.QTY%(4,1),                               \
+ 210: 13a3:                     DIRORD.ITEM.QTY%(4,2),                               \
+ 211: 13a3:                     DIRORD.ITEM.QTY%(4,3),                               \
+ 212: 13a3:                     DIRORD.ITEM.QTY%(4,4),                               \
+ 213: 13a3:                     DIRORD.ITEM.QTY%(4,5),                               \
+ 214: 13a3:                     DIRORD.ITEM.QTY%(4,6),                               \
+ 215: 13a3:                     DIRORD.ITEM.QTY%(4,7),                               \
+ 216: 13a3:                     DIRORD.ITEM.DETAILS$(4,4),                           \
+ 217: 13a3:                     DIRORD.ITEM.DETAILS$(5,1),                           \
+ 218: 13a3:                     DIRORD.ITEM.DETAILS$(5,2),                           \
+ 219: 13a3:                     DIRORD.ITEM.DETAILS$(5,3),                           \
+ 220: 13a3:                     DIRORD.ITEM.QTY%(5,1),                               \
+ 221: 13a3:                     DIRORD.ITEM.QTY%(5,2),                               \
+ 222: 13a3:                     DIRORD.ITEM.QTY%(5,3),                               \
+ 223: 13a3:                     DIRORD.ITEM.QTY%(5,4),                               \
+ 224: 13a3:                     DIRORD.ITEM.QTY%(5,5),                               \
+ 225: 13a3:                     DIRORD.ITEM.QTY%(5,6),                               \
+ 226: 13a3:                     DIRORD.ITEM.QTY%(5,7),                               \
+ 227: 13a3:                     DIRORD.ITEM.DETAILS$(5,4),                           \
+ 228: 13a3:                     DIRORD.ITEM.DETAILS$(6,1),                           \
+ 229: 13a3:                     DIRORD.ITEM.DETAILS$(6,2),                           \
+ 230: 13a3:                     DIRORD.ITEM.DETAILS$(6,3),                           \
+ 231: 13a3:                     DIRORD.ITEM.QTY%(6,1),                               \
+ 232: 13a3:                     DIRORD.ITEM.QTY%(6,2),                               \
+ 233: 13a3:                     DIRORD.ITEM.QTY%(6,3),                               \
+ 234: 13a3:                     DIRORD.ITEM.QTY%(6,4),                               \
+ 235: 13a3:                     DIRORD.ITEM.QTY%(6,5),                               \
+ 236: 13a3:                     DIRORD.ITEM.QTY%(6,6),                               \
+ 237: 13a3:                     DIRORD.ITEM.QTY%(6,7),                               \
+ 238: 13a3:                     DIRORD.ITEM.DETAILS$(6,4),                           \
+ 239: 13a3:                     DIRORD.ITEM.DETAILS$(7,1),                           \
+ 240: 13a3:                     DIRORD.ITEM.DETAILS$(7,2),                           \
+ 241: 13a3:                     DIRORD.ITEM.DETAILS$(7,3),                           \
+ 242: 13a3:                     DIRORD.ITEM.QTY%(7,1),                               \
+ 243: 13a3:                     DIRORD.ITEM.QTY%(7,2),                               \
+ 244: 13a3:                     DIRORD.ITEM.QTY%(7,3),                               \
+ 245: 13a3:                     DIRORD.ITEM.QTY%(7,4),                               \
+ 246: 13a3:                     DIRORD.ITEM.QTY%(7,5),                               \
+ 247: 13a3:                     DIRORD.ITEM.QTY%(7,6),                               \
+ 248: 13a3:                     DIRORD.ITEM.QTY%(7,7),                               \
+ 249: 13a3:                     DIRORD.ITEM.DETAILS$(7,4),                           \
+ 250: 13a3:                     DIRORD.ITEM.DETAILS$(8,1),                           \
+ 251: 13a3:                     DIRORD.ITEM.DETAILS$(8,2),                           \
+ 252: 13a3:                     DIRORD.ITEM.DETAILS$(8,3),                           \
+ 253: 13a3:                     DIRORD.ITEM.QTY%(8,1),                               \
+ 254: 13a3:                     DIRORD.ITEM.QTY%(8,2),                               \
+ 255: 13a3:                     DIRORD.ITEM.QTY%(8,3),                               \
+ 256: 13a3:                     DIRORD.ITEM.QTY%(8,4),                               \
+ 257: 13a3:                     DIRORD.ITEM.QTY%(8,5),                               \
+ 258: 13a3:                     DIRORD.ITEM.QTY%(8,6),                               \
+ 259: 13a3:                     DIRORD.ITEM.QTY%(8,7),                               \
+ 260: 13a3:                     DIRORD.ITEM.DETAILS$(8,4),                           \
+ 261: 13a3:                     DIRORD.ITEM.DETAILS$(9,1),                           \
+ 262: 13a3:                     DIRORD.ITEM.DETAILS$(9,2),                           \
+ 263: 13a3:                     DIRORD.ITEM.DETAILS$(9,3),                           \
+ 264: 13a3:                     DIRORD.ITEM.QTY%(9,1),                               \
+ 265: 13a3:                     DIRORD.ITEM.QTY%(9,2),                               \
+ 266: 13a3:                     DIRORD.ITEM.QTY%(9,3),                               \
+ 267: 13a3:                     DIRORD.ITEM.QTY%(9,4),                               \
+ 268: 13a3:                     DIRORD.ITEM.QTY%(9,5),                               \
+ 269: 13a3:                     DIRORD.ITEM.QTY%(9,6),                               \
+ 270: 13a3:                     DIRORD.ITEM.QTY%(9,7),                               \
+ 271: 13a3:                     DIRORD.ITEM.DETAILS$(9,4),                           \
+ 272: 13a3:                     DIRORD.ITEM.DETAILS$(10,1),                          \
+ 273: 13a3:                     DIRORD.ITEM.DETAILS$(10,2),                          \
+ 274: 13a3:                     DIRORD.ITEM.DETAILS$(10,3),                          \
+ 275: 13a3:                     DIRORD.ITEM.QTY%(10,1),                              \
+ 276: 13a3:                     DIRORD.ITEM.QTY%(10,2),                              \
+ 277: 13a3:                     DIRORD.ITEM.QTY%(10,3),                              \
+ 278: 13a3:                     DIRORD.ITEM.QTY%(10,4),                              \
+ 279: 13a3:                     DIRORD.ITEM.QTY%(10,5),                              \
+ 280: 13a3:                     DIRORD.ITEM.QTY%(10,6),                              \
+ 281: 13a3:                     DIRORD.ITEM.QTY%(10,7),                              \
+ 282: 13a3:                     DIRORD.ITEM.DETAILS$(10,4),                          \
+ 283: 13a3:                     DIRORD.ITEM.DETAILS$(11,1),                          \
+ 284: 13a3:                     DIRORD.ITEM.DETAILS$(11,2),                          \
+ 285: 13a3:                     DIRORD.ITEM.DETAILS$(11,3),                          \
+ 286: 13a3:                     DIRORD.ITEM.QTY%(11,1),                              \
+ 287: 13a3:                     DIRORD.ITEM.QTY%(11,2),                              \
+ 288: 13a3:                     DIRORD.ITEM.QTY%(11,3),                              \
+ 289: 13a3:                     DIRORD.ITEM.QTY%(11,4),                              \
+ 290: 13a3:                     DIRORD.ITEM.QTY%(11,5),                              \
+ 291: 13a3:                     DIRORD.ITEM.QTY%(11,6),                              \
+ 292: 13a3:                     DIRORD.ITEM.QTY%(11,7),                              \
+ 293: 13a3:                     DIRORD.ITEM.DETAILS$(11,4),                          \
+ 294: 13a3:                     DIRORD.ITEM.DETAILS$(12,1),                          \
+ 295: 13a3:                     DIRORD.ITEM.DETAILS$(12,2),                          \
+ 296: 13a3:                     DIRORD.ITEM.DETAILS$(12,3),                          \
+ 297: 13a3:                     DIRORD.ITEM.QTY%(12,1),                              \
+ 298: 13a3:                     DIRORD.ITEM.QTY%(12,2),                              \
+ 299: 13a3:                     DIRORD.ITEM.QTY%(12,3),                              \
+ 300: 13a3:                     DIRORD.ITEM.QTY%(12,4),                              \
+ 301: 13a3:                     DIRORD.ITEM.QTY%(12,5),                              \
+ 302: 13a3:                     DIRORD.ITEM.QTY%(12,6),                              \
+ 303: 13a3:                     DIRORD.ITEM.QTY%(12,7),                              \
+ 304: 13a3:                     DIRORD.ITEM.DETAILS$(12,4),                          \
+ 305: 13a3:                     DIRORD.ITEM.DETAILS$(13,1),                          \
+ 306: 13a3:                     DIRORD.ITEM.DETAILS$(13,2),                          \
+ 307: 13a3:                     DIRORD.ITEM.DETAILS$(13,3),                          \
+ 308: 13a3:                     DIRORD.ITEM.QTY%(13,1),                              \
+ 309: 13a3:                     DIRORD.ITEM.QTY%(13,2),                              \
+ 310: 13a3:                     DIRORD.ITEM.QTY%(13,3),                              \
+ 311: 13a3:                     DIRORD.ITEM.QTY%(13,4),                              \
+ 312: 13a3:                     DIRORD.ITEM.QTY%(13,5),                              \
+ 313: 13a3:                     DIRORD.ITEM.QTY%(13,6),                              \
+ 314: 13a3:                     DIRORD.ITEM.QTY%(13,7),                              \
+ 315: 13a3:                     DIRORD.ITEM.DETAILS$(13,4),                          \
+ 316: 13a3:                     DIRORD.ITEM.DETAILS$(14,1),                          \
+ 317: 13a3:                     DIRORD.ITEM.DETAILS$(14,2),                          \
+ 318: 13a3:                     DIRORD.ITEM.DETAILS$(14,3),                          \
+ 319: 13a3:                     DIRORD.ITEM.QTY%(14,1),                              \
+ 320: 13a3:                     DIRORD.ITEM.QTY%(14,2),                              \
+ 321: 13a3:                     DIRORD.ITEM.QTY%(14,3),                              \
+ 322: 13a3:                     DIRORD.ITEM.QTY%(14,4),                              \
+ 323: 13a3:                     DIRORD.ITEM.QTY%(14,5),                              \
+ 324: 13a3:                     DIRORD.ITEM.QTY%(14,6),                              \
+ 325: 13a3:                     DIRORD.ITEM.QTY%(14,7),                              \
+ 326: 13a3:                     DIRORD.ITEM.DETAILS$(14,4),                          \
+ 327: 13a3:                     DIRORD.ITEM.DETAILS$(15,1),                          \
+ 328: 13a3:                     DIRORD.ITEM.DETAILS$(15,2),                          \
+ 329: 13a3:                     DIRORD.ITEM.DETAILS$(15,3),                          \
+ 330: 13a3:                     DIRORD.ITEM.QTY%(15,1),                              \
+ 331: 13a3:                     DIRORD.ITEM.QTY%(15,2),                              \
+ 332: 13a3:                     DIRORD.ITEM.QTY%(15,3),                              \
+ 333: 13a3:                     DIRORD.ITEM.QTY%(15,4),                              \
+ 334: 13a3:                     DIRORD.ITEM.QTY%(15,5),                              \
+ 335: 13a3:                     DIRORD.ITEM.QTY%(15,6),                              \
+ 336: 13a3:                     DIRORD.ITEM.QTY%(15,7),                              \
+ 337: 13a3:                     DIRORD.ITEM.DETAILS$(15,4),                          \
+ 338: 13a3:                     DIRORD.ITEM.DETAILS$(16,1),                          \
+ 339: 13a3:                     DIRORD.ITEM.DETAILS$(16,2),                          \
+ 340: 13a3:                     DIRORD.ITEM.DETAILS$(16,3),                          \
+ 341: 13a3:                     DIRORD.ITEM.QTY%(16,1),                              \
+ 342: 13a3:                     DIRORD.ITEM.QTY%(16,2),                              \
+ 343: 13a3:                     DIRORD.ITEM.QTY%(16,3),                              \
+ 344: 13a3:                     DIRORD.ITEM.QTY%(16,4),                              \
+ 345: 13a3:                     DIRORD.ITEM.QTY%(16,5),                              \
+ 346: 13a3:                     DIRORD.ITEM.QTY%(16,6),                              \
+ 347: 13a3:                     DIRORD.ITEM.QTY%(16,7),                              \
+ 348: 13a3:                     DIRORD.ITEM.DETAILS$(16,4)
+ 349: 13a3:       ENDIF                                                              \
+ 350: 13a3:       ELSE BEGIN
+ 351: 13a3:  \***
+ 352: 13a3:  \*** Read DIRORD header record
+ 353: 13a3:  \***
+ 354: 13a3:               FORMAT$ = "T10,C3,C2,C494"
+ 355: 13b0:               IF END #DIRORD.SESS.NUM% THEN READ.LOCK.ERROR
+ 356: 13c4:               READ FORM FORMAT$; #DIRORD.SESS.NUM% AUTOLOCK              \
+ 357: 1410:                 KEY DIRORD.RECKEY$;                                      \
+ 358: 1410:                     DIRORD.DRRF.LAST.DATE$,                              \
+ 359: 1410:                     DIRORD.DRRF.LAST.TIME$,                              \
+ 360: 1410:                     DIRORD.FILLER1$
+ 361: 1410:               ENDIF
+ 362: 1410: 
+ 363: 1410:      READ.DIRORD.LOCK = 0
+ 364: 1415:      EXIT FUNCTION
+ 365: 1417: 
+ 366: 1417:      READ.LOCK.ERROR:
+ 367: 1417: 
+ 368: 1417:         CURRENT.CODE$ = DIRORD.RECKEY$
+ 369: 142d:         FILE.OPERATION$ = "R"
+ 370: 143c:         CURRENT.REPORT.NUM% = DIRORD.REPORT.NUM%
+ 371: 144a: 
+ 372: 144a: 
+ 373: 144a:         EXIT FUNCTION
+ 374: 144c: 
+ 375: 144c: 
+ 376: 144c:   END FUNCTION
+ 377: 145b: 
+ 378: 145b: \------------------------------------------------------------------------
+ 379: 145b: REM EJECT
+ 380: 145b: 
+ 381: 145b: 
+ 382: 145b:   FUNCTION READ.DIRORD PUBLIC
+ 383: 146f: \*****************************
+ 384: 146f: 
+ 385: 146f:      INTEGER*2 READ.DIRORD
+ 386: 146f: 
+ 387: 146f:      STRING         FORMAT$
+ 388: 146f: 
+ 389: 146f:      READ.DIRORD = 1
+ 390: 1474: 
+ 391: 1474: \***
+ 392: 1474: \*** Read Order header record
+ 393: 1474: \***
+ 394: 1474:      IF MID$(DIRORD.RECKEY$,9,1) = PACK$("00") THEN BEGIN
+ 395: 14a9: \       FORMAT$ = "T10,4C2,2C3,C1,C3,2C2,C3,C474"
+ 396: 14a9:         FORMAT$ = "T10,4C2,2C3,C1,C3,2C2,C3,C1,C473"                     ! BNWB
+ 397: 14b6:         IF END #DIRORD.SESS.NUM% THEN READ.ERROR
+ 398: 14ca:         READ FORM FORMAT$; #DIRORD.SESS.NUM%                             \
+ 399: 1587:             KEY DIRORD.RECKEY$;                                          \
+ 400: 1587:                 DIRORD.NO.ORDER.ITEM$,                                   \
+ 401: 1587:                 DIRORD.NO.ORDER.SNGL$,                                   \
+ 402: 1587:                 DIRORD.NO.ITEMS.BOOKED$,                                 \
+ 403: 1587:                 DIRORD.NO.ITEMS.LST.BKD$,                                \
+ 404: 1587:                 DIRORD.ORDER.DATE$,                                      \
+ 405: 1587:                 DIRORD.EXP.DELV.DATE$,                                   \
+ 406: 1587:                 DIRORD.CONFIRM.FLAG$,                                    \
+ 407: 1587:                 DIRORD.CONFIRM.DATE$,                                    \
+ 408: 1587:                 DIRORD.CONF.STRT.TIME$,                                  \
+ 409: 1587:                 DIRORD.CONF.END.TIME$,                                   \
+ 410: 1587:                 DIRORD.ON.SALE.DATE$,                                    \
+ 411: 1587:                 DIRORD.SUPERCEDED$,                                      \ BNWB
+ 412: 1587:                 DIRORD.FILLER2$
+ 413: 1587:      ENDIF                                                               \
+ 414: 1587:      ELSE                                                                \
+ 415: 1587: \***
+ 416: 1587: \*** Read Order Detail record
+ 417: 1587: \***
+ 418: 1587:      IF DIRORD.RECKEY$ <> PACK$(STRING$(9,"99")) THEN BEGIN
+ 419: 15af:         FORMAT$ = "T10,C1,C3,C15" + STRING$(16,",C4,C6,C4,7I2,C2")
+ 420: 15ca:         IF END #DIRORD.SESS.NUM% THEN READ.ERROR
+ 421: 15de:         READ FORM FORMAT$; #DIRORD.SESS.NUM%                             \
+ 422: 275c:                 KEY DIRORD.RECKEY$;                                      \
+ 423: 275c:                     DIRORD.ITEM.COUNT$,                                  \
+ 424: 275c:                     DIRORD.CONFIRM.DATE$,                                \
+ 425: 275c:                     DIRORD.FILLER3$,                                     \
+ 426: 275c:                     DIRORD.ITEM.DETAILS$(1,1),                           \
+ 427: 275c:                     DIRORD.ITEM.DETAILS$(1,2),                           \
+ 428: 275c:                     DIRORD.ITEM.DETAILS$(1,3),                           \
+ 429: 275c:                     DIRORD.ITEM.QTY%(1,1),                               \
+ 430: 275c:                     DIRORD.ITEM.QTY%(1,2),                               \
+ 431: 275c:                     DIRORD.ITEM.QTY%(1,3),                               \
+ 432: 275c:                     DIRORD.ITEM.QTY%(1,4),                               \
+ 433: 275c:                     DIRORD.ITEM.QTY%(1,5),                               \
+ 434: 275c:                     DIRORD.ITEM.QTY%(1,6),                               \
+ 435: 275c:                     DIRORD.ITEM.QTY%(1,7),                               \
+ 436: 275c:                     DIRORD.ITEM.DETAILS$(1,4),                           \
+ 437: 275c:                     DIRORD.ITEM.DETAILS$(2,1),                           \
+ 438: 275c:                     DIRORD.ITEM.DETAILS$(2,2),                           \
+ 439: 275c:                     DIRORD.ITEM.DETAILS$(2,3),                           \
+ 440: 275c:                     DIRORD.ITEM.QTY%(2,1),                               \
+ 441: 275c:                     DIRORD.ITEM.QTY%(2,2),                               \
+ 442: 275c:                     DIRORD.ITEM.QTY%(2,3),                               \
+ 443: 275c:                     DIRORD.ITEM.QTY%(2,4),                               \
+ 444: 275c:                     DIRORD.ITEM.QTY%(2,5),                               \
+ 445: 275c:                     DIRORD.ITEM.QTY%(2,6),                               \
+ 446: 275c:                     DIRORD.ITEM.QTY%(2,7),                               \
+ 447: 275c:                     DIRORD.ITEM.DETAILS$(2,4),                           \
+ 448: 275c:                     DIRORD.ITEM.DETAILS$(3,1),                           \
+ 449: 275c:                     DIRORD.ITEM.DETAILS$(3,2),                           \
+ 450: 275c:                     DIRORD.ITEM.DETAILS$(3,3),                           \
+ 451: 275c:                     DIRORD.ITEM.QTY%(3,1),                               \
+ 452: 275c:                     DIRORD.ITEM.QTY%(3,2),                               \
+ 453: 275c:                     DIRORD.ITEM.QTY%(3,3),                               \
+ 454: 275c:                     DIRORD.ITEM.QTY%(3,4),                               \
+ 455: 275c:                     DIRORD.ITEM.QTY%(3,5),                               \
+ 456: 275c:                     DIRORD.ITEM.QTY%(3,6),                               \
+ 457: 275c:                     DIRORD.ITEM.QTY%(3,7),                               \
+ 458: 275c:                     DIRORD.ITEM.DETAILS$(3,4),                           \
+ 459: 275c:                     DIRORD.ITEM.DETAILS$(4,1),                           \
+ 460: 275c:                     DIRORD.ITEM.DETAILS$(4,2),                           \
+ 461: 275c:                     DIRORD.ITEM.DETAILS$(4,3),                           \
+ 462: 275c:                     DIRORD.ITEM.QTY%(4,1),                               \
+ 463: 275c:                     DIRORD.ITEM.QTY%(4,2),                               \
+ 464: 275c:                     DIRORD.ITEM.QTY%(4,3),                               \
+ 465: 275c:                     DIRORD.ITEM.QTY%(4,4),                               \
+ 466: 275c:                     DIRORD.ITEM.QTY%(4,5),                               \
+ 467: 275c:                     DIRORD.ITEM.QTY%(4,6),                               \
+ 468: 275c:                     DIRORD.ITEM.QTY%(4,7),                               \
+ 469: 275c:                     DIRORD.ITEM.DETAILS$(4,4),                           \
+ 470: 275c:                     DIRORD.ITEM.DETAILS$(5,1),                           \
+ 471: 275c:                     DIRORD.ITEM.DETAILS$(5,2),                           \
+ 472: 275c:                     DIRORD.ITEM.DETAILS$(5,3),                           \
+ 473: 275c:                     DIRORD.ITEM.QTY%(5,1),                               \
+ 474: 275c:                     DIRORD.ITEM.QTY%(5,2),                               \
+ 475: 275c:                     DIRORD.ITEM.QTY%(5,3),                               \
+ 476: 275c:                     DIRORD.ITEM.QTY%(5,4),                               \
+ 477: 275c:                     DIRORD.ITEM.QTY%(5,5),                               \
+ 478: 275c:                     DIRORD.ITEM.QTY%(5,6),                               \
+ 479: 275c:                     DIRORD.ITEM.QTY%(5,7),                               \
+ 480: 275c:                     DIRORD.ITEM.DETAILS$(5,4),                           \
+ 481: 275c:                     DIRORD.ITEM.DETAILS$(6,1),                           \
+ 482: 275c:                     DIRORD.ITEM.DETAILS$(6,2),                           \
+ 483: 275c:                     DIRORD.ITEM.DETAILS$(6,3),                           \
+ 484: 275c:                     DIRORD.ITEM.QTY%(6,1),                               \
+ 485: 275c:                     DIRORD.ITEM.QTY%(6,2),                               \
+ 486: 275c:                     DIRORD.ITEM.QTY%(6,3),                               \
+ 487: 275c:                     DIRORD.ITEM.QTY%(6,4),                               \
+ 488: 275c:                     DIRORD.ITEM.QTY%(6,5),                               \
+ 489: 275c:                     DIRORD.ITEM.QTY%(6,6),                               \
+ 490: 275c:                     DIRORD.ITEM.QTY%(6,7),                               \
+ 491: 275c:                     DIRORD.ITEM.DETAILS$(6,4),                           \
+ 492: 275c:                     DIRORD.ITEM.DETAILS$(7,1),                           \
+ 493: 275c:                     DIRORD.ITEM.DETAILS$(7,2),                           \
+ 494: 275c:                     DIRORD.ITEM.DETAILS$(7,3),                           \
+ 495: 275c:                     DIRORD.ITEM.QTY%(7,1),                               \
+ 496: 275c:                     DIRORD.ITEM.QTY%(7,2),                               \
+ 497: 275c:                     DIRORD.ITEM.QTY%(7,3),                               \
+ 498: 275c:                     DIRORD.ITEM.QTY%(7,4),                               \
+ 499: 275c:                     DIRORD.ITEM.QTY%(7,5),                               \
+ 500: 275c:                     DIRORD.ITEM.QTY%(7,6),                               \
+ 501: 275c:                     DIRORD.ITEM.QTY%(7,7),                               \
+ 502: 275c:                     DIRORD.ITEM.DETAILS$(7,4),                           \
+ 503: 275c:                     DIRORD.ITEM.DETAILS$(8,1),                           \
+ 504: 275c:                     DIRORD.ITEM.DETAILS$(8,2),                           \
+ 505: 275c:                     DIRORD.ITEM.DETAILS$(8,3),                           \
+ 506: 275c:                     DIRORD.ITEM.QTY%(8,1),                               \
+ 507: 275c:                     DIRORD.ITEM.QTY%(8,2),                               \
+ 508: 275c:                     DIRORD.ITEM.QTY%(8,3),                               \
+ 509: 275c:                     DIRORD.ITEM.QTY%(8,4),                               \
+ 510: 275c:                     DIRORD.ITEM.QTY%(8,5),                               \
+ 511: 275c:                     DIRORD.ITEM.QTY%(8,6),                               \
+ 512: 275c:                     DIRORD.ITEM.QTY%(8,7),                               \
+ 513: 275c:                     DIRORD.ITEM.DETAILS$(8,4),                           \
+ 514: 275c:                     DIRORD.ITEM.DETAILS$(9,1),                           \
+ 515: 275c:                     DIRORD.ITEM.DETAILS$(9,2),                           \
+ 516: 275c:                     DIRORD.ITEM.DETAILS$(9,3),                           \
+ 517: 275c:                     DIRORD.ITEM.QTY%(9,1),                               \
+ 518: 275c:                     DIRORD.ITEM.QTY%(9,2),                               \
+ 519: 275c:                     DIRORD.ITEM.QTY%(9,3),                               \
+ 520: 275c:                     DIRORD.ITEM.QTY%(9,4),                               \
+ 521: 275c:                     DIRORD.ITEM.QTY%(9,5),                               \
+ 522: 275c:                     DIRORD.ITEM.QTY%(9,6),                               \
+ 523: 275c:                     DIRORD.ITEM.QTY%(9,7),                               \
+ 524: 275c:                     DIRORD.ITEM.DETAILS$(9,4),                           \
+ 525: 275c:                     DIRORD.ITEM.DETAILS$(10,1),                          \
+ 526: 275c:                     DIRORD.ITEM.DETAILS$(10,2),                          \
+ 527: 275c:                     DIRORD.ITEM.DETAILS$(10,3),                          \
+ 528: 275c:                     DIRORD.ITEM.QTY%(10,1),                              \
+ 529: 275c:                     DIRORD.ITEM.QTY%(10,2),                              \
+ 530: 275c:                     DIRORD.ITEM.QTY%(10,3),                              \
+ 531: 275c:                     DIRORD.ITEM.QTY%(10,4),                              \
+ 532: 275c:                     DIRORD.ITEM.QTY%(10,5),                              \
+ 533: 275c:                     DIRORD.ITEM.QTY%(10,6),                              \
+ 534: 275c:                     DIRORD.ITEM.QTY%(10,7),                              \
+ 535: 275c:                     DIRORD.ITEM.DETAILS$(10,4),                          \
+ 536: 275c:                     DIRORD.ITEM.DETAILS$(11,1),                          \
+ 537: 275c:                     DIRORD.ITEM.DETAILS$(11,2),                          \
+ 538: 275c:                     DIRORD.ITEM.DETAILS$(11,3),                          \
+ 539: 275c:                     DIRORD.ITEM.QTY%(11,1),                              \
+ 540: 275c:                     DIRORD.ITEM.QTY%(11,2),                              \
+ 541: 275c:                     DIRORD.ITEM.QTY%(11,3),                              \
+ 542: 275c:                     DIRORD.ITEM.QTY%(11,4),                              \
+ 543: 275c:                     DIRORD.ITEM.QTY%(11,5),                              \
+ 544: 275c:                     DIRORD.ITEM.QTY%(11,6),                              \
+ 545: 275c:                     DIRORD.ITEM.QTY%(11,7),                              \
+ 546: 275c:                     DIRORD.ITEM.DETAILS$(11,4),                          \
+ 547: 275c:                     DIRORD.ITEM.DETAILS$(12,1),                          \
+ 548: 275c:                     DIRORD.ITEM.DETAILS$(12,2),                          \
+ 549: 275c:                     DIRORD.ITEM.DETAILS$(12,3),                          \
+ 550: 275c:                     DIRORD.ITEM.QTY%(12,1),                              \
+ 551: 275c:                     DIRORD.ITEM.QTY%(12,2),                              \
+ 552: 275c:                     DIRORD.ITEM.QTY%(12,3),                              \
+ 553: 275c:                     DIRORD.ITEM.QTY%(12,4),                              \
+ 554: 275c:                     DIRORD.ITEM.QTY%(12,5),                              \
+ 555: 275c:                     DIRORD.ITEM.QTY%(12,6),                              \
+ 556: 275c:                     DIRORD.ITEM.QTY%(12,7),                              \
+ 557: 275c:                     DIRORD.ITEM.DETAILS$(12,4),                          \
+ 558: 275c:                     DIRORD.ITEM.DETAILS$(13,1),                          \
+ 559: 275c:                     DIRORD.ITEM.DETAILS$(13,2),                          \
+ 560: 275c:                     DIRORD.ITEM.DETAILS$(13,3),                          \
+ 561: 275c:                     DIRORD.ITEM.QTY%(13,1),                              \
+ 562: 275c:                     DIRORD.ITEM.QTY%(13,2),                              \
+ 563: 275c:                     DIRORD.ITEM.QTY%(13,3),                              \
+ 564: 275c:                     DIRORD.ITEM.QTY%(13,4),                              \
+ 565: 275c:                     DIRORD.ITEM.QTY%(13,5),                              \
+ 566: 275c:                     DIRORD.ITEM.QTY%(13,6),                              \
+ 567: 275c:                     DIRORD.ITEM.QTY%(13,7),                              \
+ 568: 275c:                     DIRORD.ITEM.DETAILS$(13,4),                          \
+ 569: 275c:                     DIRORD.ITEM.DETAILS$(14,1),                          \
+ 570: 275c:                     DIRORD.ITEM.DETAILS$(14,2),                          \
+ 571: 275c:                     DIRORD.ITEM.DETAILS$(14,3),                          \
+ 572: 275c:                     DIRORD.ITEM.QTY%(14,1),                              \
+ 573: 275c:                     DIRORD.ITEM.QTY%(14,2),                              \
+ 574: 275c:                     DIRORD.ITEM.QTY%(14,3),                              \
+ 575: 275c:                     DIRORD.ITEM.QTY%(14,4),                              \
+ 576: 275c:                     DIRORD.ITEM.QTY%(14,5),                              \
+ 577: 275c:                     DIRORD.ITEM.QTY%(14,6),                              \
+ 578: 275c:                     DIRORD.ITEM.QTY%(14,7),                              \
+ 579: 275c:                     DIRORD.ITEM.DETAILS$(14,4),                          \
+ 580: 275c:                     DIRORD.ITEM.DETAILS$(15,1),                          \
+ 581: 275c:                     DIRORD.ITEM.DETAILS$(15,2),                          \
+ 582: 275c:                     DIRORD.ITEM.DETAILS$(15,3),                          \
+ 583: 275c:                     DIRORD.ITEM.QTY%(15,1),                              \
+ 584: 275c:                     DIRORD.ITEM.QTY%(15,2),                              \
+ 585: 275c:                     DIRORD.ITEM.QTY%(15,3),                              \
+ 586: 275c:                     DIRORD.ITEM.QTY%(15,4),                              \
+ 587: 275c:                     DIRORD.ITEM.QTY%(15,5),                              \
+ 588: 275c:                     DIRORD.ITEM.QTY%(15,6),                              \
+ 589: 275c:                     DIRORD.ITEM.QTY%(15,7),                              \
+ 590: 275c:                     DIRORD.ITEM.DETAILS$(15,4),                          \
+ 591: 275c:                     DIRORD.ITEM.DETAILS$(16,1),                          \
+ 592: 275c:                     DIRORD.ITEM.DETAILS$(16,2),                          \
+ 593: 275c:                     DIRORD.ITEM.DETAILS$(16,3),                          \
+ 594: 275c:                     DIRORD.ITEM.QTY%(16,1),                              \
+ 595: 275c:                     DIRORD.ITEM.QTY%(16,2),                              \
+ 596: 275c:                     DIRORD.ITEM.QTY%(16,3),                              \
+ 597: 275c:                     DIRORD.ITEM.QTY%(16,4),                              \
+ 598: 275c:                     DIRORD.ITEM.QTY%(16,5),                              \
+ 599: 275c:                     DIRORD.ITEM.QTY%(16,6),                              \
+ 600: 275c:                     DIRORD.ITEM.QTY%(16,7),                              \
+ 601: 275c:                     DIRORD.ITEM.DETAILS$(16,4)
+ 602: 275c:       ENDIF                                                              \
+ 603: 275c:       ELSE BEGIN
+ 604: 275c:  \***
+ 605: 275c:  \*** Read DIRORD header record
+ 606: 275c:  \***
+ 607: 275c:               FORMAT$ = "T10,C3,C2,C494"
+ 608: 2769:               IF END #DIRORD.SESS.NUM% THEN READ.ERROR
+ 609: 277d:               READ FORM FORMAT$; #DIRORD.SESS.NUM%                       \
+ 610: 27c9:                 KEY DIRORD.RECKEY$;                                      \
+ 611: 27c9:                     DIRORD.DRRF.LAST.DATE$,                              \
+ 612: 27c9:                     DIRORD.DRRF.LAST.TIME$,                              \
+ 613: 27c9:                     DIRORD.FILLER1$
+ 614: 27c9:               ENDIF
+ 615: 27c9: 
+ 616: 27c9:      READ.DIRORD = 0
+ 617: 27ce:      EXIT FUNCTION
+ 618: 27d0: 
+ 619: 27d0:      READ.ERROR:
+ 620: 27d0: 
+ 621: 27d0:         CURRENT.CODE$ = DIRORD.RECKEY$
+ 622: 27e6:         FILE.OPERATION$ = "R"
+ 623: 27f5:         CURRENT.REPORT.NUM% = DIRORD.REPORT.NUM%
+ 624: 2803: 
+ 625: 2803: 
+ 626: 2803:         EXIT FUNCTION
+ 627: 2805: 
+ 628: 2805: 
+ 629: 2805:   END FUNCTION
+ 630: 2814: 
+ 631: 2814: \------------------------------------------------------------------------
+ 632: 2814: REM EJECT
+ 633: 2814: 
+ 634: 2814:   FUNCTION WRITE.DIRORD.UNLOCK PUBLIC
+ 635: 2828: \************************************
+ 636: 2828: 
+ 637: 2828: 
+ 638: 2828:   INTEGER*2 WRITE.DIRORD.UNLOCK
+ 639: 2828: 
+ 640: 2828:   STRING         FORMAT$
+ 641: 2828: 
+ 642: 2828:   WRITE.DIRORD.UNLOCK = 1
+ 643: 282d: 
+ 644: 282d: \***
+ 645: 282d: \*** Write Order header record
+ 646: 282d: \***
+ 647: 282d:     IF DIRORD.PAGE.NO$ = PACK$("00") THEN BEGIN
+ 648: 284e: \      FORMAT$ = "C3,C2,4C1,4C2,2C3,C1,C3,2C2,C3,C474"
+ 649: 284e:        FORMAT$ = "C3,C2,4C1,4C2,2C3,C1,C3,2C2,C3,C1,C473"                ! BNWB
+ 650: 285b:        IF END #DIRORD.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 651: 286f:        WRITE FORM FORMAT$; #DIRORD.SESS.NUM% AUTOUNLOCK;                 \
+ 652: 29b8:                 DIRORD.SUPPLIER$,                                        \
+ 653: 29b8:                 DIRORD.ORDER.NO$,                                        \
+ 654: 29b8:                 DIRORD.ORDER.SUF$,                                       \
+ 655: 29b8:                 DIRORD.BUS.CENTRE$,                                      \
+ 656: 29b8:                 DIRORD.SOURCE$,                                          \
+ 657: 29b8:                 DIRORD.PAGE.NO$,                                         \
+ 658: 29b8:                 DIRORD.NO.ORDER.ITEM$,                                   \
+ 659: 29b8:                 DIRORD.NO.ORDER.SNGL$,                                   \
+ 660: 29b8:                 DIRORD.NO.ITEMS.BOOKED$,                                 \
+ 661: 29b8:                 DIRORD.NO.ITEMS.LST.BKD$,                                \
+ 662: 29b8:                 DIRORD.ORDER.DATE$,                                      \
+ 663: 29b8:                 DIRORD.EXP.DELV.DATE$,                                   \
+ 664: 29b8:                 DIRORD.CONFIRM.FLAG$,                                    \
+ 665: 29b8:                 DIRORD.CONFIRM.DATE$,                                    \
+ 666: 29b8:                 DIRORD.CONF.STRT.TIME$,                                  \
+ 667: 29b8:                 DIRORD.CONF.END.TIME$,                                   \
+ 668: 29b8:                 DIRORD.ON.SALE.DATE$,                                    \
+ 669: 29b8:                 DIRORD.SUPERCEDED$,                                      \ BNWB
+ 670: 29b8:                 DIRORD.FILLER2$
+ 671: 29b8:         ENDIF                                                            \
+ 672: 29b8:      ELSE                                                                \
+ 673: 29b8: \***
+ 674: 29b8: \*** Write Order Detail record
+ 675: 29b8: \***
+ 676: 29b8:         IF DIRORD.SUPPLIER$ <> PACK$("999999") OR                        \
+ 677: 2ac6:            DIRORD.ORDER.NO$ <> PACK$("9999") OR                          \
+ 678: 2ac6:            DIRORD.ORDER.SUF$ <> PACK$("99") OR                           \
+ 679: 2ac6:            DIRORD.BUS.CENTRE$ <> PACK$("99") OR                          \
+ 680: 2ac6:            DIRORD.SOURCE$ <> PACK$("99") OR                              \
+ 681: 2ac6:            DIRORD.PAGE.NO$ <> PACK$("99") THEN BEGIN
+ 682: 2ac6:            FORMAT$ = "C3,C2,4C1,C1,C3,C15" +                             \
+ 683: 2ae1:                       STRING$(16,",C4,C6,C4,7I2,C2")
+ 684: 2ae1:            IF END #DIRORD.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 685: 2af5:            WRITE FORM FORMAT$; #DIRORD.SESS.NUM% AUTOUNLOCK;             \
+ 686: 3e7e:                     DIRORD.SUPPLIER$,                                    \
+ 687: 3e7e:                     DIRORD.ORDER.NO$,                                    \
+ 688: 3e7e:                     DIRORD.ORDER.SUF$,                                   \
+ 689: 3e7e:                     DIRORD.BUS.CENTRE$,                                  \
+ 690: 3e7e:                     DIRORD.SOURCE$,                                      \
+ 691: 3e7e:                     DIRORD.PAGE.NO$,                                     \
+ 692: 3e7e:                     DIRORD.ITEM.COUNT$,                                  \
+ 693: 3e7e:                     DIRORD.CONFIRM.DATE$,                                \
+ 694: 3e7e:                     DIRORD.FILLER3$,                                     \
+ 695: 3e7e:                     DIRORD.ITEM.DETAILS$(1,1),                           \
+ 696: 3e7e:                     DIRORD.ITEM.DETAILS$(1,2),                           \
+ 697: 3e7e:                     DIRORD.ITEM.DETAILS$(1,3),                           \
+ 698: 3e7e:                     DIRORD.ITEM.QTY%(1,1),                               \
+ 699: 3e7e:                     DIRORD.ITEM.QTY%(1,2),                               \
+ 700: 3e7e:                     DIRORD.ITEM.QTY%(1,3),                               \
+ 701: 3e7e:                     DIRORD.ITEM.QTY%(1,4),                               \
+ 702: 3e7e:                     DIRORD.ITEM.QTY%(1,5),                               \
+ 703: 3e7e:                     DIRORD.ITEM.QTY%(1,6),                               \
+ 704: 3e7e:                     DIRORD.ITEM.QTY%(1,7),                               \
+ 705: 3e7e:                     DIRORD.ITEM.DETAILS$(1,4),                           \
+ 706: 3e7e:                     DIRORD.ITEM.DETAILS$(2,1),                           \
+ 707: 3e7e:                     DIRORD.ITEM.DETAILS$(2,2),                           \
+ 708: 3e7e:                     DIRORD.ITEM.DETAILS$(2,3),                           \
+ 709: 3e7e:                     DIRORD.ITEM.QTY%(2,1),                               \
+ 710: 3e7e:                     DIRORD.ITEM.QTY%(2,2),                               \
+ 711: 3e7e:                     DIRORD.ITEM.QTY%(2,3),                               \
+ 712: 3e7e:                     DIRORD.ITEM.QTY%(2,4),                               \
+ 713: 3e7e:                     DIRORD.ITEM.QTY%(2,5),                               \
+ 714: 3e7e:                     DIRORD.ITEM.QTY%(2,6),                               \
+ 715: 3e7e:                     DIRORD.ITEM.QTY%(2,7),                               \
+ 716: 3e7e:                     DIRORD.ITEM.DETAILS$(2,4),                           \
+ 717: 3e7e:                     DIRORD.ITEM.DETAILS$(3,1),                           \
+ 718: 3e7e:                     DIRORD.ITEM.DETAILS$(3,2),                           \
+ 719: 3e7e:                     DIRORD.ITEM.DETAILS$(3,3),                           \
+ 720: 3e7e:                     DIRORD.ITEM.QTY%(3,1),                               \
+ 721: 3e7e:                     DIRORD.ITEM.QTY%(3,2),                               \
+ 722: 3e7e:                     DIRORD.ITEM.QTY%(3,3),                               \
+ 723: 3e7e:                     DIRORD.ITEM.QTY%(3,4),                               \
+ 724: 3e7e:                     DIRORD.ITEM.QTY%(3,5),                               \
+ 725: 3e7e:                     DIRORD.ITEM.QTY%(3,6),                               \
+ 726: 3e7e:                     DIRORD.ITEM.QTY%(3,7),                               \
+ 727: 3e7e:                     DIRORD.ITEM.DETAILS$(3,4),                           \
+ 728: 3e7e:                     DIRORD.ITEM.DETAILS$(4,1),                           \
+ 729: 3e7e:                     DIRORD.ITEM.DETAILS$(4,2),                           \
+ 730: 3e7e:                     DIRORD.ITEM.DETAILS$(4,3),                           \
+ 731: 3e7e:                     DIRORD.ITEM.QTY%(4,1),                               \
+ 732: 3e7e:                     DIRORD.ITEM.QTY%(4,2),                               \
+ 733: 3e7e:                     DIRORD.ITEM.QTY%(4,3),                               \
+ 734: 3e7e:                     DIRORD.ITEM.QTY%(4,4),                               \
+ 735: 3e7e:                     DIRORD.ITEM.QTY%(4,5),                               \
+ 736: 3e7e:                     DIRORD.ITEM.QTY%(4,6),                               \
+ 737: 3e7e:                     DIRORD.ITEM.QTY%(4,7),                               \
+ 738: 3e7e:                     DIRORD.ITEM.DETAILS$(4,4),                           \
+ 739: 3e7e:                     DIRORD.ITEM.DETAILS$(5,1),                           \
+ 740: 3e7e:                     DIRORD.ITEM.DETAILS$(5,2),                           \
+ 741: 3e7e:                     DIRORD.ITEM.DETAILS$(5,3),                           \
+ 742: 3e7e:                     DIRORD.ITEM.QTY%(5,1),                               \
+ 743: 3e7e:                     DIRORD.ITEM.QTY%(5,2),                               \
+ 744: 3e7e:                     DIRORD.ITEM.QTY%(5,3),                               \
+ 745: 3e7e:                     DIRORD.ITEM.QTY%(5,4),                               \
+ 746: 3e7e:                     DIRORD.ITEM.QTY%(5,5),                               \
+ 747: 3e7e:                     DIRORD.ITEM.QTY%(5,6),                               \
+ 748: 3e7e:                     DIRORD.ITEM.QTY%(5,7),                               \
+ 749: 3e7e:                     DIRORD.ITEM.DETAILS$(5,4),                           \
+ 750: 3e7e:                     DIRORD.ITEM.DETAILS$(6,1),                           \
+ 751: 3e7e:                     DIRORD.ITEM.DETAILS$(6,2),                           \
+ 752: 3e7e:                     DIRORD.ITEM.DETAILS$(6,3),                           \
+ 753: 3e7e:                     DIRORD.ITEM.QTY%(6,1),                               \
+ 754: 3e7e:                     DIRORD.ITEM.QTY%(6,2),                               \
+ 755: 3e7e:                     DIRORD.ITEM.QTY%(6,3),                               \
+ 756: 3e7e:                     DIRORD.ITEM.QTY%(6,4),                               \
+ 757: 3e7e:                     DIRORD.ITEM.QTY%(6,5),                               \
+ 758: 3e7e:                     DIRORD.ITEM.QTY%(6,6),                               \
+ 759: 3e7e:                     DIRORD.ITEM.QTY%(6,7),                               \
+ 760: 3e7e:                     DIRORD.ITEM.DETAILS$(6,4),                           \
+ 761: 3e7e:                     DIRORD.ITEM.DETAILS$(7,1),                           \
+ 762: 3e7e:                     DIRORD.ITEM.DETAILS$(7,2),                           \
+ 763: 3e7e:                     DIRORD.ITEM.DETAILS$(7,3),                           \
+ 764: 3e7e:                     DIRORD.ITEM.QTY%(7,1),                               \
+ 765: 3e7e:                     DIRORD.ITEM.QTY%(7,2),                               \
+ 766: 3e7e:                     DIRORD.ITEM.QTY%(7,3),                               \
+ 767: 3e7e:                     DIRORD.ITEM.QTY%(7,4),                               \
+ 768: 3e7e:                     DIRORD.ITEM.QTY%(7,5),                               \
+ 769: 3e7e:                     DIRORD.ITEM.QTY%(7,6),                               \
+ 770: 3e7e:                     DIRORD.ITEM.QTY%(7,7),                               \
+ 771: 3e7e:                     DIRORD.ITEM.DETAILS$(7,4),                           \
+ 772: 3e7e:                     DIRORD.ITEM.DETAILS$(8,1),                           \
+ 773: 3e7e:                     DIRORD.ITEM.DETAILS$(8,2),                           \
+ 774: 3e7e:                     DIRORD.ITEM.DETAILS$(8,3),                           \
+ 775: 3e7e:                     DIRORD.ITEM.QTY%(8,1),                               \
+ 776: 3e7e:                     DIRORD.ITEM.QTY%(8,2),                               \
+ 777: 3e7e:                     DIRORD.ITEM.QTY%(8,3),                               \
+ 778: 3e7e:                     DIRORD.ITEM.QTY%(8,4),                               \
+ 779: 3e7e:                     DIRORD.ITEM.QTY%(8,5),                               \
+ 780: 3e7e:                     DIRORD.ITEM.QTY%(8,6),                               \
+ 781: 3e7e:                     DIRORD.ITEM.QTY%(8,7),                               \
+ 782: 3e7e:                     DIRORD.ITEM.DETAILS$(8,4),                           \
+ 783: 3e7e:                     DIRORD.ITEM.DETAILS$(9,1),                           \
+ 784: 3e7e:                     DIRORD.ITEM.DETAILS$(9,2),                           \
+ 785: 3e7e:                     DIRORD.ITEM.DETAILS$(9,3),                           \
+ 786: 3e7e:                     DIRORD.ITEM.QTY%(9,1),                               \
+ 787: 3e7e:                     DIRORD.ITEM.QTY%(9,2),                               \
+ 788: 3e7e:                     DIRORD.ITEM.QTY%(9,3),                               \
+ 789: 3e7e:                     DIRORD.ITEM.QTY%(9,4),                               \
+ 790: 3e7e:                     DIRORD.ITEM.QTY%(9,5),                               \
+ 791: 3e7e:                     DIRORD.ITEM.QTY%(9,6),                               \
+ 792: 3e7e:                     DIRORD.ITEM.QTY%(9,7),                               \
+ 793: 3e7e:                     DIRORD.ITEM.DETAILS$(9,4),                           \
+ 794: 3e7e:                     DIRORD.ITEM.DETAILS$(10,1),                          \
+ 795: 3e7e:                     DIRORD.ITEM.DETAILS$(10,2),                          \
+ 796: 3e7e:                     DIRORD.ITEM.DETAILS$(10,3),                          \
+ 797: 3e7e:                     DIRORD.ITEM.QTY%(10,1),                              \
+ 798: 3e7e:                     DIRORD.ITEM.QTY%(10,2),                              \
+ 799: 3e7e:                     DIRORD.ITEM.QTY%(10,3),                              \
+ 800: 3e7e:                     DIRORD.ITEM.QTY%(10,4),                              \
+ 801: 3e7e:                     DIRORD.ITEM.QTY%(10,5),                              \
+ 802: 3e7e:                     DIRORD.ITEM.QTY%(10,6),                              \
+ 803: 3e7e:                     DIRORD.ITEM.QTY%(10,7),                              \
+ 804: 3e7e:                     DIRORD.ITEM.DETAILS$(10,4),                          \
+ 805: 3e7e:                     DIRORD.ITEM.DETAILS$(11,1),                          \
+ 806: 3e7e:                     DIRORD.ITEM.DETAILS$(11,2),                          \
+ 807: 3e7e:                     DIRORD.ITEM.DETAILS$(11,3),                          \
+ 808: 3e7e:                     DIRORD.ITEM.QTY%(11,1),                              \
+ 809: 3e7e:                     DIRORD.ITEM.QTY%(11,2),                              \
+ 810: 3e7e:                     DIRORD.ITEM.QTY%(11,3),                              \
+ 811: 3e7e:                     DIRORD.ITEM.QTY%(11,4),                              \
+ 812: 3e7e:                     DIRORD.ITEM.QTY%(11,5),                              \
+ 813: 3e7e:                     DIRORD.ITEM.QTY%(11,6),                              \
+ 814: 3e7e:                     DIRORD.ITEM.QTY%(11,7),                              \
+ 815: 3e7e:                     DIRORD.ITEM.DETAILS$(11,4),                          \
+ 816: 3e7e:                     DIRORD.ITEM.DETAILS$(12,1),                          \
+ 817: 3e7e:                     DIRORD.ITEM.DETAILS$(12,2),                          \
+ 818: 3e7e:                     DIRORD.ITEM.DETAILS$(12,3),                          \
+ 819: 3e7e:                     DIRORD.ITEM.QTY%(12,1),                              \
+ 820: 3e7e:                     DIRORD.ITEM.QTY%(12,2),                              \
+ 821: 3e7e:                     DIRORD.ITEM.QTY%(12,3),                              \
+ 822: 3e7e:                     DIRORD.ITEM.QTY%(12,4),                              \
+ 823: 3e7e:                     DIRORD.ITEM.QTY%(12,5),                              \
+ 824: 3e7e:                     DIRORD.ITEM.QTY%(12,6),                              \
+ 825: 3e7e:                     DIRORD.ITEM.QTY%(12,7),                              \
+ 826: 3e7e:                     DIRORD.ITEM.DETAILS$(12,4),                          \
+ 827: 3e7e:                     DIRORD.ITEM.DETAILS$(13,1),                          \
+ 828: 3e7e:                     DIRORD.ITEM.DETAILS$(13,2),                          \
+ 829: 3e7e:                     DIRORD.ITEM.DETAILS$(13,3),                          \
+ 830: 3e7e:                     DIRORD.ITEM.QTY%(13,1),                              \
+ 831: 3e7e:                     DIRORD.ITEM.QTY%(13,2),                              \
+ 832: 3e7e:                     DIRORD.ITEM.QTY%(13,3),                              \
+ 833: 3e7e:                     DIRORD.ITEM.QTY%(13,4),                              \
+ 834: 3e7e:                     DIRORD.ITEM.QTY%(13,5),                              \
+ 835: 3e7e:                     DIRORD.ITEM.QTY%(13,6),                              \
+ 836: 3e7e:                     DIRORD.ITEM.QTY%(13,7),                              \
+ 837: 3e7e:                     DIRORD.ITEM.DETAILS$(13,4),                          \
+ 838: 3e7e:                     DIRORD.ITEM.DETAILS$(14,1),                          \
+ 839: 3e7e:                     DIRORD.ITEM.DETAILS$(14,2),                          \
+ 840: 3e7e:                     DIRORD.ITEM.DETAILS$(14,3),                          \
+ 841: 3e7e:                     DIRORD.ITEM.QTY%(14,1),                              \
+ 842: 3e7e:                     DIRORD.ITEM.QTY%(14,2),                              \
+ 843: 3e7e:                     DIRORD.ITEM.QTY%(14,3),                              \
+ 844: 3e7e:                     DIRORD.ITEM.QTY%(14,4),                              \
+ 845: 3e7e:                     DIRORD.ITEM.QTY%(14,5),                              \
+ 846: 3e7e:                     DIRORD.ITEM.QTY%(14,6),                              \
+ 847: 3e7e:                     DIRORD.ITEM.QTY%(14,7),                              \
+ 848: 3e7e:                     DIRORD.ITEM.DETAILS$(14,4),                          \
+ 849: 3e7e:                     DIRORD.ITEM.DETAILS$(15,1),                          \
+ 850: 3e7e:                     DIRORD.ITEM.DETAILS$(15,2),                          \
+ 851: 3e7e:                     DIRORD.ITEM.DETAILS$(15,3),                          \
+ 852: 3e7e:                     DIRORD.ITEM.QTY%(15,1),                              \
+ 853: 3e7e:                     DIRORD.ITEM.QTY%(15,2),                              \
+ 854: 3e7e:                     DIRORD.ITEM.QTY%(15,3),                              \
+ 855: 3e7e:                     DIRORD.ITEM.QTY%(15,4),                              \
+ 856: 3e7e:                     DIRORD.ITEM.QTY%(15,5),                              \
+ 857: 3e7e:                     DIRORD.ITEM.QTY%(15,6),                              \
+ 858: 3e7e:                     DIRORD.ITEM.QTY%(15,7),                              \
+ 859: 3e7e:                     DIRORD.ITEM.DETAILS$(15,4),                          \
+ 860: 3e7e:                     DIRORD.ITEM.DETAILS$(16,1),                          \
+ 861: 3e7e:                     DIRORD.ITEM.DETAILS$(16,2),                          \
+ 862: 3e7e:                     DIRORD.ITEM.DETAILS$(16,3),                          \
+ 863: 3e7e:                     DIRORD.ITEM.QTY%(16,1),                              \
+ 864: 3e7e:                     DIRORD.ITEM.QTY%(16,2),                              \
+ 865: 3e7e:                     DIRORD.ITEM.QTY%(16,3),                              \
+ 866: 3e7e:                     DIRORD.ITEM.QTY%(16,4),                              \
+ 867: 3e7e:                     DIRORD.ITEM.QTY%(16,5),                              \
+ 868: 3e7e:                     DIRORD.ITEM.QTY%(16,6),                              \
+ 869: 3e7e:                     DIRORD.ITEM.QTY%(16,7),                              \
+ 870: 3e7e:                     DIRORD.ITEM.DETAILS$(16,4)
+ 871: 3e7e:             ENDIF                                                        \
+ 872: 3e7e:         ELSE BEGIN
+ 873: 3e7e:  \***
+ 874: 3e7e:  \*** Write DIRORD header record
+ 875: 3e7e:  \***
+ 876: 3e7e:           FORMAT$ = "C3,C2,4C1,C3,C2,C494"
+ 877: 3e8b:           IF END #DIRORD.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 878: 3e9f:           WRITE FORM FORMAT$; #DIRORD.SESS.NUM% AUTOUNLOCK;              \
+ 879: 3f45:                     DIRORD.SUPPLIER$,                                    \
+ 880: 3f45:                     DIRORD.ORDER.NO$,                                    \
+ 881: 3f45:                     DIRORD.ORDER.SUF$,                                   \
+ 882: 3f45:                     DIRORD.BUS.CENTRE$,                                  \
+ 883: 3f45:                     DIRORD.SOURCE$,                                      \
+ 884: 3f45:                     DIRORD.PAGE.NO$,                                     \
+ 885: 3f45:                     DIRORD.DRRF.LAST.DATE$,                              \
+ 886: 3f45:                     DIRORD.DRRF.LAST.TIME$,                              \
+ 887: 3f45:                     DIRORD.FILLER1$
+ 888: 3f45:            ENDIF
+ 889: 3f45: 
+ 890: 3f45:   WRITE.DIRORD.UNLOCK = 0
+ 891: 3f4a:   EXIT FUNCTION
+ 892: 3f4c: 
+ 893: 3f4c:   WRITE.UNLOCK.ERROR:
+ 894: 3f4c: 
+ 895: 3f4c:      CURRENT.CODE$ = DIRORD.SUPPLIER$
+ 896: 3f62:      FILE.OPERATION$ = "O"
+ 897: 3f71:      CURRENT.REPORT.NUM% = DIRORD.REPORT.NUM%
+ 898: 3f7f: 
+ 899: 3f7f:      EXIT FUNCTION
+ 900: 3f81: 
+ 901: 3f81:   END FUNCTION
+ 902: 3f90: 
+ 903: 3f90: \------------------------------------------------------------------------
+ 904: 3f90: REM EJECT
+ 905: 3f90: 
+ 906: 3f90:   FUNCTION WRITE.DIRORD PUBLIC
+ 907: 3fa4: \*****************************
+ 908: 3fa4: 
+ 909: 3fa4:   INTEGER*2 WRITE.DIRORD
+ 910: 3fa4: 
+ 911: 3fa4:   STRING         FORMAT$
+ 912: 3fa4: 
+ 913: 3fa4:   WRITE.DIRORD = 1
+ 914: 3fa9: 
+ 915: 3fa9: \***
+ 916: 3fa9: \*** Write Order header record
+ 917: 3fa9: \***
+ 918: 3fa9:     IF DIRORD.PAGE.NO$ = PACK$("00") THEN BEGIN
+ 919: 3fca: \      FORMAT$ = "C3,C2,4C1,4C2,2C3,C1,C3,2C2,C3,C474"
+ 920: 3fca:        FORMAT$ = "C3,C2,4C1,4C2,2C3,C1,C3,2C2,C3,C1,C473"                ! BNWB
+ 921: 3fd7:        IF END #DIRORD.SESS.NUM% THEN WRITE.ERROR
+ 922: 3feb:        WRITE FORM FORMAT$; #DIRORD.SESS.NUM%;                            \
+ 923: 4134:                 DIRORD.SUPPLIER$,                                        \
+ 924: 4134:                 DIRORD.ORDER.NO$,                                        \
+ 925: 4134:                 DIRORD.ORDER.SUF$,                                       \
+ 926: 4134:                 DIRORD.BUS.CENTRE$,                                      \
+ 927: 4134:                 DIRORD.SOURCE$,                                          \
+ 928: 4134:                 DIRORD.PAGE.NO$,                                         \
+ 929: 4134:                 DIRORD.NO.ORDER.ITEM$,                                   \
+ 930: 4134:                 DIRORD.NO.ORDER.SNGL$,                                   \
+ 931: 4134:                 DIRORD.NO.ITEMS.BOOKED$,                                 \
+ 932: 4134:                 DIRORD.NO.ITEMS.LST.BKD$,                                \
+ 933: 4134:                 DIRORD.ORDER.DATE$,                                      \
+ 934: 4134:                 DIRORD.EXP.DELV.DATE$,                                   \
+ 935: 4134:                 DIRORD.CONFIRM.FLAG$,                                    \
+ 936: 4134:                 DIRORD.CONFIRM.DATE$,                                    \
+ 937: 4134:                 DIRORD.CONF.STRT.TIME$,                                  \
+ 938: 4134:                 DIRORD.CONF.END.TIME$,                                   \
+ 939: 4134:                 DIRORD.ON.SALE.DATE$,                                    \
+ 940: 4134:                 DIRORD.SUPERCEDED$,                                      \ BNWB
+ 941: 4134:                 DIRORD.FILLER2$
+ 942: 4134:         ENDIF                                                            \
+ 943: 4134:      ELSE                                                                \
+ 944: 4134: \***
+ 945: 4134: \*** Write Order Detail record
+ 946: 4134: \***
+ 947: 4134:         IF DIRORD.SUPPLIER$ <> PACK$("999999") OR                        \
+ 948: 4242:            DIRORD.ORDER.NO$ <> PACK$("9999") OR                          \
+ 949: 4242:            DIRORD.ORDER.SUF$ <> PACK$("99") OR                           \
+ 950: 4242:            DIRORD.BUS.CENTRE$ <> PACK$("99") OR                          \
+ 951: 4242:            DIRORD.SOURCE$ <> PACK$("99") OR                              \
+ 952: 4242:            DIRORD.PAGE.NO$ <> PACK$("99") THEN BEGIN
+ 953: 4242:            FORMAT$ = "C3,C2,4C1,C1,C3,C15" +                             \
+ 954: 425d:                       STRING$(16,",C4,C6,C4,7I2,C2")
+ 955: 425d:            IF END #DIRORD.SESS.NUM% THEN WRITE.ERROR
+ 956: 4271:            WRITE FORM FORMAT$; #DIRORD.SESS.NUM%;                        \
+ 957: 55fa:                     DIRORD.SUPPLIER$,                                    \
+ 958: 55fa:                     DIRORD.ORDER.NO$,                                    \
+ 959: 55fa:                     DIRORD.ORDER.SUF$,                                   \
+ 960: 55fa:                     DIRORD.BUS.CENTRE$,                                  \
+ 961: 55fa:                     DIRORD.SOURCE$,                                      \
+ 962: 55fa:                     DIRORD.PAGE.NO$,                                     \
+ 963: 55fa:                     DIRORD.ITEM.COUNT$,                                  \
+ 964: 55fa:                     DIRORD.CONFIRM.DATE$,                                \
+ 965: 55fa:                     DIRORD.FILLER3$,                                     \
+ 966: 55fa:                     DIRORD.ITEM.DETAILS$(1,1),                           \
+ 967: 55fa:                     DIRORD.ITEM.DETAILS$(1,2),                           \
+ 968: 55fa:                     DIRORD.ITEM.DETAILS$(1,3),                           \
+ 969: 55fa:                     DIRORD.ITEM.QTY%(1,1),                               \
+ 970: 55fa:                     DIRORD.ITEM.QTY%(1,2),                               \
+ 971: 55fa:                     DIRORD.ITEM.QTY%(1,3),                               \
+ 972: 55fa:                     DIRORD.ITEM.QTY%(1,4),                               \
+ 973: 55fa:                     DIRORD.ITEM.QTY%(1,5),                               \
+ 974: 55fa:                     DIRORD.ITEM.QTY%(1,6),                               \
+ 975: 55fa:                     DIRORD.ITEM.QTY%(1,7),                               \
+ 976: 55fa:                     DIRORD.ITEM.DETAILS$(1,4),                           \
+ 977: 55fa:                     DIRORD.ITEM.DETAILS$(2,1),                           \
+ 978: 55fa:                     DIRORD.ITEM.DETAILS$(2,2),                           \
+ 979: 55fa:                     DIRORD.ITEM.DETAILS$(2,3),                           \
+ 980: 55fa:                     DIRORD.ITEM.QTY%(2,1),                               \
+ 981: 55fa:                     DIRORD.ITEM.QTY%(2,2),                               \
+ 982: 55fa:                     DIRORD.ITEM.QTY%(2,3),                               \
+ 983: 55fa:                     DIRORD.ITEM.QTY%(2,4),                               \
+ 984: 55fa:                     DIRORD.ITEM.QTY%(2,5),                               \
+ 985: 55fa:                     DIRORD.ITEM.QTY%(2,6),                               \
+ 986: 55fa:                     DIRORD.ITEM.QTY%(2,7),                               \
+ 987: 55fa:                     DIRORD.ITEM.DETAILS$(2,4),                           \
+ 988: 55fa:                     DIRORD.ITEM.DETAILS$(3,1),                           \
+ 989: 55fa:                     DIRORD.ITEM.DETAILS$(3,2),                           \
+ 990: 55fa:                     DIRORD.ITEM.DETAILS$(3,3),                           \
+ 991: 55fa:                     DIRORD.ITEM.QTY%(3,1),                               \
+ 992: 55fa:                     DIRORD.ITEM.QTY%(3,2),                               \
+ 993: 55fa:                     DIRORD.ITEM.QTY%(3,3),                               \
+ 994: 55fa:                     DIRORD.ITEM.QTY%(3,4),                               \
+ 995: 55fa:                     DIRORD.ITEM.QTY%(3,5),                               \
+ 996: 55fa:                     DIRORD.ITEM.QTY%(3,6),                               \
+ 997: 55fa:                     DIRORD.ITEM.QTY%(3,7),                               \
+ 998: 55fa:                     DIRORD.ITEM.DETAILS$(3,4),                           \
+ 999: 55fa:                     DIRORD.ITEM.DETAILS$(4,1),                           \
+1000: 55fa:                     DIRORD.ITEM.DETAILS$(4,2),                           \
+1001: 55fa:                     DIRORD.ITEM.DETAILS$(4,3),                           \
+1002: 55fa:                     DIRORD.ITEM.QTY%(4,1),                               \
+1003: 55fa:                     DIRORD.ITEM.QTY%(4,2),                               \
+1004: 55fa:                     DIRORD.ITEM.QTY%(4,3),                               \
+1005: 55fa:                     DIRORD.ITEM.QTY%(4,4),                               \
+1006: 55fa:                     DIRORD.ITEM.QTY%(4,5),                               \
+1007: 55fa:                     DIRORD.ITEM.QTY%(4,6),                               \
+1008: 55fa:                     DIRORD.ITEM.QTY%(4,7),                               \
+1009: 55fa:                     DIRORD.ITEM.DETAILS$(4,4),                           \
+1010: 55fa:                     DIRORD.ITEM.DETAILS$(5,1),                           \
+1011: 55fa:                     DIRORD.ITEM.DETAILS$(5,2),                           \
+1012: 55fa:                     DIRORD.ITEM.DETAILS$(5,3),                           \
+1013: 55fa:                     DIRORD.ITEM.QTY%(5,1),                               \
+1014: 55fa:                     DIRORD.ITEM.QTY%(5,2),                               \
+1015: 55fa:                     DIRORD.ITEM.QTY%(5,3),                               \
+1016: 55fa:                     DIRORD.ITEM.QTY%(5,4),                               \
+1017: 55fa:                     DIRORD.ITEM.QTY%(5,5),                               \
+1018: 55fa:                     DIRORD.ITEM.QTY%(5,6),                               \
+1019: 55fa:                     DIRORD.ITEM.QTY%(5,7),                               \
+1020: 55fa:                     DIRORD.ITEM.DETAILS$(5,4),                           \
+1021: 55fa:                     DIRORD.ITEM.DETAILS$(6,1),                           \
+1022: 55fa:                     DIRORD.ITEM.DETAILS$(6,2),                           \
+1023: 55fa:                     DIRORD.ITEM.DETAILS$(6,3),                           \
+1024: 55fa:                     DIRORD.ITEM.QTY%(6,1),                               \
+1025: 55fa:                     DIRORD.ITEM.QTY%(6,2),                               \
+1026: 55fa:                     DIRORD.ITEM.QTY%(6,3),                               \
+1027: 55fa:                     DIRORD.ITEM.QTY%(6,4),                               \
+1028: 55fa:                     DIRORD.ITEM.QTY%(6,5),                               \
+1029: 55fa:                     DIRORD.ITEM.QTY%(6,6),                               \
+1030: 55fa:                     DIRORD.ITEM.QTY%(6,7),                               \
+1031: 55fa:                     DIRORD.ITEM.DETAILS$(6,4),                           \
+1032: 55fa:                     DIRORD.ITEM.DETAILS$(7,1),                           \
+1033: 55fa:                     DIRORD.ITEM.DETAILS$(7,2),                           \
+1034: 55fa:                     DIRORD.ITEM.DETAILS$(7,3),                           \
+1035: 55fa:                     DIRORD.ITEM.QTY%(7,1),                               \
+1036: 55fa:                     DIRORD.ITEM.QTY%(7,2),                               \
+1037: 55fa:                     DIRORD.ITEM.QTY%(7,3),                               \
+1038: 55fa:                     DIRORD.ITEM.QTY%(7,4),                               \
+1039: 55fa:                     DIRORD.ITEM.QTY%(7,5),                               \
+1040: 55fa:                     DIRORD.ITEM.QTY%(7,6),                               \
+1041: 55fa:                     DIRORD.ITEM.QTY%(7,7),                               \
+1042: 55fa:                     DIRORD.ITEM.DETAILS$(7,4),                           \
+1043: 55fa:                     DIRORD.ITEM.DETAILS$(8,1),                           \
+1044: 55fa:                     DIRORD.ITEM.DETAILS$(8,2),                           \
+1045: 55fa:                     DIRORD.ITEM.DETAILS$(8,3),                           \
+1046: 55fa:                     DIRORD.ITEM.QTY%(8,1),                               \
+1047: 55fa:                     DIRORD.ITEM.QTY%(8,2),                               \
+1048: 55fa:                     DIRORD.ITEM.QTY%(8,3),                               \
+1049: 55fa:                     DIRORD.ITEM.QTY%(8,4),                               \
+1050: 55fa:                     DIRORD.ITEM.QTY%(8,5),                               \
+1051: 55fa:                     DIRORD.ITEM.QTY%(8,6),                               \
+1052: 55fa:                     DIRORD.ITEM.QTY%(8,7),                               \
+1053: 55fa:                     DIRORD.ITEM.DETAILS$(8,4),                           \
+1054: 55fa:                     DIRORD.ITEM.DETAILS$(9,1),                           \
+1055: 55fa:                     DIRORD.ITEM.DETAILS$(9,2),                           \
+1056: 55fa:                     DIRORD.ITEM.DETAILS$(9,3),                           \
+1057: 55fa:                     DIRORD.ITEM.QTY%(9,1),                               \
+1058: 55fa:                     DIRORD.ITEM.QTY%(9,2),                               \
+1059: 55fa:                     DIRORD.ITEM.QTY%(9,3),                               \
+1060: 55fa:                     DIRORD.ITEM.QTY%(9,4),                               \
+1061: 55fa:                     DIRORD.ITEM.QTY%(9,5),                               \
+1062: 55fa:                     DIRORD.ITEM.QTY%(9,6),                               \
+1063: 55fa:                     DIRORD.ITEM.QTY%(9,7),                               \
+1064: 55fa:                     DIRORD.ITEM.DETAILS$(9,4),                           \
+1065: 55fa:                     DIRORD.ITEM.DETAILS$(10,1),                          \
+1066: 55fa:                     DIRORD.ITEM.DETAILS$(10,2),                          \
+1067: 55fa:                     DIRORD.ITEM.DETAILS$(10,3),                          \
+1068: 55fa:                     DIRORD.ITEM.QTY%(10,1),                              \
+1069: 55fa:                     DIRORD.ITEM.QTY%(10,2),                              \
+1070: 55fa:                     DIRORD.ITEM.QTY%(10,3),                              \
+1071: 55fa:                     DIRORD.ITEM.QTY%(10,4),                              \
+1072: 55fa:                     DIRORD.ITEM.QTY%(10,5),                              \
+1073: 55fa:                     DIRORD.ITEM.QTY%(10,6),                              \
+1074: 55fa:                     DIRORD.ITEM.QTY%(10,7),                              \
+1075: 55fa:                     DIRORD.ITEM.DETAILS$(10,4),                          \
+1076: 55fa:                     DIRORD.ITEM.DETAILS$(11,1),                          \
+1077: 55fa:                     DIRORD.ITEM.DETAILS$(11,2),                          \
+1078: 55fa:                     DIRORD.ITEM.DETAILS$(11,3),                          \
+1079: 55fa:                     DIRORD.ITEM.QTY%(11,1),                              \
+1080: 55fa:                     DIRORD.ITEM.QTY%(11,2),                              \
+1081: 55fa:                     DIRORD.ITEM.QTY%(11,3),                              \
+1082: 55fa:                     DIRORD.ITEM.QTY%(11,4),                              \
+1083: 55fa:                     DIRORD.ITEM.QTY%(11,5),                              \
+1084: 55fa:                     DIRORD.ITEM.QTY%(11,6),                              \
+1085: 55fa:                     DIRORD.ITEM.QTY%(11,7),                              \
+1086: 55fa:                     DIRORD.ITEM.DETAILS$(11,4),                          \
+1087: 55fa:                     DIRORD.ITEM.DETAILS$(12,1),                          \
+1088: 55fa:                     DIRORD.ITEM.DETAILS$(12,2),                          \
+1089: 55fa:                     DIRORD.ITEM.DETAILS$(12,3),                          \
+1090: 55fa:                     DIRORD.ITEM.QTY%(12,1),                              \
+1091: 55fa:                     DIRORD.ITEM.QTY%(12,2),                              \
+1092: 55fa:                     DIRORD.ITEM.QTY%(12,3),                              \
+1093: 55fa:                     DIRORD.ITEM.QTY%(12,4),                              \
+1094: 55fa:                     DIRORD.ITEM.QTY%(12,5),                              \
+1095: 55fa:                     DIRORD.ITEM.QTY%(12,6),                              \
+1096: 55fa:                     DIRORD.ITEM.QTY%(12,7),                              \
+1097: 55fa:                     DIRORD.ITEM.DETAILS$(12,4),                          \
+1098: 55fa:                     DIRORD.ITEM.DETAILS$(13,1),                          \
+1099: 55fa:                     DIRORD.ITEM.DETAILS$(13,2),                          \
+1100: 55fa:                     DIRORD.ITEM.DETAILS$(13,3),                          \
+1101: 55fa:                     DIRORD.ITEM.QTY%(13,1),                              \
+1102: 55fa:                     DIRORD.ITEM.QTY%(13,2),                              \
+1103: 55fa:                     DIRORD.ITEM.QTY%(13,3),                              \
+1104: 55fa:                     DIRORD.ITEM.QTY%(13,4),                              \
+1105: 55fa:                     DIRORD.ITEM.QTY%(13,5),                              \
+1106: 55fa:                     DIRORD.ITEM.QTY%(13,6),                              \
+1107: 55fa:                     DIRORD.ITEM.QTY%(13,7),                              \
+1108: 55fa:                     DIRORD.ITEM.DETAILS$(13,4),                          \
+1109: 55fa:                     DIRORD.ITEM.DETAILS$(14,1),                          \
+1110: 55fa:                     DIRORD.ITEM.DETAILS$(14,2),                          \
+1111: 55fa:                     DIRORD.ITEM.DETAILS$(14,3),                          \
+1112: 55fa:                     DIRORD.ITEM.QTY%(14,1),                              \
+1113: 55fa:                     DIRORD.ITEM.QTY%(14,2),                              \
+1114: 55fa:                     DIRORD.ITEM.QTY%(14,3),                              \
+1115: 55fa:                     DIRORD.ITEM.QTY%(14,4),                              \
+1116: 55fa:                     DIRORD.ITEM.QTY%(14,5),                              \
+1117: 55fa:                     DIRORD.ITEM.QTY%(14,6),                              \
+1118: 55fa:                     DIRORD.ITEM.QTY%(14,7),                              \
+1119: 55fa:                     DIRORD.ITEM.DETAILS$(14,4),                          \
+1120: 55fa:                     DIRORD.ITEM.DETAILS$(15,1),                          \
+1121: 55fa:                     DIRORD.ITEM.DETAILS$(15,2),                          \
+1122: 55fa:                     DIRORD.ITEM.DETAILS$(15,3),                          \
+1123: 55fa:                     DIRORD.ITEM.QTY%(15,1),                              \
+1124: 55fa:                     DIRORD.ITEM.QTY%(15,2),                              \
+1125: 55fa:                     DIRORD.ITEM.QTY%(15,3),                              \
+1126: 55fa:                     DIRORD.ITEM.QTY%(15,4),                              \
+1127: 55fa:                     DIRORD.ITEM.QTY%(15,5),                              \
+1128: 55fa:                     DIRORD.ITEM.QTY%(15,6),                              \
+1129: 55fa:                     DIRORD.ITEM.QTY%(15,7),                              \
+1130: 55fa:                     DIRORD.ITEM.DETAILS$(15,4),                          \
+1131: 55fa:                     DIRORD.ITEM.DETAILS$(16,1),                          \
+1132: 55fa:                     DIRORD.ITEM.DETAILS$(16,2),                          \
+1133: 55fa:                     DIRORD.ITEM.DETAILS$(16,3),                          \
+1134: 55fa:                     DIRORD.ITEM.QTY%(16,1),                              \
+1135: 55fa:                     DIRORD.ITEM.QTY%(16,2),                              \
+1136: 55fa:                     DIRORD.ITEM.QTY%(16,3),                              \
+1137: 55fa:                     DIRORD.ITEM.QTY%(16,4),                              \
+1138: 55fa:                     DIRORD.ITEM.QTY%(16,5),                              \
+1139: 55fa:                     DIRORD.ITEM.QTY%(16,6),                              \
+1140: 55fa:                     DIRORD.ITEM.QTY%(16,7),                              \
+1141: 55fa:                     DIRORD.ITEM.DETAILS$(16,4)
+1142: 55fa:             ENDIF                                                        \
+1143: 55fa:         ELSE BEGIN
+1144: 55fa:  \***
+1145: 55fa:  \*** Write DIRORD header record
+1146: 55fa:  \***
+1147: 55fa:           FORMAT$ = "C3,C2,4C1,C3,C2,C494"
+1148: 5607:           IF END #DIRORD.SESS.NUM% THEN WRITE.ERROR
+1149: 561b:           WRITE FORM FORMAT$; #DIRORD.SESS.NUM%;                         \
+1150: 56c1:                     DIRORD.SUPPLIER$,                                    \
+1151: 56c1:                     DIRORD.ORDER.NO$,                                    \
+1152: 56c1:                     DIRORD.ORDER.SUF$,                                   \
+1153: 56c1:                     DIRORD.BUS.CENTRE$,                                  \
+1154: 56c1:                     DIRORD.SOURCE$,                                      \
+1155: 56c1:                     DIRORD.PAGE.NO$,                                     \
+1156: 56c1:                     DIRORD.DRRF.LAST.DATE$,                              \
+1157: 56c1:                     DIRORD.DRRF.LAST.TIME$,                              \
+1158: 56c1:                     DIRORD.FILLER1$
+1159: 56c1:            ENDIF
+1160: 56c1: 
+1161: 56c1:       WRITE.DIRORD = 0
+1162: 56c6:       EXIT FUNCTION
+1163: 56c8: 
+1164: 56c8:       WRITE.ERROR:
+1165: 56c8: 
+1166: 56c8:          CURRENT.CODE$ = DIRORD.SUPPLIER$
+1167: 56de:          CURRENT.REPORT.NUM% = DIRORD.REPORT.NUM%
+1168: 56ec:          FILE.OPERATION$ = "O"
+1169: 56fb: 
+1170: 56fb:          EXIT FUNCTION
+1171: 56fd: 
+1172: 56fd:   END FUNCTION
+1173: 570c: 
+1174: 570c: \------------------------------------------------------------------------
+1175: 570c: End of Compilation

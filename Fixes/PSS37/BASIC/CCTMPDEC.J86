@@ -1,0 +1,146 @@
+REM \
+\******************************************************************************
+\******************************************************************************
+\***
+\***      %INCLUDE FOR CREDIT CLAIMING TEMPORARY FILE FIELD DECLARATIONS
+\***                                             FILE REFERENCE PARAMETERS
+\***
+\***               FILE TYPE    : Sequential
+\***
+\***               REFERENCE    : CCTMPDEC.J86
+\***
+\***      Version A.     Michael J. Kelsall           30th September 1993.
+\***
+\***      Version 1.1    Brian Greenfield             14th May 2007
+\***      Added new variable CCTMP.RECALL.TYPE$ for A7C Recalls.
+\***
+\******************************************************************************
+\*******************************************************************************
+\***
+\***  The length of the records on this file vary depending on the record
+\***  transaction type, but they all comprise combinations of the fields
+\***  defined below.
+\***
+\***  RETURNS/AUTOMATIC CREDIT CLAIMING RECORD TYPES;
+\***
+\***  Transaction type 24 - Whole or Part consignment record
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, CREDIT CLAIM NUM, 
+\***     BC LETTER, CLAIM TYPE, SUPPLIER NUM, INVOICE NUM, FOLIO NUM, 
+\***     BATCH REF NUM, REPAIR CATEGORY, REPAIR NUM, PLAN4 POLICY NUM, 
+\***     DDDA/DCDR NUM, DELIV NOTE NUM, DELIV DATE, NUM OF CARTONS, ORDER NUM,
+\***     NUM OF ITEMS, ITEM/BAR CODE FLAG, BOOTS/BAR CODE, QTY, PRICE, 
+\***     RECORD DELIMITER, END OF RECORD MARKER
+\***     (ITEM/BAR CODE FLAG to PRICE repeated NUM OF ITEMS times)
+\***
+\***  Transaction type 26 - Data from LDT
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, UOD NUM, UOD STATUS, 
+\***     CREDIT CLAIM NUM, NUM OF ITEMS UPDATED, TOTAL QTY IN UOD, 
+\***     ADJUST STOCK FIGURE FLAG, SUPPLY ROUTE, DISP LOCATION, BC LETTER, 
+\***     RECALL NUM, AUTHORISATION, SUPPLIER, RETURN METHOD, CARRIER, BIRD NUM,
+\***     REASON, WAREHOUSE ROUTE, UOD TYPE, REASON FOR DAMAGE, RECEIVING STORE,
+\***     DESTINATION, DATE UOD OPENED, DATE UOD DESPATCHED, TIME UOD 
+\***     DESPATCHED, RECALL.TYPE$, ITEM.BAR CODE FLAG, BOOTS/BAR CODE, QTY,       ! 1.1BG
+\***     ITEM UPDATED FLAG, RECORD DELIMITER, END OF RECORD MARKER
+\***     (ITEM/BAR CODE FLAG to ITEM UPDATED FLAG repeated NUM OF ITEMS times)
+\***
+\***  Transaction type 28 - Cancelled Credit Claim
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, CLAIM NUMBER, UOD
+\***     NUM, NEW STATUS FLAG, RECORD DELIMITER, END OF RECORD MARKER
+\***
+\******************************************************************************
+
+  STRING GLOBAL              \
+    CCTMP.FILE.NAME$,        \
+    CCTMP.RECORD$,           \ Used to store the whole record which is unstrung
+                             \ into the fields below
+    CCTMP.RECORD.DELIMITER$, \ 1 byte ASCII set to " (CHR$(34)) 
+    CCTMP.TRANS.TYPE$,       \ 1 byte UPD. 24 = Whole/Part consignment (R/ACC)
+                 \             25 = NS16 / Misc cont txn (R/ACC)
+                 \             26 = Data from LDT (R/ACC)
+                 \             27 = End of LDT session (R/ACC)
+                 \         28 = Canc. Credit Claim (R/ACC)
+    CCTMP.FIELD.DELIMITER$,  \ 1 byte ASCII set to ; (CHR$(59))
+    CCTMP.ENDREC.MARKER$,    \ 2 bytes ASCII set to 0D0AH
+    CCTMP.BC.LETTER$,        \ 1 byte ASCII
+    CCTMP.CREDIT.CLAIM.NUM$, \ 4 byte UPD
+    CCTMP.NUM.ITEMS.UPDATED$,\ 4 byte ASCII
+    CCTMP.TOTAL.QTY.IN.UOD$, \ 4 byte ASCII
+    CCTMP.CLAIM.TYPE$,       \ 1 byte ASC;  "M" = Missing,
+                     \          "E" = Excess,
+                 \              "R" = Repairs
+    CCTMP.SUPPLIER.NUM$,     \ 3 byte UPD
+    CCTMP.INVOICE.NUM$,      \ 3 byte UPD 
+    CCTMP.FOLIO.NUM$,        \ 3 byte UPD
+    CCTMP.BATCH.REF$,        \ 3 byte UPD
+    CCTMP.REPAIR.CATEGORY$,  \ 1 byte UPD;   1 = Plan4,
+                 \           2 = Estimate,
+                 \           3 = Boots guarantee,
+                 \           4 = Supplier guarantee,
+                 \           5 = Other guarantee,
+    CCTMP.REPAIR.NUM$,       \ 4 byte UPD
+    CCTMP.PLAN4.POLICY.NUM$, \ 6 byte UPD; (Only if repair cat is Plan4)
+    CCTMP.DDDA.DCDR.NUM$,    \ 3 byte UPD
+    CCTMP.DELIV.NOTE.NUM$,   \ 3 byte UPD
+    CCTMP.NUM.CARTONS.RECEIV$,\1 byte UPD
+    CCTMP.ORDER.NUM$,        \ 3 byte UPD
+    CCTMP.ITEM.BARCODE.FLAG$,\ 1 byte ASC;  "I" = Boots item code,
+                 \              "B" = Barcode.
+    CCTMP.ITEM.BARCODE$,     \ 7 byte UPD
+    CCTMP.ITEM.PRICE$,       \ 3 byte UPD;  Spaces.
+    CCTMP.AUTHORISATION$,    \ 15 byte ASC
+    CCTMP.ADJ.STOCK.FIGURE$, \ 1 byte ASC  "Y" or "N"
+    CCTMP.RETURN.REASON$,    \ 1 byte UPD;  (See CCRSN file)
+    CCTMP.UOD.NUM$,      \ 7 byte UPD
+    CCTMP.UOD.STATUS$,       \ 1 byte ASC;  "O" = Open,
+                     \              "C" = Closed,
+                 \              "D" = Despatched
+    CCTMP.PREVIOUS.STATUS$,  \ 1 byte ASC   "O" = Open,
+                     \              "C" = Closed
+    CCTMP.SUPPLY.ROUTE$,     \ 1 byte ASC
+    CCTMP.DISP.LOCATION$,    \ 1 byte ASC   "M" = MDS,
+                     \              "D" = Dispensary
+    CCTMP.RECALL.NUM$,       \ 9 byte ASC 
+    CCTMP.SUPPLIER$,         \ 15 byte ASC
+    CCTMP.RETURN.METHOD$,    \ 1 byte UPD;   1 = Carrier,
+                     \           2 = BIRD,
+                 \               3 = Via D6,
+                 \               4 = Representative
+    CCTMP.CARRIER$,      \ 1 byte UPD;   1 = GPO,
+                     \               2 = Parcelforce,
+                 \               3 = Securicor,
+                 \               4 = Other
+    CCTMP.BIRD.NUM$,         \ 8 byte ASC
+    CCTMP.WAREHOUSE.ROUTE$,  \ 1 byte ASC   "R" = RDC,
+                     \          "C" = CSR
+    CCTMP.UOD.TYPE$,         \ 1 byte UPD;   1 = Travel Outer,
+                     \               2 = Town Tray,
+                 \               3 = Roll cage,
+                 \               4 = Other
+    CCTMP.DAMAGE.REASON$,    \ 1 byte UPD    1 = Bad packaging,
+                     \               2 = Poor handling
+    CCTMP.RECEIVING.STORE$,  \ 2 byte UPD
+    CCTMP.DESTINATION$,      \ 1 byte UPD    1 = Business Centre,
+                     \               2 = MTS,
+                 \               3 = Other
+    CCTMP.DATE.UOD.OPENED$,  \ 3 byte UPD
+    CCTMP.DATE.DESPATCHED$,  \ 3 byte UPD
+    CCTMP.TIME.DESPATCHED$,  \ 3 byte UPD
+    CCTMP.ITEM.UPDATED$,     \ 1 byte ASC
+    CCTMP.NEW.STATUS.FLAG$,  \ 1 byte ASC   "C" = Closed,
+                     \          "D" = Despatched,
+                 \          "X" = Cancelled
+    CCTMP.ITEM.QTY$,         \ 3 byte ASCII              
+    CCTMP.RECALL.TYPE$       ! 1 byte ASCII "B" = Batch Recall              ! 1.1BG
+                             !              "N" = Non-batch Recall          ! 1.1BG
+                             !              " " = Old Credit Claim          ! 1.1BG
+    
+                                                 
+  INTEGER*2 GLOBAL           \
+    CCTMP.SESS.NUM%,         \
+    CCTMP.REPORT.NUM%,       \
+                     \
+    CCTMP.NUM.OF.ITEMS%,     \
+    CCTMP.NUM.ITEMS.UPDATED%,\ 
+    CCTMP.TOTAL.QTY.IN.UOD%  !
+                         
+                 

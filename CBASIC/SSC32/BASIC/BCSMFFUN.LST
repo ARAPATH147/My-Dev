@@ -1,0 +1,243 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***         BUSINESS CENTRE SUPPLY METHOD FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***               REFERENCE    : BCSMFFUN.BAS
+   8: 0000: \***
+   9: 0000: \***         Version A              Les Cook                     8/9/92
+  10: 0000: \*** 
+  11: 0000: \***         Based on BCSMFFNE.J86
+  12: 0000: \***
+  13: 0000: \***
+  14: 0000: \***         Version C              Les Cook                    11/1/93
+  15: 0000: \***
+  16: 0000: \***         To include data missed from bcsmffnf.j86 in error   
+  17: 0000: \***
+  18: 0000: \***         Version D              Nik Sen                    22/5/98
+  19: 0000: \***         Changed incorrect filler length in all functions.
+  20: 0000: \***
+  21: 0000: \******************************************************************************
+  22: 0000: \******************************************************************************
+  23: 0000: 
+  24: 0000:   INTEGER*2 GLOBAL                           \
+  25: 0000:          CURRENT.REPORT.NUM%  
+  26: 0000:   
+  27: 0000:   STRING GLOBAL                              \
+  28: 0000:          CURRENT.CODE$,                      \
+  29: 0000: 	 FILE.OPERATION$
+  30: 0000: 	 
+  31: 0000:   %INCLUDE BCSMFDEC.J86
+  32: 0000: REM \
+  33: 0000: \******************************************************************************
+  34: 0000: \******************************************************************************
+  35: 0000: \***
+  36: 0000: \***   %INCLUDE FOR BUSINESS CENTRE SUPPLY METHOD FILE REFERENCE PARAMETERS
+  37: 0000: \***                                              FIELD DECLARATIONS
+  38: 0000: \***
+  39: 0000: \***               REFERENCE    : BCSMFDEC.J86
+  40: 0000: \***
+  41: 0000: \***  Version A - L Cook
+  42: 0000: \***  Copied from bcsmfnue.j86 and bcsmffle.j86
+  43: 0000: \***
+  44: 0000: \***  Version B - Les Cook
+  45: 0000: \***  to include integer missed from bcsmfflf.j86 in error
+  46: 0000: \***
+  47: 0000: \******************************************************************************
+  48: 0000: \*******************************************************************************
+  49: 0000: 
+  50: 0000:   STRING GLOBAL           \
+  51: 0000:     BCSMF.FILE.NAME$,              \ 
+  52: 0000:     BCSMF.FSI$,                    \ 1 byte ASCII folio series identifier (key)
+  53: 0000:     BCSMF.NAME$,                   \ 14 bytes ASCII business centre name
+  54: 0000:     BCSMF.PSEUDO.BUSINESS.CENTRE$, \ 1 byte flag "Y" = pseudo bc
+  55: 0000:     BCSMF.FILLER$                  ! 3 bytes spaces
+  56: 0000: 
+  57: 0000:   INTEGER*1 GLOBAL          \
+  58: 0000:     BCSMF.RECNT.LIMIT%,     \ percentage of recounts that may be generated
+  59: 0000:     BCSMF.MIN.RECNT.LIMIT%, \ minimum limit
+  60: 0000:     BCSMF.MAX.RECNT.LIMIT%, \ maximum limit
+  61: 0000:     BCSMF.DISCRPNCY.CNT%,   \ used to calculate   
+  62: 0000:     BCSMF.DISCRPNCY.PERCNT%,\ if recount
+  63: 0000:     BCSMF.STK.CNT.LIMIT%,   \ is necessary
+  64: 0000:     BCSMF.SEQUENCE.NO%,     \ used for displaying
+  65: 0000:     BCSMF.NO.REPEAT.TICKETS% ! Number of repeat FALCONCRAFT tickets	! CLC
+  66: 0000: 
+  67: 0000:   INTEGER*2 GLOBAL        \
+  68: 0000:     BCSMF.DISCRPNCY.VAL%,   \ (in pounds) used for determining recounts
+  69: 0000:     BCSMF.MIN.LIST.NO%,     \ allowable range of 
+  70: 0000:     BCSMF.MAX.LIST.NO%,     \ spare list numbers
+  71: 0000:     BCSMF.RECL%,          \
+  72: 0000:     BCSMF.SESS.NUM%,      \
+  73: 0000:     BCSMF.REPORT.NUM%
+  74: 0000:   
+  75: 0000:   FUNCTION BCSMF.SET PUBLIC
+  76: 0014: \***************************
+  77: 0014: 
+  78: 0014:      BCSMF.REPORT.NUM%  = 84
+  79: 001d:      BCSMF.RECL%      = 33
+  80: 0026:      BCSMF.FILE.NAME$ = "BCSMF"
+  81: 0035:   
+  82: 0035:   END FUNCTION
+  83: 0041: \-----------------------------------------------------------------------------
+  84: 0041: 
+  85: 0041:   FUNCTION READ.BCSMF PUBLIC
+  86: 0055: \****************************  
+  87: 0055: 
+  88: 0055:     INTEGER*2 READ.BCSMF
+  89: 0055:     
+  90: 0055:     READ.BCSMF = 1
+  91: 005a:  
+  92: 005a:     IF END #BCSMF.SESS.NUM% THEN READ.ERROR   
+  93: 006e:     READ FORM "T2,C14,3I1,I2,3I1,2I2,I1,C1,I1,C3,"; #BCSMF.SESS.NUM%   \ DNS 
+  94: 012f:          KEY BCSMF.FSI$;                                               \
+  95: 012f:              BCSMF.NAME$,                                              \
+  96: 012f:              BCSMF.RECNT.LIMIT%,                                       \
+  97: 012f:              BCSMF.MIN.RECNT.LIMIT%,                                   \
+  98: 012f:              BCSMF.MAX.RECNT.LIMIT%,                                   \
+  99: 012f:              BCSMF.DISCRPNCY.VAL%,                                     \
+ 100: 012f:              BCSMF.DISCRPNCY.CNT%,                                     \
+ 101: 012f:              BCSMF.DISCRPNCY.PERCNT%,                                  \
+ 102: 012f:              BCSMF.STK.CNT.LIMIT%,                                     \
+ 103: 012f:              BCSMF.MIN.LIST.NO%,                                       \
+ 104: 012f:              BCSMF.MAX.LIST.NO%,                                       \
+ 105: 012f:              BCSMF.SEQUENCE.NO%,                                       \
+ 106: 012f:              BCSMF.PSEUDO.BUSINESS.CENTRE$,                            \
+ 107: 012f: 	     BCSMF.NO.REPEAT.TICKETS%,				       \ CLC
+ 108: 012f:              BCSMF.FILLER$                                             !
+ 109: 012f: 
+ 110: 012f:     READ.BCSMF =0
+ 111: 0134:     EXIT FUNCTION
+ 112: 0136:     
+ 113: 0136:     READ.ERROR:
+ 114: 0136:     
+ 115: 0136:        CURRENT.CODE$ = BCSMF.FSI$
+ 116: 014c:        FILE.OPERATION$ = "R"
+ 117: 015b:        CURRENT.REPORT.NUM% = BCSMF.REPORT.NUM%
+ 118: 0169:        
+ 119: 0169:        EXIT FUNCTION
+ 120: 016b: 
+ 121: 016b:   END FUNCTION
+ 122: 017a: \-----------------------------------------------------------------------------
+ 123: 017a:   
+ 124: 017a:   FUNCTION READ.BCSMF.LOCK PUBLIC				       !
+ 125: 018e: \*********************************
+ 126: 018e: 
+ 127: 018e:     INTEGER*2 READ.BCSMF.LOCK
+ 128: 018e:     
+ 129: 018e:     READ.BCSMF.LOCK = 1
+ 130: 0193: 
+ 131: 0193:     IF END #BCSMF.SESS.NUM% THEN READ.LOCK.ERROR
+ 132: 01a7:     READ FORM "T2,C14,3I1,I2,3I1,2I2,I1,C1,I1,C3,"; #BCSMF.SESS.NUM%   \ DNS
+ 133: 0268:          AUTOLOCK						       \
+ 134: 0268:          KEY BCSMF.FSI$;                                               \
+ 135: 0268:              BCSMF.NAME$,                                              \ 
+ 136: 0268:              BCSMF.RECNT.LIMIT%,                                       \ 
+ 137: 0268:              BCSMF.MIN.RECNT.LIMIT%,                                   \ 
+ 138: 0268:              BCSMF.MAX.RECNT.LIMIT%,                                   \ 
+ 139: 0268:              BCSMF.DISCRPNCY.VAL%,                                     \ 
+ 140: 0268:              BCSMF.DISCRPNCY.CNT%,                                     \ 
+ 141: 0268:              BCSMF.DISCRPNCY.PERCNT%,                                  \ 
+ 142: 0268:              BCSMF.STK.CNT.LIMIT%,                                     \ 
+ 143: 0268:              BCSMF.MIN.LIST.NO%,                                       \ 
+ 144: 0268:              BCSMF.MAX.LIST.NO%,                                       \ 
+ 145: 0268:              BCSMF.SEQUENCE.NO%,                                       \ 
+ 146: 0268:              BCSMF.PSEUDO.BUSINESS.CENTRE$,                            \ 
+ 147: 0268: 	     BCSMF.NO.REPEAT.TICKETS%,				       \ CLC	     
+ 148: 0268:              BCSMF.FILLER$                                             ! 
+ 149: 0268:     READ.BCSMF.LOCK = 0
+ 150: 026d:     EXIT FUNCTION
+ 151: 026f:     
+ 152: 026f:     READ.LOCK.ERROR:
+ 153: 026f:        
+ 154: 026f:        CURRENT.CODE$ = BCSMF.FSI$
+ 155: 0285:        FILE.OPERATION$ = "R"
+ 156: 0294:        CURRENT.REPORT.NUM% = BCSMF.REPORT.NUM%
+ 157: 02a2:        
+ 158: 02a2:        EXIT FUNCTION	     
+ 159: 02a4: 
+ 160: 02a4:   END FUNCTION							       ! 
+ 161: 02b3: \-----------------------------------------------------------------------------
+ 162: 02b3:   
+ 163: 02b3:   
+ 164: 02b3:   FUNCTION WRITE.BCSMF PUBLIC                                          
+ 165: 02c7: \*****************************
+ 166: 02c7: 
+ 167: 02c7:     INTEGER*2 WRITE.BCSMF
+ 168: 02c7:     
+ 169: 02c7:     WRITE.BCSMF = 1
+ 170: 02cc:     
+ 171: 02cc:     IF END #BCSMF.SESS.NUM% THEN WRITE.ERROR
+ 172: 02e0:     WRITE FORM "C1,C14,3I1,I2,3I1,2I2,I1,C1,I1,C3,"; #BCSMF.SESS.NUM%; \ DNS 
+ 173: 03c6:              BCSMF.FSI$,                                               \ 
+ 174: 03c6: 	     BCSMF.NAME$,                                              \ 
+ 175: 03c6: 	     BCSMF.RECNT.LIMIT%,                                       \ 
+ 176: 03c6: 	     BCSMF.MIN.RECNT.LIMIT%,                                   \ 
+ 177: 03c6: 	     BCSMF.MAX.RECNT.LIMIT%,                                   \ 
+ 178: 03c6: 	     BCSMF.DISCRPNCY.VAL%,                                     \ 
+ 179: 03c6:              BCSMF.DISCRPNCY.CNT%,                                     \ 
+ 180: 03c6: 	     BCSMF.DISCRPNCY.PERCNT%,                                  \ 
+ 181: 03c6: 	     BCSMF.STK.CNT.LIMIT%,                                     \ 
+ 182: 03c6: 	     BCSMF.MIN.LIST.NO%,                                       \  
+ 183: 03c6: 	     BCSMF.MAX.LIST.NO%,                                       \ 
+ 184: 03c6: 	     BCSMF.SEQUENCE.NO%,                                       \ 
+ 185: 03c6: 	     BCSMF.PSEUDO.BUSINESS.CENTRE$,                            \ 	
+ 186: 03c6: 	     BCSMF.NO.REPEAT.TICKETS%,				       \ CLC	     
+ 187: 03c6: 	     BCSMF.FILLER$                                             ! 
+ 188: 03c6: 	     
+ 189: 03c6:     WRITE.BCSMF = 0
+ 190: 03cb:     EXIT FUNCTION
+ 191: 03cd:     
+ 192: 03cd:     WRITE.ERROR:
+ 193: 03cd:     
+ 194: 03cd:     CURRENT.CODE$ = BCSMF.FSI$
+ 195: 03e3:     FILE.OPERATION$ = "O"
+ 196: 03f2:     CURRENT.REPORT.NUM% = BCSMF.REPORT.NUM%
+ 197: 0400:     
+ 198: 0400:     EXIT FUNCTION
+ 199: 0402:     
+ 200: 0402:   END FUNCTION                                                         
+ 201: 0411: \-----------------------------------------------------------------------------
+ 202: 0411:   
+ 203: 0411:   	        
+ 204: 0411:   FUNCTION WRITE.BCSMF.UNLOCK PUBLIC
+ 205: 0425: \************************************
+ 206: 0425: 
+ 207: 0425:     INTEGER*2 WRITE.BCSMF.UNLOCK
+ 208: 0425:     
+ 209: 0425:     WRITE.BCSMF.UNLOCK = 1
+ 210: 042a:       
+ 211: 042a:     IF END #BCSMF.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 212: 043e:     WRITE FORM "C1,C14,3I1,I2,3I1,2I2,I1,C1,I1,C3,"; #BCSMF.SESS.NUM%  \ DNS 
+ 213: 0524:          AUTOUNLOCK ;						       \ 
+ 214: 0524:              BCSMF.FSI$,                                               \ 
+ 215: 0524:              BCSMF.NAME$,                                              \ 
+ 216: 0524:              BCSMF.RECNT.LIMIT%,                                       \ 
+ 217: 0524:              BCSMF.MIN.RECNT.LIMIT%,                                   \ 
+ 218: 0524:              BCSMF.MAX.RECNT.LIMIT%,                                   \ 
+ 219: 0524:              BCSMF.DISCRPNCY.VAL%,                                     \ 
+ 220: 0524:              BCSMF.DISCRPNCY.CNT%,                                     \ 
+ 221: 0524:              BCSMF.DISCRPNCY.PERCNT%,                                  \ 
+ 222: 0524:              BCSMF.STK.CNT.LIMIT%,                                     \ 
+ 223: 0524:              BCSMF.MIN.LIST.NO%,                                       \ 
+ 224: 0524:              BCSMF.MAX.LIST.NO%,                                       \ 
+ 225: 0524:              BCSMF.SEQUENCE.NO%,                                       \ 
+ 226: 0524:              BCSMF.PSEUDO.BUSINESS.CENTRE$,                            \ 
+ 227: 0524: 	     BCSMF.NO.REPEAT.TICKETS%,				       \ CLC	     
+ 228: 0524:              BCSMF.FILLER$                                             
+ 229: 0524:     WRITE.BCSMF.UNLOCK = 0
+ 230: 0529:     EXIT FUNCTION
+ 231: 052b:     
+ 232: 052b:     WRITE.UNLOCK.ERROR:
+ 233: 052b:     
+ 234: 052b:     CURRENT.CODE$ = BCSMF.FSI$
+ 235: 0541:     FILE.OPERATION$ = "O"
+ 236: 0550:     CURRENT.REPORT.NUM% = BCSMF.REPORT.NUM%
+ 237: 055e:     
+ 238: 055e:     EXIT FUNCTION
+ 239: 0560: 
+ 240: 0560:   END FUNCTION							       
+ 241: 056f: \-----------------------------------------------------------------------------
+ 242: 056f:   
+ 243: 056f: End of Compilation

@@ -1,0 +1,178 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* PRICE HISTORY FILE FUNCTIONS                                   */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : PHFFUN.BAS                                       */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.           23 OCTOBER 2006    */
+   8: 0000: \/* VERSION B.          Paul Bowers.             7 March   2007    */
+   9: 0000: \/*                                                                */
+  10: 0000: \/******************************************************************/
+  11: 0000: 
+  12: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  13: 0000: 
+  14: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  15: 0000:                     FILE.OPERATION$
+  16: 0000: 
+  17: 0000:    %INCLUDE PHFDEC.J86
+  18: 0000: \/******************************************************************/
+  19: 0000: \/*                                                                */
+  20: 0000: \/* PRICE HISTORY FILE GLOBAl VARIABLE DECLARATIONS                */
+  21: 0000: \/*                                                                */
+  22: 0000: \/* REFERENCE   : PHFDEC.J86                                       */
+  23: 0000: \/*                                                                */
+  24: 0000: \/* VERSION A.          Neil Bennett.           23 OCTOBER 2006    */
+  25: 0000: \/*                                                                */
+  26: 0000: \/******************************************************************/
+  27: 0000: 
+  28: 0000:    STRING GLOBAL                \
+  29: 0000:       PHF.FILE.NAME$,           \
+  30: 0000:                                 \
+  31: 0000:       PHF.BAR.CODE$,            \ PD  6 Barcode
+  32: 0000:       PHF.CURR.TYPE$,           \ ASC 1 L/R/E (Local/Rpd/Emergency)
+  33: 0000:       PHF.CURR.DATE$,           \ PD  3 YYMMDD
+  34: 0000:       PHF.CURR.LABL$,           \ ASC 1 0,1,2,3 for current label type
+  35: 0000:       PHF.HIST1.DATE$,          \ PD  3 YYMMDD
+  36: 0000:       PHF.HIST1.TYPE$,          \ ASC 1 L/R/E (Local/Rpd/Emergency)
+  37: 0000:       PHF.HIST2.DATE$,          \ PD  3 YYMMDD
+  38: 0000:       PHF.HIST2.TYPE$,          \ ASC 1 L/R/E (Local/Rpd/Emergency)
+  39: 0000:       PHF.LAST.INC.DATE$,       \ PD  3 YYMMDD
+  40: 0000:       PHF.PEND.DATE$,           \ PD  3 YYMMDD
+  41: 0000:       PHF.PEND.TYPE$,           \ ASC 1 L/R/E (Local/Rpd/Emergency)
+  42: 0000:       PHF.FILLER$               ! ASC 2 Not Used
+  43: 0000: 
+  44: 0000:    INTEGER*2 GLOBAL             \
+  45: 0000:       PHF.RECL%,                \
+  46: 0000:       PHF.REPORT.NUM%,          \
+  47: 0000:       PHF.SESS.NUM%             !
+  48: 0000: 
+  49: 0000:    INTEGER*4 GLOBAL             \
+  50: 0000:       PHF.CURR.PRICE%,          \ INT 4 Price in pence
+  51: 0000:       PHF.HIST1.PRICE%,         \ INT 4 Price in pence
+  52: 0000:       PHF.HIST2.PRICE%,         \ INT 4 Price in pence
+  53: 0000:       PHF.PEND.PRICE%           ! INT 4 Price in pence
+  54: 0000: 
+  55: 0000: \/******************************************************************/
+  56: 0000: 
+  57: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  58: 0000: \/* FUNCTION PHF.SET                                               */
+  59: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  60: 0000: 
+  61: 0000:    FUNCTION PHF.SET PUBLIC
+  62: 0014: 
+  63: 0014:       INTEGER*1 PHF.SET
+  64: 0014: 
+  65: 0014:       PHF.REPORT.NUM% = 732                                         !
+  66: 001d:       PHF.RECL%       = 44
+  67: 0026:       PHF.FILE.NAME$  = "PHF"
+  68: 0035: 
+  69: 0035:    END FUNCTION
+  70: 0044: 
+  71: 0044: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  72: 0044: \/* FUNCTION READ.PHF                                              */
+  73: 0044: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  74: 0044: 
+  75: 0044:    FUNCTION READ.PHF PUBLIC
+  76: 0058: 
+  77: 0058:       INTEGER*2 READ.PHF
+  78: 0058: 
+  79: 0058:       ON ERROR GOTO PHF.ERROR                                      ! PAB
+  80: 0065:       
+  81: 0065:       READ.PHF = 1
+  82: 006a: 
+  83: 006a:       IF END #PHF.SESS.NUM% THEN READ.ERROR
+  84: 007e:       READ FORM "T7,I4,C3,C1,I4,C3,C1,I4,C3,C1,C1,I4,C3,C1,C3,C2";  \
+  85: 014a:            #PHF.SESS.NUM%                                           \
+  86: 014a:            KEY PHF.BAR.CODE$;                                       \
+  87: 014a:                PHF.HIST2.PRICE%,                                    \
+  88: 014a:                PHF.HIST2.DATE$,                                     \
+  89: 014a:                PHF.HIST2.TYPE$,                                     \
+  90: 014a:                PHF.HIST1.PRICE%,                                    \
+  91: 014a:                PHF.HIST1.DATE$,                                     \
+  92: 014a:                PHF.HIST1.TYPE$,                                     \
+  93: 014a:                PHF.CURR.PRICE%,                                     \
+  94: 014a:                PHF.CURR.DATE$,                                      \
+  95: 014a:                PHF.CURR.TYPE$,                                      \
+  96: 014a:                PHF.CURR.LABL$,                                      \
+  97: 014a:                PHF.PEND.PRICE%,                                     \
+  98: 014a:                PHF.PEND.DATE$,                                      \
+  99: 014a:                PHF.PEND.TYPE$,                                      \
+ 100: 014a:                PHF.LAST.INC.DATE$,                                  \
+ 101: 014a:                PHF.FILLER$
+ 102: 014a: 
+ 103: 014a:        READ.PHF = 0
+ 104: 014f:     EXIT FUNCTION
+ 105: 0151:     
+ 106: 0151: PHF.ERROR:
+ 107: 0151: 
+ 108: 0151:    READ.PHF = 1
+ 109: 0156:    RESUME EXITFUN
+ 110: 0165:    
+ 111: 0165: READ.ERROR:
+ 112: 0165: 
+ 113: 0165:       FILE.OPERATION$     = "R"
+ 114: 0174:       CURRENT.REPORT.NUM% = PHF.REPORT.NUM%
+ 115: 0182:       CURRENT.CODE$       = UNPACK$(PHF.BAR.CODE$)
+ 116: 019d:       
+ 117: 019d: EXITFUN:
+ 118: 019d: 
+ 119: 019d:     EXIT FUNCTION
+ 120: 019f: 
+ 121: 019f:    END FUNCTION
+ 122: 01ae: 
+ 123: 01ae: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 124: 01ae: \/* FUNCTION WRITE.PHF                                             */
+ 125: 01ae: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 126: 01ae: 
+ 127: 01ae:    FUNCTION WRITE.PHF PUBLIC
+ 128: 01c2: 
+ 129: 01c2:       INTEGER*2 WRITE.PHF
+ 130: 01c2:                                                                     ! PAB
+ 131: 01c2:       ON ERROR GOTO PHF.ERROR   
+ 132: 01cf:      
+ 133: 01cf:       WRITE.PHF = 1
+ 134: 01d4: 
+ 135: 01d4:       IF END #PHF.SESS.NUM% THEN WRITE.ERROR
+ 136: 01e8:       WRITE FORM "C6,I4,C3,C1,I4,C3,C1,I4,C3,C1,C1,I4,C3,C1,C3,C2"; \
+ 137: 02fa:            #PHF.SESS.NUM%;                                          \
+ 138: 02fa:                PHF.BAR.CODE$,                                       \
+ 139: 02fa:                PHF.HIST2.PRICE%,                                    \
+ 140: 02fa:                PHF.HIST2.DATE$,                                     \
+ 141: 02fa:                PHF.HIST2.TYPE$,                                     \
+ 142: 02fa:                PHF.HIST1.PRICE%,                                    \
+ 143: 02fa:                PHF.HIST1.DATE$,                                     \
+ 144: 02fa:                PHF.HIST1.TYPE$,                                     \
+ 145: 02fa:                PHF.CURR.PRICE%,                                     \
+ 146: 02fa:                PHF.CURR.DATE$,                                      \
+ 147: 02fa:                PHF.CURR.TYPE$,                                      \
+ 148: 02fa:                PHF.CURR.LABL$,                                      \
+ 149: 02fa:                PHF.PEND.PRICE%,                                     \
+ 150: 02fa:                PHF.PEND.DATE$,                                      \
+ 151: 02fa:                PHF.PEND.TYPE$,                                      \
+ 152: 02fa:                PHF.LAST.INC.DATE$,                                  \
+ 153: 02fa:                PHF.FILLER$
+ 154: 02fa: 
+ 155: 02fa:       WRITE.PHF = 0
+ 156: 02ff:       EXIT FUNCTION
+ 157: 0301:       
+ 158: 0301: PHF.ERROR:                                                          ! PAB
+ 159: 0301:                                                                     ! PAB
+ 160: 0301:    WRITE.PHF = 1
+ 161: 0306:    RESUME EXITFUN                                                   ! PAB
+ 162: 0315:                                                                     ! PAB
+ 163: 0315: 
+ 164: 0315: WRITE.ERROR:
+ 165: 0315: 
+ 166: 0315:       FILE.OPERATION$ = "W"
+ 167: 0324:       CURRENT.REPORT.NUM% = PHF.REPORT.NUM%
+ 168: 0332:       CURRENT.CODE$ = UNPACK$(PHF.BAR.CODE$)
+ 169: 034d:       
+ 170: 034d: EXITFUN:                                                            ! PAB
+ 171: 034d:                                                                     ! PAB
+ 172: 034d:     EXIT FUNCTION                                                   ! PAB
+ 173: 034f:       
+ 174: 034f: 
+ 175: 034f:    END FUNCTION
+ 176: 035e: 
+ 177: 035e: \/******************************************************************/
+ 178: 035e: End of Compilation

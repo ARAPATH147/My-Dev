@@ -1,0 +1,67 @@
+﻿Imports System
+Imports System.Data
+Imports System.IO
+'''****************************************************************************
+''' <FileName>FileIO.vb</FileName>
+''' <summary>
+''' Used for File IO operations such as writing export data records.
+''' </summary>
+''' <Version>1.0</Version>
+''' <Author>Infosys Technologies Ltd.</Author>
+''' <DateModified>27-Nov-2008</DateModified>
+''' <Platform>Visual Basic, MS .Net CF 3.5 for MC70</Platform>
+''' <CopyRight>Boots the Chemists Ltd, Boots UK 2008</CopyRight> 
+'''****************************************************************************
+Public Class FileIO
+    ''' <summary>
+    ''' Constructor
+    ''' </summary>
+    ''' <remarks></remarks>
+    Public Sub New()
+
+    End Sub
+    ''' <summary>
+    ''' To write data into a file.
+    ''' </summary>
+    ''' <param name="sFileName">Name of the file to which the data is written.</param>
+    ''' <param name="sRecord">Record to be written into the file.</param>
+    ''' <param name="bAppend">Append the dat or not</param>
+    ''' <returns>Bool
+    ''' True - If successfully written the record.
+    ''' False - Any error occured while writing record to the file.
+    ''' </returns>
+    ''' <remarks></remarks>
+    Public Shared Function WriteDataIntoFile(ByVal sFileName As String, ByVal sRecord As String, ByVal bAppend As Boolean) As Boolean
+        Dim sFilePath As String = sFileName
+        Dim fsFileStream As FileStream
+        Dim swWriter As StreamWriter
+
+        SyncLock GetType(FileIO)
+            If bAppend Then
+                Try
+                    fsFileStream = New FileStream(sFilePath, FileMode.Append, FileAccess.Write)
+                Catch ex As Exception
+                    fsFileStream = Nothing
+                    Return False
+                End Try
+                swWriter = New StreamWriter(fsFileStream)
+                swWriter.Write(sRecord)
+            Else
+                Try
+
+                    fsFileStream = New FileStream(sFilePath, FileMode.Create, FileAccess.Write)
+                Catch
+                    fsFileStream = Nothing
+                    Return False
+                End Try
+
+                swWriter = New StreamWriter(fsFileStream)
+                swWriter.Write(sRecord)
+            End If
+
+            swWriter.Close()
+            fsFileStream.Close()
+        End SyncLock
+        Return True
+    End Function
+End Class

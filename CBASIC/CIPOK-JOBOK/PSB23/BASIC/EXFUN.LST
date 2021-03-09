@@ -1,0 +1,177 @@
+   1: 0000: 
+   2: 0000: \REM
+   3: 0000: \*******************************************************************************
+   4: 0000: \*******************************************************************************
+   5: 0000: \***
+   6: 0000: \***    %INCLUDE FOR EXCHANGE RATE FILE PUBLIC FUNCTIONS
+   7: 0000: \***
+   8: 0000: \***        REFERENCE   :  EXFUN (BAS)
+   9: 0000: \***
+  10: 0000: \***        FILE TYPE   :  DIRECT
+  11: 0000: \***
+  12: 0000: \***    VERSION A.              Steve Hughes.                       23 JAN 1996.
+  13: 0000: \***    Original version.
+  14: 0000: \***
+  15: 0000: \*******************************************************************************
+  16: 0000: \*******************************************************************************
+  17: 0000: 
+  18: 0000: 
+  19: 0000:     %INCLUDE EXDEC.J86 ! DETS variable declarations
+  20: 0000: \REM
+  21: 0000: \*******************************************************************************
+  22: 0000: \*******************************************************************************
+  23: 0000: \***
+  24: 0000: \***    %INCLUDE FOR EXCHANGE RATE FILE VARIABLE DECLARATIONS
+  25: 0000: \***
+  26: 0000: \***        REFERENCE   :  EXDEC (J86)
+  27: 0000: \***
+  28: 0000: \***        FILE TYPE   :  Direct
+  29: 0000: \***
+  30: 0000: \***    VERSION A.              Steve Hughes.                       23 JAN 1996.
+  31: 0000: \***    Original version.
+  32: 0000: \***
+  33: 0000: \***
+  34: 0000: \*******************************************************************************
+  35: 0000: \*******************************************************************************
+  36: 0000: 
+  37: 0000: 
+  38: 0000: \*******************************************************************************
+  39: 0000: \*******************************************************************************
+  40: 0000: \***
+  41: 0000: \***    RECORD LAYOUT
+  42: 0000: \***
+  43: 0000: \***    EX.FLAGS          1   1 INT  Flags
+  44: 0000: \***                                 080H       Not used
+  45: 0000: \***                                 040H       Not used
+  46: 0000: \***                                 020H       Not used
+  47: 0000: \***                                 010H       Not used
+  48: 0000: \***                                 08H        Not used
+  49: 0000: \***                                 04H        Not used
+  50: 0000: \***                                 02H        Not used
+  51: 0000: \***                                 01H        Set indicates valid entry
+  52: 0000: \***    EX.OP.NAME$       2  14 ASC  Currency name for operator display/receipt
+  53: 0000: \***    EX.DEC.PLACES     16  1 INT  Number of decimal places in currency
+  54: 0000: \***    EX.EXCH.RATE      17 10 REA  Exchange rate
+  55: 0000: \***    EX.NAME$          27 30 ASC  Currency name
+  56: 0000: \***    EX.DATE$          57  3 PAC  Date of last update
+  57: 0000: \***    EX.ACCEPT         60  2 PAC  Accepted tender flag
+  58: 0000: \***    EX.UNUSED$        62  3 ASC  Unused
+  59: 0000: \***    Record length 64
+  60: 0000: \***
+  61: 0000: \*******************************************************************************
+  62: 0000: \*******************************************************************************
+  63: 0000: 
+  64: 0000:     STRING GLOBAL            \
+  65: 0000:         EX.FILENAME.NAME$
+  66: 0000: 
+  67: 0000:     INTEGER*4 GLOBAL         \
+  68: 0000:         EX.REC.NUM%
+  69: 0000: 
+  70: 0000:     INTEGER*2 GLOBAL         \
+  71: 0000:         EX.ACCEPT%,          \
+  72: 0000:         EX.RECL%,            \
+  73: 0000:         EX.REPORT.NUM%,      \
+  74: 0000:         EX.SESS.NUM%
+  75: 0000: 
+  76: 0000: \*** Globals for each record's field.
+  77: 0000: 
+  78: 0000:     REAL GLOBAL              \
+  79: 0000:         EX.EXCH.RATE
+  80: 0000: 
+  81: 0000:     INTEGER*1 GLOBAL         \
+  82: 0000:         EX.FLAGS,            \
+  83: 0000:         EX.DEC.PLACES
+  84: 0000: 
+  85: 0000:     STRING GLOBAL            \
+  86: 0000:         EX.OP.NAME$,         \
+  87: 0000:         EX.NAME$,            \
+  88: 0000:         EX.DATE$,            \
+  89: 0000:         EX.UNUSED$
+  90: 0000: 
+  91: 0000: 
+  92: 0000:     STRING GLOBAL \
+  93: 0000:         CURRENT.CODE$, \
+  94: 0000:         FILE.OPERATION$
+  95: 0000: 
+  96: 0000:     INTEGER*2 GLOBAL \
+  97: 0000:         CURRENT.REPORT.NUM%
+  98: 0000: 
+  99: 0000: 
+ 100: 0000: FUNCTION EX.SET PUBLIC
+ 101: 0014: 
+ 102: 0014:     INTEGER*2 EX.SET
+ 103: 0014:     EX.SET EQ 1
+ 104: 0019: 
+ 105: 0019:     EX.FILENAME.NAME$  EQ "EXRATE" ! Suffix needed to define individual files
+ 106: 0028:     EX.REPORT.NUM%   EQ  465
+ 107: 0031:     EX.RECL%         EQ  64
+ 108: 003a: 
+ 109: 003a:     EX.SET EQ 0
+ 110: 003f: 
+ 111: 003f: END FUNCTION
+ 112: 004e: 
+ 113: 004e: 
+ 114: 004e: FUNCTION READ.EX PUBLIC
+ 115: 0062: 
+ 116: 0062:     INTEGER*2 READ.EX
+ 117: 0062:     READ.EX EQ 1
+ 118: 0067: 
+ 119: 0067:     IF END # EX.SESS.NUM% THEN READ.EX.IF.END
+ 120: 007b:     READ FORM "I1,C14,I1,R,C30,C3,I2,C3"; \
+ 121: 00fa:       # EX.SESS.NUM%,         \
+ 122: 00fa:         EX.REC.NUM%;          \
+ 123: 00fa:           EX.FLAGS, \
+ 124: 00fa:           EX.OP.NAME$, \
+ 125: 00fa:           EX.DEC.PLACES, \
+ 126: 00fa:           EX.EXCH.RATE, \
+ 127: 00fa:           EX.NAME$, \
+ 128: 00fa:           EX.DATE$, \
+ 129: 00fa:           EX.ACCEPT%,\
+ 130: 00fa:           EX.UNUSED$
+ 131: 00fa: 
+ 132: 00fa:     READ.EX EQ 0
+ 133: 00ff:     EXIT FUNCTION
+ 134: 0101: 
+ 135: 0101: READ.EX.IF.END:
+ 136: 0101: 
+ 137: 0101:     FILE.OPERATION$     EQ "R"
+ 138: 0110:     CURRENT.REPORT.NUM% EQ  EX.REPORT.NUM%
+ 139: 011e:     CURRENT.CODE$       EQ \
+ 140: 0166:       PACK$(RIGHT$("000000" + STR$(EX.REC.NUM%),6))
+ 141: 0166: 
+ 142: 0166: END FUNCTION
+ 143: 0175: 
+ 144: 0175: 
+ 145: 0175: FUNCTION WRITE.EX PUBLIC
+ 146: 0189: 
+ 147: 0189:     INTEGER*2 WRITE.EX
+ 148: 0189:     WRITE.EX EQ 1
+ 149: 018e: 
+ 150: 018e:     IF END # EX.SESS.NUM% THEN WRITE.EX.ERROR
+ 151: 01a2:     WRITE FORM "I1,C14,I1,R,C30,C3,I2,C3"; \
+ 152: 0237:       # EX.SESS.NUM%,         \
+ 153: 0237:         EX.REC.NUM%;          \
+ 154: 0237:           EX.FLAGS, \
+ 155: 0237:           EX.OP.NAME$, \
+ 156: 0237:           EX.DEC.PLACES, \
+ 157: 0237:           EX.EXCH.RATE, \
+ 158: 0237:           EX.NAME$, \
+ 159: 0237:           EX.DATE$, \
+ 160: 0237:           EX.ACCEPT%, \
+ 161: 0237:           EX.UNUSED$
+ 162: 0237: 
+ 163: 0237:     WRITE.EX EQ 0
+ 164: 023c:     EXIT FUNCTION
+ 165: 023e: 
+ 166: 023e: WRITE.EX.ERROR:
+ 167: 023e: 
+ 168: 023e:     FILE.OPERATION$     EQ "W"
+ 169: 024d:     CURRENT.REPORT.NUM% EQ  EX.REPORT.NUM%
+ 170: 025b:     CURRENT.CODE$       EQ \
+ 171: 02a3:       PACK$(RIGHT$("000000" + STR$(EX.REC.NUM%),6))
+ 172: 02a3: 
+ 173: 02a3:     EXIT FUNCTION
+ 174: 02a5: 
+ 175: 02a5: END FUNCTION
+ 176: 02b4: 
+ 177: 02b4: End of Compilation

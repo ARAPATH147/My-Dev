@@ -1,0 +1,268 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           OUTSTANDING INITIAL STOCK FILE FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***               REFERENCE    : IDSOFFUN.BAS
+   7: 0000: \***
+   8: 0000: \***   Version A.       Stephen Kelsey (CTG)            20th October 1992
+   9: 0000: \***   
+  10: 0000: \***   Version B.       Steve Perkins                    8th February 1996
+  11: 0000: \***   Change the IDSOFDEA.J86 to IDSOFDEC.J86 becuase the version letter
+  12: 0000: \***   has been dropped in PVCS.
+  13: 0000: \***
+  14: 0000: \*******************************************************************************
+  15: 0000: \*******************************************************************************
+  16: 0000: 
+  17: 0000:   INTEGER*2 GLOBAL                                                     \
+  18: 0000:          CURRENT.REPORT.NUM%
+  19: 0000: 	 
+  20: 0000:   STRING GLOBAL                                                        \
+  21: 0000:          CURRENT.CODE$,                                                \ 
+  22: 0000: 	 FILE.OPERATION$
+  23: 0000: 	 
+  24: 0000:   %INCLUDE IDSOFDEC.J86                                                
+  25: 0000: REM \
+  26: 0000: \******************************************************************************
+  27: 0000: \******************************************************************************
+  28: 0000: \***
+  29: 0000: \***      %INCLUDE FOR CSR OUTSTANDING INITIAL STOCK QUANTITIES FILE
+  30: 0000: \***                                             FIELD DECLARATIONS
+  31: 0000: \***                                             FILE REFERENCE PARAMETERS
+  32: 0000: \***
+  33: 0000: \***               FILE TYPE    : Keyed
+  34: 0000: \***
+  35: 0000: \***               REFERENCE    : IDSOFFLD.J86
+  36: 0000: \***
+  37: 0000: \***      Version A.     Stephen Kelsey (CTG)               21st October 1992
+  38: 0000: \***
+  39: 0000: \******************************************************************************
+  40: 0000: \*******************************************************************************
+  41: 0000: 
+  42: 0000:   STRING GLOBAL                  \
+  43: 0000:     IDSOF.BC.LETTER$,            \ 1 byte UPD
+  44: 0000:     IDSOF.EXP.DELV.DATE$,        \ 3 byte UPD YYMMDD
+  45: 0000:     IDSOF.FILE.NAME$,            \
+  46: 0000:     IDSOF.FILLER$,               \ 10 bytes ASC
+  47: 0000:     IDSOF.ITEM.CODE$             ! 4 byte UPD
+  48: 0000: 
+  49: 0000:   INTEGER*2 GLOBAL               \
+  50: 0000:     IDSOF.QUANTITY%,             \ Outstanding Stock Quantity
+  51: 0000:     IDSOF.RECL%,                 \     
+  52: 0000:     IDSOF.REPORT.NUM%,           \     
+  53: 0000:     IDSOF.SESS.NUM% 
+  54: 0000:     
+  55: 0000: 
+  56: 0000: \------------------------------------------------------------------------------
+  57: 0000:   
+  58: 0000:  FUNCTION IDSOF.SET PUBLIC
+  59: 0014: \*************************
+  60: 0014:     
+  61: 0014:     IDSOF.REPORT.NUM%  = 72  
+  62: 001d:     IDSOF.RECL%        = 20
+  63: 0026:     IDSOF.FILE.NAME$  = "IDSOF"
+  64: 0035:     
+  65: 0035: END FUNCTION
+  66: 0041:   
+  67: 0041: \------------------------------------------------------------------------------
+  68: 0041:   
+  69: 0041:  FUNCTION READ.IDSOF PUBLIC
+  70: 0055: \**************************
+  71: 0055: 
+  72: 0055:     STRING FORMAT$
+  73: 0055:     INTEGER*2 READ.IDSOF
+  74: 0055:     
+  75: 0055:     
+  76: 0055:     READ.IDSOF = 1 
+  77: 005a:     FORMAT$ = "T5,C1,I2,C3,C10"  
+  78: 0067:     IF END #IDSOF.SESS.NUM% THEN READ.IDSOF.ERROR
+  79: 007b:     
+  80: 007b:     READ FORM FORMAT$; #IDSOF.SESS.NUM%                                \
+  81: 00d2:          KEY IDSOF.ITEM.CODE$;                                         \
+  82: 00d2: 	     IDSOF.BC.LETTER$,                                         \
+  83: 00d2: 	     IDSOF.QUANTITY%,                                          \
+  84: 00d2: 	     IDSOF.EXP.DELV.DATE$,                                     \
+  85: 00d2:              IDSOF.FILLER$                                            
+  86: 00d2: 
+  87: 00d2:     READ.IDSOF = 0
+  88: 00d7:     EXIT FUNCTION
+  89: 00d9:        
+  90: 00d9: READ.IDSOF.ERROR:
+  91: 00d9:     
+  92: 00d9:     CURRENT.CODE$ = IDSOF.ITEM.CODE$
+  93: 00ef:     FILE.OPERATION$ = "R"
+  94: 00fe:     CURRENT.REPORT.NUM% = IDSOF.REPORT.NUM%
+  95: 010c:        
+  96: 010c:     EXIT FUNCTION
+  97: 010e: 
+  98: 010e: END FUNCTION
+  99: 011d:   
+ 100: 011d: \------------------------------------------------------------------------------
+ 101: 011d:   
+ 102: 011d:  FUNCTION READ.IDSOF.LOCK PUBLIC
+ 103: 0131: \*******************************
+ 104: 0131: 
+ 105: 0131:     STRING FORMAT$
+ 106: 0131:     INTEGER*2 READ.IDSOF.LOCK
+ 107: 0131:     
+ 108: 0131:     READ.IDSOF.LOCK = 1
+ 109: 0136:     FORMAT$ = "T5,C1,I2,C3,C10"  
+ 110: 0143:     
+ 111: 0143:     IF END #IDSOF.SESS.NUM% THEN READ.IDSOF.LOCK.ERROR
+ 112: 0157: 
+ 113: 0157:     READ FORM FORMAT$; #IDSOF.SESS.NUM%                                \
+ 114: 01ae:          AUTOLOCK                                                      \ 
+ 115: 01ae: 	 KEY IDSOF.ITEM.CODE$;                                         \
+ 116: 01ae: 	     IDSOF.BC.LETTER$,                                         \
+ 117: 01ae: 	     IDSOF.QUANTITY%,                                          \
+ 118: 01ae: 	     IDSOF.EXP.DELV.DATE$,                                     \
+ 119: 01ae:              IDSOF.FILLER$                                            
+ 120: 01ae: 
+ 121: 01ae:     READ.IDSOF.LOCK = 0
+ 122: 01b3:     EXIT FUNCTION
+ 123: 01b5:        
+ 124: 01b5: READ.IDSOF.LOCK.ERROR:
+ 125: 01b5:     
+ 126: 01b5:     CURRENT.CODE$ = IDSOF.ITEM.CODE$
+ 127: 01cb:     FILE.OPERATION$ = "R"
+ 128: 01da:     CURRENT.REPORT.NUM% = IDSOF.REPORT.NUM%
+ 129: 01e8:        
+ 130: 01e8:     EXIT FUNCTION
+ 131: 01ea: 
+ 132: 01ea: END FUNCTION
+ 133: 01f9: 
+ 134: 01f9: \------------------------------------------------------------------------------
+ 135: 01f9:   
+ 136: 01f9:  FUNCTION WRITE.IDSOF PUBLIC
+ 137: 020d: \***************************
+ 138: 020d: 
+ 139: 020d:     STRING FORMAT$
+ 140: 020d:     INTEGER*2 WRITE.IDSOF
+ 141: 020d:     
+ 142: 020d:     WRITE.IDSOF = 1
+ 143: 0212:     FORMAT$ = "C4,C1,I2,C3,C10"  
+ 144: 021f:       
+ 145: 021f:     IF END #IDSOF.SESS.NUM% THEN WRITE.IDSOF.ERROR
+ 146: 0233: 
+ 147: 0233:     WRITE FORM FORMAT$; #IDSOF.SESS.NUM%;                              \
+ 148: 0295:                IDSOF.ITEM.CODE$,                                       \
+ 149: 0295: 	       IDSOF.BC.LETTER$,                                       \
+ 150: 0295: 	       IDSOF.QUANTITY%,                                        \
+ 151: 0295:                IDSOF.EXP.DELV.DATE$,                                   \
+ 152: 0295:                IDSOF.FILLER$                                            
+ 153: 0295: 
+ 154: 0295:     WRITE.IDSOF = 0
+ 155: 029a:     EXIT FUNCTION
+ 156: 029c:     
+ 157: 029c: WRITE.IDSOF.ERROR:    
+ 158: 029c: 
+ 159: 029c:     CURRENT.CODE$ = IDSOF.ITEM.CODE$
+ 160: 02b2:     FILE.OPERATION$ = "W"
+ 161: 02c1:     CURRENT.REPORT.NUM% = IDSOF.REPORT.NUM%
+ 162: 02cf:        
+ 163: 02cf:     EXIT FUNCTION
+ 164: 02d1:   
+ 165: 02d1: END FUNCTION
+ 166: 02e0: 
+ 167: 02e0: \------------------------------------------------------------------------------
+ 168: 02e0:   
+ 169: 02e0:  FUNCTION WRITE.IDSOF.UNLOCK PUBLIC
+ 170: 02f4: \**********************************
+ 171: 02f4: 
+ 172: 02f4:     STRING FORMAT$
+ 173: 02f4:     INTEGER*2 WRITE.IDSOF.UNLOCK
+ 174: 02f4:     
+ 175: 02f4:     WRITE.IDSOF.UNLOCK = 1
+ 176: 02f9:     FORMAT$ = "C4,C1,I2,C3,C10"  
+ 177: 0306:     
+ 178: 0306:     IF END #IDSOF.SESS.NUM% THEN WRITE.IDSOF.UNLOCK.ERROR
+ 179: 031a:     
+ 180: 031a:     WRITE FORM FORMAT$; #IDSOF.SESS.NUM% AUTOUNLOCK;                   \
+ 181: 037c:                IDSOF.ITEM.CODE$,                                       \
+ 182: 037c: 	       IDSOF.BC.LETTER$,                                       \
+ 183: 037c: 	       IDSOF.QUANTITY%,                                        \
+ 184: 037c:                IDSOF.EXP.DELV.DATE$,                                   \
+ 185: 037c:                IDSOF.FILLER$                                            
+ 186: 037c: 
+ 187: 037c:     WRITE.IDSOF.UNLOCK = 0
+ 188: 0381:     EXIT FUNCTION  
+ 189: 0383: 
+ 190: 0383: WRITE.IDSOF.UNLOCK.ERROR:
+ 191: 0383: 
+ 192: 0383:     CURRENT.CODE$ = IDSOF.ITEM.CODE$
+ 193: 0399:     FILE.OPERATION$ = "W"
+ 194: 03a8:     CURRENT.REPORT.NUM% = IDSOF.REPORT.NUM%
+ 195: 03b6:        
+ 196: 03b6:     EXIT FUNCTION
+ 197: 03b8: 
+ 198: 03b8: END FUNCTION
+ 199: 03c7: 
+ 200: 03c7: \------------------------------------------------------------------------------
+ 201: 03c7:   
+ 202: 03c7:  FUNCTION WRITE.IDSOF.HOLD PUBLIC
+ 203: 03db: \********************************
+ 204: 03db: 
+ 205: 03db:     STRING FORMAT$
+ 206: 03db:     INTEGER*2 WRITE.IDSOF.HOLD
+ 207: 03db:     
+ 208: 03db:     WRITE.IDSOF.HOLD = 1
+ 209: 03e0:     FORMAT$ = "C4,C1,I2,C3,C10"  
+ 210: 03ed:     
+ 211: 03ed:     IF END #IDSOF.SESS.NUM% THEN WRITE.IDSOF.HOLD.ERROR
+ 212: 0401:     
+ 213: 0401:     WRITE FORM FORMAT$; HOLD #IDSOF.SESS.NUM% ;                        \
+ 214: 0463:                IDSOF.ITEM.CODE$,                                       \
+ 215: 0463: 	       IDSOF.BC.LETTER$,                                       \
+ 216: 0463: 	       IDSOF.QUANTITY%,                                        \
+ 217: 0463:                IDSOF.EXP.DELV.DATE$,                                   \
+ 218: 0463:                IDSOF.FILLER$                                            
+ 219: 0463: 	   
+ 220: 0463:     WRITE.IDSOF.HOLD = 0
+ 221: 0468:     EXIT FUNCTION
+ 222: 046a:     
+ 223: 046a: WRITE.IDSOF.HOLD.ERROR:    
+ 224: 046a: 
+ 225: 046a:     CURRENT.CODE$ = IDSOF.ITEM.CODE$
+ 226: 0480:     FILE.OPERATION$ = "W"
+ 227: 048f:     CURRENT.REPORT.NUM% = IDSOF.REPORT.NUM%
+ 228: 049d:        
+ 229: 049d:     EXIT FUNCTION
+ 230: 049f:   
+ 231: 049f: 
+ 232: 049f: END FUNCTION
+ 233: 04ae: 
+ 234: 04ae: \------------------------------------------------------------------------------
+ 235: 04ae:   
+ 236: 04ae:  FUNCTION WRITE.IDSOF.HOLD.UNLOCK PUBLIC
+ 237: 04c2: \***************************************
+ 238: 04c2: 
+ 239: 04c2:     STRING FORMAT$
+ 240: 04c2:     INTEGER*2 WRITE.IDSOF.HOLD.UNLOCK
+ 241: 04c2:     
+ 242: 04c2:     WRITE.IDSOF.HOLD.UNLOCK = 1
+ 243: 04c7:     FORMAT$ = "C4,C1,I2,C3,C10"  
+ 244: 04d4: 
+ 245: 04d4:     IF END #IDSOF.SESS.NUM% THEN WRITE.IDSOF.HOLD.UNLOCK.ERROR
+ 246: 04e8:     
+ 247: 04e8:     WRITE FORM FORMAT$; HOLD #IDSOF.SESS.NUM% AUTOUNLOCK;              \
+ 248: 054a:                IDSOF.ITEM.CODE$,                                       \
+ 249: 054a: 	       IDSOF.BC.LETTER$,                                       \
+ 250: 054a: 	       IDSOF.QUANTITY%,                                        \
+ 251: 054a:                IDSOF.EXP.DELV.DATE$,                                   \
+ 252: 054a:                IDSOF.FILLER$                                            
+ 253: 054a: 
+ 254: 054a:     WRITE.IDSOF.HOLD.UNLOCK = 0
+ 255: 054f:     EXIT FUNCTION
+ 256: 0551: 
+ 257: 0551: WRITE.IDSOF.HOLD.UNLOCK.ERROR:
+ 258: 0551: 
+ 259: 0551:     CURRENT.CODE$ = IDSOF.ITEM.CODE$
+ 260: 0567:     FILE.OPERATION$ = "W"
+ 261: 0576:     CURRENT.REPORT.NUM% = IDSOF.REPORT.NUM%
+ 262: 0584:        
+ 263: 0584:     EXIT FUNCTION
+ 264: 0586: 
+ 265: 0586: END FUNCTION
+ 266: 0595: 
+ 267: 0595: 
+ 268: 0595: End of Compilation

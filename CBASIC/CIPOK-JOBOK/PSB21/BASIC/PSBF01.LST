@@ -1,0 +1,1126 @@
+   1: 0000: REM \
+   2: 0000: \*******************************************************************************
+   3: 0000: \*******************************************************************************
+   4: 0000: \***
+   5: 0000: \***
+   6: 0000: \***            FUNCTION      : APPLICATION.LOG
+   7: 0000: \***            AUTHOR        : Bruce Scriver  (Pseudocode)
+   8: 0000: \***                            Stephen Kelsey (Basic code)
+   9: 0000: \***            DATE WRITTEN  : 21st January 1986  (Pseudocode)
+  10: 0000: \***                            18th February 1986 (Basic code)
+  11: 0000: \***
+  12: 0000: \***            REFERENCE     : PSBF01
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***            VERSION E.    B.A.A.SCRIVER       19th May 1988
+  16: 0000: \***            STOCK SYSTEM CHANGES.
+  17: 0000: \***            Change to use session number table to assign file session
+  18: 0000: \***            numbers as for PSSF20 - SESS.NUM.UTILITY.
+  19: 0000: \***
+  20: 0000: \***            VERSION F.    D.S.O'DARE   (Pseudocode)   22nd November, 1988
+  21: 0000: \***                          B.C.  WILLIS (Basic code)   29th November, 1988  
+  22: 0000: \***            89A MERGE.(ie. small stores changes added to stocks changes).
+  23: 0000: \***            CHAIN statement replaced with new included code (PSBCHNE.J86).
+  24: 0000: \***            Change subroutine CHAIN.MODULE.01 to CHAIN.MODULE.50.
+  25: 0000: \***            Replace the setting up of CHAIN parameters and the CHAIN 
+  26: 0000: \***            statement with a GOTO CHAIN.MODULE.50 statement.
+  27: 0000: \***            
+  28: 0000: \***            Version G.          Andrew Wedgeworth           1st July 1992             
+  29: 0000: \***            BATCH.SCREEN.FLAG$ and MODULE.NUMBER$ are defined globally in
+  30: 0000: \***            the function and any program which calls it, rather than being 
+  31: 0000: \***            passed as parameters to the function.  Also, the return code
+  32: 0000: \***            is now the function's name.
+  33: 0000: \***
+  34: 0000: \***            Version H.      Stuart William McConnachie      2nd Sep 2005
+  35: 0000: \***            Removed version numbered included code - About time.
+  36: 0000: \***            This is so we can compile FUNLIB version without line numbers.
+  37: 0000: \***            
+  38: 0000: \***            Version I.      Stuart William McConnachie     31st Oct 2006
+  39: 0000: \***            Chain back to PSB50.286, instead of xxx50.286 derived from
+  40: 0000: \***            first three letters of MODULE.NUMBER$.  Doesn't work for
+  41: 0000: \***            PSD and SRP applications.
+  42: 0000: \***            
+  43: 0000: \*******************************************************************************
+  44: 0000: \*******************************************************************************
+  45: 0000: 
+  46: 0000: REM \
+  47: 0000: \*******************************************************************************
+  48: 0000: \*******************************************************************************
+  49: 0000: \***
+  50: 0000: \***
+  51: 0000: \***            FUNCTION OVERVIEW
+  52: 0000: \***            -----------------
+  53: 0000: \***
+  54: 0000: \***   This function is called to log an event on the system error log, and to
+  55: 0000: \***   display the associated message if in a screen program.   The error is
+  56: 0000: \***   first logged, and then if the calling program is a screen program, the
+  57: 0000: \***   associated message text is retreived from a message file and displayed
+  58: 0000: \***   in the message window on the screen.  If the display of a message
+  59: 0000: \***   fails, the display manager file is closed and the message is written to
+  60: 0000: \***   the screen directly, after which the function chains back to the first
+  61: 0000: \***   module of the system.
+  62: 0000: \***
+  63: 0000: \***
+  64: 0000: \*******************************************************************************
+  65: 0000: \*******************************************************************************
+  66: 0000: 
+  67: 0000: REM    PSEUDOCODE for this module follows....\
+  68: 0000: 
+  69: 0000: \*****************************************************************************
+  70: 0000: \*****************************************************************************
+  71: 0000: \***
+  72: 0000: \***
+  73: 0000: \***   %INCLUDE global definitions for SESS.NUM.UTILITY function
+  74: 0000: \***   %INCLUDE global definitions for screen chaining parameters (PSBUSEG.J86)
+  75: 0000: \***   %INCLUDE statements for BEMF
+  76: 0000: \***   %INCLUDE external definition for ADXERROR function
+  77: 0000: \***   %INCLUDE external definition of display manager calls (NB NOT Boots fn.)
+  78: 0000: \***
+  79: 0000: \------------------------------------------------------------------------------
+  80: 0000:     
+  81: 0000:    \ 1 line deleted from here                                          \ GAW
+  82: 0000: 
+  83: 0000: !  %INCLUDE PSBF20G.J86                                                ! HSWM
+  84: 0000:    
+  85: 0000:    STRING GLOBAL                                                       \ GAW
+  86: 0000:           BATCH.SCREEN.FLAG$,                                          \ GAW
+  87: 0000:           MODULE.NUMBER$                                               ! GAW                
+  88: 0000: 
+  89: 0000:    %INCLUDE PSBUSEG.J86                                                ! HSWM
+  90: 0000: \/*********************************************************************/ PSBUSEG
+  91: 0000: \/*                                                                   */ PSBUSEG
+  92: 0000: \/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+  93: 0000: \/* ----------------------------------------------------------------- */ PSBUSEG
+  94: 0000: \/*                                                                   */ PSBUSEG
+  95: 0000: \/*********************************************************************/ PSBUSEG
+  96: 0000:                                                                        ! PSBUSEG
+  97: 0000:         STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+  98: 0000:                        PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+  99: 0000:                        PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+ 100: 0000:                        PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+ 101: 0000:                        PSBCHN.U1,       \ User parameter               ! PSBUSEG
+ 102: 0000:                        PSBCHN.U2,       \ User parameter               ! PSBUSEG
+ 103: 0000:                        PSBCHN.U3        ! User parameter               ! PSBUSEG
+ 104: 0000:                                                                        ! PSBUSEG
+ 105: 0000: 
+ 106: 0000: 
+ 107: 0000:    %INCLUDE BEMFDEC.J86                                                ! HSWM
+ 108: 0000: \******************************************************************************
+ 109: 0000: \***
+ 110: 0000: \***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+ 111: 0000: \***                                             - FILE REFERENCE PARAMETERS
+ 112: 0000: \***
+ 113: 0000: \***                         FILE TYPE : Direct
+ 114: 0000: \***
+ 115: 0000: \***                         REFERENCE : BEMFDEC
+ 116: 0000: \***
+ 117: 0000: \***	Version A               Mark Walker                  1st November 1993
+ 118: 0000: \***
+ 119: 0000: \******************************************************************************
+ 120: 0000: 
+ 121: 0000: 	STRING GLOBAL			BEMF.MESSAGE$,			\
+ 122: 0000: 					BEMF.FILE.NAME$
+ 123: 0000: 
+ 124: 0000: 	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+ 125: 0000: 					BEMF.REPORT.NUM%,		\
+ 126: 0000: 					BEMF.SESS.NUM%
+ 127: 0000: 
+ 128: 0000: 	INTEGER*4 GLOBAL		BEMF.REC.NO%
+ 129: 0000: 
+ 130: 0000:    %INCLUDE PSBF20G.J86                                                ! HSWM
+ 131: 0000: REM\
+ 132: 0000: \*******************************************************************************
+ 133: 0000: \*******************************************************************************
+ 134: 0000: \***
+ 135: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 136: 0000: \***
+ 137: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 138: 0000: \*** 
+ 139: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 140: 0000: \*** 
+ 141: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 142: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 143: 0000: \***     to two byte integer.
+ 144: 0000: \***
+ 145: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 146: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 147: 0000: \***
+ 148: 0000: \*******************************************************************************
+ 149: 0000: \*******************************************************************************
+ 150: 0000: 
+ 151: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 152: 0000:                        F20.STRING.FILE.NO$,                            \
+ 153: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 154: 0000:                        SESS.NUM.TABLE$(1)
+ 155: 0000: 
+ 156: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 157: 0000: 
+ 158: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 159: 0000: 
+ 160: 0000: 
+ 161: 0000: !HSWM  %INCLUDE BEMFNUMB.J86
+ 162: 0000: 
+ 163: 0000: 
+ 164: 0000: !HSWM  %INCLUDE BEMFFNSB.J86
+ 165: 0000: 
+ 166: 0000: 
+ 167: 0000:    %INCLUDE ADXERROR.J86                                               ! HSWM
+ 168: 0000: \******************************************************************************
+ 169: 0000: \******************************************************************************
+ 170: 0000: \***                                                                        ***
+ 171: 0000: \***    %INCLUDE FOR FUNCTION ADXERROR (an I.B.M. system function)          ***
+ 172: 0000: \***                                                                        ***
+ 173: 0000: \***         AUTHOR        :  Stephen Kelsey                                ***
+ 174: 0000: \***                                                                        ***
+ 175: 0000: \***         DATE WRITTEN  :  21st February 1986                            ***
+ 176: 0000: \***                                                                        ***
+ 177: 0000: \***         DATE OF LAST REVISION  - 21st February 1986                    ***
+ 178: 0000: \***                                                                        ***
+ 179: 0000: \***         VERSION B     :  Stuart William McConnachie  18th March 1997   ***
+ 180: 0000: \***    Define size of ADXERROR return value from function.  This change    ***
+ 181: 0000: \***    was introduced by IBM in the 4690 Programming Guide.  Not defining  ***
+ 182: 0000: \***    this variable can cause Memory Protection Violations at run time.   ***
+ 183: 0000: \***                                                                        ***
+ 184: 0000: \******************************************************************************
+ 185: 0000: \******************************************************************************
+ 186: 0000: 
+ 187: 0000:    FUNCTION ADXERROR (TERM%,                                                  \
+ 188: 0000:                       MSGGRP%,                                                \
+ 189: 0000:                       MSGNUM%,                                                \
+ 190: 0000:                       SEVERITY%,                                              \
+ 191: 0000:                       EVENT.NUM%,                                             \
+ 192: 0000:                       UNIQUE$) EXTERNAL
+ 193: 0000: 
+ 194: 0000:       INTEGER*2  MSGNUM%,                                                     \
+ 195: 0000:                  TERM%,                                                       \
+ 196: 0000:                  ADXERROR                                                     !BSWM
+ 197: 0000: 
+ 198: 0000:       INTEGER*1 EVENT.NUM%,                                                   \
+ 199: 0000:                 MSGGRP%,                                                      \
+ 200: 0000:                 SEVERITY%
+ 201: 0000: 
+ 202: 0000:       STRING  UNIQUE$
+ 203: 0000: 
+ 204: 0000:    END FUNCTION
+ 205: 0000: 
+ 206: 0000: 
+ 207: 0000: 
+ 208: 0000:    %INCLUDE DMEXTR.J86
+ 209: 0000: \/* TIME STAMP BLOCK **************************************************
+ 210: 0000: \** END OF TIME STAMP BLOCK ******************************************/
+ 211: 0000:  REM  INCLUDE FILE FOR  DISPLAY MANAGER EXTERNAL FUNCTIONS FOR CB80  June 7/82
+ 212: 0000:  REM  IR91470 01 10 91  LAB G53  marked for EFT
+ 213: 0000:         DEF CLRSCR EXTERNAL             REM Clear screen for Display Manager
+ 214: 0000:         INTEGER CLRSCR
+ 215: 0000:         FEND
+ 216: 0000:         DEF CLSDIS EXTERNAL
+ 217: 0000:         INTEGER CLSDIS
+ 218: 0000:         FEND                            REM Close Display Manager
+ 219: 0000:         DEF DISPD(I%) EXTERNAL          REM Display a display.
+ 220: 0000:         INTEGER DISPD
+ 221: 0000:         FEND
+ 222: 0000:         DEF CURS(X$) EXTERNAL           REM turn on/off cursor visibility.
+ 223: 0000:         STRING CURS
+ 224: 0000:         FEND
+ 225: 0000:         DEF ENDF EXTERNAL               REM ENDF method of return.
+ 226: 0000:         INTEGER ENDF
+ 227: 0000:         FEND
+ 228: 0000:         DEF GETF EXTERNAL               REM GETF get data from a field
+ 229: 0000:         STRING GETF
+ 230: 0000:         FEND
+ 231: 0000:         DEF INITDM(A$) EXTERNAL         REM INITIALIZE Display Manager
+ 232: 0000:         INTEGER INITDM
+ 233: 0000:         FEND
+ 234: 0000:         DEF NXTF(I%)  EXTERNAL          REM NXTF Go to Next Field
+ 235: 0000:         INTEGER NXTF
+ 236: 0000:         FEND
+ 237: 0000:         DEF POSF(I%) EXTERNAL           REM POSTION on Field
+ 238: 0000:         INTEGER POSF
+ 239: 0000:         FEND
+ 240: 0000: 
+ 241: 0000:         DEF OPNDIS(A$) EXTERNAL         REM OPEN DISPLAY FILE
+ 242: 0000:         INTEGER OPNDIS
+ 243: 0000:         FEND
+ 244: 0000:         DEF PUTF(A$)  EXTERNAL          REM PUT data to Field
+ 245: 0000:         INTEGER PUTF
+ 246: 0000:         FEND
+ 247: 0000:         DEF RESF(I%)  EXTERNAL          REM RESUME field
+ 248: 0000:         STRING RESF
+ 249: 0000:         FEND
+ 250: 0000: 
+ 251: 0000:         DEF RETDM  EXTERNAL             REM RETURN Display Mgr Characteristics
+ 252: 0000:         STRING RETDM
+ 253: 0000:         FEND
+ 254: 0000:         DEF SETF(A$) EXTERNAL           REM SET Field  video attributes
+ 255: 0000:         STRING SETF
+ 256: 0000:         FEND
+ 257: 0000:         DEF UPDF  EXTERNAL                      REM UPDATE Field data
+ 258: 0000:         STRING UPDF
+ 259: 0000:         FEND
+ 260: 0000: 
+ 261: 0000:         DEF RETF EXTERNAL
+ 262: 0000:         STRING RETF
+ 263: 0000:         FEND
+ 264: 0000:    REM  END OF INCLUDE FILE FOR DISPLAY MANAGER CALLS FOR CB80
+ 265: 0000: 
+ 266: 0000:    %INCLUDE BEMFEXT.J86                                                ! HSWM
+ 267: 0000: \******************************************************************************
+ 268: 0000: \***
+ 269: 0000: \***        EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FILE
+ 270: 0000: \***                                                            
+ 271: 0000: \***                        REFERENCE : BEMFEXT
+ 272: 0000: \***
+ 273: 0000: \***    Version A               Mark Walker                   1st November 1993
+ 274: 0000: \***
+ 275: 0000: \***    Version B       Stuart William McConnachie          25th September 2000
+ 276: 0000: \***    READ.BEMF function has got lost!
+ 277: 0000: \***
+ 278: 0000: \******************************************************************************
+ 279: 0000: 
+ 280: 0000:     FUNCTION BEMF.SET EXTERNAL
+ 281: 0000:     END FUNCTION
+ 282: 0000:     
+ 283: 0000:     FUNCTION READ.BEMF EXTERNAL
+ 284: 0000:     INTEGER*1 READ.BEMF
+ 285: 0000:     END FUNCTION
+ 286: 0000:     
+ 287: 0000:     
+ 288: 0000: 
+ 289: 0000:    %INCLUDE PSBF20E.J86                                                ! HSWM
+ 290: 0000: REM\
+ 291: 0000: \*******************************************************************************
+ 292: 0000: \*******************************************************************************
+ 293: 0000: \***
+ 294: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 295: 0000: \***
+ 296: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 297: 0000: \***
+ 298: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 299: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 300: 0000: \***     128 files.
+ 301: 0000: \***
+ 302: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 303: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 304: 0000: \***     as a variable.  This new variable contains the function's return
+ 305: 0000: \***     code.
+ 306: 0000: \***
+ 307: 0000: \*******************************************************************************
+ 308: 0000: \*******************************************************************************
+ 309: 0000: 
+ 310: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 311: 0000:                               PASSED.INTEGER%,                         \
+ 312: 0000:                               PASSED.STRING$)                          \
+ 313: 0000:    EXTERNAL
+ 314: 0000: 
+ 315: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 316: 0000:              PASSED.STRING$
+ 317: 0000:    ! 3 variables removed from here                                     ! CAW
+ 318: 0000: 
+ 319: 0000: 
+ 320: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 321: 0000:              PASSED.INTEGER%				               ! CJAS
+ 322: 0000: 
+ 323: 0000:    END FUNCTION
+ 324: 0000: 
+ 325: 0000: 
+ 326: 0000: \------------------------------------------------------------------------------
+ 327: 0000: \***
+ 328: 0000: \***   FUNCTION APPLICATION.LOG(message number,
+ 329: 0000: \***                            variable string 1, variable string 2,
+ 330: 0000: \***                            event number)
+ 331: 0000: \***
+ 332: 0000: \***   INTEGER message number, event number
+ 333: 0000: \***
+ 334: 0000: \***   STRING  variable string 1, variable string 2
+ 335: 0000: \***
+ 336: 0000: \------------------------------------------------------------------------------
+ 337: 0000: 
+ 338: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                              \
+ 339: 0000:                              VAR.STRING.1$,                            \
+ 340: 0000:                              VAR.STRING.2$,                            \
+ 341: 0000:                              EVENT.NO%)  PUBLIC
+ 342: 001e: 
+ 343: 001e:    \ 3 parameters no longer reveived from calling program              \ GAW
+ 344: 001e: 
+ 345: 001e:    STRING BEMF.OPEN.FLAG$,                                             \ EBAAS
+ 346: 001e:           BEMF.REC.NO.STR$,                                            \
+ 347: 001e:           CHAIN.FILE.NAME$,                                            \
+ 348: 001e:           CHAIN.MODULE$,                                               \
+ 349: 001e: \ 2 lines deleted from here                                            \ EBAAS
+ 350: 001e:           CURSOR.SETTING$,                                             \
+ 351: 001e: \ 1 line deleted from here                                             \ EBAAS
+ 352: 001e:           ERROR.STRING$,                                               \
+ 353: 001e:           FIELD.NO.STR$,                                               \
+ 354: 001e:           IN.FIELD.FLAG$,                                              \
+ 355: 001e:           INVISIBLE.CURSOR$,                                           \
+ 356: 001e: \ 1 line deleted from here                                             \ EBAAS
+ 357: 001e: \ 1 line deleted from here                                             \ GAW
+ 358: 001e:           NORMAL.VIDEO$,                                               \
+ 359: 001e:           NULL.FOUND.FLAG$,                                            \ EBAAS
+ 360: 001e:           OPEN.READ$,                                                  \
+ 361: 001e: \ 1 line deleted from here                                             \ GAW
+ 362: 001e: \ 1 line deleted from here                                             \ EBAAS
+ 363: 001e:           RETURNED.STRING$,                                            \
+ 364: 001e:           REVERSE.VIDEO$,                                              \
+ 365: 001e:           SCREEN.MESSAGE$,                                             \
+ 366: 001e:           SETF.RETURN$,                                                \
+ 367: 001e:           STAR.LINE$,                                                  \
+ 368: 001e:           UNIQUE$,                                                     \
+ 369: 001e: \ 1 line deleted from here                                             \ EBAAS
+ 370: 001e:           VAR.STRING.1$,                                               \
+ 371: 001e:           VAR.STRING.2$,                                               \
+ 372: 001e:           VISIBLE.CURSOR$
+ 373: 001e: 
+ 374: 001e:    INTEGER*1 EVENT.NO%,                                                \
+ 375: 001e:              EVENT.NUM%,                                               \
+ 376: 001e:              MSGGRP%,                                                  \
+ 377: 001e:              SEVERITY%
+ 378: 001e: 
+ 379: 001e:    INTEGER*2 APPLICATION.LOG,                                          \ GAW
+ 380: 001e:              COUNT%,                                                   \
+ 381: 001e: \ 1 line deleted from here                                             \ EBAAS
+ 382: 001e:              DM.RET.CODE%,                                             \
+ 383: 001e:              ESCAPE.KEY%,                                              \
+ 384: 001e:              FIELD.NO%,                                                \
+ 385: 001e: \H           INDEX%,                                                   \ EBAAS
+ 386: 001e:              KEY.PRESSED%,                                             \
+ 387: 001e:              MESSAGE.NO%,                                              \
+ 388: 001e:              MSGNUM%,                                                  \
+ 389: 001e:              TERM%
+ 390: 001e: 
+ 391: 001e:    INTEGER*4 ERROR.BYTE%,                                              \
+ 392: 001e:              ERROR.LENGTH%,                                            \
+ 393: 001e:              ERROR.VALUE%
+ 394: 001e: 
+ 395: 001e: \------------------------------------------------------------------------------
+ 396: 001e: \***
+ 397: 001e: \***   REM start of mainline code
+ 398: 001e: \***
+ 399: 001e: \***   ON ERROR GOTO ERROR.DETECTED
+ 400: 001e: \***
+ 401: 001e: \***   REM set up storage areas for ADXERROR call in event of memory overflow
+ 402: 001e: \***   set variable string 1 to 10 spaces
+ 403: 001e: \***
+ 404: 001e: \***   %INCLUDE bemf set up code
+ 405: 001e: \***   set APPLICATION.LOG to 0
+ 406: 001e: \***
+ 407: 001e: \***   check value of F20.TABLE.DIMENSIONED.FLAG$ - if it is not "Y",
+ 408: 001e: \***   dimension the session number table to have 64 entries, not including
+ 409: 001e: \***   the first entry, subscript zero; and set the flag to "Y"
+ 410: 001e: \***
+ 411: 001e: \***   IF batch/screen flag = "S" THEN
+ 412: 001e: \***      set in field flag off
+ 413: 001e: \***      use display manager POSF to establish initial cursor position
+ 414: 001e: \***      IF value returned from POSF > 0 THEN
+ 415: 001e: \***         set in field flag on
+ 416: 001e: \***      endif
+ 417: 001e: \***   endif
+ 418: 001e: \***
+ 419: 001e: \------------------------------------------------------------------------------
+ 420: 001e: 
+ 421: 001e:       ON ERROR GOTO ERROR.DETECTED
+ 422: 002b: 
+ 423: 002b:       UNIQUE$ = "          "
+ 424: 0038: 
+ 425: 0038: !H    %INCLUDE BEMFSETB.J86
+ 426: 0038:       CALL BEMF.SET                                                    ! HSWM
+ 427: 004b: 
+ 428: 004b:       APPLICATION.LOG = 0
+ 429: 0050: 
+ 430: 0050: !H    IF F20.TABLE.DIMENSIONED.FLAG$ <> "Y" THEN                       \ EBAAS
+ 431: 0050: !H       DIM SESS.NUM.TABLE$(64)                                      :\ EBAAS
+ 432: 0050: !H       F20.TABLE.DIMENSIONED.FLAG$ = "Y"                             ! EBAAS
+ 433: 0050: 
+ 434: 0050:       ESCAPE.KEY% = 27
+ 435: 0056:       VISIBLE.CURSOR$ = "0"
+ 436: 0063:       INVISIBLE.CURSOR$ = "1"
+ 437: 0070: 
+ 438: 0070:       IF BATCH.SCREEN.FLAG$ = "S" THEN                                 \
+ 439: 0086:          IN.FIELD.FLAG$ = "N"                                         :\
+ 440: 0093:          FIELD.NO% = POSF(0)                                          :\
+ 441: 009f:          IF FIELD.NO% > 0 THEN                                         \
+ 442: 00a4:             IN.FIELD.FLAG$ = "Y"
+ 443: 00b1: 
+ 444: 00b1: \------------------------------------------------------------------------------
+ 445: 00b1: \***
+ 446: 00b1: \***   GOSUB LOG.ERROR
+ 447: 00b1: \***   IF batch/screen flag is "S" THEN
+ 448: 00b1: \***      GOSUB DISPLAY.ROUTINE
+ 449: 00b1: \***
+ 450: 00b1: \***      IF in field flag is on THEN
+ 451: 00b1: \***         use display manager POSF to position cursor in initial position
+ 452: 00b1: \***      ELSE
+ 453: 00b1: \***         use display manager POSF to position cursor in first input field
+ 454: 00b1: \***      endif
+ 455: 00b1: \***   endif
+ 456: 00b1: \***
+ 457: 00b1: \***   IF bemf open flag is on THEN
+ 458: 00b1: \***      set bemf open flag off
+ 459: 00b1: \***      CLOSE bemf
+ 460: 00b1: \***   endif
+ 461: 00b1: \***
+ 462: 00b1: \***   set session number table entry for bemf to null
+ 463: 00b1: \***
+ 464: 00b1: \***   EXIT FUNCTION to calling program
+ 465: 00b1: \***   N.B. Calling program is now "50" and not "01", so change GOTO labels
+ 466: 00b1: \***        accordingly.
+ 467: 00b1: \***
+ 468: 00b1: \------------------------------------------------------------------------------
+ 469: 00b1: 
+ 470: 00b1:       EVENT.NUM% = EVENT.NO%
+ 471: 00b7:       UNIQUE$ = VAR.STRING.1$
+ 472: 00c6:       GOSUB LOG.ERROR
+ 473: 00d0: 
+ 474: 00d0:       IF BATCH.SCREEN.FLAG$ = "S" THEN                                 \
+ 475: 00e9:          GOSUB DISPLAY.ROUTINE                                        :\
+ 476: 00f3:          IF IN.FIELD.FLAG$ = "Y" THEN                                  \
+ 477: 0106:             DM.RET.CODE% = POSF(FIELD.NO%)                            :\
+ 478: 0114:             FIELD.NO.STR$ = STR$(FIELD.NO%)                           :\
+ 479: 0128:             WHILE LEN(FIELD.NO.STR$) < 3                              :\
+ 480: 012a:                FIELD.NO.STR$ = "0" + FIELD.NO.STR$                    :\
+ 481: 0142:             WEND                                                      :\
+ 482: 0155:             VAR.STRING.2$ = "10" + FIELD.NO.STR$                      :\
+ 483: 016e:             UNIQUE$ = VAR.STRING.2$                                   :\
+ 484: 0180:          ELSE                                                          \
+ 485: 0180:             DM.RET.CODE% = NXTF(-20)                                  :\
+ 486: 018c:             IF DM.RET.CODE% < 1 AND BATCH.SCREEN.FLAG$ = "S" THEN      \
+ 487: 01bc:                DM.RET.CODE% = NXTF(-20)                               :\
+ 488: 01c8:                VAR.STRING.2$ = "00-20"                                :\
+ 489: 01d6:                MESSAGE.NO% = 660                                      :\
+ 490: 01db:                EVENT.NUM% = 20                                        :\
+ 491: 01e0:                GOSUB GET.ERROR.MESS                                   :\
+ 492: 01ea:                GOSUB LOAD.DISPLAY.MESSAGE                             :\
+ 493: 01f4:                GOSUB DISPLAY.FAILED                                   :\
+ 494: 01fe:                GOTO CHAIN.MODULE.50                                    ! FBCW
+ 495: 0201: 
+ 496: 0201:       IF DM.RET.CODE% < 1 AND BATCH.SCREEN.FLAG$ = "S" THEN            \
+ 497: 0232:          MESSAGE.NO% = 653                                            :\
+ 498: 0237:          EVENT.NUM% = 3                                               :\
+ 499: 023c:          GOSUB GET.ERROR.MESS                                         :\
+ 500: 0246:          GOSUB LOAD.DISPLAY.MESSAGE                                   :\
+ 501: 0250:          GOSUB DISPLAY.FAILED                                         :\
+ 502: 025a:          GOTO CHAIN.MODULE.50                                          ! FBCW
+ 503: 025d: 
+ 504: 025d:       IF BEMF.OPEN.FLAG$ = "Y" THEN                                    \ EBAAS
+ 505: 0270:          BEMF.OPEN.FLAG$ = "N"                                        :\ EBAAS
+ 506: 027d:          CLOSE BEMF.SESS.NUM%                                         :\ EBAAS
+ 507: 0289:          CALL SESS.NUM.UTILITY ("C", BEMF.SESS.NUM%, "")               ! HSWM
+ 508: 02a0: 
+ 509: 02a0: !H    SESS.NUM.TABLE$(BEMF.SESS.NUM%) = ""                             ! EBAAS
+ 510: 02a0: 
+ 511: 02a0:       EXIT FUNCTION
+ 512: 02a3: 
+ 513: 02a3: \------------------------------------------------------------------------------
+ 514: 02a3: \***
+ 515: 02a3: \*******************************************************************************
+ 516: 02a3: \*********************** subroutines follow ************************************
+ 517: 02a3: \*******************************************************************************
+ 518: 02a3: \***
+ 519: 02a3: \***   DISPLAY.ROUTINE:
+ 520: 02a3: \***
+ 521: 02a3: \***   GOSUB GET.ERROR.MESS
+ 522: 02a3: \***
+ 523: 02a3: \***   GOSUB LOAD.DISPLAY.MESSAGE
+ 524: 02a3: \***   GOSUB SHOW.MESSAGE
+ 525: 02a3: \***
+ 526: 02a3: \***   RETURN
+ 527: 02a3: \***
+ 528: 02a3: \------------------------------------------------------------------------------
+ 529: 02a3: 
+ 530: 02a3:    DISPLAY.ROUTINE:
+ 531: 02a3: 
+ 532: 02a3:       GOSUB GET.ERROR.MESS
+ 533: 02ad: 
+ 534: 02ad:       GOSUB LOAD.DISPLAY.MESSAGE
+ 535: 02b7:       GOSUB SHOW.MESSAGE
+ 536: 02c1: 
+ 537: 02c1:    RETURN
+ 538: 02c9: 
+ 539: 02c9: \------------------------------------------------------------------------------
+ 540: 02c9: \***
+ 541: 02c9: \*******************************************************************************
+ 542: 02c9: \***
+ 543: 02c9: \***   GET.ERROR.MESS:
+ 544: 02c9: \***
+ 545: 02c9: \***   search SESS.NUM.TABLE$ sequentially for first null entry
+ 546: 02c9: \***   NOTE: ignore entry 0, which is always null
+ 547: 02c9: \***
+ 548: 02c9: \***   If there is no null entry in the table, GOTO NO.MESSAGE.FOUND
+ 549: 02c9: \***
+ 550: 02c9: \***   set null entry to one byte character representing the integer value of
+ 551: 02c9: \***   the file reporting number (use CHR$ function) plus the passed string
+ 552: 02c9: \***   (the file logical name)
+ 553: 02c9: \***
+ 554: 02c9: \***   set bemf session number to the table entry number for the file
+ 555: 02c9: \***   set bemf open flag off
+ 556: 02c9: \***
+ 557: 02c9: \***   IF open fails on message file THEN NO.MESSAGE.FOUND
+ 558: 02c9: \***   OPEN message file NOWRITE NODEL
+ 559: 02c9: \***
+ 560: 02c9: \***   set bemf open flag on
+ 561: 02c9: \***
+ 562: 02c9: \***   IF read fails on message file THEN NO.MESSAGE.FOUND
+ 563: 02c9: \***   READ message file record with same number as message number
+ 564: 02c9: \***
+ 565: 02c9: \***   set bemf open flag off
+ 566: 02c9: \***   CLOSE message file
+ 567: 02c9: \***
+ 568: 02c9: \***   set session number table entry for bemf to null
+ 569: 02c9: \***
+ 570: 02c9: \***   RETURN
+ 571: 02c9: \***
+ 572: 02c9: \------------------------------------------------------------------------------
+ 573: 02c9: 
+ 574: 02c9:    GET.ERROR.MESS:
+ 575: 02c9: 
+ 576: 02c9:       OPEN.READ$ = "O"
+ 577: 02d6: 
+ 578: 02d6: !H    NULL.FOUND.FLAG$ = "N"                                           ! EBAAS
+ 579: 02d6: !H    INDEX% = 1                                                       ! EBAAS
+ 580: 02d6: !H
+ 581: 02d6: !H    WHILE NULL.FOUND.FLAG$ = "N"                                     \ EBAAS
+ 582: 02d6: !H      AND INDEX% < 65                                                ! EBAAS
+ 583: 02d6: !H
+ 584: 02d6: !H       IF SESS.NUM.TABLE$(INDEX%) = "" THEN                          \ EBAAS
+ 585: 02d6: !H          NULL.FOUND.FLAG$ = "Y"                                     \ EBAAS
+ 586: 02d6: !H       ELSE                                                          \ EBAAS
+ 587: 02d6: !H          INDEX% = INDEX% + 1                                        ! EBAAS
+ 588: 02d6: !H
+ 589: 02d6: !H    WEND                                                             ! EBAAS
+ 590: 02d6: !H
+ 591: 02d6: !H    IF NULL.FOUND.FLAG$ = "N" THEN                                   \ EBAAS
+ 592: 02d6: !H       GOTO NO.MESSAGE.FOUND                                         ! EBAAS
+ 593: 02d6: !H
+ 594: 02d6: !H    SESS.NUM.TABLE$(INDEX%) = CHR$(BEMF.REPORT.NUM%)                 \ EBAAS
+ 595: 02d6: !H                            + BEMF.FILE.NAME$                        ! EBAAS
+ 596: 02d6: !H
+ 597: 02d6: !H    BEMF.SESS.NUM% = INDEX%                                          ! EBAAS
+ 598: 02d6:       
+ 599: 02d6:       CALL SESS.NUM.UTILITY ("O", BEMF.REPORT.NUM%, BEMF.FILE.NAME$)   ! HSWM
+ 600: 02f4:       BEMF.SESS.NUM% = F20.INTEGER.FILE.NO%                            ! HSWM
+ 601: 0302:       BEMF.OPEN.FLAG$ = "N"                                            ! EBAAS
+ 602: 030f: 
+ 603: 030f:       IF END #BEMF.SESS.NUM% THEN NO.MESSAGE.FOUND                   
+ 604: 0323:       OPEN BEMF.FILE.NAME$ DIRECT RECL BEMF.RECL% AS BEMF.SESS.NUM% \
+ 605: 0348:                 NOWRITE NODEL
+ 606: 0348: 
+ 607: 0348:       BEMF.OPEN.FLAG$ = "Y"                                            ! EBAAS
+ 608: 0355: 
+ 609: 0355:       BEMF.REC.NO% = MESSAGE.NO%
+ 610: 0366: !H    OPEN.READ$ = "R"
+ 611: 0366: !H    IF END #BEMF.SESS.NUM% THEN NO.MESSAGE.FOUND
+ 612: 0366: !H    CALL READ.BEMF
+ 613: 0366:       IF READ.BEMF = 1 THEN GOTO NO.MESSAGE.FOUND                      ! HSWM
+ 614: 0371: 
+ 615: 0371:       BEMF.OPEN.FLAG$ = "N"                                            ! EBAAS
+ 616: 037e: 
+ 617: 037e:       CLOSE BEMF.SESS.NUM%
+ 618: 038a: 
+ 619: 038a: !H    SESS.NUM.TABLE$(BEMF.SESS.NUM%) = ""                             ! EBAAS
+ 620: 038a:       CALL SESS.NUM.UTILITY ("C", BEMF.SESS.NUM%, "")                  ! HSWM
+ 621: 03a1: 
+ 622: 03a1:    RETURN
+ 623: 03a9: 
+ 624: 03a9: \------------------------------------------------------------------------------
+ 625: 03a9: \***
+ 626: 03a9: \*******************************************************************************
+ 627: 03a9: \***
+ 628: 03a9: \***   NO.MESSAGE.FOUND:
+ 629: 03a9: \***
+ 630: 03a9: \***   set up unique data for event number 6 (includes GOSUB CHAR.STRING.ERROR)
+ 631: 03a9: \***   GOSUB LOG.ERROR to log event number 6
+ 632: 03a9: \***
+ 633: 03a9: \***   set message to "B802 INTERNAL ERROR - can't retreive message @@@
+ 634: 03a9: \***                   from file @@"
+ 635: 03a9: \***           (replace @@@ with message number, @@ with file)
+ 636: 03a9: \***
+ 637: 03a9: \***   GOSUB SHOW.MESSAGE
+ 638: 03a9: \***
+ 639: 03a9: \***   IF bemf open flag is on THEN
+ 640: 03a9: \***      set bemf open flag off
+ 641: 03a9: \***      CLOSE bemf
+ 642: 03a9: \***   endif
+ 643: 03a9: \***
+ 644: 03a9: \***   set session number table entry for bemf to null
+ 645: 03a9: \***
+ 646: 03a9: \***   EXIT FUNCTION to calling program
+ 647: 03a9: \***
+ 648: 03a9: \------------------------------------------------------------------------------
+ 649: 03a9: 
+ 650: 03a9:    NO.MESSAGE.FOUND:
+ 651: 03a9: 
+ 652: 03a9:       EVENT.NUM% = 6
+ 653: 03ae:       ERROR.VALUE% = BEMF.REPORT.NUM%
+ 654: 03c1:       ERROR.STRING$ = CHR$(ERROR.VALUE%)
+ 655: 03d7:       BEMF.REC.NO.STR$ = STR$(BEMF.REC.NO%)
+ 656: 03f0:       WHILE LEN(BEMF.REC.NO.STR$) < 16
+ 657: 03f2:          BEMF.REC.NO.STR$ = "0" + BEMF.REC.NO.STR$
+ 658: 040a:       WEND
+ 659: 041d:       UNIQUE$ = OPEN.READ$ + RIGHT$(ERROR.STRING$,1) +                 \
+ 660: 0458:                 PACK$(BEMF.REC.NO.STR$)
+ 661: 0458:       GOSUB LOG.ERROR
+ 662: 0462: 
+ 663: 0462:       SCREEN.MESSAGE$ = "B802 INTERNAL ERROR - can't retrieve message "\
+ 664: 049b:                       + STR$(MESSAGE.NO%)                              \
+ 665: 049b:                       + " from file "                                  \
+ 666: 049b:                       + STR$(BEMF.REPORT.NUM%)
+ 667: 049b: 
+ 668: 049b:       GOSUB SHOW.MESSAGE
+ 669: 04a5: 
+ 670: 04a5:       IF BEMF.OPEN.FLAG$ = "Y" THEN                                    \ EBAAS
+ 671: 04b8:          BEMF.OPEN.FLAG$ = "N"                                        :\ EBAAS
+ 672: 04c5:          CLOSE BEMF.SESS.NUM%                                         :\ EBAAS
+ 673: 04d1:          CALL SESS.NUM.UTILITY ("C", BEMF.SESS.NUM%, "")               ! HSWM
+ 674: 04e8: 
+ 675: 04e8: !H    SESS.NUM.TABLE$(BEMF.SESS.NUM%) = ""                             ! EBAAS
+ 676: 04e8: 
+ 677: 04e8:       EXIT FUNCTION
+ 678: 04eb: 
+ 679: 04eb: \------------------------------------------------------------------------------
+ 680: 04eb: \***
+ 681: 04eb: \*******************************************************************************
+ 682: 04eb: \***
+ 683: 04eb: \***   LOG.ERROR:
+ 684: 04eb: \***
+ 685: 04eb: \***   CALL ADXERROR to log error using event number and variable string 1
+ 686: 04eb: \***
+ 687: 04eb: \***   RETURN
+ 688: 04eb: \***
+ 689: 04eb: \------------------------------------------------------------------------------
+ 690: 04eb: 
+ 691: 04eb:    LOG.ERROR:
+ 692: 04eb: 
+ 693: 04eb: 
+ 694: 04eb:       TERM% = 0
+ 695: 04f1:       MSGGRP% = 74
+ 696: 04f6:       MSGNUM% = 0
+ 697: 04fc:       SEVERITY% = 3
+ 698: 0501:       CALL ADXERROR (TERM%,                                            \
+ 699: 0528:                      MSGGRP%,                                          \
+ 700: 0528:                      MSGNUM%,                                          \
+ 701: 0528:                      SEVERITY%,                                        \
+ 702: 0528:                      EVENT.NUM%,                                       \
+ 703: 0528:                      UNIQUE$)
+ 704: 0528:    RETURN
+ 705: 0530: 
+ 706: 0530: \------------------------------------------------------------------------------
+ 707: 0530: \***
+ 708: 0530: \*******************************************************************************
+ 709: 0530: \***
+ 710: 0530: \***   LOAD.DISPLAY.MESSAGE:
+ 711: 0530: \***
+ 712: 0530: \***   set message to null
+ 713: 0530: \***
+ 714: 0530: \***   WHILE length of remaining message text is greater than 0
+ 715: 0530: \***
+ 716: 0530: \***      IF first character of message text is "@" THEN
+ 717: 0530: \***         IF length of remaining variable string 2 is greater than 0 THEN
+ 718: 0530: \***            set message to (message + first character of variable string 2)
+ 719: 0530: \***            remove first character of variable string 2
+ 720: 0530: \***         ELSE
+ 721: 0530: \***            set message to (message + " ")
+ 722: 0530: \***         endif
+ 723: 0530: \***      ELSE
+ 724: 0530: \***         set message to (message + first character of message text)
+ 725: 0530: \***      endif
+ 726: 0530: \***      remove first character of message text
+ 727: 0530: \***
+ 728: 0530: \***   WEND
+ 729: 0530: \***
+ 730: 0530: \------------------------------------------------------------------------------
+ 731: 0530: 
+ 732: 0530:    LOAD.DISPLAY.MESSAGE:
+ 733: 0530: 
+ 734: 0530:       SCREEN.MESSAGE$ = ""
+ 735: 053d: 
+ 736: 053d:       WHILE LEN(BEMF.MESSAGE$) > 0
+ 737: 0540: 
+ 738: 0540:          IF LEFT$(BEMF.MESSAGE$,1) = "@" THEN                          \
+ 739: 056d:             IF LEN(VAR.STRING.2$) > 0 THEN                             \
+ 740: 057e:                SCREEN.MESSAGE$ = SCREEN.MESSAGE$                       \
+ 741: 05a1:                                + LEFT$(VAR.STRING.2$,1)               :\
+ 742: 05a1:                VAR.STRING.2$ = RIGHT$(VAR.STRING.2$,                   \
+ 743: 05c6:                                       LEN(VAR.STRING.2$) - 1)         :\
+ 744: 05c6:             ELSE                                                       \
+ 745: 05c6:                SCREEN.MESSAGE$ = SCREEN.MESSAGE$ + " "                :\
+ 746: 05de:          ELSE                                                          \
+ 747: 05e0:             SCREEN.MESSAGE$ = SCREEN.MESSAGE$ + LEFT$(BEMF.MESSAGE$,1)
+ 748: 0608: 
+ 749: 0608:          BEMF.MESSAGE$ = RIGHT$(BEMF.MESSAGE$,LEN(BEMF.MESSAGE$) - 1)
+ 750: 0636: 
+ 751: 0636:       WEND
+ 752: 064f: 
+ 753: 064f:    RETURN
+ 754: 0657: 
+ 755: 0657: \------------------------------------------------------------------------------
+ 756: 0657: \***
+ 757: 0657: \*******************************************************************************
+ 758: 0657: \***
+ 759: 0657: \***   SHOW.MESSAGE:
+ 760: 0657: \***
+ 761: 0657: \***   Again change the label CHAIN.MODULE.01 to CHAIN.MODULE.50
+ 762: 0657: \***   as appropriate throughout this section.
+ 763: 0657: \***
+ 764: 0657: \***   use display manager POSF to place cursor in field 01
+ 765: 0657: \***   IF return code < 0 THEN
+ 766: 0657: \***      GOTO DISPLAY.FAILED
+ 767: 0657: \***   ELSE
+ 768: 0657: \***      use display manager SETF to set the field to inverse video
+ 769: 0657: \***      use display manager PUTF to display the message
+ 770: 0657: \***      IF return code <> 0 THEN
+ 771: 0657: \***         GOTO DISPLAY.FAILED
+ 772: 0657: \***      endif
+ 773: 0657: \***   endif
+ 774: 0657: \***
+ 775: 0657: \***   position the cursor at the last input field (NXTF)
+ 776: 0657: \***   IF the return code from NXTF  0 THEN
+ 777: 0657: \***      GOSUB GET.ERROR.MESS to read message number 656
+ 778: 0657: \***      GOSUB LOAD.DISPLAY.MESSAGE to set the message up
+ 779: 0657: \***      GOTO DISPLAY.FAILED
+ 780: 0657: \***   endif
+ 781: 0657: \***
+ 782: 0657: \***   set the cursor to invisible
+ 783: 0657: \***   obtain the user input from the field (GETF)
+ 784: 0657: \***
+ 785: 0657: \***   WHILE the key pressed is not the escape key
+ 786: 0657: \***      obtain the user input from the field (GETF)
+ 787: 0657: \***   WEND
+ 788: 0657: \***
+ 789: 0657: \***   set message to spaces
+ 790: 0657: \***   set cursor to visible (CURS)
+ 791: 0657: \***   use display manager POSF to place cursor in field 01
+ 792: 0657: \***   use display manager SETF to set the field to normal video
+ 793: 0657: \***   use display manager PUTF to display the message
+ 794: 0657: \***
+ 795: 0657: \***   RETURN
+ 796: 0657: \***
+ 797: 0657: \------------------------------------------------------------------------------
+ 798: 0657: 
+ 799: 0657:    SHOW.MESSAGE:
+ 800: 0657: 
+ 801: 0657:       DM.RET.CODE% = POSF(1)
+ 802: 0663: 
+ 803: 0663:       IF DM.RET.CODE% < 0 THEN                                         \
+ 804: 0668:          GOSUB DISPLAY.FAILED                                         :\
+ 805: 0672:          UNIQUE$ = "10001"                                            :\
+ 806: 067f:          EVENT.NUM% = 3                                               :\
+ 807: 0684:          GOSUB LOG.ERROR                                              :\
+ 808: 068e:          GOTO CHAIN.MODULE.50                                         :\ FBCW
+ 809: 0693:       ELSE                                                             \
+ 810: 0693:          REVERSE.VIDEO$ = "331"                                       :\
+ 811: 06a0:          SETF.RETURN$ = SETF(REVERSE.VIDEO$)                          :\
+ 812: 06b6:          DM.RET.CODE% = PUTF(SCREEN.MESSAGE$)                         :\
+ 813: 06c9:          IF DM.RET.CODE% <> 0 THEN                                     \
+ 814: 06ce:             GOSUB DISPLAY.FAILED                                      :\
+ 815: 06d8:             UNIQUE$ = "12001"                                         :\
+ 816: 06e5:             EVENT.NUM% = 3                                            :\
+ 817: 06ea:             GOSUB LOG.ERROR                                           :\
+ 818: 06f4:             GOTO CHAIN.MODULE.50                                       ! FBCW
+ 819: 06f7: 
+ 820: 06f7:       GOSUB MOVE.LAST.INPUT.FIELD
+ 821: 0701: 
+ 822: 0701:       CURSOR.SETTING$ = CURS(INVISIBLE.CURSOR$)
+ 823: 0717: 
+ 824: 0717:       RETURNED.STRING$ = GETF
+ 825: 0725:       KEY.PRESSED% = ENDF
+ 826: 072d: 
+ 827: 072d:       WHILE KEY.PRESSED% <> ESCAPE.KEY%
+ 828: 072f: 
+ 829: 072f:          RETURNED.STRING$ = GETF
+ 830: 073d:          KEY.PRESSED% = ENDF
+ 831: 0745: 
+ 832: 0745:       WEND
+ 833: 074e: 
+ 834: 074e:       CURSOR.SETTING$ = CURS(VISIBLE.CURSOR$)
+ 835: 0764:       SCREEN.MESSAGE$ = " "
+ 836: 0771: 
+ 837: 0771:       DM.RET.CODE% = POSF(1)
+ 838: 077d:       IF DM.RET.CODE% < 0 THEN                                         \
+ 839: 0782:          VAR.STRING.2$ = "10001"                                      :\
+ 840: 0790:          UNIQUE$ = VAR.STRING.2$                                      :\
+ 841: 079f:          MESSAGE.NO% = 653                                            :\
+ 842: 07a4:          EVENT.NUM% = 3                                               :\
+ 843: 07a9:          GOSUB GET.ERROR.MESS                                         :\
+ 844: 07b3:          GOSUB LOAD.DISPLAY.MESSAGE                                   :\
+ 845: 07bd:          GOSUB DISPLAY.FAILED                                         :\
+ 846: 07c7:          GOTO CHAIN.MODULE.50                                          ! FBCW
+ 847: 07ca: 
+ 848: 07ca:       NORMAL.VIDEO$ = "330"
+ 849: 07d7:       SETF.RETURN$ = SETF(NORMAL.VIDEO$)
+ 850: 07ed: 
+ 851: 07ed:       DM.RET.CODE% = PUTF(SCREEN.MESSAGE$)
+ 852: 0800:       IF DM.RET.CODE% < 0 THEN                                         \
+ 853: 0805:          VAR.STRING.2$ = "12001"                                      :\
+ 854: 0813:          UNIQUE$ = VAR.STRING.2$                                      :\
+ 855: 0822:          MESSAGE.NO% = 653                                            :\
+ 856: 0827:          EVENT.NUM% = 3                                               :\
+ 857: 082c:          GOSUB GET.ERROR.MESS                                         :\
+ 858: 0836:          GOSUB LOAD.DISPLAY.MESSAGE                                   :\
+ 859: 0840:          GOSUB DISPLAY.FAILED                                         :\
+ 860: 084a:          GOTO CHAIN.MODULE.50                                          ! FBCW
+ 861: 084d: 
+ 862: 084d: 
+ 863: 084d:    RETURN
+ 864: 0855: 
+ 865: 0855: \------------------------------------------------------------------------------
+ 866: 0855: \***
+ 867: 0855: \*******************************************************************************
+ 868: 0855: \***
+ 869: 0855: \***   MOVE.LAST.INPUT.FIELD:
+ 870: 0855: \***
+ 871: 0855: \***   use display manager NXTF to move the cursor to the last input field
+ 872: 0855: \***   IF the display manager return code < 0 THEN
+ 873: 0855: \***      set the message number to 656
+ 874: 0855: \***      set the variable string 2 to "11020"
+ 875: 0855: \***      GOSUB GET.ERROR.MESSAGE to read message 656
+ 876: 0855: \***      GOSUB LOAD.DISPLAY.MESSAGE to insert variable string 2 into the
+ 877: 0855: \***      message
+ 878: 0855: \***      GOTO DISPLAY.FAILED to display the error on the screen
+ 879: 0855: \***      Change CHAIN.MODULE.01 to CHAIN.MODULE.50
+ 880: 0855: \***
+ 881: 0855: \***   RETURN
+ 882: 0855: \***
+ 883: 0855: \------------------------------------------------------------------------------
+ 884: 0855: 
+ 885: 0855:    MOVE.LAST.INPUT.FIELD:
+ 886: 0855: 
+ 887: 0855:       DM.RET.CODE% = NXTF(20)
+ 888: 0861:       IF DM.RET.CODE% < 0 THEN                                         \
+ 889: 0866:          MESSAGE.NO% = 660                                            :\
+ 890: 086b:          EVENT.NUM% = 20                                              :\
+ 891: 0870:          GOSUB GET.ERROR.MESS                                         :\
+ 892: 087a:          VAR.STRING.2$ = "00020"                                      :\
+ 893: 0888:          UNIQUE$ = VAR.STRING.2$                                      :\
+ 894: 0897:          GOSUB LOAD.DISPLAY.MESSAGE                                   :\
+ 895: 08a1:          GOSUB DISPLAY.FAILED                                         :\
+ 896: 08ab:          GOTO CHAIN.MODULE.50                                          ! FBCW
+ 897: 08ae: 
+ 898: 08ae:    RETURN
+ 899: 08b6: 
+ 900: 08b6: \------------------------------------------------------------------------------
+ 901: 08b6: \***
+ 902: 08b6: \*******************************************************************************
+ 903: 08b6: \***
+ 904: 08b6: \***   DISPLAY.FAILED:
+ 905: 08b6: \***
+ 906: 08b6: \***   use display manager CLRSCR to clear terminal screen
+ 907: 08b6: \***   use display manager CLSDIS to close the display file
+ 908: 08b6: \***   PRINT a row of stars on the screen
+ 909: 08b6: \***   PRINT a blank line on the screen
+ 910: 08b6: \***   PRINT the message on the screen
+ 911: 08b6: \***   PRINT a blank line on the screen
+ 912: 08b6: \***   PRINT a row of stars on the screen
+ 913: 08b6: \***
+ 914: 08b6: \***   get input using INKEY
+ 915: 08b6: \***   WHILE user input <> ESC key
+ 916: 08b6: \***      get input using INKEY
+ 917: 08b6: \***   WEND
+ 918: 08b6: \***
+ 919: 08b6: \***   chain back to Boots system main menu module
+ 920: 08b6: \***
+ 921: 08b6: \------------------------------------------------------------------------------
+ 922: 08b6: 
+ 923: 08b6:    DISPLAY.FAILED:
+ 924: 08b6: 
+ 925: 08b6:       DM.RET.CODE% = CLRSCR
+ 926: 08be:       DM.RET.CODE% = CLSDIS
+ 927: 08c6: 
+ 928: 08c6:       STAR.LINE$ = ""
+ 929: 08d3:       FOR COUNT% = 1 TO 79 STEP 1
+ 930: 08db:           STAR.LINE$ = STAR.LINE$ + "*"
+ 931: 08f3:       NEXT COUNT%
+ 932: 0901: 
+ 933: 0901:       PRINT STAR.LINE$
+ 934: 090e:       PRINT " "
+ 935: 0917:       PRINT SCREEN.MESSAGE$
+ 936: 0924:       PRINT " "
+ 937: 092d:       PRINT STAR.LINE$
+ 938: 093a: 
+ 939: 093a:       KEY.PRESSED% = INKEY
+ 940: 0944: 
+ 941: 0944:       WHILE KEY.PRESSED% <> 27
+ 942: 0946:          KEY.PRESSED% = INKEY
+ 943: 0950:       WEND
+ 944: 0957: 
+ 945: 0957:    RETURN
+ 946: 095f: 
+ 947: 095f: \------------------------------------------------------------------------------
+ 948: 095f: \***
+ 949: 095f: \*******************************************************************************
+ 950: 095f: \***
+ 951: 095f: \***   CHAIN.MODULE.50:
+ 952: 095f: \***
+ 953: 095f: \***   set chain module to first 3 bytes of passed module number
+ 954: 095f: \***   set PSBCHN.PRG to "ADX_UPGM:" + chain module + "50.286"
+ 955: 095f: \***
+ 956: 095f: \***   chain back to Boots system using the PSBCHNE.J86 included code.
+ 957: 095f: \***
+ 958: 095f: \------------------------------------------------------------------------------
+ 959: 095f: 
+ 960: 095f:    CHAIN.MODULE.50:
+ 961: 095f: 
+ 962: 095f:       CHAIN.MODULE$ = MID$(MODULE.NUMBER$,1,3)
+ 963: 097c:       PSBCHN.PRG = "ADX_UPGM:PSB50.286"                            ! ISWM
+ 964: 098b: 
+ 965: 098b:       %INCLUDE PSBCHNE.J86                                         ! HSWM
+ 966: 098b: \/*********************************************************************/ PSBCHNE
+ 967: 098b: \/*                                                                   */ PSBCHNE
+ 968: 098b: \/*      PSBCHNE.J86  -  Chain to PSB Application Program             */ PSBCHNE
+ 969: 098b: \/*      ------------------------------------------------             */ PSBCHNE
+ 970: 098b: \/*                                                                   */ PSBCHNE
+ 971: 098b: \/*********************************************************************/ PSBCHNE
+ 972: 098b:                                                                        ! PSBCHNE
+ 973: 098b:         CHAIN  PSBCHN.PRG , PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON ,   \ PSBCHNE
+ 974: 0a03:                             PSBCHN.U1 , PSBCHN.U2  , PSBCHN.U3         ! PSBCHNE
+ 975: 0a03:                                                                        ! PSBCHNE
+ 976: 0a03:    
+ 977: 0a03: \------------------------------------------------------------------------------
+ 978: 0a03: \***
+ 979: 0a03: \*******************************************************************************
+ 980: 0a03: \***
+ 981: 0a03: \***   SET.UP.UNIQUE:
+ 982: 0a03: \***
+ 983: 0a03: \***   set error string to null
+ 984: 0a03: \***   set error value to ERRN
+ 985: 0a03: \***   set error length to 24
+ 986: 0a03: \***   GOSUB CHAR.STRING.ERROR
+ 987: 0a03: \***   set unique data to error string
+ 988: 0a03: \***
+ 989: 0a03: \***   set error string to null
+ 990: 0a03: \***   set error string to CHR$ of file number part of session number table
+ 991: 0a03: \***   entry for ERRF%
+ 992: 0a03: \***   set unique data to unique data + error string + ERR + packed ERRL
+ 993: 0a03: \***
+ 994: 0a03: \------------------------------------------------------------------------------
+ 995: 0a03: 
+ 996: 0a03:    SET.UP.UNIQUE:
+ 997: 0a03: 
+ 998: 0a03:       ERROR.STRING$ = ""
+ 999: 0a10:       ERROR.VALUE% = ERRN
+1000: 0a22:       ERROR.LENGTH% = 24
+1001: 0a2f:       GOSUB CHAR.STRING.ERROR
+1002: 0a39:       UNIQUE$ = ERROR.STRING$
+1003: 0a4a: 
+1004: 0a4a:       ERROR.STRING$ = ""                                               ! EBAAS
+1005: 0a57:       IF SESS.NUM.TABLE$(ERRF%) = "" THEN                              \ EBAAS
+1006: 0a7d:          ERROR.STRING$ = CHR$(0)                                       \ EBAAS
+1007: 0a8f:       ELSE                                                             \ EBAAS
+1008: 0a8f:          ERROR.STRING$ = LEFT$(SESS.NUM.TABLE$(ERRF%),1)               ! EBAAS
+1009: 0abc: 
+1010: 0abc:       UNIQUE$ = UNIQUE$ + ERROR.STRING$ + ERR                          \ EBAAS
+1011: 0b22:               + PACK$(RIGHT$("000000" + STR$(ERRL),6))                 ! EBAAS
+1012: 0b22: 
+1013: 0b22: \ 3 lines deleted from here                                            ! EBAAS
+1014: 0b22: 
+1015: 0b22:    RETURN
+1016: 0b2a: 
+1017: 0b2a: \------------------------------------------------------------------------------
+1018: 0b2a: \***
+1019: 0b2a: \*******************************************************************************
+1020: 0b2a: \***
+1021: 0b2a: \***   CHAR.STRING.ERROR:
+1022: 0b2a: \***
+1023: 0b2a: \***   FOR count = error length to 0 step -8
+1024: 0b2a: \***       error byte = SHIFTed error value by count
+1025: 0b2a: \***       error string = error string + the character format of error byte
+1026: 0b2a: \***   NEXT count
+1027: 0b2a: \***
+1028: 0b2a: \***   RETURN
+1029: 0b2a: \***
+1030: 0b2a: \------------------------------------------------------------------------------
+1031: 0b2a: 
+1032: 0b2a:    CHAR.STRING.ERROR:
+1033: 0b2a: 
+1034: 0b2a:       FOR COUNT% = ERROR.LENGTH% TO 0 STEP -8
+1035: 0b36: 
+1036: 0b36:          ERROR.BYTE% = SHIFT(ERROR.VALUE%,COUNT%)
+1037: 0b54:          ERROR.STRING$ = ERROR.STRING$ + CHR$(ERROR.BYTE%)
+1038: 0b75: 
+1039: 0b75:       NEXT COUNT%
+1040: 0b85: 
+1041: 0b85:    RETURN
+1042: 0b8d: 
+1043: 0b8d: \------------------------------------------------------------------------------
+1044: 0b8d: \***
+1045: 0b8d: \*******************************************************************************
+1046: 0b8d: \***
+1047: 0b8d: \***   ERROR.DETECTED:
+1048: 0b8d: \***
+1049: 0b8d: \***   on case of
+1050: 0b8d: \***      ERR is CM or CT THEN             \REM chain failure
+1051: 0b8d: \***         CALL ADXERROR to log event number 18
+1052: 0b8d: \***         GOTO CHAIN.MODULE.50
+1053: 0b8d: \***         (setting up CHAIN.MODULE$ and PSBCHN.PRG paramaters as before)
+1054: 0b8d: \***
+1055: 0b8d: \***      ERR is NL or CU                  \REM close failure
+1056: 0b8d: \***         GOSUB SET.UP.UNIQUE
+1057: 0b8d: \***         CALL ADXERROR to log event number 1
+1058: 0b8d: \***         RESUME
+1059: 0b8d: \***
+1060: 0b8d: \***      ERR <> CM, CT, NL or CU THEN
+1061: 0b8d: \***         GOSUB SET.UP.UNIQUE
+1062: 0b8d: \***         CALL ADXERROR to log event number 1
+1063: 0b8d: \***         IF batch/screen flag is "S" THEN
+1064: 0b8d: \***            find module name from calling program
+1065: 0b8d: \***            GOTO CHAIN.MODULE.50
+1066: 0b8d: \***             (setting up CHAIN.MODULE$ and PSBCHN.PRG paramaters as before)
+1067: 0b8d: \***         ELSE
+1068: 0b8d: \***            STOP
+1069: 0b8d: \***         endif
+1070: 0b8d: \***
+1071: 0b8d: \***   endcase
+1072: 0b8d: \***
+1073: 0b8d: \------------------------------------------------------------------------------
+1074: 0b8d: 
+1075: 0b8d:    ERROR.DETECTED:
+1076: 0b8d: 
+1077: 0b8d:       TERM% = 0
+1078: 0b93:       MSGGRP% = 74
+1079: 0b98:       MSGNUM% = 0
+1080: 0b9e:       SEVERITY% = 3
+1081: 0ba3: 
+1082: 0ba3: 
+1083: 0ba3:       IF ERR = "CM" OR ERR = "CT" THEN                                 \
+1084: 0bfd:          EVENT.NUM% = 18                                              :\ FBCW
+1085: 0c02:          CHAIN.MODULE$ = MID$(MODULE.NUMBER$,3,1)                     :\
+1086: 0c1f:          UNIQUE$ = "BF01 " + CHAIN.MODULE$ + "50  "                   :\ FBCW
+1087: 0c3b:          CALL ADXERROR (TERM%,                                         \
+1088: 0c62:                         MSGGRP%,                                       \
+1089: 0c62:                         MSGNUM%,                                       \
+1090: 0c62:                         SEVERITY%,                                     \
+1091: 0c62:                         EVENT.NUM%,                                    \
+1092: 0c62:                         UNIQUE$)                                      :\
+1093: 0c62:          CHAIN.MODULE$ = MID$(MODULE.NUMBER$,1,3)                     :\
+1094: 0c7f:          PSBCHN.PRG = "ADX_UPGM:PSB50.286"                            :\ ISWM
+1095: 0c8e:          RESUME CHAIN.MODULE.50                                       :\ FBCW
+1096: 0ca0:       ELSE                                                             \
+1097: 0ca0:          EVENT.NUM% = 1                                               :\
+1098: 0ca5:          GOSUB SET.UP.UNIQUE                                          :\
+1099: 0caf:          CALL ADXERROR (TERM%,                                         \
+1100: 0cd6:                         MSGGRP%,                                       \
+1101: 0cd6:                         MSGNUM%,                                       \
+1102: 0cd6:                         SEVERITY%,                                     \
+1103: 0cd6:                         EVENT.NUM%,                                    \
+1104: 0cd6:                         UNIQUE$)                                      :\
+1105: 0cd6:          IF ERR = "NL" OR ERR = "CU" THEN                              \
+1106: 0d2d:             RESUME
+1107: 0d3c: 
+1108: 0d3c:       IF BATCH.SCREEN.FLAG$ = "S" THEN                                 \
+1109: 0d52:          CHAIN.MODULE$ = MID$(MODULE.NUMBER$,1,3)                     :\
+1110: 0d6f:          PSBCHN.PRG = "ADX_UPGM:PSB50.286"                            :\ ISWM
+1111: 0d7e:          RESUME CHAIN.MODULE.50                                       :\ FBCW
+1112: 0d8f:       ELSE                                                             \
+1113: 0d8f:          STOP
+1114: 0d94: 
+1115: 0d94: \------------------------------------------------------------------------------
+1116: 0d94: \***
+1117: 0d94: \*******************************************************************************
+1118: 0d94: \***
+1119: 0d94: \***   END FUNCTION
+1120: 0d94: \***
+1121: 0d94: \------------------------------------------------------------------------------
+1122: 0d94: 
+1123: 0d94:    END FUNCTION
+1124: 0dad: 
+1125: 0dad: END
+1126: 0dad: End of Compilation

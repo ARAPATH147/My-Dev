@@ -1,0 +1,792 @@
+   1: 0000: REM\
+   2: 0000: \*******************************************************************************
+   3: 0000: \*******************************************************************************
+   4: 0000: \***
+   5: 0000: \***
+   6: 0000: \***        FUNCTION      : SESS.NUM.UTILITY
+   7: 0000: \***        AUTHOR        : Bruce Scriver (Pseudocode)
+   8: 0000: \***                      : Bruce Scriver (Basic Code)
+   9: 0000: \***        DATE WRITTEN  : 4th May 1988 (Pseudocode)
+  10: 0000: \***                      : 6th May 1988 (Basic Code)
+  11: 0000: \***
+  12: 0000: \***        REFERENCE     : PSBF20
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***        VERSION B.      D.S. O'DARE (Pseudocode)        24th November 1988
+  16: 0000: \***                        B.C. WILLIS (Basic code)         1st December 1988
+  17: 0000: \***        89A VERSION (ie. small stores changes added to stocks version).
+  18: 0000: \***        Replace CHAIN statement with new included code (PSBCHNE.J86) and
+  19: 0000: \***        CHAIN.FILE.NAME$ with PSBCHN.PRG.  Amend program-to-chain-to from
+  20: 0000: \***        "01" to "50".
+  21: 0000: \***
+  22: 0000: \***        VERSION C.      Robert Cowey                          7th May 1991
+  23: 0000: \***        Upgraded PSBF20 included code from version B to C.
+  24: 0000: \***        Upgraded other included code to un-lettered to version A.
+  25: 0000: \***
+  26: 0000: \***        VERSION D.      Janet Smith                          13th May 1991
+  27: 0000: \***        Changed table to accommodate file reporting numbers greater
+  28: 0000: \***        than 128.   Change error processing to log an event 101, using
+  29: 0000: \***        2 byte file number.
+  30: 0000: \***
+  31: 0000: \***    DO NOT ADD STANDARD ERROR DETECTED TO THIS FUNCTION
+  32: 0000: \***    AS IT CALLS PSBF20 AND COULD END UP IN A LOOP
+  33: 0000: \***
+  34: 0000: \***    Note: Errors are reported including the SESSION number rather than
+  35: 0000: \***          the report number, in case an error occurs reading the
+  36: 0000: \***          report number table.
+  37: 0000: \***
+  38: 0000: \***        VERSION E.      Andrew Wedgeworth                    1st July 1992
+  39: 0000: \***        Redundant function parameters removed and defined as global
+  40: 0000: \***        variables. 
+  41: 0000: \***
+  42: 0000: \***        VERSION F.   STUART WILLIAM MCCONNACHIE         2nd Sept 2005
+  43: 0000: \***        Removed version numbered included code - About time.
+  44: 0000: \***        This is so we can compile FUNLIB version without line numbers.
+  45: 0000: \***
+  46: 0000: \***        VERSION G.   STUART WILLIAM MCCONNACHIE         10th Jan 2006
+  47: 0000: \***        Allow use from GSA programs by allocating session numbers in range
+  48: 0000: \***        65-100 instead of 1-64.  Note for GSA apps we will still allocate
+  49: 0000: \***        the lower table entries, just never allocate them.  This ensures
+  50: 0000: \***        other programs that look at the table will work without change.
+  51: 0000: \***        To use from GSA apps MODULE.NAME$ must start EAL something.
+  52: 0000: \***        Also general tidy up, use BEGIN ENDIF etc. (uncommented)
+  53: 0000: \***        Really this function could/should be rewritten completely....
+  54: 0000: \***
+  55: 0000: \***        Version H.      Stuart William McConnachie     31st Oct 2006
+  56: 0000: \***        Chain back to PSB50.286, instead of xxx50.286 derived from
+  57: 0000: \***        first three letters of MODULE.NUMBER$.  Doesn't work for
+  58: 0000: \***        PSD and SRP applications.
+  59: 0000: \***            
+  60: 0000: \*******************************************************************************
+  61: 0000: \*******************************************************************************
+  62: 0000: 
+  63: 0000: REM pseudocode follows...
+  64: 0000: 
+  65: 0000: \*******************************************************************************
+  66: 0000: \*******************************************************************************
+  67: 0000: \***
+  68: 0000: \***
+  69: 0000: \***                   FUNCTION OVERVIEW
+  70: 0000: \***                   -----------------
+  71: 0000: \***
+  72: 0000: \***        This function controls the allocation and deallocation of session
+  73: 0000: \***     numbers.  On opening a file, the function is called to allocate a
+  74: 0000: \***     session number, which it returns, updating the session number table
+  75: 0000: \***     held in global storage.  If a session number is passed to the function,
+  76: 0000: \***     it will return the file reporting number and name. When closing or
+  77: 0000: \***     deleting a file, the function is called to remove the table entry
+  78: 0000: \***     corresponding to the file.
+  79: 0000: \***
+  80: 0000: \***     The session number table is of the following format:
+  81: 0000: \***
+  82: 0000: \***     Number of entries: 64
+  83: 0000: \***     Each entry:        File reporting number (1 character, string
+  84: 0000: \***                                               representation of integer)
+  85: 0000: \***                        File name             (8 characters, logical name)
+  86: 0000: \***     e.g. - For file reporting number 54, name "CIMFI", the table entry
+  87: 0000: \***            would be 003643494D4649202020H, or " 6CIMFI   "
+  88: 0000: \***
+  89: 0000: \***     NOTE *********   CHANGE DUE TO VERSION D           ! DJAS
+  90: 0000: \***     The 2 byte integer containing the file reporting number is
+  91: 0000: \***     stored in readable format on the table, NOT as it would be on a file
+  92: 0000: \***
+  93: 0000: \***     Note: the first table entry, entry 0, should not be used.
+  94: 0000: \***
+  95: 0000: \***     The table must be defined as global at the start of each program -
+  96: 0000: \***     this will be done by means of included code.
+  97: 0000: \***
+  98: 0000: \***     Function parameters are as follows:
+  99: 0000: \***
+ 100: 0000: \***     batch/screen flag, operator number, module number - as usual.
+ 101: 0000: \***
+ 102: 0000: \***     function flag - 1 character, values: "O" - create file table entry
+ 103: 0000: \***                                          "R" - access file name/number
+ 104: 0000: \***                                          "C" - remove file table entry
+ 105: 0000: \***
+ 106: 0000: \***     passed integer - 2 byte integer, for "O" - file reporting number
+ 107: 0000: \***                                      for "R" and "C" - file session number
+ 108: 0000: \***
+ 109: 0000: \***     passed string - null / 5 characters, for "O" - file logical name
+ 110: 0000: \***                                          for "R" and "C" - null
+ 111: 0000: \***
+ 112: 0000: \***     The function has five global fields:
+ 113: 0000: \***
+ 114: 0000: \***     SESS.NUM.UTILITY - function return code - 0 - successful processing
+ 115: 0000: \***                                             - 1 - unsuccessful processing
+ 116: 0000: \***
+ 117: 0000: \***     F20.INTEGER.FILE.NO% - for "O" - allocated file session number
+ 118: 0000: \***                          - for "R" - file reporting number
+ 119: 0000: \***                          - for "C" - zero
+ 120: 0000: \***
+ 121: 0000: \***     F20.FILE.NAME$ - for "O" and "C" - null
+ 122: 0000: \***                    - for "R" - file logical name
+ 123: 0000: \***
+ 124: 0000: \***     F20.STRING.FILE.NO$ - for "R" - 3 character string equivalent of
+ 125: 0000: \***                                     F20.INTEGER.FILE.NO% - leading zeroes
+ 126: 0000: \***                         - for "O" and "C" - null
+ 127: 0000: \***
+ 128: 0000: \***     F20.TABLE.DIMENSIONED.FLAG$ - value "Y" if the session number table
+ 129: 0000: \***                                   has been dimensioned.
+ 130: 0000: \***
+ 131: 0000: \*******************************************************************************
+ 132: 0000: \*******************************************************************************
+ 133: 0000: \***
+ 134: 0000: \***  %INCLUDE of globals and external definitions
+ 135: 0000: \***
+ 136: 0000: \-------------------------------------------------------------------------------
+ 137: 0000: 
+ 138: 0000: ! 1 line deleted from here                                              ! EAW
+ 139: 0000: %INCLUDE PSBF16G.J86                                                    ! FSWM
+ 140: 0000: REM\
+ 141: 0000: \*******************************************************************************
+ 142: 0000: \*******************************************************************************
+ 143: 0000: \***
+ 144: 0000: \***           %INCLUDE GLOBAL DEFINITIONS FOR CONV.TO.HEX FUNCTION
+ 145: 0000: \***
+ 146: 0000: \***                       REFERENCE     : PSBF16G.J86
+ 147: 0000: \*** 
+ 148: 0000: \***       Version A           Bruce Scriver            25th February 1986
+ 149: 0000: \***
+ 150: 0000: \***       Version B         Andrew Wedgeworth               2nd July 1992
+ 151: 0000: \***       Removal of now redundant F16.RETURN.CODE%.
+ 152: 0000: \***
+ 153: 0000: \*******************************************************************************
+ 154: 0000: \*******************************************************************************
+ 155: 0000: 
+ 156: 0000:       STRING   GLOBAL F16.HEX.STRING$
+ 157: 0000: 
+ 158: 0000:       ! 1 line deleted from here                                       ! BAW
+ 159: 0000: %INCLUDE PSBF17G.J86                                                    ! FSWM
+ 160: 0000: REM \
+ 161: 0000: \*******************************************************************************
+ 162: 0000: \*******************************************************************************
+ 163: 0000: \***
+ 164: 0000: \***
+ 165: 0000: \***        %INCLUDE GLOBAL DEFINITIONS FOR CONV.TO.STRING FUNCTION
+ 166: 0000: \***
+ 167: 0000: \***                    REFERENCE     : PSBF17G.J86
+ 168: 0000: \***
+ 169: 0000: \***        Version A         Bruce Scriver      24th February 1986
+ 170: 0000: \***
+ 171: 0000: \***        Version B       Andrew Wedgeworth         2nd July 1992
+ 172: 0000: \***        Removal of now redundant F17.RETURN.CODE%
+ 173: 0000: \***
+ 174: 0000: \*******************************************************************************
+ 175: 0000: \*******************************************************************************
+ 176: 0000: 
+ 177: 0000:       STRING   GLOBAL F17.RETURNED.STRING$
+ 178: 0000: 
+ 179: 0000:       ! 1 line deleted from here                                       ! BAW
+ 180: 0000: 
+ 181: 0000: %INCLUDE PSBF20G.J86                                                    ! FSWM
+ 182: 0000: REM\
+ 183: 0000: \*******************************************************************************
+ 184: 0000: \*******************************************************************************
+ 185: 0000: \***
+ 186: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 187: 0000: \***
+ 188: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 189: 0000: \*** 
+ 190: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 191: 0000: \*** 
+ 192: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 193: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 194: 0000: \***     to two byte integer.
+ 195: 0000: \***
+ 196: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 197: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 198: 0000: \***
+ 199: 0000: \*******************************************************************************
+ 200: 0000: \*******************************************************************************
+ 201: 0000: 
+ 202: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 203: 0000:                        F20.STRING.FILE.NO$,                            \
+ 204: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 205: 0000:                        SESS.NUM.TABLE$(1)
+ 206: 0000: 
+ 207: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 208: 0000: 
+ 209: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 210: 0000: 
+ 211: 0000: %INCLUDE PSBUSEG.J86                                                    ! FSWM
+ 212: 0000: \/*********************************************************************/ PSBUSEG
+ 213: 0000: \/*                                                                   */ PSBUSEG
+ 214: 0000: \/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+ 215: 0000: \/* ----------------------------------------------------------------- */ PSBUSEG
+ 216: 0000: \/*                                                                   */ PSBUSEG
+ 217: 0000: \/*********************************************************************/ PSBUSEG
+ 218: 0000:                                                                        ! PSBUSEG
+ 219: 0000:         STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+ 220: 0000:                        PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+ 221: 0000:                        PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+ 222: 0000:                        PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+ 223: 0000:                        PSBCHN.U1,       \ User parameter               ! PSBUSEG
+ 224: 0000:                        PSBCHN.U2,       \ User parameter               ! PSBUSEG
+ 225: 0000:                        PSBCHN.U3        ! User parameter               ! PSBUSEG
+ 226: 0000:                                                                        ! PSBUSEG
+ 227: 0000: 
+ 228: 0000: STRING GLOBAL BATCH.SCREEN.FLAG$                                        ! EAW
+ 229: 0000: STRING GLOBAL MODULE.NUMBER$                                            ! EAW
+ 230: 0000: STRING GLOBAL OPERATOR.NUMBER$                                          ! EAW
+ 231: 0000: 
+ 232: 0000: %INCLUDE ADXERROR.J86                                                   ! CRC
+ 233: 0000: \******************************************************************************
+ 234: 0000: \******************************************************************************
+ 235: 0000: \***                                                                        ***
+ 236: 0000: \***    %INCLUDE FOR FUNCTION ADXERROR (an I.B.M. system function)          ***
+ 237: 0000: \***                                                                        ***
+ 238: 0000: \***         AUTHOR        :  Stephen Kelsey                                ***
+ 239: 0000: \***                                                                        ***
+ 240: 0000: \***         DATE WRITTEN  :  21st February 1986                            ***
+ 241: 0000: \***                                                                        ***
+ 242: 0000: \***         DATE OF LAST REVISION  - 21st February 1986                    ***
+ 243: 0000: \***                                                                        ***
+ 244: 0000: \***         VERSION B     :  Stuart William McConnachie  18th March 1997   ***
+ 245: 0000: \***    Define size of ADXERROR return value from function.  This change    ***
+ 246: 0000: \***    was introduced by IBM in the 4690 Programming Guide.  Not defining  ***
+ 247: 0000: \***    this variable can cause Memory Protection Violations at run time.   ***
+ 248: 0000: \***                                                                        ***
+ 249: 0000: \******************************************************************************
+ 250: 0000: \******************************************************************************
+ 251: 0000: 
+ 252: 0000:    FUNCTION ADXERROR (TERM%,                                                  \
+ 253: 0000:                       MSGGRP%,                                                \
+ 254: 0000:                       MSGNUM%,                                                \
+ 255: 0000:                       SEVERITY%,                                              \
+ 256: 0000:                       EVENT.NUM%,                                             \
+ 257: 0000:                       UNIQUE$) EXTERNAL
+ 258: 0000: 
+ 259: 0000:       INTEGER*2  MSGNUM%,                                                     \
+ 260: 0000:                  TERM%,                                                       \
+ 261: 0000:                  ADXERROR                                                     !BSWM
+ 262: 0000: 
+ 263: 0000:       INTEGER*1 EVENT.NUM%,                                                   \
+ 264: 0000:                 MSGGRP%,                                                      \
+ 265: 0000:                 SEVERITY%
+ 266: 0000: 
+ 267: 0000:       STRING  UNIQUE$
+ 268: 0000: 
+ 269: 0000:    END FUNCTION
+ 270: 0000: 
+ 271: 0000: %INCLUDE PSBF01E.J86                                                    ! FSWM
+ 272: 0000: REM \
+ 273: 0000: \*******************************************************************************
+ 274: 0000: \*******************************************************************************
+ 275: 0000: \***
+ 276: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 277: 0000: \***
+ 278: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 279: 0000: \***
+ 280: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 281: 0000: \*** 
+ 282: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 283: 0000: \***      Three parameters which passed to the function have been removed.
+ 284: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 285: 0000: \***      return code).
+ 286: 0000: \***
+ 287: 0000: \*******************************************************************************
+ 288: 0000: 
+ 289: 0000: 
+ 290: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 291: 0000:                              VAR.STRING.1$,                                   \
+ 292: 0000:                              VAR.STRING.2$,                                   \
+ 293: 0000:                              EVENT.NO%)  EXTERNAL
+ 294: 0000: 
+ 295: 0000:       INTEGER*1 EVENT.NO%
+ 296: 0000: 
+ 297: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 298: 0000:                 MESSAGE.NO%
+ 299: 0000: 
+ 300: 0000:       STRING VAR.STRING.1$,                                            \
+ 301: 0000:              VAR.STRING.2$
+ 302: 0000: 
+ 303: 0000:    END FUNCTION
+ 304: 0000: 
+ 305: 0000: \*******************************************************************************
+ 306: 0000: %INCLUDE PSBF16E.J86                                                    ! FSWM
+ 307: 0000: REM\
+ 308: 0000: \*******************************************************************************
+ 309: 0000: \*******************************************************************************
+ 310: 0000: \***
+ 311: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.HEX FUNCTION
+ 312: 0000: \***
+ 313: 0000: \***                  REFERENCE     : PSBF16E.J86
+ 314: 0000: \***
+ 315: 0000: \***       Version A            Bruce Scriver          25th February 1986
+ 316: 0000: \***
+ 317: 0000: \***       Version B           Andrew Wedgeworth            2nd July 1992
+ 318: 0000: \***       Removal of redundant parameters, and CONV.TO.HEX defined as a 
+ 319: 0000: \***       variable to hold the return code. 
+ 320: 0000: \***
+ 321: 0000: \*******************************************************************************
+ 322: 0000: \*******************************************************************************
+ 323: 0000: 
+ 324: 0000:    FUNCTION CONV.TO.HEX (INTEGER4%)                                            \
+ 325: 0000:    EXTERNAL
+ 326: 0000:    ! 3 parameters removed from here                                    ! BAW
+ 327: 0000: 
+ 328: 0000:    ! 3 lines deleted from here                                         ! BAW
+ 329: 0000:    
+ 330: 0000:       INTEGER*2 CONV.TO.HEX                                            ! BAW
+ 331: 0000: 
+ 332: 0000:       INTEGER*4 INTEGER4%
+ 333: 0000: 
+ 334: 0000:    END FUNCTION
+ 335: 0000: 
+ 336: 0000: %INCLUDE PSBF17E.J86                                                    ! FSWM
+ 337: 0000: REM \
+ 338: 0000: \*******************************************************************************
+ 339: 0000: \*******************************************************************************
+ 340: 0000: \***
+ 341: 0000: \***
+ 342: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.STRING FUNCTION
+ 343: 0000: \***
+ 344: 0000: \***                     REFERENCE     : PSBF17E.J86
+ 345: 0000: \***
+ 346: 0000: \***       Version A            Bruce Scriver       24th February 1986           
+ 347: 0000: \***
+ 348: 0000: \***       Version B          Andrew Wedgeworth          2nd July 1992
+ 349: 0000: \***       Redundant parameters removed, and the function's name is 
+ 350: 0000: \***       is defined as a variable to hold the return code. 
+ 351: 0000: \***
+ 352: 0000: \*******************************************************************************
+ 353: 0000: \*******************************************************************************
+ 354: 0000: 
+ 355: 0000:    FUNCTION CONV.TO.STRING (EVENT.NUMBER%,                                     \
+ 356: 0000:                             INTEGER4%)                                         \
+ 357: 0000:    EXTERNAL
+ 358: 0000: ! 3 parameters removed from here                                       ! BAW
+ 359: 0000: 
+ 360: 0000: ! 3 lines deleted from here                                            ! BAW
+ 361: 0000: 
+ 362: 0000:       INTEGER*1 EVENT.NUMBER%
+ 363: 0000: 
+ 364: 0000:       INTEGER*2 CONV.TO.STRING                                         ! BAW
+ 365: 0000: 
+ 366: 0000:       INTEGER*4 INTEGER4%
+ 367: 0000: 
+ 368: 0000:    END FUNCTION
+ 369: 0000: 
+ 370: 0000: %INCLUDE PSBF24E.J86                                                    ! FSWM
+ 371: 0000: REM \
+ 372: 0000: \*******************************************************************************
+ 373: 0000: \*******************************************************************************
+ 374: 0000: \***
+ 375: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 376: 0000: \***
+ 377: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 378: 0000: \***
+ 379: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 380: 0000: \***
+ 381: 0000: \*******************************************************************************
+ 382: 0000: \*******************************************************************************
+ 383: 0000: 
+ 384: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 385: 0000: 				    ERRFILE%,              \
+ 386: 0000: 				    ERRL%,                 \
+ 387: 0000: 				    ERR$)        EXTERNAL
+ 388: 0000: 				    
+ 389: 0000:           STRING    ERR$
+ 390: 0000: 
+ 391: 0000:           INTEGER*2 ERRFILE%,              \
+ 392: 0000: 	            ERRL%,                 \
+ 393: 0000: 		    STANDARD.ERROR.DETECTED
+ 394: 0000: 		    
+ 395: 0000:           INTEGER*4 ERRN%
+ 396: 0000: 	  		    
+ 397: 0000:    END FUNCTION
+ 398: 0000: 
+ 399: 0000: 
+ 400: 0000: 
+ 401: 0000: \-------------------------------------------------------------------------------
+ 402: 0000: \***
+ 403: 0000: \*******************************************************************************
+ 404: 0000: \***
+ 405: 0000: \*** define public function SESS.NUM.UTILITY 
+ 406: 0000: \***
+ 407: 0000: \*** define variables used by the function
+ 408: 0000: \***
+ 409: 0000: \-------------------------------------------------------------------------------
+ 410: 0000: 
+ 411: 0000: FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                              \
+ 412: 0000:                            PASSED.INTEGER%,                             \
+ 413: 0000:                            PASSED.STRING$)                              \
+ 414: 0000:             PUBLIC
+ 415: 001e: ! 3 parameters deleted from here                                        ! EAW
+ 416: 001e:   
+ 417: 001e:     STRING ERRNUM$
+ 418: 001e:     STRING FUNCTION.FLAG$
+ 419: 001e:     STRING MODULE.LETTER$
+ 420: 001e:     STRING NULL.FOUND.FLAG$
+ 421: 001e:     STRING PASSED.STRING$
+ 422: 001e:     STRING STRING.ERRL$
+ 423: 001e:     STRING UNIQUE$
+ 424: 001e:     STRING VAR.STRING.1$
+ 425: 001e:     STRING VAR.STRING.2$
+ 426: 001e: ! 3 variables deleted from here                                         ! EAW
+ 427: 001e: 
+ 428: 001e:     INTEGER*1 EVENT.NUM%
+ 429: 001e:     INTEGER*1 INDEX%
+ 430: 001e:     INTEGER*1 MSGGRP%
+ 431: 001e:     INTEGER*1 SEVERITY%
+ 432: 001e: 
+ 433: 001e:     INTEGER*2 EVENT.NO%
+ 434: 001e:     INTEGER*2 FILE.NO%
+ 435: 001e:     INTEGER*2 F17.RET.CODE%                                             ! EAW            
+ 436: 001e:     INTEGER*2 MESSAGE.NUMBER%
+ 437: 001e:     INTEGER*2 MSGNUM%
+ 438: 001e:     INTEGER*2 PASSED.INTEGER%                                           ! DJAS
+ 439: 001e:     INTEGER*2 RET.CODE%
+ 440: 001e:     INTEGER*2 SESS.NUM.UTILITY                                          ! EAW
+ 441: 001e:     INTEGER*2 TERM%
+ 442: 001e:     INTEGER*2 F20.TABLE.SIZE%                                           ! GSWM
+ 443: 001e:     INTEGER*2 F20.TABLE.BASE%                                           ! GSWM
+ 444: 001e: 
+ 445: 001e:     INTEGER*4 INTEGER4%
+ 446: 001e: 
+ 447: 001e: \-------------------------------------------------------------------------------
+ 448: 001e: \***
+ 449: 001e: \*******************************************************************************
+ 450: 001e: \***
+ 451: 001e: \***   ON ERROR GOTO label ERROR.DETECTED
+ 452: 001e: \***
+ 453: 001e: \***   set SESS.NUM.UTILITY to zero
+ 454: 001e: \***   initialise storage areas for ADXERROR call in case of memory overflow
+ 455: 001e: \***
+ 456: 001e: \***   initialise other variables as required
+ 457: 001e: \***
+ 458: 001e: \***   check value of F20.TABLE.DIMENSIONED.FLAG$ - if it is not "Y",
+ 459: 001e: \***   dimension the session number table to have 64 entries, not including
+ 460: 001e: \***   the first entry, subscript zero; and set the flag to "Y"
+ 461: 001e: \***
+ 462: 001e: \***   perform the appropriate subroutine as specified by the value of
+ 463: 001e: \***   the function flag parameter - "O" = SET.TABLE.ENTRY
+ 464: 001e: \***                               - "R" = READ.TABLE.ENTRY
+ 465: 001e: \***                               - "C" = DELETE.TABLE.ENTRY
+ 466: 001e: \***                               - other = log event 4, message 711 - invalid
+ 467: 001e: \***                                         option parameter, set return code
+ 468: 001e: \***                                         to 1 and blank out global fields
+ 469: 001e: \***                                         except F20.TABLE.DIMENSIONED.FLAG$
+ 470: 001e: \***
+ 471: 001e: \***   EXIT FUNCTION
+ 472: 001e: \***
+ 473: 001e: \-------------------------------------------------------------------------------
+ 474: 001e: 
+ 475: 001e:     ON ERROR GOTO ERROR.DETECTED
+ 476: 002b: 
+ 477: 002b:     SESS.NUM.UTILITY = 0
+ 478: 0030:     UNIQUE$          = "          "
+ 479: 003d:     ERRNUM$          = "    "
+ 480: 004a:     STRING.ERRL$     = "      "
+ 481: 0057:     MODULE.LETTER$   = MID$(MODULE.NUMBER$+"???",3,1)
+ 482: 008a: 
+ 483: 008a:     IF F20.TABLE.DIMENSIONED.FLAG$ <> "Y" THEN BEGIN                    !GSWM
+ 484: 00a3:         IF LEFT$(MODULE.NUMBER$,3) = "EAL" THEN BEGIN                   !GSWM
+ 485: 00d0:             F20.TABLE.SIZE% = 35                                        !GSWM
+ 486: 00d6:             F20.TABLE.BASE% = 64                                        !GSWM
+ 487: 00de:         ENDIF ELSE BEGIN                                                !GSWM
+ 488: 00de:             F20.TABLE.SIZE% = 64                                        !GSWM
+ 489: 00e4:             F20.TABLE.BASE% = 0                                         !GSWM
+ 490: 00ea:         ENDIF                                                           !GSWM
+ 491: 00ea:         DIM SESS.NUM.TABLE$(F20.TABLE.BASE%+F20.TABLE.SIZE%)            !GSWM
+ 492: 0117:         F20.TABLE.DIMENSIONED.FLAG$ = "Y"                               !GSWM
+ 493: 0126:     ENDIF                                                               !GSWM
+ 494: 0126: 
+ 495: 0126:     IF FUNCTION.FLAG$ = "O" THEN BEGIN
+ 496: 0137:         GOSUB SET.TABLE.ENTRY
+ 497: 0144:     ENDIF ELSE IF FUNCTION.FLAG$ = "R" THEN BEGIN
+ 498: 0155:         GOSUB READ.TABLE.ENTRY
+ 499: 0162:     ENDIF ELSE IF FUNCTION.FLAG$ = "C" THEN BEGIN
+ 500: 0173:         GOSUB DELETE.TABLE.ENTRY
+ 501: 0180:     ENDIF ELSE BEGIN
+ 502: 0180:         F20.FILE.NAME$ = ""
+ 503: 018f:         F20.STRING.FILE.NO$ = ""
+ 504: 019e:         F20.INTEGER.FILE.NO% = 0
+ 505: 01a7:         SESS.NUM.UTILITY = 1
+ 506: 01ac:         MESSAGE.NUMBER% = 711
+ 507: 01b2:         EVENT.NO% = 4
+ 508: 01b8:         INTEGER4% = 711
+ 509: 01c5:         RET.CODE% = CONV.TO.STRING (EVENT.NO%, INTEGER4%)               ! EAW
+ 510: 01dd:         IF RET.CODE% = 0 THEN BEGIN                                     ! EAW
+ 511: 01e5:             VAR.STRING.1$ = F17.RETURNED.STRING$
+ 512: 01f9:             INTEGER4% = LEN(FUNCTION.FLAG$)
+ 513: 0216:             RET.CODE% = CONV.TO.STRING (EVENT.NO%, INTEGER4%)           ! EAW
+ 514: 022e:             IF RET.CODE% = 0 THEN BEGIN                                 ! EAW
+ 515: 0236:                 VAR.STRING.1$ = VAR.STRING.1$                           \
+ 516: 025b:                                 + F17.RETURNED.STRING$                  \
+ 517: 025b:                                 + FUNCTION.FLAG$
+ 518: 025b:                 VAR.STRING.2$ = "20"                                    \
+ 519: 02bd:                                 + RIGHT$("00"                           \
+ 520: 02bd:                                 + STR$(LEN(FUNCTION.FLAG$)),2)          \
+ 521: 02bd:                                 + FUNCTION.FLAG$
+ 522: 02bd:                 CALL APPLICATION.LOG (MESSAGE.NUMBER%,                  \ EAW
+ 523: 02de:                                       VAR.STRING.1$,                    \
+ 524: 02de:                                       VAR.STRING.2$,                    \
+ 525: 02de:                                       EVENT.NO%)
+ 526: 02de:       ! 3 parameters no longer passed to APPLICATION.LOG                ! EAW
+ 527: 02de:             ENDIF
+ 528: 02de:         ENDIF
+ 529: 02de:     ENDIF
+ 530: 02de: 
+ 531: 02de: EXIT FUNCTION
+ 532: 02e1: 
+ 533: 02e1: \-------------------------------------------------------------------------------
+ 534: 02e1: \***
+ 535: 02e1: \*******************************************************************************
+ 536: 02e1: \************************ subroutines follow ***********************************
+ 537: 02e1: \*******************************************************************************
+ 538: 02e1: \***
+ 539: 02e1: \*** SET.TABLE.ENTRY:
+ 540: 02e1: \***
+ 541: 02e1: \***   search SESS.NUM.TABLE$ sequentially for first null entry
+ 542: 02e1: \***   NOTE: ignore entry 0, which is always null
+ 543: 02e1: \***
+ 544: 02e1: \***   If there is no null entry in the table, log event 46, message number 558
+ 545: 02e1: \***   - session number table full - set return code to 1, blank out global 
+ 546: 02e1: \***   fields except F20.TABLE.DIMENSIONED.FLAG$ and return to main line
+ 547: 02e1: \***
+ 548: 02e1: \***   set null entry to one byte character representing the integer value of
+ 549: 02e1: \***   the file reporting number (use CHR$ function) plus the passed string
+ 550: 02e1: \***   (the file logical name) padded to the right with spaces to 8 characters
+ 551: 02e1: \***
+ 552: 02e1: \***   set F20.FILE.NAME$ to null
+ 553: 02e1: \***   set F20.INTEGER.FILE.NO% to the table entry number for the file
+ 554: 02e1: \***   set F20.STRING.FILE.NO$ to null
+ 555: 02e1: \***
+ 556: 02e1: \***   RETURN to main line
+ 557: 02e1: \***
+ 558: 02e1: \-------------------------------------------------------------------------------
+ 559: 02e1: 
+ 560: 02e1: SET.TABLE.ENTRY:
+ 561: 02e1: 
+ 562: 02e1:     NULL.FOUND.FLAG$ = "N"
+ 563: 02ee:     INDEX% = F20.TABLE.BASE% + 1
+ 564: 02f5: 
+ 565: 02f5:     WHILE NULL.FOUND.FLAG$ = "N" AND                                    \
+ 566: 02f7:           INDEX% <= F20.TABLE.BASE% + F20.TABLE.SIZE%                   !GSWM
+ 567: 02f7:         
+ 568: 02f7:         IF SESS.NUM.TABLE$(INDEX%) = "" THEN BEGIN
+ 569: 031c:             NULL.FOUND.FLAG$ = "Y"
+ 570: 032b:         ENDIF ELSE BEGIN
+ 571: 032b:             INDEX% = INDEX% + 1
+ 572: 032f:         ENDIF
+ 573: 032f: 
+ 574: 032f:     WEND
+ 575: 0368: 
+ 576: 0368:     IF NULL.FOUND.FLAG$ = "N" THEN BEGIN
+ 577: 037b:     
+ 578: 037b:         F20.FILE.NAME$ = ""
+ 579: 038a:         F20.STRING.FILE.NO$ = ""
+ 580: 0399:         F20.INTEGER.FILE.NO% = 0
+ 581: 03a2:         SESS.NUM.UTILITY = 1
+ 582: 03a7:         MESSAGE.NUMBER% = 558
+ 583: 03ad:         VAR.STRING.1$ = ""
+ 584: 03ba:         VAR.STRING.2$ = ""
+ 585: 03c7:         EVENT.NO% = 46
+ 586: 03cd:         RET.CODE% = APPLICATION.LOG (MESSAGE.NUMBER%,                   \ EAW
+ 587: 03f1:                                       VAR.STRING.1$,                    \
+ 588: 03f1:                                       VAR.STRING.2$,                    \
+ 589: 03f1:                                       EVENT.NO%)
+ 590: 03f1:         RETURN
+ 591: 03f9:         
+ 592: 03f9:     ENDIF
+ 593: 03f9: 
+ 594: 03f9:     SESS.NUM.TABLE$(INDEX%) = CHR$(SHIFT(PASSED.INTEGER%,8)) +          \ DJAS
+ 595: 047b:                               CHR$(SHIFT(PASSED.INTEGER%,0)) +          \ DJAS
+ 596: 047b:                               LEFT$(PASSED.STRING$ + "        ",8)
+ 597: 047b: 
+ 598: 047b:     F20.FILE.NAME$ = ""
+ 599: 048a:     F20.INTEGER.FILE.NO% = INDEX%
+ 600: 0495:     F20.STRING.FILE.NO$ = ""
+ 601: 04a4: 
+ 602: 04a4: RETURN
+ 603: 04ac: 
+ 604: 04ac: \-------------------------------------------------------------------------------
+ 605: 04ac: \***
+ 606: 04ac: \*******************************************************************************
+ 607: 04ac: \***
+ 608: 04ac: \*** READ.TABLE.ENTRY:
+ 609: 04ac: \***
+ 610: 04ac: \***   read SESS.NUM.TABLE$ entry as indicated by the passed integer parameter
+ 611: 04ac: \***
+ 612: 04ac: \***   set F20.FILE.NAME$ to the file name part of the table entry
+ 613: 04ac: \***   set F20.INTEGER.FILE.NO% to the integer equivalent of the reporting
+ 614: 04ac: \***   number part of the table entry - use the ASC function.
+ 615: 04ac: \***   set F20.STRING.FILE.NO$ to the string equivalent of the reporting number
+ 616: 04ac: \***   part of the table entry - convert negative values to positive values by
+ 617: 04ac: \***   treating as 2-byte integers, adding 256 if negative.
+ 618: 04ac: \***
+ 619: 04ac: \***   NOTE: if the table entry is null or the passed integer is null or zero,
+ 620: 04ac: \***         set F20.INTEGER.FILE.NO% to zero, set F20.STRING.FILE.NO$ to null
+ 621: 04ac: \***         and set F20.FILE.NAME$ to null
+ 622: 04ac: \***
+ 623: 04ac: \***   RETURN to main line
+ 624: 04ac: \***
+ 625: 04ac: \-------------------------------------------------------------------------------
+ 626: 04ac: 
+ 627: 04ac: READ.TABLE.ENTRY:
+ 628: 04ac: 
+ 629: 04ac:     IF SESS.NUM.TABLE$(PASSED.INTEGER%) = "" THEN BEGIN
+ 630: 04cf:         F20.FILE.NAME$ = ""
+ 631: 04de:         F20.STRING.FILE.NO$ = ""
+ 632: 04ed:         F20.INTEGER.FILE.NO% = 0
+ 633: 04f9:     ENDIF ELSE BEGIN
+ 634: 04f9:         F20.FILE.NAME$ = RIGHT$(SESS.NUM.TABLE$(PASSED.INTEGER%),8)
+ 635: 0523:         F20.INTEGER.FILE.NO% =                                          \ DJAS
+ 636: 0584:                (256 * ASC(LEFT$(SESS.NUM.TABLE$(PASSED.INTEGER%),1))) + \ DJAS
+ 637: 0584:                ASC(MID$(SESS.NUM.TABLE$(PASSED.INTEGER%),2,1))          ! DJAS
+ 638: 0584:         IF F20.INTEGER.FILE.NO% < 0 THEN BEGIN
+ 639: 058e:             FILE.NO% = F20.INTEGER.FILE.NO% + 256
+ 640: 059b:             F20.STRING.FILE.NO$ = RIGHT$("000" + STR$(FILE.NO%),3)
+ 641: 05db:         ENDIF ELSE BEGIN
+ 642: 05db:             F20.STRING.FILE.NO$ = RIGHT$("000"                         \
+ 643: 061d:                                         + STR$(F20.INTEGER.FILE.NO%),3)
+ 644: 061d:         ENDIF
+ 645: 061d:     ENDIF
+ 646: 061d: 
+ 647: 061d: RETURN
+ 648: 0625: 
+ 649: 0625: \-------------------------------------------------------------------------------
+ 650: 0625: \***
+ 651: 0625: \*******************************************************************************
+ 652: 0625: \***
+ 653: 0625: \*** DELETE.TABLE.ENTRY:
+ 654: 0625: \***
+ 655: 0625: \***   read SESS.NUM.TABLE$ entry as indicated by the passed integer parameter
+ 656: 0625: \***
+ 657: 0625: \***   set the table entry to null
+ 658: 0625: \***
+ 659: 0625: \***   set F20.FILE.NAME$ to null
+ 660: 0625: \***   set F20.INTEGER.FILE.NO% to zero
+ 661: 0625: \***   set F20.STRING.FILE.NO$ to null
+ 662: 0625: \***
+ 663: 0625: \***   RETURN to main line
+ 664: 0625: \***
+ 665: 0625: \-------------------------------------------------------------------------------
+ 666: 0625: 
+ 667: 0625: DELETE.TABLE.ENTRY:
+ 668: 0625: 
+ 669: 0625:     SESS.NUM.TABLE$(PASSED.INTEGER%) = ""
+ 670: 0641: 
+ 671: 0641:     F20.FILE.NAME$ = ""
+ 672: 0650:     F20.INTEGER.FILE.NO% = 0
+ 673: 0659:     F20.STRING.FILE.NO$ = ""
+ 674: 0668: 
+ 675: 0668: RETURN
+ 676: 0670: 
+ 677: 0670: \-------------------------------------------------------------------------------
+ 678: 0670: \***
+ 679: 0670: \*******************************************************************************
+ 680: 0670: \***
+ 681: 0670: \*** ERROR.DETECTED
+ 682: 0670: \***
+ 683: 0670: \***   set F20.RETURN.CODE% to 1 to indicate unsuccessful processing
+ 684: 0670: \***
+ 685: 0670: \***   take appropriate action depending on the value of the error code ERR:
+ 686: 0670: \***
+ 687: 0670: \***   - out of memory (ERR = OM): CALL ADXERROR
+ 688: 0670: \***   - chain failure (ERR = CM or CT): CALL APPLICATION.LOG, error number 553,
+ 689: 0670: \***                                                           event number 18
+ 690: 0670: \***     (having set VAR.STRING.1$ to "BF20 " + MODULE.LETTER$ + "50  "
+ 691: 0670: \***             and VAR.STRING.2$ to "PS" + MODULE.LETTER$ + "50")
+ 692: 0670: \***   - other errors: CALL APPLICATION.LOG, error number 551,
+ 693: 0670: \***                                         event number 1
+ 694: 0670: \***
+ 695: 0670: \***   use CONV.TO.STRING function to give the string equivalent of ERRN and
+ 696: 0670: \***   CONV.TO.HEX function to give the Hex equivalent of ERRN for logging
+ 697: 0670: \***
+ 698: 0670: \***
+ 699: 0670: \***   IF program is not screen program THEN
+ 700: 0670: \***      STOP
+ 701: 0670: \***   ENDIF
+ 702: 0670: \***
+ 703: 0670: \***   set PSBCHN.PRG to "ADX_UPGM:" + (leftmost 3 bytes of MODULE.NUMBER$)
+ 704: 0670: \***                                          + "50.286"
+ 705: 0670: \***   %INCLUDE PSBCHNE.J86
+ 706: 0670: \***
+ 707: 0670: \*** END FUNCTION
+ 708: 0670: \***
+ 709: 0670: \-------------------------------------------------------------------------------
+ 710: 0670: 
+ 711: 0670: ERROR.DETECTED:
+ 712: 0670: 
+ 713: 0670:     SESS.NUM.UTILITY = 1
+ 714: 0675: 
+ 715: 0675:     IF ERR <> "CM" AND ERR <> "CT" THEN BEGIN
+ 716: 06cf:         EVENT.NO% = 1
+ 717: 06d5:         INTEGER4% = ERRN
+ 718: 06e7:         F17.RET.CODE% = CONV.TO.STRING (EVENT.NO%, INTEGER4%)           ! EAW
+ 719: 06ff:         IF RET.CODE% = 0 THEN BEGIN                                     ! EAW
+ 720: 0706:             ERRNUM$   = F17.RETURNED.STRING$
+ 721: 071a:             STRING.ERRL$ = PACK$(RIGHT$("000000" + STR$(ERRL),6))
+ 722: 075d:         ENDIF
+ 723: 075d:     ENDIF
+ 724: 075d: 
+ 725: 075d:     IF ERR = "OM" THEN BEGIN !out of memory
+ 726: 077e:         IF F17.RET.CODE% = 0 THEN BEGIN
+ 727: 0788:             TERM%         = 0
+ 728: 078e:             MSGGRP%       = ASC("J")
+ 729: 079a:             MSGNUM%       = 0
+ 730: 07a0:             SEVERITY%     = 3
+ 731: 07a5:             EVENT.NUM%    = 1
+ 732: 07aa:             UNIQUE$      = ERRNUM$ + CHR$(ERRF%) + ERR + STRING.ERRL$
+ 733: 07ec:             RET.CODE%    = ADXERROR (TERM%,                             \
+ 734: 0816:                                      MSGGRP%,                           \
+ 735: 0816:                                      MSGNUM%,                           \
+ 736: 0816:                                      SEVERITY%,                         \
+ 737: 0816:                                      EVENT.NUM%,                        \
+ 738: 0816:                                      UNIQUE$)
+ 739: 0816:         ENDIF
+ 740: 0816:     ENDIF
+ 741: 0816: 
+ 742: 0816:     IF ERR = "CM" OR ERR = "CT" THEN BEGIN !chain failure
+ 743: 086d:         MESSAGE.NUMBER% = 553
+ 744: 0873:         VAR.STRING.1$   = "BF20 " + MODULE.LETTER$ + "50  "             ! BBCW
+ 745: 088f:         VAR.STRING.2$   = "PS" + MODULE.LETTER$ + "50"                  ! BBCW
+ 746: 08ab:         EVENT.NO%       = 18
+ 747: 08b1:         RET.CODE% = APPLICATION.LOG (MESSAGE.NUMBER%,                   \ EAW
+ 748: 08d5:                                       VAR.STRING.1$,                    \
+ 749: 08d5:                                       VAR.STRING.2$,                    \
+ 750: 08d5:                                       EVENT.NO%)
+ 751: 08d5:       ! 3 parameters removed from here                                  ! EAW
+ 752: 08d5:     ENDIF
+ 753: 08d5: 
+ 754: 08d5:     IF ERR <> "OM" AND ERR <> "CM" AND ERR <> "CT" THEN BEGIN
+ 755: 095c:         IF F17.RET.CODE% = 0 THEN BEGIN
+ 756: 0966:             MESSAGE.NUMBER% = 550
+ 757: 096c:             VAR.STRING.1$ = ERRNUM$ + CHR$(ERRF%) + ERR + STRING.ERRL$
+ 758: 09ae:             INTEGER4% = ERRN
+ 759: 09c0:             RET.CODE% = CONV.TO.HEX (INTEGER4%)                         ! EAW
+ 760: 09d3:             IF RET.CODE% = 0 THEN BEGIN                                 ! EAW
+ 761: 09db:                 VAR.STRING.2$ = ERR + F16.HEX.STRING$                   \
+ 762: 0a4f:                               + RIGHT$("000" + STR$(ERRF%),3)           \
+ 763: 0a4f:                               + STR$(ERRL)
+ 764: 0a4f:                 EVENT.NO%     = 1
+ 765: 0a55:                 RET.CODE% = APPLICATION.LOG (MESSAGE.NUMBER%,           \ EAW
+ 766: 0a79:                                             VAR.STRING.1$,              \
+ 767: 0a79:                                             VAR.STRING.2$,              \
+ 768: 0a79:                                             EVENT.NO%)
+ 769: 0a79: !5 lines deleted from here                                             ! BBCW
+ 770: 0a79:             ENDIF
+ 771: 0a79:         ENDIF
+ 772: 0a79:     ENDIF
+ 773: 0a79: 
+ 774: 0a79:     IF BATCH.SCREEN.FLAG$ <> "S" THEN STOP                              ! BBCW
+ 775: 0a94: 
+ 776: 0a94:     PSBCHN.PRG = "ADX_UPGM:PSB50.286"                                   ! HSWM
+ 777: 0aa3:     %INCLUDE PSBCHNE.J86                                                ! FSWM
+ 778: 0aa3: \/*********************************************************************/ PSBCHNE
+ 779: 0aa3: \/*                                                                   */ PSBCHNE
+ 780: 0aa3: \/*      PSBCHNE.J86  -  Chain to PSB Application Program             */ PSBCHNE
+ 781: 0aa3: \/*      ------------------------------------------------             */ PSBCHNE
+ 782: 0aa3: \/*                                                                   */ PSBCHNE
+ 783: 0aa3: \/*********************************************************************/ PSBCHNE
+ 784: 0aa3:                                                                        ! PSBCHNE
+ 785: 0aa3:         CHAIN  PSBCHN.PRG , PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON ,   \ PSBCHNE
+ 786: 0b1b:                             PSBCHN.U1 , PSBCHN.U2  , PSBCHN.U3         ! PSBCHNE
+ 787: 0b1b:                                                                        ! PSBCHNE
+ 788: 0b1b: 
+ 789: 0b1b: END FUNCTION
+ 790: 0b34: 
+ 791: 0b34: 
+ 792: 0b34: End of Compilation

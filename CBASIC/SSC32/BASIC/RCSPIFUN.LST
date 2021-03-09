@@ -1,0 +1,164 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* RCSPI File Functions                                           */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : RCSPIFUN.BAS                                     */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.                29 May 2007   */
+   8: 0000: \/*                                                                */
+   9: 0000: \/******************************************************************/
+  10: 0000: 
+  11: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  12: 0000: 
+  13: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  14: 0000:                     FILE.OPERATION$
+  15: 0000: 
+  16: 0000:    %INCLUDE RCSPIDEC.J86
+  17: 0000: \/******************************************************************/
+  18: 0000: \/*                                                                */
+  19: 0000: \/* RCSPI FILE GLOBAL VARIABLE DECLARATIONS                        */
+  20: 0000: \/*                                                                */
+  21: 0000: \/* REFERENCE   : RCSPIDEC.J86                                     */
+  22: 0000: \/*                                                                */
+  23: 0000: \/* VERSION A.          Neil Bennett.                29 MAY 2007   */
+  24: 0000: \/*                                                                */
+  25: 0000: \/******************************************************************/
+  26: 0000: 
+  27: 0000:    STRING GLOBAL                        \
+  28: 0000:       RCSPI.FILE.NAME$,                 \
+  29: 0000:                                         \
+  30: 0000:       RCSPI.REFERENCE$,                 \ ASC   8 - Key Recall Ref
+  31: 0000:       RCSPI.RECALL.SPECIAL.INSTRUCTION$ ! ASC 160 - Special Instructions
+  32: 0000: 
+  33: 0000:    INTEGER*2 GLOBAL             \
+  34: 0000:       RCSPI.KEYL%,              \
+  35: 0000:       RCSPI.RECL%,              \
+  36: 0000:       RCSPI.MAX.REC.ITEMS%,     \
+  37: 0000:       RCSPI.REPORT.NUM%,        \
+  38: 0000:       RCSPI.SESS.NUM%           !
+  39: 0000: 
+  40: 0000: \/******************************************************************/
+  41: 0000: 
+  42: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  43: 0000: \/* FUNCTION RCSPI.SET                                             */
+  44: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  45: 0000: 
+  46: 0000:    FUNCTION RCSPI.SET PUBLIC
+  47: 0014: 
+  48: 0014:       INTEGER*1 RCSPI.SET
+  49: 0014: 
+  50: 0014:       RCSPI.REPORT.NUM% = 748
+  51: 001d:       RCSPI.KEYL%       =   8
+  52: 0026:       RCSPI.RECL%       = 168
+  53: 002f:       RCSPI.FILE.NAME$  = "RCSPI"
+  54: 003e: 
+  55: 003e:    END FUNCTION
+  56: 004d: 
+  57: 004d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  58: 004d: \/* FUNCTION READ.RCSPI                                            */
+  59: 004d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  60: 004d: 
+  61: 004d:    FUNCTION READ.RCSPI PUBLIC
+  62: 0061: 
+  63: 0061:       INTEGER*2 READ.RCSPI
+  64: 0061: 
+  65: 0061:       READ.RCSPI = 1
+  66: 0066: 
+  67: 0066:       IF END #RCSPI.SESS.NUM% THEN READ.ERROR
+  68: 007a:       READ FORM "T9,C160";                                          \
+  69: 00ac:            #RCSPI.SESS.NUM%                                         \
+  70: 00ac:            KEY RCSPI.REFERENCE$;                                    \
+  71: 00ac:                RCSPI.RECALL.SPECIAL.INSTRUCTION$
+  72: 00ac: 
+  73: 00ac:       READ.RCSPI = 0
+  74: 00b1: 
+  75: 00b1:    EXIT FUNCTION
+  76: 00b3: 
+  77: 00b3: READ.ERROR:
+  78: 00b3: 
+  79: 00b3:       FILE.OPERATION$     = "R"
+  80: 00c2:       CURRENT.REPORT.NUM% = RCSPI.REPORT.NUM%
+  81: 00d0:       CURRENT.CODE$       = ""
+  82: 00df: 
+  83: 00df:    END FUNCTION
+  84: 00ee: 
+  85: 00ee: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  86: 00ee: \/* FUNCTION WRITE.RCSPI                                           */
+  87: 00ee: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  88: 00ee: 
+  89: 00ee:    FUNCTION WRITE.RCSPI PUBLIC
+  90: 0102: 
+  91: 0102:       INTEGER*2 WRITE.RCSPI
+  92: 0102: 
+  93: 0102:       WRITE.RCSPI = 1
+  94: 0107: 
+  95: 0107:       IF END #RCSPI.SESS.NUM% THEN WRITE.ERROR
+  96: 011b:       WRITE FORM "C8,C160";                                         \
+  97: 014d:            #RCSPI.SESS.NUM%;                                        \
+  98: 014d:                RCSPI.REFERENCE$,                                    \
+  99: 014d:                RCSPI.RECALL.SPECIAL.INSTRUCTION$
+ 100: 014d: 
+ 101: 014d:       WRITE.RCSPI = 0
+ 102: 0152:       EXIT FUNCTION
+ 103: 0154: 
+ 104: 0154: WRITE.ERROR:
+ 105: 0154: 
+ 106: 0154:       FILE.OPERATION$ = "W"
+ 107: 0163:       CURRENT.REPORT.NUM% = RCSPI.REPORT.NUM%
+ 108: 0171:       CURRENT.CODE$ = ""
+ 109: 0180: 
+ 110: 0180:    END FUNCTION
+ 111: 018f: 
+ 112: 018f: 
+ 113: 018f: 
+ 114: 018f: 
+ 115: 018f: 
+ 116: 018f: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 117: 018f: \/* FUNCTION DELETE.RCSPI                                          */
+ 118: 018f: \/*                                                                */
+ 119: 018f: \/*    This function returns 4 different return codes              */    
+ 120: 018f: \/*                                                                */    
+ 121: 018f: \/*            0 - Record successfully deleted                     */    
+ 122: 018f: \/*            1 - Record Deletion error                           */    
+ 123: 018f: \/*            2 - Session number invalid ie. 0                    */    
+ 124: 018f: \/*            3 - Invalid Key Length                              */    
+ 125: 018f: \/*                                                                */    
+ 126: 018f: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 127: 018f: 
+ 128: 018f:   FUNCTION DELETE.RCSPI (KEY$) PUBLIC                              
+ 129: 01a8:                                                                      
+ 130: 01a8:    INTEGER*2 DELETE.RCSPI                                          
+ 131: 01a8:    STRING    KEY$                                                    
+ 132: 01a8:                                                                      
+ 133: 01a8:    DELETE.RCSPI = 0                                                
+ 134: 01ad:                                                                      
+ 135: 01ad:    IF RCSPI.SESS.NUM% = 0 THEN BEGIN                               
+ 136: 01b7:        DELETE.RCSPI = 2                                            
+ 137: 01bc:        GOTO SET.RCSPI.DELETE.ERROR                                                 
+ 138: 01be:    ENDIF                                                             
+ 139: 01be:                                                                      
+ 140: 01be:    IF LEN(KEY$) <> RCSPI.KEYL% THEN BEGIN                          
+ 141: 01d3:        DELETE.RCSPI = 3                                            
+ 142: 01d8:        GOTO SET.RCSPI.DELETE.ERROR                                                 
+ 143: 01da:    ENDIF                                                             
+ 144: 01da:                                                                      
+ 145: 01da:    IF END #RCSPI.SESS.NUM% THEN DELETE.RCSPI.ERROR                     
+ 146: 01ee:                                                                      
+ 147: 01ee:    DELREC RCSPI.SESS.NUM%; KEY$                                    
+ 148: 0200: 
+ 149: 0200: EXIT.FUNCTION:
+ 150: 0200:    EXIT FUNCTION                                                     
+ 151: 0202:                                                                      
+ 152: 0202: DELETE.RCSPI.ERROR:                                                     
+ 153: 0202:                                                                      
+ 154: 0202:    DELETE.RCSPI = 1                                                
+ 155: 0207:                                                                      
+ 156: 0207: SET.RCSPI.DELETE.ERROR:                                           
+ 157: 0207:       FILE.OPERATION$     = "D"                                   
+ 158: 0216:       CURRENT.REPORT.NUM% = RCSPI.REPORT.NUM%                   
+ 159: 0224:       CURRENT.CODE$       = ""                                    
+ 160: 0233:                                                                   
+ 161: 0233:   END FUNCTION  
+ 162: 0247:                                                        
+ 163: 0247: \/******************************************************************/
+ 164: 0247: End of Compilation

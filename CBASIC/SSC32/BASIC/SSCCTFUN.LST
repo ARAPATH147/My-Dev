@@ -1,0 +1,439 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \***
+   3: 0000: \***    UOD Outers File Functions
+   4: 0000: \***
+   5: 0000: \***    REFERENCE   : SSCCTFUN.BAS
+   6: 0000: \***
+   7: 0000: \***    VERSION A.              Stuart Highley                  15th Sep 2008
+   8: 0000: \***    Initial version.
+   9: 0000: \***
+  10: 0000: \***    VERSION B.              Mark Walker                      6th Mar 2015
+  11: 0000: \***    F391 HUMSS UOD Messaging
+  12: 0000: \***    Includes the following changes:
+  13: 0000: \***    - Added HUMSS and NEWIF last processed date fields.
+  14: 0000: \***    - Various coding standards related changes (uncommented).
+  15: 0000: \***
+  16: 0000: \*******************************************************************************
+  17: 0000: 
+  18: 0000: INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  19: 0000: 
+  20: 0000: STRING GLOBAL    CURRENT.CODE$,                                         \
+  21: 0000:                  FILE.OPERATION$,                                       \
+  22: 0000:                  FORMAT.STRING$                                             !BMW
+  23: 0000: 
+  24: 0000: %INCLUDE SSCCTDEC.J86
+  25: 0000: \*******************************************************************************
+  26: 0000: \***
+  27: 0000: \***    SSC Control File GLOBAL VARIABLE DECLARATIONS
+  28: 0000: \***
+  29: 0000: \***    REFERENCE   : SSCCTDEC.J86
+  30: 0000: \***
+  31: 0000: \***    VERSION A.              Stuart Highley                  14th Sep 2008
+  32: 0000: \***    Initial version.
+  33: 0000: \***
+  34: 0000: \***    VERSION B.              Mark Walker                     18th Feb 2015
+  35: 0000: \***    F391 HUMSS UOD Messaging
+  36: 0000: \***    Includes the following changes:
+  37: 0000: \***    - Added the following new variable declarations:
+  38: 0000: \***      o SSCCTRL.HUMSS.UOD.DATE$
+  39: 0000: \***      o SSCCTRL.NEWIF.UOD.DATE$
+  40: 0000: \***    - Various coding standards related changes (uncommented).
+  41: 0000: \***
+  42: 0000: \*******************************************************************************
+  43: 0000: 
+  44: 0000:     STRING GLOBAL                                                       \
+  45: 0000:         SSCCTRL.BUFFER.NUM.DAYS$,                                       \
+  46: 0000:         SSCCTRL.EPOS.TYPE$(1),                                          \
+  47: 0000:         SSCCTRL.FILE.NAME$,                                             \
+  48: 0000:         SSCCTRL.FILLER$,                                                \
+  49: 0000:         SSCCTRL.HUMSS.UOD.DATE$,                                        \   !BMW
+  50: 0000:         SSCCTRL.NEWIF.UOD.DATE$,                                        \   !BMW
+  51: 0000:         SSCCTRL.PREFIX$(1),                                             \
+  52: 0000:         SSCCTRL.SAP.TYPE$(1),                                           \
+  53: 0000:         SSCCTRL.SSC04.LAST.RUN$,                                        \
+  54: 0000:         SSCCTRL.SSC04.OK$,                                              \
+  55: 0000:         SSCCTRL.SSC04.RUN.TIME$,                                        \
+  56: 0000:         SSCCTRL.SSC06.LAST.RUN$,                                        \
+  57: 0000:         SSCCTRL.SSC06.RUN.TIME$,                                        \
+  58: 0000:         SSCCTRL.UNBOOKED.IST.DAYS$,                                     \
+  59: 0000:         SSCCTRL.UNBOOKED.NUM.DAYS$,                                     \
+  60: 0000:         SSCCTRL.UODBNK.ACCEPT.DAYS$,                                    \
+  61: 0000:         SSCCTRL.UODBNK.PERC.FULL$,                                      \
+  62: 0000:         SSCCTRL.UODBNK.REJECT.DAYS$,                                    \
+  63: 0000:         SSCCTRL.UODIN.PERC.FULL$,                                       \
+  64: 0000:         SSCCTRL.UODOT.NUM.DAYS$,                                        \
+  65: 0000:         SSCCTRL.UODOT.PERC.FULL$
+  66: 0000: 
+  67: 0000:     INTEGER*2 GLOBAL                                                    \
+  68: 0000:         SSCCTRL.MAX.PREFIXES%,                                          \
+  69: 0000:         SSCCTRL.REC.NUM%,                                               \
+  70: 0000:         SSCCTRL.RECL%,                                                  \
+  71: 0000:         SSCCTRL.REPORT.NUM%,                                            \
+  72: 0000:         SSCCTRL.SESS.NUM%
+  73: 0000: 
+  74: 0000: 
+  75: 0000: !*******************************************************************
+  76: 0000: !***  PRIVATE FUNCTION TRIM$ (trims trailing spaces)
+  77: 0000: !*******************************************************************
+  78: 0000:     FUNCTION TRIM$(TXT$)
+  79: 0019:         STRING TRIM$, TXT$
+  80: 0019:         WHILE RIGHT$(TXT$, 1) = " " AND LEN(TXT$) > 0
+  81: 001b:             TXT$ = LEFT$(TXT$, LEN(TXT$) - 1)
+  82: 0040:         WEND
+  83: 008f:         TRIM$ = TXT$
+  84: 009f:         TXT$ = ""
+  85: 00ad:     END FUNCTION
+  86: 00c3: 
+  87: 00c3: 
+  88: 00c3: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  89: 00c3: \/* FUNCTION SSCCTRL.SET                                           */
+  90: 00c3: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  91: 00c3: 
+  92: 00c3: FUNCTION SSCCTRL.SET PUBLIC
+  93: 00d7: 
+  94: 00d7:     INTEGER*1 SSCCTRL.SET
+  95: 00d7: 
+  96: 00d7:     SSCCTRL.REPORT.NUM%   = 772
+  97: 00e0:     SSCCTRL.RECL%         = 80
+  98: 00e9:     SSCCTRL.MAX.PREFIXES% = 13
+  99: 00f2:     SSCCTRL.FILE.NAME$  = "SSCCTRL"
+ 100: 0101:     DIM SSCCTRL.EPOS.TYPE$(SSCCTRL.MAX.PREFIXES%)
+ 101: 012d:     DIM SSCCTRL.SAP.TYPE$(SSCCTRL.MAX.PREFIXES%)
+ 102: 0159:     DIM SSCCTRL.PREFIX$(SSCCTRL.MAX.PREFIXES%)
+ 103: 0185: 
+ 104: 0185: END FUNCTION
+ 105: 0194: 
+ 106: 0194: 
+ 107: 0194: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 108: 0194: \/* FUNCTION READ.SSCCTRL                                          */
+ 109: 0194: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 110: 0194: 
+ 111: 0194: FUNCTION READ.SSCCTRL PUBLIC
+ 112: 01a8: 
+ 113: 01a8:     STRING REC$
+ 114: 01a8:     INTEGER*2 I%, READ.SSCCTRL
+ 115: 01a8: 
+ 116: 01a8:     READ.SSCCTRL = 1
+ 117: 01ad:     FILE.OPERATION$     = "R"
+ 118: 01bc:     CURRENT.REPORT.NUM% = SSCCTRL.REPORT.NUM%
+ 119: 01ca:     CURRENT.CODE$       = STR$(SSCCTRL.REC.NUM%)
+ 120: 01e4: 
+ 121: 01e4:     IF END #SSCCTRL.SESS.NUM% THEN READ.ERROR
+ 122: 01f8: 
+ 123: 01f8:     IF SSCCTRL.REC.NUM% = 1 THEN BEGIN
+ 124: 0205: 
+ 125: 0205:         FORMAT.STRING$ = "C3,C3,C3,C3,C3,C3,C8,C4,C1,C8,C4,C2,C2,C2," + \   !BMW
+ 126: 021b:                          "C8,C8,C15"                                        !BMW
+ 127: 021b: 
+ 128: 021b:         READ FORM FORMAT.STRING$;                                       \   !BMW
+ 129: 0301:             # SSCCTRL.SESS.NUM%, 1;                                     \
+ 130: 0301:             SSCCTRL.UODBNK.ACCEPT.DAYS$,                                \
+ 131: 0301:             SSCCTRL.UODBNK.REJECT.DAYS$,                                \
+ 132: 0301:             SSCCTRL.UODOT.NUM.DAYS$,                                    \
+ 133: 0301:             SSCCTRL.UNBOOKED.NUM.DAYS$,                                 \
+ 134: 0301:             SSCCTRL.UNBOOKED.IST.DAYS$,                                 \
+ 135: 0301:             SSCCTRL.BUFFER.NUM.DAYS$,                                   \
+ 136: 0301:             SSCCTRL.SSC04.LAST.RUN$,                                    \
+ 137: 0301:             SSCCTRL.SSC04.RUN.TIME$,                                    \
+ 138: 0301:             SSCCTRL.SSC04.OK$,                                          \
+ 139: 0301:             SSCCTRL.SSC06.LAST.RUN$,                                    \
+ 140: 0301:             SSCCTRL.SSC06.RUN.TIME$,                                    \
+ 141: 0301:             SSCCTRL.UODBNK.PERC.FULL$,                                  \
+ 142: 0301:             SSCCTRL.UODOT.PERC.FULL$,                                   \
+ 143: 0301:             SSCCTRL.UODIN.PERC.FULL$,                                   \
+ 144: 0301:             SSCCTRL.NEWIF.UOD.DATE$,                                    \   !BMW
+ 145: 0301:             SSCCTRL.HUMSS.UOD.DATE$,                                    \   !BMW
+ 146: 0301:             SSCCTRL.FILLER$
+ 147: 0301: 
+ 148: 0301:         READ.SSCCTRL = 0
+ 149: 0309: 
+ 150: 0309:     ENDIF ELSE IF SSCCTRL.REC.NUM% = 2 THEN BEGIN
+ 151: 0316: 
+ 152: 0316:         READ FORM "C78 C2"; # SSCCTRL.SESS.NUM%, 2; REC$, \
+ 153: 034e:                                                     SSCCTRL.FILLER$
+ 154: 034e:         FOR I% = 1 TO SSCCTRL.MAX.PREFIXES%
+ 155: 0357:             SSCCTRL.EPOS.TYPE$(I%) = MID$(REC$, ((I%-1) * 6) + 1, 1)
+ 156: 0388:             SSCCTRL.SAP.TYPE$(I%)  = MID$(REC$, ((I%-1) * 6) + 2, 1)
+ 157: 03bb:             SSCCTRL.PREFIX$(I%)    =                                    \
+ 158: 03f2:                 TRIM$(MID$(REC$, ((I%-1) * 6) + 3, 4))
+ 159: 03f2:         NEXT I%
+ 160: 0409: 
+ 161: 0409:         READ.SSCCTRL = 0
+ 162: 040e: 
+ 163: 040e:     ENDIF
+ 164: 040e: 
+ 165: 040e:     EXIT FUNCTION
+ 166: 0410: 
+ 167: 0410: READ.ERROR:
+ 168: 0410: 
+ 169: 0410: END FUNCTION
+ 170: 041f: 
+ 171: 041f: 
+ 172: 041f: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 173: 041f: \/* FUNCTION READ.SSCCTRL.LOCK                                     */
+ 174: 041f: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 175: 041f: 
+ 176: 041f: FUNCTION READ.SSCCTRL.LOCK PUBLIC
+ 177: 0433: 
+ 178: 0433:     STRING REC$
+ 179: 0433:     INTEGER*2 I%, READ.SSCCTRL.LOCK
+ 180: 0433: 
+ 181: 0433:     READ.SSCCTRL.LOCK = 1
+ 182: 0438:     FILE.OPERATION$     = "R"
+ 183: 0447:     CURRENT.REPORT.NUM% = SSCCTRL.REPORT.NUM%
+ 184: 0455:     CURRENT.CODE$       = STR$(SSCCTRL.REC.NUM%)
+ 185: 046f: 
+ 186: 046f:     IF END #SSCCTRL.SESS.NUM% THEN READ.ERROR
+ 187: 0483: 
+ 188: 0483:     IF SSCCTRL.REC.NUM% = 1 THEN BEGIN
+ 189: 0490: 
+ 190: 0490:         FORMAT.STRING$ = "C3,C3,C3,C3,C3,C3,C8,C4,C1,C8,C4,C2,C2,C2," + \   !BMW
+ 191: 04a6:                          "C8,C8,C15"                                        !BMW
+ 192: 04a6:         
+ 193: 04a6:         READ FORM FORMAT.STRING$;                                       \
+ 194: 058c:             # SSCCTRL.SESS.NUM% AUTOLOCK, 1;                            \
+ 195: 058c:             SSCCTRL.UODBNK.ACCEPT.DAYS$,                                \
+ 196: 058c:             SSCCTRL.UODBNK.REJECT.DAYS$,                                \
+ 197: 058c:             SSCCTRL.UODOT.NUM.DAYS$,                                    \
+ 198: 058c:             SSCCTRL.UNBOOKED.NUM.DAYS$,                                 \
+ 199: 058c:             SSCCTRL.UNBOOKED.IST.DAYS$,                                 \
+ 200: 058c:             SSCCTRL.BUFFER.NUM.DAYS$,                                   \
+ 201: 058c:             SSCCTRL.SSC04.LAST.RUN$,                                    \
+ 202: 058c:             SSCCTRL.SSC04.RUN.TIME$,                                    \
+ 203: 058c:             SSCCTRL.SSC04.OK$,                                          \
+ 204: 058c:             SSCCTRL.SSC06.LAST.RUN$,                                    \
+ 205: 058c:             SSCCTRL.SSC06.RUN.TIME$,                                    \
+ 206: 058c:             SSCCTRL.UODBNK.PERC.FULL$,                                  \
+ 207: 058c:             SSCCTRL.UODOT.PERC.FULL$,                                   \
+ 208: 058c:             SSCCTRL.UODIN.PERC.FULL$,                                   \
+ 209: 058c:             SSCCTRL.NEWIF.UOD.DATE$,                                    \   !BMW
+ 210: 058c:             SSCCTRL.HUMSS.UOD.DATE$,                                    \   !BMW
+ 211: 058c:             SSCCTRL.FILLER$
+ 212: 058c: 
+ 213: 058c:         READ.SSCCTRL.LOCK = 0
+ 214: 0594: 
+ 215: 0594:     ENDIF ELSE IF SSCCTRL.REC.NUM% = 2 THEN BEGIN
+ 216: 05a1: 
+ 217: 05a1:         READ FORM "C78 C2"; # SSCCTRL.SESS.NUM%, 2; REC$,               \
+ 218: 05d9:                                                     SSCCTRL.FILLER$
+ 219: 05d9:         FOR I% = 1 TO SSCCTRL.MAX.PREFIXES%
+ 220: 05e2:             SSCCTRL.EPOS.TYPE$(I%) = MID$(REC$, ((I%-1) * 6) + 1, 1)
+ 221: 0613:             SSCCTRL.SAP.TYPE$(I%)  = MID$(REC$, ((I%-1) * 6) + 2, 1)
+ 222: 0646:             SSCCTRL.PREFIX$(I%)    =                                    \
+ 223: 067d:                 TRIM$(MID$(REC$, ((I%-1) * 6) + 3, 4))
+ 224: 067d:         NEXT I%
+ 225: 0694: 
+ 226: 0694:         READ.SSCCTRL.LOCK = 0
+ 227: 0699: 
+ 228: 0699:     ENDIF
+ 229: 0699: 
+ 230: 0699:     EXIT FUNCTION
+ 231: 069b: 
+ 232: 069b: READ.ERROR:
+ 233: 069b: 
+ 234: 069b: END FUNCTION
+ 235: 06aa: 
+ 236: 06aa: 
+ 237: 06aa: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 238: 06aa: \/* FUNCTION WRITE.SSCCTRL                                         */
+ 239: 06aa: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 240: 06aa: 
+ 241: 06aa: FUNCTION WRITE.SSCCTRL PUBLIC
+ 242: 06be: 
+ 243: 06be:     STRING REC$
+ 244: 06be:     INTEGER*2 I%, WRITE.SSCCTRL
+ 245: 06be: 
+ 246: 06be:     WRITE.SSCCTRL = 1
+ 247: 06c3:     FILE.OPERATION$     = "W"
+ 248: 06d2:     CURRENT.REPORT.NUM% = SSCCTRL.REPORT.NUM%
+ 249: 06e0:     CURRENT.CODE$       = STR$(SSCCTRL.REC.NUM%)
+ 250: 06fa: 
+ 251: 06fa:     IF END #SSCCTRL.SESS.NUM% THEN WRITE.ERROR
+ 252: 070e: 
+ 253: 070e:     IF SSCCTRL.REC.NUM% = 1 THEN BEGIN
+ 254: 071b: 
+ 255: 071b:         FORMAT.STRING$ = "C3,C3,C3,C3,C3,C3,C8,C4,C1,C8,C4,C2,C2,C2," + \   !BMW
+ 256: 0731:                          "C8,C8,C15"                                        !BMW
+ 257: 0731:         
+ 258: 0731:         WRITE FORM FORMAT.STRING$;                                      \   !BMW
+ 259: 0867:             # SSCCTRL.SESS.NUM%, 1;                                     \
+ 260: 0867:             SSCCTRL.UODBNK.ACCEPT.DAYS$,                                \
+ 261: 0867:             SSCCTRL.UODBNK.REJECT.DAYS$,                                \
+ 262: 0867:             SSCCTRL.UODOT.NUM.DAYS$,                                    \
+ 263: 0867:             SSCCTRL.UNBOOKED.NUM.DAYS$,                                 \
+ 264: 0867:             SSCCTRL.UNBOOKED.IST.DAYS$,                                 \
+ 265: 0867:             SSCCTRL.BUFFER.NUM.DAYS$,                                   \
+ 266: 0867:             SSCCTRL.SSC04.LAST.RUN$,                                    \
+ 267: 0867:             SSCCTRL.SSC04.RUN.TIME$,                                    \
+ 268: 0867:             SSCCTRL.SSC04.OK$,                                          \
+ 269: 0867:             SSCCTRL.SSC06.LAST.RUN$,                                    \
+ 270: 0867:             SSCCTRL.SSC06.RUN.TIME$,                                    \
+ 271: 0867:             SSCCTRL.UODBNK.PERC.FULL$,                                  \
+ 272: 0867:             SSCCTRL.UODOT.PERC.FULL$,                                   \
+ 273: 0867:             SSCCTRL.UODIN.PERC.FULL$,                                   \
+ 274: 0867:             SSCCTRL.NEWIF.UOD.DATE$,                                    \   !BMW
+ 275: 0867:             SSCCTRL.HUMSS.UOD.DATE$,                                    \   !BMW
+ 276: 0867:             SSCCTRL.FILLER$
+ 277: 0867: 
+ 278: 0867:         WRITE.SSCCTRL = 0
+ 279: 086f: 
+ 280: 086f:     ENDIF ELSE IF SSCCTRL.REC.NUM% = 2 THEN BEGIN
+ 281: 087c: 
+ 282: 087c:         REC$ = ""
+ 283: 0889:         FOR I% = 1 TO SSCCTRL.MAX.PREFIXES%
+ 284: 0892:             REC$ = REC$ + LEFT$(SSCCTRL.EPOS.TYPE$(I%) + " ", 1) +      \
+ 285: 0964:                           LEFT$(SSCCTRL.SAP.TYPE$(I%)  + " ", 1) +      \
+ 286: 0964:                           LEFT$(SSCCTRL.PREFIX$(I%) + "    ", 4)
+ 287: 0964:         NEXT I%
+ 288: 097b: 
+ 289: 097b:         WRITE FORM "C78 C2"; # SSCCTRL.SESS.NUM%, 2; REC$, \
+ 290: 09b7:                                                      SSCCTRL.FILLER$
+ 291: 09b7: 
+ 292: 09b7:         WRITE.SSCCTRL = 0
+ 293: 09bc: 
+ 294: 09bc:     ENDIF
+ 295: 09bc: 
+ 296: 09bc:     EXIT FUNCTION
+ 297: 09be: 
+ 298: 09be: WRITE.ERROR:
+ 299: 09be: 
+ 300: 09be: END FUNCTION
+ 301: 09cd: 
+ 302: 09cd: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 303: 09cd: \/* FUNCTION WRITE.SSCCTRL.UNLOCK                                  */
+ 304: 09cd: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 305: 09cd: 
+ 306: 09cd: FUNCTION WRITE.SSCCTRL.UNLOCK PUBLIC
+ 307: 09e1: 
+ 308: 09e1:     STRING REC$
+ 309: 09e1:     INTEGER*2 I%, WRITE.SSCCTRL.UNLOCK
+ 310: 09e1: 
+ 311: 09e1:     WRITE.SSCCTRL.UNLOCK = 1
+ 312: 09e6:     FILE.OPERATION$     = "W"
+ 313: 09f5:     CURRENT.REPORT.NUM% = SSCCTRL.REPORT.NUM%
+ 314: 0a03:     CURRENT.CODE$       = STR$(SSCCTRL.REC.NUM%)
+ 315: 0a1d: 
+ 316: 0a1d:     IF END #SSCCTRL.SESS.NUM% THEN WRITE.ERROR
+ 317: 0a31: 
+ 318: 0a31:     IF SSCCTRL.REC.NUM% = 1 THEN BEGIN
+ 319: 0a3e: 
+ 320: 0a3e:         FORMAT.STRING$ = "C3,C3,C3,C3,C3,C3,C8,C4,C1,C8,C4,C2,C2,C2," + \   !BMW
+ 321: 0a54:                          "C8,C8,C15"                                        !BMW
+ 322: 0a54:         
+ 323: 0a54:         WRITE FORM FORMAT.STRING$;                                      \   !BMW
+ 324: 0b8a:             # SSCCTRL.SESS.NUM% AUTOUNLOCK, 1;                          \
+ 325: 0b8a:             SSCCTRL.UODBNK.ACCEPT.DAYS$,                                \
+ 326: 0b8a:             SSCCTRL.UODBNK.REJECT.DAYS$,                                \
+ 327: 0b8a:             SSCCTRL.UODOT.NUM.DAYS$,                                    \ 
+ 328: 0b8a:             SSCCTRL.UNBOOKED.NUM.DAYS$,                                 \
+ 329: 0b8a:             SSCCTRL.UNBOOKED.IST.DAYS$,                                 \
+ 330: 0b8a:             SSCCTRL.BUFFER.NUM.DAYS$,                                   \
+ 331: 0b8a:             SSCCTRL.SSC04.LAST.RUN$,                                    \
+ 332: 0b8a:             SSCCTRL.SSC04.RUN.TIME$,                                    \
+ 333: 0b8a:             SSCCTRL.SSC04.OK$,                                          \
+ 334: 0b8a:             SSCCTRL.SSC06.LAST.RUN$,                                    \
+ 335: 0b8a:             SSCCTRL.SSC06.RUN.TIME$,                                    \
+ 336: 0b8a:             SSCCTRL.UODBNK.PERC.FULL$,                                  \
+ 337: 0b8a:             SSCCTRL.UODOT.PERC.FULL$,                                   \
+ 338: 0b8a:             SSCCTRL.UODIN.PERC.FULL$,                                   \
+ 339: 0b8a:             SSCCTRL.NEWIF.UOD.DATE$,                                    \   !BMW
+ 340: 0b8a:             SSCCTRL.HUMSS.UOD.DATE$,                                    \   !BMW
+ 341: 0b8a:             SSCCTRL.FILLER$
+ 342: 0b8a: 
+ 343: 0b8a:         WRITE.SSCCTRL.UNLOCK = 0
+ 344: 0b92: 
+ 345: 0b92:     ENDIF ELSE IF SSCCTRL.REC.NUM% = 2 THEN BEGIN
+ 346: 0b9f: 
+ 347: 0b9f:         REC$ = ""
+ 348: 0bac:         FOR I% = 1 TO SSCCTRL.MAX.PREFIXES%
+ 349: 0bb5:             REC$ = REC$ + LEFT$(SSCCTRL.EPOS.TYPE$(I%) + " ", 1) +      \
+ 350: 0c87:                           LEFT$(SSCCTRL.SAP.TYPE$(I%)  + " ", 1) +      \
+ 351: 0c87:                           LEFT$(SSCCTRL.PREFIX$(I%) + "    ", 4)
+ 352: 0c87:         NEXT I%
+ 353: 0c9e: 
+ 354: 0c9e:         WRITE FORM "C78 C2"; # SSCCTRL.SESS.NUM%, 2; REC$, \
+ 355: 0cda:                                                      SSCCTRL.FILLER$
+ 356: 0cda: 
+ 357: 0cda:         WRITE.SSCCTRL.UNLOCK = 0
+ 358: 0cdf: 
+ 359: 0cdf:     ENDIF
+ 360: 0cdf: 
+ 361: 0cdf:     EXIT FUNCTION
+ 362: 0ce1: 
+ 363: 0ce1: WRITE.ERROR:
+ 364: 0ce1: 
+ 365: 0ce1: END FUNCTION
+ 366: 0cf0: 
+ 367: 0cf0: !*******************************************************************************
+ 368: 0cf0: !*** FUNCTION FIND.PREFIX%                                          
+ 369: 0cf0: !*** Private function to find the matching index in the             
+ 370: 0cf0: !*** prefix table for a given UOD licence.                          
+ 371: 0cf0: !*******************************************************************************
+ 372: 0cf0: 
+ 373: 0cf0: FUNCTION FIND.PREFIX%(LICENCE$)
+ 374: 0d09: 
+ 375: 0d09:     STRING LICENCE$
+ 376: 0d09:     INTEGER*2 I%, FIND.PREFIX%, LEN%
+ 377: 0d09: 
+ 378: 0d09:     FIND.PREFIX% = -1
+ 379: 0d0e: 
+ 380: 0d0e:     FOR I% = 1 TO SSCCTRL.MAX.PREFIXES%
+ 381: 0d17:         LEN% = LEN(SSCCTRL.PREFIX$(I%))
+ 382: 0d3a:         IF LEN% > 0 THEN BEGIN
+ 383: 0d3f:             IF LEFT$(LICENCE$, LEN%) = SSCCTRL.PREFIX$(I%) THEN BEGIN
+ 384: 0d7e:                 FIND.PREFIX% = I%
+ 385: 0d84:                 I% = SSCCTRL.MAX.PREFIXES%
+ 386: 0d8e:             ENDIF
+ 387: 0d8e:         ENDIF
+ 388: 0d8e:     NEXT I%
+ 389: 0da5: 
+ 390: 0da5:     LICENCE$ = ""
+ 391: 0db3: 
+ 392: 0db3: END FUNCTION
+ 393: 0dc7: 
+ 394: 0dc7: 
+ 395: 0dc7: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 396: 0dc7: \/* FUNCTION SSCCTRL.GET.EPOS.TYPE$                                */
+ 397: 0dc7: \/* The caller must read record 2 of SSCCTRL before calling this   */
+ 398: 0dc7: \/* function.                                                      */
+ 399: 0dc7: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 400: 0dc7: 
+ 401: 0dc7: FUNCTION SSCCTRL.GET.EPOS.TYPE$(LICENCE$) PUBLIC
+ 402: 0de0: 
+ 403: 0de0:     STRING SSCCTRL.GET.EPOS.TYPE$, LICENCE$
+ 404: 0de0:     INTEGER*2 I%
+ 405: 0de0: 
+ 406: 0de0:     I% = FIND.PREFIX%(LICENCE$)
+ 407: 0df0:     IF I% = -1 THEN BEGIN
+ 408: 0df5:         SSCCTRL.GET.EPOS.TYPE$ = "?"
+ 409: 0e05:     ENDIF ELSE BEGIN
+ 410: 0e05:         SSCCTRL.GET.EPOS.TYPE$ = SSCCTRL.EPOS.TYPE$(I%)
+ 411: 0e28:     ENDIF
+ 412: 0e28: 
+ 413: 0e28:     LICENCE$ = ""
+ 414: 0e36: 
+ 415: 0e36: END FUNCTION
+ 416: 0e4c: 
+ 417: 0e4c: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 418: 0e4c: \/* FUNCTION SSCCTRL.GET.SAP.TYPE$                                 */
+ 419: 0e4c: \/* The caller must read record 2 of SSCCTRL before calling this   */
+ 420: 0e4c: \/* function.                                                      */
+ 421: 0e4c: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 422: 0e4c: 
+ 423: 0e4c: FUNCTION SSCCTRL.GET.SAP.TYPE$(LICENCE$) PUBLIC
+ 424: 0e65: 
+ 425: 0e65:     STRING SSCCTRL.GET.SAP.TYPE$, LICENCE$
+ 426: 0e65:     INTEGER*2 I%
+ 427: 0e65: 
+ 428: 0e65:     I% = FIND.PREFIX%(LICENCE$)
+ 429: 0e75:     IF I% = -1 THEN BEGIN
+ 430: 0e7a:         SSCCTRL.GET.SAP.TYPE$ = "?"
+ 431: 0e8a:     ENDIF ELSE BEGIN
+ 432: 0e8a:         SSCCTRL.GET.SAP.TYPE$ = SSCCTRL.SAP.TYPE$(I%)
+ 433: 0ead:     ENDIF
+ 434: 0ead: 
+ 435: 0ead:     LICENCE$ = ""
+ 436: 0ebb: 
+ 437: 0ebb: END FUNCTION
+ 438: 0ed1: 
+ 439: 0ed1: End of Compilation

@@ -1,0 +1,535 @@
+\************************************************************************
+\***                                                                    *
+\***           %INCLUDE FOR REPEATED SUBROUTINES IN XRESTORE            *
+\***                                                                    *
+\***                    REFERENCE: XREST00E.J86                         *
+\***                                                                    *
+\***                                                                    *
+\*** Version A              Dave Constable                   05/06/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\***                                                                    *
+\*** Version B              Dave Constable                   25/06/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\*** QC775 - Incorrect file extension check changed                     *
+\*** QC750 - Added OS file copy that used to be in CRESTORE batch       *
+\*** Code review changes; alignment of file open status                 *
+\***                                                                    *
+\*** Version C                 Jaya Kumar Inbaraj            23/08/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\*** CR5 changes to perform the drive restore if a drive is empty.      *
+\*** Also commented out few redundant labels and worked on Internal     *
+\*** and APPS management review comments.                               *
+\***                                                                    *
+\*** Version D                 Jaya Kumar Inbaraj            04/09/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\*** Worked on APPS management review comments.                         *
+\***                                                                    *
+\************************************************************************
+
+\************************************************************************
+\*
+\* SET.BACKUP.INDEX: Setting the BKP.INDEX% and FULL.TO.MOVING.DATE$
+\*                   based on the selected DAY and depending on the SET
+\*                   values the restoration process will happen
+\*
+\************************************************************************
+SET.BACKUP.INDEX:
+
+    ! Match for the long day name and set using the offset              !CJK
+    LONG.DAY.INDEX% = MATCH( LEFT$(DAY.ARRAY$(SEL.INDEX%)        + \    !CJK
+                      STRING$(CONSTANT.LONGEST.DAY%, XRE.SPACE$),  \    !CJK
+                      CONSTANT.LONGEST.DAY%), BACKUP.LONG.DAYS$,1)      !CJK
+    ! Use the offset to calculate the index                             !CJK
+    LONG.DAY.INDEX% = ((LONG.DAY.INDEX%-1) / CONSTANT.LONGEST.DAY%) + 1
+
+RETURN
+
+\***********************************************************************
+\*
+\* GET.BKP.DETAILS: This function receives the Primary and secondary
+\*                  backup file (without extension) as an input. Then
+\*                  it checks the availability of archived files based
+\*                  on number of BKP.DAYS and store it in arrays for
+\*                  Screen to display.
+\*
+\***********************************************************************
+GET.BKP.DETAILS:
+
+    FUNCTION.ERROR.NOT.EXIST = TRUE
+
+    BEGIN.POSITION% = 4        ! To Ignore the Drive being checked      !CJK
+    SLASH.POSITION% = XRE.ZERO%                                         !CJK
+    VALUE.EXISTS    = TRUE                                              !CJK
+
+    DIM BKP.FILE.MDD.ARRAY$(ARRAY.LIMIT%)                               !CJK
+    DIM BKP.DATE.ARRAY$(ARRAY.LIMIT%)                                   !CJK
+
+    ! Extracting the archive file name
+    WHILE VALUE.EXISTS
+        SLASH.POSITION% = MATCH("\\", FIRST.FILE$, BEGIN.POSITION%)
+
+        IF SLASH.POSITION% > XRE.ZERO% THEN BEGIN
+            ! Move to next position to search next field
+            BEGIN.POSITION% = SLASH.POSITION% + 1
+        ENDIF ELSE BEGIN
+            FILENAME$ = MID$(FIRST.FILE$,BEGIN.POSITION%, \
+                            (LEN(FIRST.FILE$) - BEGIN.POSITION% + 1))
+            VALUE.EXISTS = FALSE
+        ENDIF
+    WEND
+
+    ! Getting all the archive files from Primary backup location
+    CALL OSSHELL("DIR " + FIRST.FILE$ + ".* > " + DIR.OUT$ + " >>* " + \
+                 DIR.OUT$ )
+
+    CALL OSSHELL("DIR " + SECOND.FILE$ + ".* >> " + DIR.OUT$     + \
+                 " >>* " + DIR.OUT$ )
+
+    DIR.FILE.RC% = FUNC.OPEN.SEQUENTIAL.FILE( DIR.OUT$ )                !DJK
+
+    ! If file open unsuccessful
+    IF DIR.FILE.RC% <= XRE.ZERO% THEN BEGIN
+        STATUS.MSG$ = "Error in opening DIR output file"
+        GOSUB LOG.STATUS.MSG
+        DIR.OPEN                 = FALSE
+        FUNCTION.ERROR.NOT.EXIST = FALSE
+!        RETURN                                                         !DJK
+    ENDIF ELSE BEGIN
+        DIR.OPEN = TRUE
+    ENDIF
+
+    FOR F.RECORD.COUNT% = 1 TO 4
+        ! Ignoring the first 4 lines
+        DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )          !DJK
+    NEXT F.RECORD.COUNT%
+
+    BKP.INDEX% = XRE.ZERO%
+
+    WHILE LEN(DIR.VALUE$) <> XRE.ZERO%
+        DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )          !DJK
+        ! we treat an error here as end of file and drop out
+        !--------------------------------------------------------!
+        ! Checking the file name and also making sure that the   !      !BDC
+        ! extension is numeric value ending                      !      !BDC
+        !--------------------------------------------------------!      !BDC
+        IF LEFT$(DIR.VALUE$,LEN(FILENAME$)) = FILENAME$     AND     \   !CJK
+           MATCH("!",MID$(DIR.VALUE$,11,2) ,1) = XRE.ZERO% THEN BEGIN   !CJK
+
+            DIR.VALUE$ = MID$(DIR.VALUE$,10,3)
+
+            DUPLICATE.RECORD = FALSE                                    !CJK
+
+            ! To make sure duplicate records are not added              !CJK
+            IF BKP.INDEX% > XRE.ZERO% THEN BEGIN                        !CJK
+                FOR INDEX% = 1 TO BKP.INDEX%                            !CJK
+                    IF BKP.FILE.MDD.ARRAY$(INDEX%) = DIR.VALUE$ \       !CJK
+                    THEN BEGIN                                          !CJK
+                        DUPLICATE.RECORD = TRUE                         !CJK
+                    ENDIF                                               !CJK
+                NEXT INDEX%                                             !CJK
+            ENDIF                                                       !CJK
+
+            ! Checking the BKP.INDEX% to avoid out of bound error
+            IF BKP.INDEX% < ARRAY.LIMIT% THEN BEGIN                     !CJK
+                IF NOT DUPLICATE.RECORD THEN BEGIN                      !CJK
+                    BKP.INDEX% = BKP.INDEX% + 1                         !CJK
+                    ! Storing the MDD value in an array
+                    BKP.FILE.MDD.ARRAY$(BKP.INDEX%) = DIR.VALUE$
+                ENDIF                                                   !CJK
+            ENDIF ELSE BEGIN
+                STATUS.MSG$ = "'MDD array index error"
+                GOSUB LOG.STATUS.MSG
+                DIR.VALUE$               = XRE.NULL$                    !CJK
+                FUNCTION.ERROR.NOT.EXIST = FALSE
+                !-----------------------------------------------------! !CJK
+                ! As the array index overflow happened, further read  ! !CJK
+                ! is not required and hence setting the value to NULL ! !CJK
+                ! to exit the WHILE loop                              ! !CJK
+                !-----------------------------------------------------! !CJK
+                DIR.VALUE$ = XRE.NULL$                                  !CJK
+            ENDIF
+        ENDIF
+    WEND
+
+    ! Closing File
+    IF DIR.OPEN THEN BEGIN
+        CALL FUNC.CLOSE.FILE( DIR.FILE.RC% )                            !DJK
+        DIR.OPEN = FALSE
+    ENDIF
+
+    VALUE.INDEX% = XRE.ZERO%
+    TODAY.DATE$  = DATE$
+
+    !--------------------------------------------------------!
+    ! As BKP.INDEX is used as an index parameter for all the !
+    ! arrays in below FOR loop, checking the index to avoid  !
+    ! out of bound error                                     !
+    !--------------------------------------------------------!
+    IF BKP.INDEX% > ARRAY.LIMIT% THEN BEGIN                             !CJK
+        STATUS.MSG$ = "'BKP array index error"
+        GOSUB LOG.STATUS.MSG
+        FUNCTION.ERROR.NOT.EXIST = FALSE
+!        RETURN                                                         !DJK
+        ! Setting zero as there is an array limit breach                !DJK
+        BKP.INDEX% = XRE.ZERO%                                          !DJK
+    ENDIF
+
+    ! If Backup available
+    IF BKP.INDEX% <> XRE.ZERO% THEN BEGIN
+        ! Checking last 14 days
+        FOR LOOP% = 1 TO BKP.DAYS%
+            ! Storing MMDD in a variable
+            WORK.DATE.MMDD$ = RIGHT$(TODAY.DATE$,4)
+            ! Checking the available backup dates
+            FOR INDEX% = 1 TO BKP.INDEX%
+
+                ! Getting the Month and date in MDD format
+                IF LEFT$(BKP.FILE.MDD.ARRAY$(INDEX%),1) = "C" THEN BEGIN!CJK
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "12"   + \           !CJK
+                        RIGHT$(BKP.FILE.MDD.ARRAY$(INDEX%),2)           !CJK
+                ENDIF ELSE \
+                IF LEFT$(BKP.FILE.MDD.ARRAY$(INDEX%),1) = "B" THEN BEGIN!CJK
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "11"   + \           !CJK
+                        RIGHT$(BKP.FILE.MDD.ARRAY$(INDEX%),2)           !CJK
+                ENDIF ELSE \
+                IF LEFT$(BKP.FILE.MDD.ARRAY$(INDEX%),1) = "A" THEN BEGIN!CJK
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "10"   + \           !CJK
+                        RIGHT$(BKP.FILE.MDD.ARRAY$(INDEX%),2)           !CJK
+                ENDIF ELSE BEGIN
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "0"    + \           !CJK
+                        BKP.FILE.MDD.ARRAY$(INDEX%)                     !CJK
+                ENDIF
+
+                ! If the Work date is available, store it in array
+                IF BKP.FILE.MMDD.ARRAY$(INDEX%) = WORK.DATE.MMDD$ \
+                THEN BEGIN
+
+                    VALUE.INDEX% = VALUE.INDEX% + 1
+
+                    ! Checking the VALUE.INDEX% to avoid out of bound
+                    IF VALUE.INDEX% < ARRAY.LIMIT% THEN BEGIN           !CJK
+
+                        ! Storing the date and MMDD
+                        BKP.DATE.ARRAY$(VALUE.INDEX%)  = TODAY.DATE$
+                        BKP.AVAIL.ARRAY$(VALUE.INDEX%) = WORK.DATE.MMDD$
+
+                        FUN.RC2% = PSDATE(TODAY.DATE$)
+
+                        ! Checking the return value
+                        IF FUN.RC2% <> XRE.ZERO% THEN BEGIN
+                            STATUS.MSG$ = "PSDATE function error"
+                            GOSUB LOG.STATUS.MSG
+                            DAY.ARRAY$(VALUE.INDEX%) = "Date error"
+                            FUNCTION.ERROR.NOT.EXIST = FALSE
+                        ENDIF ELSE BEGIN
+                            ! Storing the DAY value
+                            IF F13.DAY$ = "SUN" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Sunday"
+                            ENDIF ELSE IF F13.DAY$ = "MON" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Monday"
+                            ENDIF ELSE IF F13.DAY$ = "TUE" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Tuesday"
+                            ENDIF ELSE IF F13.DAY$ = "WED" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Wednesday"
+                            ENDIF ELSE IF F13.DAY$ = "THU" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Thursday"
+                            ENDIF ELSE IF F13.DAY$ = "FRI" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Friday"
+                            ENDIF ELSE IF F13.DAY$ = "SAT" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Saturday"
+                            ENDIF
+                        ENDIF
+
+                    ENDIF ELSE BEGIN
+                        STATUS.MSG$  = "'MDD array index error"
+                        GOSUB LOG.STATUS.MSG
+                        FUNCTION.ERROR.NOT.EXIST = FALSE
+!                        RETURN                                         !DJK
+                        LOOP%  = BKP.DAYS%  + 10   ! force to exit      !CJK
+                        INDEX% = BKP.INDEX% + 10   ! force to exit      !CJK
+                    ENDIF
+                ENDIF
+            NEXT INDEX%
+
+            IF INDEX% < (BKP.INDEX% + 10) THEN BEGIN                    !CJK
+                F02.DATE$ = TODAY.DATE$
+                FUN.RC2%  = UPDATE.DATE( -1 )           ! Reduce one day!CJK
+
+                GOSUB CHECK.UPDATE.DATE.RC
+
+                TODAY.DATE$ = F02.DATE$
+            ENDIF
+
+        NEXT LOOP%
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\* EXTRACT.BKPLIST.FIELDS:  This function receives the line value of
+\*                          BKPLIST, process it and return the
+\*                          individual BKPLIST field values for use.
+\*
+\***********************************************************************
+EXTRACT.BKPLIST.FIELDS:
+
+    FUNCTION.ERROR.NOT.EXIST = TRUE
+
+    BKPLIST.VALUE$ = BKPLIST.DIR.VALUE$
+
+    DIM BKPLIST.FIELD$(0)         ! Clear the array memory allocation
+    DIM BKPLIST.FIELD$(15)        ! To store BKPLIST values
+
+    BEGIN.POS%    = 1           ! Begin search position                 !CJK
+    INDEX%        = XRE.ZERO%   ! Index for Field Array                 !CJK
+    VALUE.PRESENT = TRUE        ! While Boolean                         !CJK
+
+    !----------------------------------------------------------!
+    ! Extracting all the variables using comma separator value !
+    !----------------------------------------------------------!
+    WHILE VALUE.PRESENT
+        ! Get index of next field delimiter
+        MATCH.POS% = MATCH(COMMA.VALUE$,BKPLIST.VALUE$,BEGIN.POS%)
+
+        INDEX%     = INDEX% + 1     ! Incrementing the index            !CJK
+
+        ! Checking the INDEX% to avoid out of bound error
+        IF VALUE.INDEX% > ARRAY.LIMIT% THEN BEGIN                       !CJK
+            STATUS.MSG$ = "'MDD array index error"
+            GOSUB LOG.STATUS.MSG
+            FUNCTION.ERROR.NOT.EXIST = FALSE
+            !-----------------------------------------------------!     !CJK
+            ! As the array index overflow happened, further check !     !CJK
+            ! is not required and hence setting the value to      !     !CJK
+            ! FALSE to exit the WHILE loop                        !     !CJK
+            !-----------------------------------------------------!     !CJK
+            VALUE.PRESENT = FALSE                                       !CJK
+        ENDIF
+
+        ! If we found a field delimiter
+        IF MATCH.POS% > XRE.ZERO% THEN BEGIN
+            ! Get contents of field
+            BKPLIST.FIELD$(INDEX%) = MID$(BKPLIST.VALUE$, BEGIN.POS%, \
+                                     (MATCH.POS% - BEGIN.POS%)  )
+            ! Move next start position past field delimiter
+            BEGIN.POS% = MATCH.POS% + 1
+        ENDIF ELSE BEGIN
+            ! Else we're at the last field
+            VALUE.PRESENT = FALSE
+        ENDIF
+    WEND
+
+    ! Storing the values
+    BKPLI.FILENAME$                 = BKPLIST.FIELD$(1)
+    BKPLI.FULL.EXIST$               = BKPLIST.FIELD$(2)
+    BKPLI.FULL.FILE.CHNG$           = BKPLIST.FIELD$(3)
+    BKPLI.INCREMENTAL.EXIST$(1)     = BKPLIST.FIELD$(4)
+    BKPLI.INCREMENTAL.FILE.CHNG$(1) = BKPLIST.FIELD$(5)
+    BKPLI.INCREMENTAL.EXIST$(2)     = BKPLIST.FIELD$(6)
+    BKPLI.INCREMENTAL.FILE.CHNG$(2) = BKPLIST.FIELD$(7)
+    BKPLI.INCREMENTAL.EXIST$(3)     = BKPLIST.FIELD$(8)
+    BKPLI.INCREMENTAL.FILE.CHNG$(3) = BKPLIST.FIELD$(9)
+    BKPLI.INCREMENTAL.EXIST$(4)     = BKPLIST.FIELD$(10)
+    BKPLI.INCREMENTAL.FILE.CHNG$(4) = BKPLIST.FIELD$(11)
+    BKPLI.INCREMENTAL.EXIST$(5)     = BKPLIST.FIELD$(12)
+    BKPLI.INCREMENTAL.FILE.CHNG$(5) = BKPLIST.FIELD$(13)
+    BKPLI.INCREMENTAL.EXIST$(6)     = BKPLIST.FIELD$(14)
+    BKPLI.INCREMENTAL.FILE.CHNG$(6) = BKPLIST.FIELD$(15)
+
+RETURN
+
+\***********************************************************************
+\*
+\* CHECK.DAY.SELECTION: This function checks the DAY selection on
+\*                      process. If successful selection, it sets
+\*                      the passed screen number.
+\*
+\***********************************************************************
+CHECK.DAY.SELECTION:
+
+    FUNCTION.ERROR.NOT.EXIST = TRUE
+
+    INPUT.LOOP%   = INPUT.INDEX%    ! First input field value
+    SEL.INDEX%    = XRE.ZERO%
+    SELECT.COUNT% = XRE.ZERO%
+    NON.X.VALUES  = FALSE
+
+    ! Checking the inputs entered
+    FOR LOOP% = 1 TO VALUE.INDEX%
+
+        ! If field contains any value
+        IF FIELD$(INPUT.LOOP%) <> XRE.SPACE$ THEN BEGIN
+
+            ! If entered value is not X
+            IF UCASE$(FIELD$(INPUT.LOOP%)) <> "X" THEN BEGIN
+                NON.X.VALUES = TRUE
+            ENDIF ELSE BEGIN
+                SEL.INDEX% = LOOP%
+            ENDIF
+
+            ! Increment the value to check the multiple selection
+            SELECT.COUNT% = SELECT.COUNT% + 1
+        ENDIF
+        ! Increment to move to the next input field record
+        INPUT.LOOP% = INPUT.LOOP% + 1
+    NEXT LOOP%
+
+    ! If multiple selections made
+    IF SELECT.COUNT% > 1 THEN BEGIN
+        FIELD$(1) = "'Multiple selections not allowed"
+    ENDIF ELSE BEGIN
+
+        ! If only one selection made and X value is entered
+        IF SELECT.COUNT% = 1 AND NOT NON.X.VALUES THEN BEGIN
+            SCREEN% = SCREEN.NUM%
+
+        ! If no selection has been made
+        ENDIF ELSE BEGIN
+            FIELD$(1) = "'No selection has been made. "              + \
+                        "Value entered must be ""X"" OR ""x"" "
+        ENDIF
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\* LOG.STATUS.MSG: Writes status message to log file
+\*
+\***********************************************************************
+LOG.STATUS.MSG:
+
+    IF XRE.LOG.OPEN THEN BEGIN
+
+        ! DD/MM/YY, HH:MM:SS, Text and a CRLF
+        STATUS.MSG$ = RIGHT$(DATE$,2) + "/"        + \    ! DD/         !CJK
+                      MID$(DATE$,3,2) + "/"        + \    ! MM/         !CJK
+                      LEFT$(DATE$,2)  + XRE.SPACE$ + \    ! YY          !CJK
+                      LEFT$(TIME$,2)  + ":"        + \    ! HH:         !CJK
+                      MID$(TIME$,3,2) + ":"        + \    ! MM:         !CJK
+                      RIGHT$(TIME$,2) + XRE.SPACE$ + \    ! SS          !CJK
+                      STATUS.MSG$                  + \    ! message     !CJK
+                      CRLF$                               ! line return !CJK
+
+        ! Return code is not checked here, as it is not mandatory.
+        ! Checking return code is not required here, as it is a         !CJK
+        ! screen program and displaying any error for logging might     !CJK
+        ! confuse the user from actual restore functionality            !CJK
+        FILE.RC% = FUNC.WRITE.SEQUENTIAL.FILE(XRE.FILE.RC%, STATUS.MSG$)!DJK
+
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\* CHECK.UPDATE.DATE.RC: If FUN.RC2% is not equal to zero ... logs
+\*                       the error for reference.
+\***********************************************************************
+CHECK.UPDATE.DATE.RC:
+
+    ! Checking the return value
+    IF FUN.RC2% <> XRE.ZERO% THEN BEGIN
+        STATUS.MSG$ = "UPDATE date function error in " + F02.DATE$
+        GOSUB LOG.STATUS.MSG
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\*   GET.FILE.EXTENSION: Calculate the extension needed based on month
+\*                       and day using month A/B/C for 10/11/12
+\*
+\***********************************************************************
+GET.FILE.EXTENSION:
+
+    EXTENSION$ = RIGHT$(FULL.TO.MOVING.DATE$, 4)
+
+    ! Storing the Month and Date in MDD format in new logic
+    IF LEFT$(EXTENSION$,2) = "12" THEN BEGIN            ! If Dec(12)    !CJK
+        EXTENSION$ = "C" + RIGHT$(EXTENSION$, 2)
+    ENDIF ELSE IF LEFT$(EXTENSION$,2) = "11" THEN BEGIN ! If Nov(11)    !CJK
+        EXTENSION$ = "B" + RIGHT$(EXTENSION$, 2)
+    ENDIF ELSE IF LEFT$(EXTENSION$,2) = "10" THEN BEGIN ! If Oct(10)    !CJK
+        EXTENSION$ = "A" + RIGHT$(EXTENSION$, 2)
+    ENDIF ELSE BEGIN                            ! Rest of the Month
+        EXTENSION$ = RIGHT$(EXTENSION$, 3)
+    ENDIF
+
+RETURN
+
+!* START CHANGE BLOCK FOR BDC
+\***********************************************************************
+\*
+\* COPY.OS.BLANK.FILES: Copy the blank OS files needed that the old
+\*                      CRESTORE batch file used to do
+\*
+\***********************************************************************
+COPY.OS.BLANK.FILES:
+
+    DIM OS.FILE$(0)
+    DIM OS.FILE$(8)
+
+    ! set the required files
+    OS.FILE$(1) = "ADXCSOAF.DAT"
+    OS.FILE$(2) = "ADXCSOBF.DAT"
+    OS.FILE$(3) = "ADXCSOCF.DAT"
+    OS.FILE$(4) = "ADXCSODF.DAT"
+    OS.FILE$(5) = "ADXCSOEF.DAT"
+    OS.FILE$(6) = "ADXCSOFF.DAT"
+    OS.FILE$(7) = "ADXCSOIF.DAT"
+    OS.FILE$(8) = "ADXCSONF.DAT"
+
+    ! set the source and destination for copy
+    OS.DESTINATION$ = "C:\ADX_SDT1\"
+    OS.SOURCE$      = "D:\ADX_UPGM\"
+
+    FOR SELECT.COUNT% = 1 TO 8
+        ! Copying the file from TEMP to the entered location
+        CALL OSSHELL("COPY " + OS.SOURCE$ + OS.FILE$(SELECT.COUNT%) + \ !CJK
+                     XRE.SPACE$ + OS.DESTINATION$                   + \ !CJK
+                     " > " + DIR.OUT$ + " >>* " + DIR.OUT$)
+
+        DIR.FILE.RC% = FUNC.OPEN.SEQUENTIAL.FILE( DIR.OUT$ )            !DJK
+
+        ! If file open unsuccessful
+        IF DIR.FILE.RC% <= XRE.ZERO% THEN BEGIN
+            DIR.OPEN    = FALSE                                         !CJK
+            STATUS.MSG$ = "Error in opening DIR output file"
+            GOSUB LOG.STATUS.MSG
+            ! Setting NULL to avoid file read
+            DIR.VALUE$ = XRE.NULL$
+        ENDIF ELSE BEGIN
+            DIR.OPEN   = TRUE
+            DIR.VALUE$ = XRE.SPACE$
+        ENDIF
+
+        ! Read the file till EOF or read error
+        WHILE LEN(DIR.VALUE$) <> XRE.ZERO%
+            DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )      !DJK
+
+            !-----------------------------------------------!
+            ! If error string matches, write the error with !
+            ! file name in LOG file                         !
+            !-----------------------------------------------!
+            IF MATCH(UCASE$("Error extracting file"),   \               !CJK
+                     UCASE$(DIR.VALUE$),1) <> XRE.ZERO% THEN BEGIN      !CJK
+                ! Logging copy error                                    !CJK
+                STATUS.MSG$ = "Error when copying OS file " + \
+                              OS.FILE$(SELECT.COUNT%)
+                GOSUB LOG.STATUS.MSG
+                RESTORE.STATUS = FALSE
+            ENDIF
+        WEND
+
+        ! Closing File
+        IF DIR.OPEN THEN BEGIN
+            CALL FUNC.CLOSE.FILE( DIR.FILE.RC% )                        !DJK
+            DIR.OPEN = FALSE
+        ENDIF
+    NEXT SELECT.COUNT%
+RETURN
+!* END CHANGE BLOCK FOR BDC
+

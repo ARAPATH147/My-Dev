@@ -1,0 +1,3189 @@
+\***********************************************************************
+\*
+\*            PROGRAM         :       XRESTORE
+\*            MODULE          :       XREST001
+\*            AUTHOR          :       Jaya Kumar Inbaraj
+\*            DATE WRITTEN    :       Mar 2014
+\*
+\***********************************************************************
+
+\***********************************************************************
+\*
+\* Program: XRESTORE          Jaya Kumar Inbaraj              04/03/2014
+\*
+\* FOD260 - Enhanced Backup and Recovery
+\*
+\*       MODULE EXTRACTED FROM ORIGINAL XRESTORE.BAS (RENAMED TO
+\*       XREST000.BAS) AS BREACHED 64K LIMIT AND CRETAED AS XREST001.BAS
+\*
+\*
+\*======================================================================
+\*                   V E R S I O N   C O N T R O L
+\*======================================================================
+\*
+\*                            Dave Constable                  25/06/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Code extracted originally from single module (XRESTORE.BAS) and all
+\* code change markers removed.
+\* For maintenance and usage all included variables and includes are
+\* also replicated here.
+\*
+\* Version B                 Jaya Kumar Inbaraj               01/08/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* QC717 and QC724 - Restoration for files in BKPFAIL has been fixed.
+\*
+\* Version C                 Jaya Kumar Inbaraj               23/08/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* CR5 changes to perform the drive restore if a drive is empty.
+\* Also commented out few redundant labels and worked on Internal
+\* and APPS management review comments.
+\* Added an Header for easy reference on multi-modular program.
+\*
+\* Version D                 Jaya Kumar Inbaraj               03/09/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Worked on APPS management review comments.
+\*
+\* Version E                 Jaya Kumar Inbaraj               12/09/2014
+\* QC1145 - Updated to avoid excessive logging.
+\*
+\***********************************************************************
+
+\***********************************************************************
+\*
+\* Included global variables
+\*
+\***********************************************************************
+    %INCLUDE XRESTORG.J86                                               !CJK
+\***********************************************************************
+\*
+\* Program: XRESTORE          Jaya Kumar Inbaraj              04/03/2014
+\*
+\* FOD260 - Enhanced Backup and Recovery
+\*
+\*           %INCLUDE for Global variables used in XRESTORE
+\*
+\*                    REFERENCE: XRESTORG.J86
+\*
+\*       MODULE EXTRACTED FROM ORIGINAL XRESTORE.BAS (RENAMED TO
+\*       XREST000.BAS) AS BREACHED 64K LIMIT AND CRETAED AS XREST001.BAS
+\*
+\*======================================================================
+\*                   V E R S I O N   C O N T R O L
+\*======================================================================
+\*
+\*                            Dave Constable                  25/06/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Code extracted originally from single module (XRESTORE.BAS) and all
+\* code change markers removed.
+\* For maintenance and usage all included variables and includes are
+\* also replicated here and included into both modules.
+\*
+\* Version B                Jaya Kumar Inbaraj                01/08/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Created a variable for BKPFAIL restore.
+\*
+\* Version C                Jaya Kumar Inbaraj                23/08/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* CR5 changes to perform the drive restore if a drive is empty.
+\* Also updated the header block comments.
+\*
+\* Version D                Jaya Kumar Inbaraj                12/09/2014
+\* QC1145 - Added ADXUNZIP related variables
+\*
+\***********************************************************************
+
+\***********************************************************************
+\*
+\* Included code defining file related global variables
+\*
+\***********************************************************************
+    !-----------------------------------------------------------------!
+    ! Changed the BKPLIST file variables prefix from BKPLIST to BKPLI !
+    ! and hence applied the changes in whole XRESTORE program also    !
+    !-----------------------------------------------------------------!
+    %INCLUDE BKPLIDEC.J86    ! BKPLIST file variables
+\***********************************************************************
+\***********************************************************************
+\*
+\*    BKPLIST - Backup List File
+\*
+\*    %INCLUDE FOR VARIABLE DECLARATIONS
+\*
+\*        REFERENCE   :   BKPLIDEC.J86
+\*
+\*        FILE TYPE   :   Sequential
+\*
+\* Version A              Jaya Kumar Inbaraj              04/02/2014
+\* Original version.
+\*
+\* Version B              Jaya Kumar Inbaraj              09/04/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Changed all the file function variables from BKPLIST prefix to
+\* BKPLI prefix.
+\*
+\* Version C              Jaya Kumar Inbaraj              29/04/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Commented out the unused variables
+\*
+\* Version D              Dave Constable                  05/06/2014
+\* changes for generic full and incremental backups rather than forced 
+\* Sunday
+\*
+\***********************************************************************
+\***********************************************************************
+
+    ! Changed the File related variables from BKPLIST to BKPLI prefix   !BJK
+    STRING GLOBAL                     \
+\        BKPLIST.CRLF$,                \                                !CJK
+        BKPLI.FILE.NAME$,             \ BKPLIST file name
+        BKPLI.FILENAME$,              \ File present in BKPLIST
+        BKPLI.FULL.EXIST$,            \                                 !DDC
+        BKPLI.FULL.FILE.CHNG$,        \                                 !DDC
+        BKPLI.INCREMENTAL.EXIST$(1),  \                                 !DDC
+        BKPLI.INCREMENTAL.FILE.CHNG$(1), \                              !DDC
+        BKPLI.VALUE$                                                    !DDC        
+
+    ! Changed the File related variables from BKPLIST to BKPLI prefix   !BJK
+    INTEGER*2 GLOBAL                  \
+\        BKPLI.RECL%,                  \                                !CJK
+        BKPLI.RECORD.NUM%,            \
+        BKPLI.REPORT.NUM%,            \
+        BKPLI.SESS.NUM%
+
+    INTEGER*1 GLOBAL                  \
+        BKPLIST.NO.OF.FIELDS%
+
+
+
+\***********************************************************************
+\*
+\* Included code defining function related global variables
+\*
+\***********************************************************************
+    %INCLUDE PSBF02G.J86     ! Update Date
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : UPDATE.DATE globals
+\***
+\***        REFERENCE     : PSBF02G.J86
+\***
+\***        Version A     Bruce Scriver      4th March 1986
+\*** 
+\***        Version B     Andrew Wedgeworth   6th July 1992
+\***        Removal of return code field which no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING   GLOBAL F02.DATE$
+
+      ! 1 line deleted from here                                       ! BAW
+
+    %INCLUDE PSBF13G.J86     ! PSDATE function
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : PSDATE globals
+\***
+\***        REFERENCE     : PSBF13G.J86
+\***
+\***     VERSION A                                  Bruce Scriver  6th Mar 86             
+\***            
+\***     VERSION B                                  Janet Lawrence 17 Aug 90
+\***     Add global to be used to indicate whether or not the function should
+\***     log an event when an invalid date is passed to it.
+\***
+\***     VERSION C                               Andrew Wedgeworth 17 July 92
+\***     Return code removed as no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING    GLOBAL F13.DAY$,			\
+                       F13.DISPLAY.MESSAGE$		! BJAL
+
+
+    %INCLUDE PSBF20G.J86     ! Session number Utility
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+\***
+\***                       REFERENCE     : PSBF20G.J86
+\*** 
+\***     Version A              Bruce Scrive                   5th May 1988   
+\*** 
+\***     Version B              Robert Cowey                   7th May 1991
+\***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+\***     to two byte integer.
+\***
+\***     Version D              Andrew Wedgeworth             1st July 1992
+\***     F20.RETURN.CODE% removed as it is no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING    GLOBAL F20.FILE.NAME$,                                 \
+                       F20.STRING.FILE.NO$,                            \
+                       F20.TABLE.DIMENSIONED.FLAG$,                    \
+                       SESS.NUM.TABLE$(1)
+
+      INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+
+      ! 1 line deleted from here                                       ! DAW 
+
+    %INCLUDE PSBF39G.J86     ! Display Manager
+!******************************************************************************
+!******************************************************************************
+!***
+!***            PROGRAM         :       PSBF39G.J86
+!***
+!***            DESCRIPTION     :       DISPLAY MANAGER INTERFACE
+!***
+!***            AUTHOR          :       Stuart William McConnachie
+!***            DATE WRITTEN    :       September 2000
+!***
+!***        Provides a much needed and easier to use interface to
+!***        IBM Display Manager.
+!***
+!***        Saves the user having to set up, highlight, tab between and
+!***        validate fields.  Also handles the help screens and conversion
+!***        of date fields to external/internal format.
+!***
+!******************************************************************************
+!******************************************************************************
+    
+    STRING GLOBAL       MESSAGE$(1)
+    STRING GLOBAL       VALID$(1)
+    STRING GLOBAL       VISIBLE$(1)
+    STRING GLOBAL       FIELD$(1)
+    STRING GLOBAL       TITLE$
+
+    INTEGER*2 GLOBAL    DM.SCREEN%
+    INTEGER*2 GLOBAL    DM.FIELD%
+    
+    INTEGER*2 GLOBAL    HOME.KEY%
+    INTEGER*2 GLOBAL    END.KEY%
+    INTEGER*2 GLOBAL    PGUP.KEY%
+    INTEGER*2 GLOBAL    PGDN.KEY%
+    INTEGER*2 GLOBAL    TAB.KEY%
+    INTEGER*2 GLOBAL    BTAB.KEY%
+    INTEGER*2 GLOBAL    UP.KEY%
+    INTEGER*2 GLOBAL    DOWN.KEY%
+    INTEGER*2 GLOBAL    ESC.KEY%
+    INTEGER*2 GLOBAL    ENTER.KEY%
+    INTEGER*2 GLOBAL    INS.KEY%
+    INTEGER*2 GLOBAL    PREV.KEY%
+    INTEGER*2 GLOBAL    NEXT.KEY%
+        
+    INTEGER*2 GLOBAL    F1.KEY%
+    INTEGER*2 GLOBAL    F2.KEY%
+    INTEGER*2 GLOBAL    F3.KEY%
+    INTEGER*2 GLOBAL    F4.KEY%
+    INTEGER*2 GLOBAL    F5.KEY%
+    INTEGER*2 GLOBAL    F6.KEY%
+    INTEGER*2 GLOBAL    F7.KEY%
+    INTEGER*2 GLOBAL    F8.KEY%
+    INTEGER*2 GLOBAL    F9.KEY%
+    INTEGER*2 GLOBAL    F10.KEY%
+                
+!******************************************************************************
+
+
+    %INCLUDE PSBUSEG.J86     ! Chain Parameters
+\/*********************************************************************/ PSBUSEG
+\/*                                                                   */ PSBUSEG
+\/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+\/* ----------------------------------------------------------------- */ PSBUSEG
+\/*                                                                   */ PSBUSEG
+\/*********************************************************************/ PSBUSEG
+                                                                       ! PSBUSEG
+        STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+                       PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+                       PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+                       PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+                       PSBCHN.U1,       \ User parameter               ! PSBUSEG
+                       PSBCHN.U2,       \ User parameter               ! PSBUSEG
+                       PSBCHN.U3        ! User parameter               ! PSBUSEG
+                                                                       ! PSBUSEG
+    %INCLUDE SLPCFDEC.J86    ! Sleeper control
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***             %INCLUDE FOR SLEEPER CHECK FILE - FIELD DECLARATIONS
+\***                                          FILE REFERENCE PARAMETERS
+\***
+\***                      FILE TYPE    :
+\***
+\***                      REFERENCE    : slpcfdeb.J86
+\***
+\***      Version A             Steve Windsor          8.2.93
+\***
+\***      Version B             Richard Foster         28.6.93
+\***
+\***      Version C             Mark Goode             6.03.00
+\***
+\***      Version D         Jaya Kumar Inbaraj               28/04/2014
+\***      FOD260 - Enhanced Backup and Recovery
+\***      Updated Filler variable usage has been explained. Added two
+\***      variables related to SLPCF Filler variable.
+\***
+\*****************************************************************************
+\*****************************************************************************
+
+
+  STRING GLOBAL          \
+    SLPCF.FILE.NAME$
+
+  INTEGER*2 GLOBAL        \
+    SLPCF.REPORT.NUM%,    \
+    SLPCF.SESS.NUM%
+
+  STRING GLOBAL              \
+    SLPCF.APP.NAME$,         \ 21 bytes - Application to be started
+    SLPCF.RUN.FREQUENCY$,    \ 1 byte   - d=daily, m=monthly              !BRCF
+    SLPCF.DAY.NUM$,          \ 6 bytes  - blank = evry day                !BRCF
+                             \            1 = sun  2 = mon                !BRCF
+              \            3 = tue  4 = wed                !BRCF
+              \            5 = thu  6 = fri                !BRCF
+              \            7 = sat                         !BRCF
+              \         OR nn = date (monthly run) up to   !BRCF
+              \                 3 2-digit numbers          !BRCF
+    SLPCF.RUN.TIME$,         \ 6 bytes  - time due to be started (HHMMSS) !BRCF
+    SLPCF.LAST.RUN.DATE$,    \ 6 bytes  - Date last run (YYMMDD)          !BRCF
+    SLPCF.FILE.PRESENT$,     \ 3 bytes  - Report number of file which must!BRCRF
+                             \            be present                      !BRCF
+    SLPCF.FILE.PRESENT.NAME$,\ 8 bytes  - Name of above file              !BRCF
+    SLPCF.FILE.ABSENT$,      \ 3 bytes  - Report number of file which must!BRCF
+                             \            not be present                  !BRCF
+    SLPCF.FILE.ABSENT.NAME$, \ 8 bytes  - Name of above file              !BRCF
+    SLPCF.NODE.ID$,          \ 2 bytes  - Node on which to run application!BRCF
+                             \            CE = Master only                !BRCF
+              \            CF = File Server only           !BRCF
+              \            DE = Single only                !BRCF
+              \            SM = Single and Master          !BRCF
+              \            SF = Single and File Server     !BRCF
+    SLPCF.SOFTS.REC$,        \ 4 bytes  - The record number on the SOFTS file !LMG
+    SLPCF.FILLER$,           \ 12 bytes - Format can be xYYYYYYYYY      !DJK LMG
+              \ where; If x is 1-9 then the first x characters of Y are !DJK
+              \ passed to the starting application as a start parameter !DJK
+              \ and a CrLf                                              !DJK
+    SLPCF.PARM$              ! Value Y from SLPCF.FILLER                !DJK
+
+  INTEGER*2 GLOBAL        \
+    SLPCF.RECL%           ! Length of record
+
+  INTEGER*1 GLOBAL        \                                             !DJK
+    SLPCF.PARM.LEN%       ! Value X from SLPCF.FILLER                   !DJK
+
+  INTEGER*4 GLOBAL        \
+    SLPCF.REC.NO%         ! Record Number
+
+
+\***********************************************************************
+\*
+\* Global variable definitions
+\*
+\***********************************************************************
+    STRING GLOBAL                   \
+        BATCH.SCREEN.FLAG$,         \
+        CHAIN.TO.PROG$,             \
+        MODULE.NUMBER$
+
+    INTEGER*4 GLOBAL                \
+        BKPLIST.FILE.RC%,           \
+        DIR.FILE.RC%,               \
+        XRE.FILE.RC%
+
+\***********************************************************************
+\*
+\* Local Variables Made Global when multi-modular
+\*
+\***********************************************************************
+    STRING GLOBAL                   \
+        ADX.PARM.2$,                \
+        ADXCSU0L.FILE.NAME$,        \                                   !CJK
+        ADXUNZIP.FILE.NAME$,        \                                   !DJK
+        ADXZUDIR.FILE.NAME$,        \
+        BACKUP.DAYS$,               \
+        BACKUP.LONG.DAYS$,          \
+        BKP.DRIVE$,                 \                                   !CJK
+        BKP.FILENAME.ALT$,          \
+        BKP.FILENAME.IMG$,          \
+        BKP.ZIP.FILE$,              \                                   !DJK
+        BKPFAIL.CURR.FILE$,         \
+        BKPFAIL.PREFIX$,            \                                   !CJK
+        BKPLIST.CURR.FILE$,         \
+        BKPLIST.DIR.VALUE$,         \
+        BKPLIST.FIELD$(1),          \
+        BKPLIST.PREFIX.C.DRIVE$,    \                                   !CJK
+        BKPLIST.PREFIX.D.DRIVE$,    \                                   !CJK
+        BKPLIST.VALUE$,             \
+        BKPSCRPT.COMMAND$,          \
+        BKPSCRPT.DIRECTORY$,        \
+        BKPSCRPT.FILE.NAME$,        \
+        BKPSCRPT.OUT.FILE.NAME$,    \
+        C.BKP.ALT$,                 \
+        C.BKP.IMG$,                 \
+        CDRIVE$,                    \
+        CNTLR.ID$,                  \
+        COMMA.VALUE$,               \
+        CONSTANT.COLON$,            \
+        CONSTANT.DAY$(1),           \
+        CONSTANT.FRIDAY.LONG$,      \
+        CONSTANT.FRIDAY.SHORT$,     \
+        CONSTANT.LONG.DAY$(1),      \
+        CONSTANT.MONDAY.LONG$,      \
+        CONSTANT.MONDAY.SHORT$,     \
+        CONSTANT.SATURDAY.LONG$,    \
+        CONSTANT.SATURDAY.SHORT$,   \
+        CONSTANT.SUNDAY.LONG$,      \
+        CONSTANT.SUNDAY.SHORT$,     \
+        CONSTANT.THURSDAY.LONG$,    \
+        CONSTANT.THURSDAY.SHORT$,   \
+        CONSTANT.TUESDAY.LONG$,     \
+        CONSTANT.TUESDAY.SHORT$,    \
+        CONSTANT.WEDNESDAY.LONG$,   \
+        CONSTANT.WEDNESDAY.SHORT$,  \
+        CRLF$,                      \
+        D.BKP.ALT$,                 \
+        D.BKP.IMG$,                 \
+        DDRIVE$,                    \
+        DIR.OUT$,                   \
+        DIR1.OUT$,                  \   Command pipe output file        !DJK
+        DIR.VALUE$,                 \
+        DIRECT.TO.RESTORE$,         \
+        DRIVE$,                     \
+        ERROR.MSG$,                 \
+        EXTENSION$,                 \
+        FAILED.FILE$,               \
+        FAILED.FILE.DIST$,          \
+        FILENAME$,                  \
+        FIRST.FILE$,                \
+        FSEL$,                      \
+        FULL.DATE$,                 \
+        FULL.MDD.DATE$,             \
+        FULL.TO.MOVING.DATE$,       \
+        FUNC.FLAG$,                 \
+        MDD.DATE$,                  \
+        NORMAL.SLEEPER.FILE.NAME$,  \
+        OPT.HEADER$,                \
+        OPT.HEADER.1$,              \
+        OPT.SELECTED$,              \
+        OS.DESTINATION$,            \
+        OS.FILE$(1),                \
+        OS.SOURCE$,                 \
+        PARM.FULL$,                 \
+\        PARM.INCREMENTAL$,          \                                  !CJK
+        PASSED.STRING$,             \
+        RESTORE.FILENAME$,          \                                   !BJK
+        SCR.HEADER$,                \
+        SCREEN.NUM$,                \
+        SCREEN.TEXT.MSG$(1),        \
+        SECOND.FILE$,               \
+        SELECT.FILE.NAME$,          \
+        SELECTED.FILENAME$,         \
+\        SHELL.COMMAND$,             \  ! variable passed into OSSHELL  !CJK
+        SLEEPER.RECORD$,            \
+        STATUS.MSG$,                \
+        STATUS.TEXT.ERROR$(1),      \
+        STATUS.TEXT.MSG$(1),        \
+        SUPPS.SLEEPER.FILE.NAME$,   \
+        TEMP.DIR$,                  \
+        TODAY.DATE$,                \
+        USER.TEXT$,                 \
+        VERSION$,                   \                                   !CJK
+        WORK.DATE.MMDD$,            \
+        XBACK.PIPE.NAME$,           \
+        XRE.LOG.FILENAME$,          \
+        XRE.NULL$,                  \
+        XRE.PIPE.NAME$,             \
+        XRE.SPACE$
+
+    ! Grouping Arrays
+    STRING GLOBAL                   \
+        BKP.AVAIL.ARRAY$(1),        \
+        BKP.DATE.ARRAY$(1),         \
+        BKP.FILE.MDD.ARRAY$(1),     \
+        BKP.FILE.MMDD.ARRAY$(1),    \
+        BKPSCRPT.DIRECTORIES$(1),   \
+        DAY.ARRAY$(1),              \
+        PRIMARY.ARCHIVED.NAMES$(1), \
+        SECONDARY.ARCHVD.NAMES$(1), \
+        SELECTED.DIR.ARRAY$(1)
+
+    INTEGER*1 GLOBAL                \
+        ADX.FUNCTION%,              \
+        BKP.INDEX%,                 \
+        CNTLR.CONFIG%,              \
+        CONSTANT.LONGEST.DAY%,      \
+        DAY.INDEX%,                 \
+        DAY.SINCE.FULL%,            \
+        DAYS.AFTER.FULL.BAKUP%,     \
+        DD.MM.INDEX%,               \
+        DIR.INDEX%,                 \
+        DIR.TO.SHOW%,               \
+        DIRECTORY.CREATE,           \
+        DIRECTORY.DAY.SELECT.SCR%,  \
+        DIRECTORY.PROCESS.SCR%,     \
+        DISPLAY.MAIN.SCR%,          \
+        DRIVE.DAY.SELECT.SCR%,      \
+        DRIVE.DISK.SELECT.SCR%,     \
+        DRIVE.PROCESS.SCR%,         \
+        ERROR.COUNT%,               \
+        F.RECORD.COUNT%,            \ count for header lines in DIR
+        FILE.CONFIRMATION.SCR%,     \
+        FILE.DAY.SELECT.SCR%,       \
+        FILE.DIR.AND.DIST.SCR%,     \
+        FILE.PROCESS.SCR%,          \
+        FULL.BACKUP.NOT.FOUND%,     \
+        INPUT.INDEX%,               \
+        MASTER.AND.FILE.SERVER%,    \
+        OPT.SEL%,                   \
+        PAGE.DIV%,                  \
+        PAGE.NO%,                   \
+        RESTORE.A.DIRECTORY.SCR%,   \
+        RESTORE.A.FILE.SCR%,        \
+        SCREEN%,                    \
+        SCREEN.NUM%,                \
+        SLEEPER.DAY%,               \
+        SLPCF.OPEN,                 \
+        XRE.ZERO%
+
+    ! Grouping Boolean variables
+    INTEGER*1 GLOBAL                \
+        BKPLIST.OPEN,               \
+        COMMAND.MODE,               \
+        DIR.OPEN,                   \
+        DUPLICATE.RECORD,           \                                   !CJK
+        ERROR.EXIST,                \
+        FALSE,                      \
+        FUNCTION.ERROR.NOT.EXIST,   \
+\        IN.LOG.STATUS.MSG,          \                                  !CJK
+\        IN.UPDATE.DATE.RC,          \                                  !CJK
+        NON.X.VALUES,               \
+        PREVIOUS.KEY,               \
+        RESTORE.ERR.EXIST,          \
+        RESTORE.HAPPENED,           \                                   !CJK
+        RESTORE.STATUS,             \
+        SUPPS.ON,                   \
+        TRUE,                       \
+        VALUE.EXISTS,               \
+        VALUE.PRESENT,              \
+        XBACK.OPEN,                 \
+        XRE.LOG.OPEN,               \
+        XRE.OPEN
+
+    INTEGER*2 GLOBAL                \
+        ARRAY.LIMIT%,               \                                   !CJK
+        BEGIN.POS%,                 \
+        BEGIN.POSITION%,            \
+        BKP.DAYS%,                  \
+        BKPSCRPT.INDEX%,            \
+        COMMA.POSITION%,            \
+        DAY.LOOP%,                  \
+        DD.MM.LOOP%,                \
+        DIR.INPUT.INDEX%,           \
+        DIR.INPUT.LOOP%,            \
+        DIR.LOOP%,                  \
+        FUN.RC2%,                   \ function return value for check
+        INDEX%,                     \
+        INPUT.LOOP%,                \
+        LONG.DAY.INDEX%,            \
+        LOOP%,                      \
+        MATCH.POS%,                 \
+        MAX.DIRECTORIES%,           \
+        PASSED.INTEGER%,            \
+        RET.KEY%,                   \
+        SEL.INDEX%,                 \
+        SEL.INPUT.LOOP%,            \
+        SELECT.COUNT%,              \
+        SELECT.INDEX%,              \
+        SLASH.POSITION%,            \
+        VALUE.INDEX%,               \
+        XBACK.PIPE.REPORT.NUM%,     \
+        XBACK.PIPE.SESS.NUM%,       \
+        XRE.LOG.REPORT.NUM%,        \
+        XRE.LOG.SESS.NUM%,          \
+        XRE.PIPE.REPORT.NUM%,       \
+        XRE.PIPE.SESS.NUM%
+
+    INTEGER*4 GLOBAL                \
+        ADXSERVE.RC%,               \
+        FILE.RC%
+
+
+\***********************************************************************
+\*
+\* Included external functions
+\*
+\***********************************************************************
+    %INCLUDE XRESTORE.J86                                               !CJK
+\***********************************************************************
+\*
+\* Program: XRESTORE          Jaya Kumar Inbaraj              04/03/2014
+\*
+\* FOD260 - Enhanced Backup and Recovery
+\*
+\*           %INCLUDE for External Functions in XRESTORE
+\*
+\*                    REFERENCE: XRESTORE.J86
+\*
+\*       MODULE EXTRACTED FROM ORIGINAL XRESTORE.BAS (RENAMED TO
+\*       XREST000.BAS) AS BREACHED 64K LIMIT AND CRETAED AS XREST001.BAS
+\*
+\*======================================================================
+\*                   V E R S I O N   C O N T R O L
+\*======================================================================
+\*
+\*                            Dave Constable                  25/06/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Code extracted originally from single module (XRESTORE.BAS) and all
+\* code change markers removed.
+\* For maintenance and usage all included externals and includes are
+\* also replicated here and included into both modules.
+\*
+\* Version B                Jaya Kumar Inbaraj                23/08/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Updated the Header block comments
+\*
+\* Version C                Jaya Kumar Inbaraj                04/09/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Updated the C file function names
+\*
+\***********************************************************************
+
+\***********************************************************************
+\*
+\* Included code defining file related global variables
+\*
+\***********************************************************************
+
+\***********************************************************************
+\*
+\* Included code defining function related external functions
+\*
+\***********************************************************************
+    %INCLUDE PSBF02E.J86     ! Update Date
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : UPDATE.DATE external definition
+\***        AUTHOR        : Bruce Scriver (Basic Code)
+\***        DATE WRITTEN  : 4th March 1986 (Basic Code)
+\***
+\***        REFERENCE     : PSBF02E.J86
+\***
+\***        Version A     Bruce Scriver          4th March 1986
+\***
+\***        Version B     Andrew Wedgeworth       6th July 1992
+\***        Removal of redundant parameters, and inclusion of UPDATE.DATE as
+\***        a variable to hold the return code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION UPDATE.DATE (INCREMENT%)                                   \
+   EXTERNAL
+   ! 3 parameters removed from here                                    ! BAW
+
+   ! 3 lines deleted from here                                         ! BAW
+   
+      INTEGER*2 UPDATE.DATE                                            ! BAW
+
+      INTEGER*4 INCREMENT%
+
+   END FUNCTION
+
+    %INCLUDE PSBF13E.J86     ! PSDATE function
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : PSDATE external definition
+\***
+\***        REFERENCE     : PSBF13E.J86
+\***
+\***        Version A     Bruce Scriver                6th March 1986
+\*** 
+\***        Version B     Andrew Wedgeworth            17th July 1992  
+\***        Redundant parameters removed and PSDATE defined as a variable
+\***        to hold the return code. 
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION PSDATE (INPUT.DATE$)                                               \
+   EXTERNAL
+
+     STRING    INPUT.DATE$                                                   
+   
+     INTEGER*2 PSDATE 
+
+   END FUNCTION
+
+    %INCLUDE PSBF20E.J86     ! Session number utility
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+\***
+\***                  REFERENCE     : PSBF20E.J86
+\***
+\***     VERSION C            Janet Smith                13th May 1992
+\***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+\***     128 files.
+\***
+\***     VERSION D.           Andrew Wedgeworth          1st July 1992
+\***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+\***     as a variable.  This new variable contains the function's return
+\***     code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+                              PASSED.INTEGER%,                         \
+                              PASSED.STRING$)                          \
+   EXTERNAL
+
+   STRING    FUNCTION.FLAG$,                                           \
+             PASSED.STRING$
+   ! 3 variables removed from here                                     ! CAW
+
+
+   INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+             PASSED.INTEGER%				               ! CJAS
+
+   END FUNCTION
+
+    %INCLUDE PSBF24E.J86     ! Standard error detected
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+\***
+\***                      REFERENCE     : PSBF24E.J86
+\***
+\***    Version A                 Janet Smith                  13th May 1992
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+				    ERRFILE%,              \
+				    ERRL%,                 \
+				    ERR$)        EXTERNAL
+				    
+          STRING    ERR$
+
+          INTEGER*2 ERRFILE%,              \
+	            ERRL%,                 \
+		    STANDARD.ERROR.DETECTED
+		    
+          INTEGER*4 ERRN%
+	  		    
+   END FUNCTION
+
+
+    %INCLUDE PSBF39E.J86     ! Display Manager
+!******************************************************************************
+!******************************************************************************
+!***
+!***            PROGRAM         :       PSBF39E.J86
+!***
+!***            DESCRIPTION     :       DISPLAY MANAGER INTERFACE
+!***
+!***            AUTHOR          :       Stuart William McConnachie
+!***            DATE WRITTEN    :       September 2000
+!***
+!***        Provides a much needed and easier to use interface to
+!***        IBM Display Manager.
+!***
+!***        Saves the user having to set up, highlight, tab between and
+!***        validate fields.  Also handles the help screens and conversion
+!***        of date fields to external/internal format.
+!***
+!******************************************************************************
+!******************************************************************************
+
+!******************************************************************************
+!   Initialises the display manager functions.
+!   You should call this from your program initialisation for screen programs.
+!   Note that the name of the display manager file is determined from the
+!   global variable MODULE.NUMBER$.  For example PSB1200 uses PSBD12.dat
+!   where the PSB and 12 have been derived from MODULE.NUMBER$.
+
+    FUNCTION DM.INIT EXTERNAL
+        INTEGER*1   DM.INIT
+    END FUNCTION
+
+!******************************************************************************
+!   Quits the display manager program and frees resources.
+!   You should call this from your program termination.
+
+    FUNCTION DM.QUIT EXTERNAL
+        INTEGER*1   DM.QUIT
+    END FUNCTION
+
+!******************************************************************************
+!   Initialises a particular screen from the current display manager file
+!   for display.  You supply the screen number, optional title message and
+!   the first and last help screens associated with the display.
+!   Once you have SHOWN a screen, you can use the remaining functions in
+!   this library to set field values, and actually retrieve input from the
+!   screen.  Note that showing a screen just displays it on the screen,
+!   you need to call PROCESS.SCREEN to actually get any user input.
+
+    FUNCTION DM.SHOW.SCREEN (SCREEN%, TITLE$, FIRST.HELP%, LAST.HELP%) EXTERNAL
+        INTEGER*1   DM.SHOW.SCREEN
+        INTEGER*2   SCREEN%
+        STRING      TITLE$
+        INTEGER*2   FIRST.HELP%
+        INTEGER*2   LAST.HELP%
+    END FUNCTION
+
+!******************************************************************************
+!   Sets a function key message to visible.  Optionally sets the text on that
+!   key to the message string passed, if it is not null.
+!   Note you must have shown a screen first, and that the function key fields
+!   need to be defined in your display file with field IDs 241-250.
+
+    FUNCTION DM.SHOW.FN.KEY (KEY.NUM%, MESSAGE$) EXTERNAL
+        INTEGER*1   DM.SHOW.FN.KEY
+        INTEGER*2   KEY.NUM%
+        STRING      MESSAGE$
+    END FUNCTION
+
+!******************************************************************************
+!   Sets a function key message to invisible.
+!   Note you must have shown a screen first, and that the function key fields
+!   need to be defined in your display file with field IDs 241-250.
+
+    FUNCTION DM.HIDE.FN.KEY (KEY.NUM%) EXTERNAL
+        INTEGER*1   DM.HIDE.FN.KEY
+        INTEGER*2   KEY.NUM%
+    END FUNCTION
+
+!******************************************************************************
+!   LEGACY: Do not use in new programs, use DM.FN.VISIBLE instead which takes
+!   an infix notation expression, as opposed to reverse polish
+!   This definition has been commented out accordingly.  If you are
+!   recompiling an application, change to useing the new function.
+!
+!   FUNCTION DM.FN.KEY.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+!       INTEGER*1   DM.FN.KEY.VISIBILITY
+!       INTEGER*2   KEY.NUM%
+!       STRING      EXPR$
+!   END FUNCTION
+
+!******************************************************************************
+!   Sets a runtine expression to determine if a function key is visible.
+!   This is the new version of the above which takes an infix notation EXPR$.
+!   Note you must have shown a screen first, and that the function key fields
+!   need to be defined in your display file with field IDs 241-250.
+
+    FUNCTION DM.FN.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+        INTEGER*1   DM.FN.VISIBILITY
+        INTEGER*2   KEY.NUM%
+        STRING      EXPR$
+    END FUNCTION
+
+!******************************************************************************
+!   Specifies that a given field contains a date.
+!   This means that the date will be displayed on screen in the system date
+!   format (e.g. DD/MM/YY or MM/DD/YY, but will be returned and set by your
+!   application in YYMMDD format.
+!   It does NOT mean that the field will be validated as a date, you must do
+!   that explicitly using the VALID$ string.
+
+    FUNCTION DM.DATE.FIELD (FIELD%) EXTERNAL
+        INTEGER*1   DM.DATE.FIELD
+        INTEGER*2   FIELD%
+    END FUNCTION
+
+!******************************************************************************
+!   Specifies that a given field will contain a time.
+!   This means that the time will be displayed on screen using the system time
+!   format.  e.g. HH:MM
+
+    FUNCTION DM.TIME.FIELD (FIELD%) EXTERNAL                                !CSWM
+        INTEGER*1   DM.TIME.FIELD                                           !CSWM
+        INTEGER*2   FIELD%                                                  !CSWM
+    END FUNCTION                                                            !CSWM
+
+!******************************************************************************
+!   Specifies that a given input field will be read only.
+!   This allows you to select an item from a list by highlighting it.
+
+    FUNCTION DM.RO.FIELD (FIELD%) EXTERNAL                                  !ESWM
+        INTEGER*1   DM.RO.FIELD                                             !ESWM
+        INTEGER*2   FIELD%                                                  !ESWM
+    END FUNCTION                                                            !ESWM
+
+!******************************************************************************
+!   Specifies that a given input field will be read write.
+!   Undoes the effect of DM.RO.FIELD.
+
+    FUNCTION DM.RW.FIELD (FIELD%) EXTERNAL                                  !ESWM
+        INTEGER*1   DM.RW.FIELD                                             !ESWM
+        INTEGER*2   FIELD%                                                  !ESWM
+    END FUNCTION                                                            !ESWM
+
+!******************************************************************************
+!   LEGACY: Do not use in new programs, use DM.STATUS instead which takes
+!   an infix notation expression, as opposed to reverse polish.
+!   This definition has been commented out accordingly.  If you are
+!   recompiling an application, change to useing the new function.
+!
+!   FUNCTION DM.DISPLAY.MESSAGE (MESSAGE$) EXTERNAL                         !DSWM
+!       INTEGER*1   DM.DISPLAY.MESSAGE                                      !DSWM
+!       STRING      MESSAGE$                                                !DSWM
+!   END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Displays a message in the status line of the display.  Does not wait for
+!   input.  Use this function for display messages such as B251 Processing...
+!   You must have field 1 defined in your display manager file.
+!   This is the new version of the above which takes an infix notation MESSAGE$.
+
+    FUNCTION DM.STATUS (MESSAGE$) EXTERNAL                                  !DSWM
+        INTEGER*1   DM.STATUS                                               !DSWM
+        STRING      MESSAGE$                                                !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Waits for input in the invisible input field of the display.  Additionally
+!   displays a message prompting the user on the status line.
+!   You must have fields 1 and 240 defined in your display manager file.
+!   The message supplied should be in Reverse Polish form.
+!   The function returns the key value that ended the input.
+
+    FUNCTION DM.INVISIBLE.INPUT (MESSAGE$) EXTERNAL
+        STRING      MESSAGE$
+        INTEGER*2   DM.INVISIBLE.INPUT
+    END FUNCTION
+
+!******************************************************************************
+!   Gets the contents of the invisible field from the display.  This will
+!   allow you to get the Y or N answer that the user typed, for example.
+
+    FUNCTION DM.INVISIBLE.FIELD EXTERNAL
+        STRING      DM.INVISIBLE.FIELD
+    END FUNCTION
+
+!******************************************************************************
+!   Returns or sets the current field used for input on the current display.
+!   If NEW.FIELD% is zero, the function simply returns the current field.
+!   If NEW.FIELD% is non zero, the function sets the current field.
+
+    FUNCTION DM.CURRENT.FIELD (NEW.FIELD%) EXTERNAL
+        INTEGER*2   DM.CURRENT.FIELD
+        INTEGER*2   NEW.FIELD%
+    END FUNCTION
+
+!******************************************************************************
+!   Sets a key number as being a validation key.  When this key is used the
+!   function will handle the key in the same way as the ENTER key.  i.e. all
+!   the visible fields on in input form are check for validity, and the key
+!   press is only returned to the user if the form entries are valid.
+!   Use this function to add the PGUP.KEY% and PGDN.KEY% keys, for example.
+
+    FUNCTION DM.VALIDATE.KEY (KEY%) EXTERNAL                                !BSWM
+        INTEGER*1   DM.VALIDATE.KEY                                         !BSWM
+        INTEGER*2   KEY%                                                    !BSWM
+    END FUNCTION                                                            !BSWM
+
+!******************************************************************************
+!   Returns or sets the flag which says if the screen contents have been
+!   changed or not.  Use this function when you have multiple pages to a
+!   form, but want the user to be prompted to save any changes on exit.
+!   When called with FLAG% set 0 or -1, the function updates the current
+!   displays setting.  When called with any other value, the function simply
+!   returns the current setting and does not update it.
+
+    FUNCTION DM.CHANGED.FLAG (FLAG%) EXTERNAL                               !BSWM
+        INTEGER*1   FLAG%                                                   !BSWM
+        INTEGER*1   DM.CHANGED.FLAG                                         !BSWM
+    END FUNCTION                                                            !BSWM
+
+!******************************************************************************
+!   Sets the field tab order.  The tab order can be either:
+!   0 - The TAB order is defined by the fields position on the display,
+!       left to right then top to bottom of the display.
+!   1 - The TAB order is defined by the number order of the fields.  This is
+!       a new option which allows greater control over the field TAB order.
+!   -1  Returns the current setting without changing it.
+!   The default tab order is 0.  Once set, the TAB order is a global setting
+!   for the current and all future screens.
+
+    FUNCTION DM.TAB.ORDER (ORDER%) EXTERNAL                                 !DSWM
+        INTEGER*1   ORDER%                                                  !DSWM
+        INTEGER*1   DM.TAB.ORDER                                            !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   This function actually processes user input on the currently shown form.
+!   The function returns when any unrecognised key terminates input in a
+!   field.  The keys which will do this are determined by the properties of
+!   the Display Manager fields on your form.  The function internally handles
+!   most of the form navigation keys (e.g. Tab, Back Tab, Home End) the
+!   rest are up to the user application.
+
+    FUNCTION DM.PROCESS.SCREEN (FIRST.FIELD%, LAST.FIELD%, CONFIRM) EXTERNAL
+        INTEGER*2   DM.PROCESS.SCREEN
+        INTEGER*2   FIRST.FIELD%
+        INTEGER*2   LAST.FIELD%
+        INTEGER*1   CONFIRM
+    END FUNCTION
+
+!******************************************************************************
+!   Associates a field on the current display with a given compile time
+!   variable.  This allows the varibale to be used in your program code
+!   AND be updated by the display manager fields in PROCESS.SCREEN.
+!
+!   NOTE: PLEASE BE VERY CAREFUL WITH THE THIRD PARAMETER TO THIS SUB
+!   Always use an absolute variable for VARIABLE$:
+!       CALL DM.NAME (2, "MY.VAR$", MY.VAR$)
+!   NEVER use a calcualted value. These forms are all ILLEGAL:
+!       CALL DM.NAME (2, "MY.VAR$", "1234")
+!       CALL DM.NAME (2, "MY.VAR$", STR$(MY.VAR%))
+!   Also, if you MUST pass in an array element, for example:
+!       CALL DM.NAME (2, "MY.VAR$", ARRAY.ELEMENT$(I%))
+!   then you must make sure you do not reDIM the array until you have finished
+!   displaying and processing the screen.
+
+    SUB DM.NAME (FIELD%, NAME$, VARIABLE$) EXTERNAL                         !DSWM
+        INTEGER*2 FIELD%                                                    !DSWM
+        STRING NAME$                                                        !DSWM
+        STRING VARIABLE$                                                    !DSWM
+    END SUB                                                                 !DSWM
+
+!******************************************************************************
+!   Returns the index of a field on the current screen, given its name.
+
+    FUNCTION DM.INDEX (FIELD$) EXTERNAL                                     !DSWM
+        STRING FIELD$                                                       !DSWM
+        INTEGER*2 DM.INDEX                                                  !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets the validation expression for a field on the display.  Exactly the
+!   same as setting the global VALID$ array yourself, except it is done
+!   via the fields name as assoicated via DM.NAME.FIELD and the expression
+!   is in standard infix notation.
+
+    FUNCTION DM.VALID (FIELD$, VALID$) EXTERNAL                             !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING VALID$                                                       !DSWM
+        INTEGER*2 DM.VALID                                                  !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets the message expression for a field on the display.  Exactly the
+!   same as setting the global MESSAGE$ array yourself, except it is done
+!   via the fields name as assoicated via DM.NAME.FIELD and the expression
+!   is in standard infix notation.
+
+    FUNCTION DM.MESSAGE (FIELD$, MESSAGE$) EXTERNAL                         !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING MESSAGE$                                                     !DSWM
+        INTEGER*2 DM.MESSAGE                                                !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets the field attributes for a field on the display. Exactly the
+!   same as using the SETF command yourself except that it is done by
+!   using the fields name as associated via the DM.NAME.FIELD.
+
+SUB DM.FLD.ATT (FIELD$, VALUE$) EXTERNAL                                    !FNWB
+    STRING      FIELD$                                                      !FNWB
+    STRING      VALUE$                                                      !FNWB
+END SUB                                                                     !FNWB
+
+!******************************************************************************
+!   Sets an input field to act as an output only field on the display. This
+!   allows setting input fields that contain headings etc. to be skipped by
+!   the cursor movement keys.
+
+FUNCTION DM.OO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+    INTEGER*2   DM.OO.FIELD                                                 !FNWB
+    STRING      FIELD$                                                      !FNWB
+END FUNCTION                                                                !FNWB
+
+!******************************************************************************
+!   Sets an input field back to an i/o field
+
+FUNCTION DM.IO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+    INTEGER*2   DM.IO.FIELD                                                 !FNWB
+    STRING      FIELD$                                                      !FNWB
+END FUNCTION                                                                !FNWB
+
+!******************************************************************************
+!   Sets the visibility expression for a field on the display.  Exactly the
+!   same as setting the global VISIBLE$ array yourself, except it is done
+!   via the fields name as assoicated via DM.NAME.FIELD and the expression
+!   is in standard infix notation.
+
+    FUNCTION DM.VISIBLE (FIELD$, VISIBLE$) EXTERNAL                         !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING VISIBLE$                                                     !DSWM
+        INTEGER*2 DM.VISIBLE                                                !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets an error message in field 1 of the display and moves the input
+!   focus to the offending line of the display.  Should be called from user
+!   validation code.  Equivalent of the following separate calls:
+!       CALL DM.CURRENT.FIELD%(DM.INDEX(FIELD$))
+!       FIELD$(1) = POLISH$(MESSAGE$)
+!   Can also be called with a null field name, in which case the cursor
+!   remains in the current input field, but the error is displayed.
+
+    FUNCTION DM.FOCUS (FIELD$, MESSAGE$) EXTERNAL                           !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING MESSAGE$                                                     !DSWM
+        INTEGER*2 DM.FOCUS                                                  !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+
+
+    %INCLUDE DMEXTR.J86      ! IBM DISPLAY MANAGER functions
+\/* TIME STAMP BLOCK **************************************************
+\** END OF TIME STAMP BLOCK ******************************************/
+ REM  INCLUDE FILE FOR  DISPLAY MANAGER EXTERNAL FUNCTIONS FOR CB80  June 7/82
+ REM  IR91470 01 10 91  LAB G53  marked for EFT
+        DEF CLRSCR EXTERNAL             REM Clear screen for Display Manager
+        INTEGER CLRSCR
+        FEND
+        DEF CLSDIS EXTERNAL
+        INTEGER CLSDIS
+        FEND                            REM Close Display Manager
+        DEF DISPD(I%) EXTERNAL          REM Display a display.
+        INTEGER DISPD
+        FEND
+        DEF CURS(X$) EXTERNAL           REM turn on/off cursor visibility.
+        STRING CURS
+        FEND
+        DEF ENDF EXTERNAL               REM ENDF method of return.
+        INTEGER ENDF
+        FEND
+        DEF GETF EXTERNAL               REM GETF get data from a field
+        STRING GETF
+        FEND
+        DEF INITDM(A$) EXTERNAL         REM INITIALIZE Display Manager
+        INTEGER INITDM
+        FEND
+        DEF NXTF(I%)  EXTERNAL          REM NXTF Go to Next Field
+        INTEGER NXTF
+        FEND
+        DEF POSF(I%) EXTERNAL           REM POSTION on Field
+        INTEGER POSF
+        FEND
+
+        DEF OPNDIS(A$) EXTERNAL         REM OPEN DISPLAY FILE
+        INTEGER OPNDIS
+        FEND
+        DEF PUTF(A$)  EXTERNAL          REM PUT data to Field
+        INTEGER PUTF
+        FEND
+        DEF RESF(I%)  EXTERNAL          REM RESUME field
+        STRING RESF
+        FEND
+
+        DEF RETDM  EXTERNAL             REM RETURN Display Mgr Characteristics
+        STRING RETDM
+        FEND
+        DEF SETF(A$) EXTERNAL           REM SET Field  video attributes
+        STRING SETF
+        FEND
+        DEF UPDF  EXTERNAL                      REM UPDATE Field data
+        STRING UPDF
+        FEND
+
+        DEF RETF EXTERNAL
+        STRING RETF
+        FEND
+   REM  END OF INCLUDE FILE FOR DISPLAY MANAGER CALLS FOR CB80
+
+\***********************************************************************
+\*
+\* Included code defining external Boots functions
+\*
+\***********************************************************************
+    %INCLUDE ADXCOPY.J86     ! To copy files
+\******************************************************************************
+\******************************************************************************
+\***                                                                        ***
+\***    %INCLUDE FOR SUBROUTINE ADXCOPYF (an I.B.M. system subroutine)      ***
+\***                                                                        ***
+\***         DATE WRITTEN  :  13th May 1988                                 ***
+\***                                                                        ***
+\******************************************************************************
+\******************************************************************************
+
+   SUB  ADXCOPYF (RETC, INFILE, OUTFILE, OPT0, OPT1, OPT2) EXTERNAL
+
+      INTEGER*4   RETC
+      STRING      INFILE, OUTFILE
+      INTEGER*2   OPT0, OPT1, OPT2
+
+   END  SUB
+
+    %INCLUDE ADXSERVE.J86    ! ADXSERVE function
+\******************************************************************************
+\******************************************************************************
+\***                                                                        ***
+\***    %INCLUDE FOR FUNCTION ADXSERVE (an I.B.M. system function)          ***
+\***                                                                        ***
+\***         AUTHOR        :  Bruce Scriver                                 ***
+\***                                                                        ***
+\***         DATE WRITTEN  :  14th March 1986                               ***
+\***                                                                        ***
+\***         DATE OF LAST REVISION  - 14th March 1986                       ***
+\***                                                                        ***
+\***                                                                        ***
+\******************************************************************************
+\******************************************************************************
+
+   SUB ADXSERVE (RETURN.CODE%,                                                \
+                 ADX.FUNCTION%,                                               \
+                 ADX.PARM.1%,                                                 \
+                 ADX.PARM.2$)                                                 \
+   EXTERNAL
+  
+      STRING     ADX.PARM.2$
+
+      INTEGER*2  ADX.FUNCTION%,                                               \
+                 ADX.PARM.1%
+
+      INTEGER*4  RETURN.CODE%                                                 \
+
+   END SUB     
+
+    %INCLUDE BASROUT.J86     ! OSShell function
+\*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+\*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+\*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+\*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+\*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+\*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+!   the BASROUT.OBJ routines.  These routines were written
+!  using Metaware C and are intended to provide functions which
+!         are either not available in 4680 CBASIC or which can be more
+!               efficiently handled by the C language.  Their usage is
+!  offered on an "AT YOUR OWN RISK" basis.
+!
+!               The insert/extract routines usefulness may not be immediately
+!               apparent.  Their intention is that they be used in conjunction
+!               with a read/write form command.  They can more efficiently
+!               parse a string into many different variables than can the
+!               read form statement.  So instead of a long list of data var's
+!               it may be more efficient to just read/write one long string
+!               and then use the insert/extract routines to parse out the
+!   data.
+
+! ******************* SUB PROCESS FUNCTIONS *********************************
+
+function osshell(cmd.line$) external   ! routine to start
+       ! another program.
+           integer*4    osshell    ! Upon completion of
+           string       cmd.line$   ! program, control is
+       ! returned to calling
+end function      ! program.
+!
+! NOTES:  Program must be a 286 type file.  This does not exclude
+!         the capability to execute a batch file however.  Simply pass the
+!         following:
+!              c:\adx_spgm\command.286 batfile
+!         where batfile is the name of the batch file to be executed.
+!
+! IMPORTANT: When using osshell to execute a batch file as described above,
+!            the final command in the batch file must be "exit".  If not,
+!       control is never given back to the calling program.
+
+! ************************ MEMORY RELATED FUNCTIONS ************************
+
+function memfree(choice) external   ! routine to que the
+       ! status of the
+ integer*4 memfree    ! machine's memory:
+ integer*2 choice    ! Options:
+       !    1 - free
+end function      !    2 - total
+       !    3 - system
+
+! ********************** TIMEDATE RELATED FUNCTIONS ************************
+
+function timedate(choice) external   ! routine to que the
+       ! OS's timedate table
+ integer*4 timedate   ! Choices:
+ integer*2 choice    !    1 - millisec's
+       !        since midnight
+end function      !    2 - minutes from
+       !  UCT (timezone)
+       !    3 - day of week
+       !   0-Sunday
+       !  6-Saturday
+
+function settime(msecs) external   ! routine to set the
+       ! time on the controller
+ integer*4  settime    ! msecs is the desired
+ integer*4 msecs    ! number of milliseconds
+       ! since midnight
+end function      ! Returns negative on
+       ! error
+! NOTE:  This routine sets the time only on the controller.  The terminals'
+! time will not be updated until 1 AM or unless a terminal is STC'd.
+! At 1 AM the controller broadcasts the new time to all terminals.
+! Insure this is taken into consideration when using this routine.
+
+!******************** DISK FILE RELATED FUNCTIONS *************************
+
+function truncate(name,length) external   ! routine to truncate
+       ! the specified file
+ integer*4 truncate   ! to a given length.
+ string  name
+ integer*4 length
+
+end function
+
+!******************** STRING VALUE RELATED FUNCTIONS **********************
+
+function isalpha(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isalpha    ! string contains all
+ string  bstrn    ! alphabetic char's
+       ! Returns:
+end function      !     0 - all alpha
+       !     X - byte of 1st
+       !         non-alpha
+       !   char
+
+function isdigit(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isdigit    ! string contains all
+ string  bstrn    ! numeric char's
+       ! Returns:
+end function      !     0 - all numeric
+       !     X - byte of 1st
+       !         non-numeric
+       !   char
+
+function islower(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 islower    ! string contains all
+ string  bstrn    ! lower case char's
+       ! Returns:
+end function      !     0 - all lowercase
+       !     X - byte of 1st
+       !         non-lowercase
+       !   char
+
+function isupper(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isupper    ! string contains all
+ string  bstrn    ! upper case char's
+       ! Returns:
+end function      !     0 - all uppercase
+       !     X - byte of 1st
+       !         non-uppercase
+       !   char
+
+function toalpha(bstrn) external   ! routine to convert
+       ! non-alpha or non-num
+   integer*2 toalpha    ! char's to spaces
+ string  bstrn    ! Returns:
+end function      !   x - no. of char's
+       !       changed
+
+! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+
+function idlecount(choice) external   ! routine to either
+       ! set to zero or queue
+ integer*4 idlecount   ! the value of the
+ integer*1 choice    ! processor's idlecount
+       ! Choice:
+end function      !     0 - set to zero
+!       !     1 - get value
+! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+! TO WORK - This level is not available unless  !     X - idlecount
+! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+! is highly unrecommended.
+
+function logical(actname,logname,choice) external ! routine to set a
+       ! a logical name.
+ integer*4 logical    ! parms are self
+        string  logname    ! explanatory except
+ string  actname    ! for choice:
+ integer*1 choice    !   0 - set process
+       !   1 - set system
+end function      !   2 - get process
+       !   3 - get system
+
+! NOTE:  Only the setting of a system level of logical name requires
+! user/group zero level of authorization.  Any application may query any
+! logical name.  Setting of a system logical name is only applicable until
+! the system is IPL'd.  A process logical name is only active when that
+! process is active.
+
+!******************** STRING PARSING FUNCTIONS *****************************
+
+function inserts(whole,part,offset) external  ! routine to insert a
+       ! string (part) into
+ integer*2 INSERTS    ! another string (whole)
+ string  whole    ! starting at specified
+ string  part    ! character (offset)
+ integer*2 offset
+
+end function
+
+function cinsert4(integer4,bstring,offset) external   ! routine to insert
+       ! a 4-byte integer into
+ integer*1 cinsert4   ! a string starting at
+ integer*4 integer4   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function cinsert2(integer2,bstring,offset) external  ! routine to insert
+       ! a 2-byte integer into
+ integer*1 cinsert2   ! a string starting at
+ integer*2 integer2   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function cinsert1(bstring,integer1,offset) external  ! routine to insert
+       ! a 1-byte integer into
+ integer*1 cinsert1   ! a string starting at
+ integer*1 integer1   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function extracts(whole,part,offset) external  ! routine to extract a
+       ! string (part) from
+ integer*2 EXTRACTS   ! another string (whole)
+ string  whole    ! starting at specified
+ string  part    ! character (offset)
+ integer*2 offset
+
+end function
+
+function cextract4(bstring,offset) external  ! routine to extract
+       ! a 4-byte integer from
+ integer*4 cextract4   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 4 byte integer
+end function      !    -1 - String overrun
+
+function cextract2(bstring,offset) external  ! routine to extract
+       ! a 2-byte integer from
+ integer*2 cextract2   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 2 byte integer
+end function      !    -1 - String overrun
+
+function cextract1(bstring,offset) external  ! routine to extract
+       ! a 1-byte integer from
+ integer*1 cextract1   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 1 byte integer
+end function      !    -1 - String overrun
+
+
+function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+       ! file names and sizes
+       ! Return values:
+       !    -1  no matches
+       !        found on first
+       !        call
+       !    0   no matches
+       !        found on sub-
+       !        sequent calls
+       !    Pos Success
+       !    Neg OS Rtn Code
+! Usage Note:  If searching for all occurences of a particular file name,
+! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+! to srchdir.  If any matches are found, a positive value will be returned.
+! To see if any more matches exist, just issue another call to srchdir without
+! resetting the values of dtbl.buffer$.  If any are found, a positive value
+! will be returned.  This can be repeated until a Zero is returned.  All data
+! describing file will be returned in the dtbl.buffer$ after each call.  Format
+! of this data is defined below.
+
+ integer*4 srchdir
+
+ string  file.name$   ! file name to start
+       ! search (18 bytes max)
+       ! Wild cards and logical
+       ! names supported.
+
+ string  dtbl.buffer$   ! must be initialized
+       ! to 48 bytes.  Contains
+       ! all of directory info
+       ! Initialize to nulls
+       ! each time a new file
+       ! name is used.
+
+! NOTE:  Format of dtbl.buffer$ string is as follows:
+!
+! Offs  Type                    Description Notes
+!  0 integer*4  key  use extract4 to access
+!  4  string (18 bytes) file name
+! 22 integer*2  attributes use extract2 to access
+!      0x01 - Read Only
+!      0x02 - Hidden
+!      0x04 - System
+!      0x08 - Volume Label
+!      0x10 - Subdirectory
+!      0x20 - Archive (Files)
+!      0x40 - Security enabled
+!      0x80 - Reserved
+!      0x0000 - Local
+!      0x4000 - Mirrored/Update
+!      0xC000 - Mirrored/Close
+!
+!      0x6000 - Compound/Update
+!      0xE000 - Compound/Close
+! 24 integer*2  record size use extract2 to access
+! 26 integer*1  User ID of Owner
+! 27 integer*1  Group ID of Owner
+! 28 integer*2  File Security
+! 30 string (6 bytes) Reserved
+! 36 integer*4  File Size use extract4 to access
+! 40 integer*2  Year  use extract2 to access
+! 42 integer*1  Month
+! 43 integer*1  Day
+! 44 integer*1  Hour
+! 45 integer*1  Minute
+! 46 integer*1  Second
+! 47 integer*1  Reserved
+
+end function
+
+function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+       ! process names and
+       ! status.  Handy to
+       ! determine if a
+       ! program is currently
+       ! running.
+       ! Return values:
+       !    -1  no matches
+       !        found on first
+       !        call
+       !    0   no matches
+       !        found on sub-
+       !        sequent calls
+       !    Pos Success
+       !    Neg Failure
+       !        OS Rtn Code
+       ! 80000001h - Insuff
+        !        ptbl buffer
+       !        Length
+! Usage Note:  If searching for all occurences of a particular process name,
+! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+! to srchproc.  If any matches are found, a positive value will be returned.
+! To see if any more matches exist, just issue another call to srchproc without
+! resetting the values of ptbl.buffer$.  If any are found, a positive value
+! will be returned.  This can be repeated until a Zero is returned.  All data
+! describing file will be returned in the ptbl.buffer$ after each call.  Format
+! of this data is defined as follows:
+!
+!       --------------------------------------------------------
+!   0   |                         PID                          |
+!       --------------------------------------------------------
+!   4   |           FID             |   CID        |   VCID    |
+!       --------------------------------------------------------
+!   8   |                         NAME                         |
+!       --------------------------------------------------------
+!  12   |                         NAME cont'd                  |
+!       --------------------------------------------------------
+!  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+!       --------------------------------------------------------
+!  20   |                         MAXMEM                       |
+!       --------------------------------------------------------
+!  24   |       FLAGS               |   USER        |  GROUP   |
+!       --------------------------------------------------------
+!  28   |                         PARENT                       |
+!       --------------------------------------------------------
+!  32   |                         EVENTS                       |
+!       --------------------------------------------------------
+!  36   |                         CODE                         |
+!       --------------------------------------------------------
+!  40   |                         CSIZE                        |
+!       --------------------------------------------------------
+!  44   |                         DATA                         |
+!       --------------------------------------------------------
+!  48   |                         DSIZE                        |
+!       --------------------------------------------------------
+!  52   |                         HEAP                         |
+!       --------------------------------------------------------
+!  56   |                         HSIZE                        |
+!       --------------------------------------------------------
+!
+!       PID   Process ID
+!       FID  Process's Family ID
+!       CID   Physical Console Device Number
+!       VCID  Process's Virtual Console Number
+!       NAME  Process Name (Application Running)
+! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+! PRIOR    Priority
+!       MAXMEM  Maximum Memory Allowed
+!       FLAGS  Bit 0 (1-System Process, 0-User Process)
+!   Bit 1 (1-Locked in Memory, 0-Swappable)
+!   Bit 2 (1-Running in SWI context, 0-Running in main context)
+!   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+! USER  User Number
+! GROUP  Group Number
+!       PARENT   Parent Process ID
+!       EVENTS   Bit Map of events that have completed but not retrieved
+!       CODE  Start of code area in user space
+! CSIZE  Size in bytes of code area
+!       DATA  Start of data area in user space
+! DSIZE  Size in bytes of data area
+!       HEAP  Start of heap area in user space
+! HSIZE  Size in bytes of heap area
+!
+ integer*4 srchproc
+
+ string  proc.name$   ! process name to start
+       ! search (10 bytes max)
+       ! Wild cards and logical
+       ! names supported.
+
+ string  ptbl.buffer$   ! must be initialized
+       ! to 60 bytes.  Contains
+       ! all of process info
+       ! Initialize to nulls
+       ! each time a new
+       ! process name is used.
+
+end function
+
+function cconstat(timeout) external       ! function similar
+                                              ! to BASIC constat%
+ integer*2 cconstat   ! waits for either a
+ integer*4 timeout    ! key being hit or
+       ! the timer expiring
+       ! before returning
+       ! returns:
+       !   -1 error
+       !    0 timer expired
+       !    x scan code of
+       !      key hit
+end function
+
+function disksize(disk.name$) external   ! function to find
+       ! the total size of
+ integer*4 disksize   ! the specified disk
+ string  disk.name$   ! name (e.g. "h0:")
+       ! if return value is
+       ! negative, error
+end function      ! was received
+
+
+    %INCLUDE BTCSTR.J86      ! String functions
+!********************************************************************
+!***
+!***    INCLUDED CODE:  BTCSTR.J86
+!***    AUTHOR:         Stuart William McConnachie
+!***    DATE:           26th February 2006
+!***
+!********************************************************************
+!***
+!***    Controller CBASIC String Functions
+!***
+!********************************************************************
+
+!Swaps to CBASIC strings
+SUB SWAPSTR (S1$, S2$) EXTERNAL
+    STRING S1$, S2$
+END SUB
+
+!Left trim a string of spaces
+SUB LTRIM (S$) EXTERNAL
+    STRING S$
+END SUB
+
+!Right trim a string of spaces
+SUB RTRIM (S$) EXTERNAL
+    STRING S$
+END SUB
+
+!Left and right trim a string of spaces
+SUB TRIM (S$) EXTERNAL
+    STRING S$
+END SUB
+
+!Left trim a string of a given ASCII character
+SUB LTRIMC (S$, C%) EXTERNAL
+    STRING S$
+    INTEGER*1 C%
+END SUB
+
+!Right trim a string of a given ASCII character
+SUB RTRIMC (S$, C%) EXTERNAL
+    STRING S$
+    INTEGER*1 C%
+END SUB
+
+!Left and right trim a string of a given ASCII character
+SUB TRIMC (S$, C%) EXTERNAL
+    STRING S$
+    INTEGER*1 C%
+END SUB
+
+!Insert one string into another
+FUNCTION SUBSTR(S1$, O1%, S2$, O2%, L2%) EXTERNAL
+    STRING    S1$, S2$
+    INTEGER*2 O1%, O2%, L2%
+    INTEGER*1 SUBSTR
+END FUNCTION
+    
+    %INCLUDE CMPDATE.J86     ! Compare date utility
+!********************************************************************
+!***
+!***    INCLUDED CODE:  CMPDATE.J86
+!***    AUTHOR:         Stuart William McConnachie
+!***    DATE:           27th January 1997
+!***
+!********************************************************************
+!***   
+!***    Version B            Nik Sen                 30th March 1998
+!***    Changes to cope with a date of '000000' by replacing it with
+!***    '850101' before comparison. An all zero's date is valid in 
+!***    certain date fields and CMPDATE was returning the wrong result
+!***    when comparing with an actual date. Also change to cope with
+!***    dates of '999999' as some date fields are initialised to this
+!***    as a high value.
+!***
+!***    Version C    Stuart William McConnachie   20th December 1999
+!***    Improved function efficiency by changing tests for high and
+!***    low values, added above, to integers (rather than strings).
+!***    Also, using 850101 as a replacement for 000000, will not give
+!***    valid results after 350101 because of the 50 year wrap, so
+!***    corrected this.
+!***
+!***    Version D.  Stuart William McConnachie    26th February 2006
+!***    Place this code in it's own module in FUNLIB.  Make all
+!***    the functions herein EXTERNAL accordingly.
+!***
+!********************************************************************
+!***    
+!***    The following functions compare dates, checking for
+!***    century boundries.  Dates in the 50 years prior to the
+!***    compared date are less than the compared date, dates in
+!***    50 years after the compared date are greater than the
+!***    compared date.
+!***    Can handle dates in both packed and unpacked formats, or
+!***    a mixture of both.
+!***    In the case of a error, for example IH after detecting
+!***    illegal characters in VAL, the functions default to
+!***    comparing strings without testing for a change of century.
+!***
+!***    DATE.GT(DATE1$, DATE2$)  same as  DATE1$ >  DATE2$
+!***    DATE.GE(DATE1$, DATE2$)  same as  DATE1$ >= DATE2$
+!***    DATE.LT(DATE1$, DATE2$)  same as  DATE1$ <  DATE2$
+!***    DATE.LE(DATE1$, DATE2$)  same as  DATE1$ <= DATE2$
+!***
+!********************************************************************
+
+FUNCTION DATE.GT(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.GT
+END FUNCTION
+
+
+FUNCTION DATE.GE(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.GE
+END FUNCTION
+
+
+FUNCTION DATE.LT(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.LT
+END FUNCTION
+
+
+FUNCTION DATE.LE(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.LE
+END FUNCTION
+
+    %INCLUDE ERRNH.J86       ! Converts ERRN to 8-byte ASCII string
+\******************************************************************************
+\***
+\***	FUNCTION ERRNH
+\***
+\***	Convert the 4-byte error number to an 8-byte ASCII string
+\***
+\******************************************************************************
+
+	FUNCTION ERRNH PUBLIC
+
+	STRING			ERRNH,					\
+				E$
+
+	INTEGER*2		I%
+	INTEGER*4		H%
+
+	E$ = ""
+	H% = ERRN
+
+	FOR I% = 28 TO 0 STEP -4
+	    E$ = E$ + CHR$((SHIFT(H%,I%) AND 000FH) + 48)
+	NEXT I%
+
+	ERRNH = TRANSLATE$(E$,":;<=>?","ABCDEF")
+
+	END FUNCTION
+    %INCLUDE SLPCFEXT.J86    ! Sleeper control
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***         FUNCTION DEFINITIONS FOR SLEEPER CHECK FILE
+\***
+\***                    REFERENCE : slpcfexa.J86
+\***
+\***    Version A           Steve Windsor          8.2.93
+\***
+\***    Version B           Richard Foster         8.7.93
+\***  
+\*****************************************************************************
+\*****************************************************************************
+
+   FUNCTION SLPCF.SET EXTERNAL
+   END FUNCTION
+
+  FUNCTION READ.SLPCF EXTERNAL
+   INTEGER*2 READ.SLPCF
+  END FUNCTION
+
+  FUNCTION WRITE.SLPCF EXTERNAL
+   INTEGER*2 WRITE.SLPCF
+  END FUNCTION
+
+
+\***********************************************************************
+\*
+\* OPEN.SEQUENTIAL.FILE : External C file function helps in opening
+\*                        a sequential file as BASIC does not support
+\*                        this when running under Supplemental Mode.
+\*
+\***********************************************************************
+FUNCTION FUNC.OPEN.SEQUENTIAL.FILE( FILE.NAME$ ) EXTERNAL               !CJK
+    INTEGER*4 FUNC.OPEN.SEQUENTIAL.FILE                                 !CJK
+    STRING FILE.NAME$
+END FUNCTION
+
+\***********************************************************************
+\*
+\* READ.SEQUENTIAL.FILE : External C file function helps in reading
+\*                        a sequential file as BASIC does not support
+\*                        this when running under Supplemental Mode.
+\*
+\***********************************************************************
+FUNCTION FUNC.READ.SEQUENTIAL.FILE( FILE.HANDLE% ) EXTERNAL             !CJK
+    STRING FUNC.READ.SEQUENTIAL.FILE                                    !CJK
+    INTEGER*4 FILE.HANDLE%
+END FUNCTION
+
+\***********************************************************************
+\*
+\* WRITE.SEQUENTIAL.FILE : External C file function helps in writing
+\*                         a sequential file as BASIC does not support
+\*                         this when running under Supplemental Mode.
+\*
+\***********************************************************************
+FUNCTION FUNC.WRITE.SEQUENTIAL.FILE(FILE.HANDLE%, FILE.RECORD$) EXTERNAL!CJK
+    INTEGER*4 FUNC.WRITE.SEQUENTIAL.FILE                                !CJK
+    INTEGER*4 FILE.HANDLE%
+    STRING FILE.RECORD$
+END FUNCTION
+
+\***********************************************************************
+\*
+\* CLOSE.FILE : External C file function helps in closing a file as
+\*              BASIC does not support this when running under
+\*              Supplemental Mode.
+\*
+\***********************************************************************
+FUNCTION FUNC.CLOSE.FILE ( FILE.HANDLE% ) EXTERNAL                      !CJK
+    INTEGER*4 FILE.HANDLE%
+END FUNCTION
+
+
+\***********************************************************************
+\*
+\*    FUNC.DIR.NOT.EXISTS: This function checks the existence of given
+\*                         directory by using CHDIR command.
+\*
+\***********************************************************************
+FUNCTION FUNC.DIR.NOT.EXISTS(DIRECTORY.NAME$) EXTERNAL
+    INTEGER*1 FUNC.DIR.NOT.EXISTS
+    STRING    DIRECTORY.NAME$
+END FUNCTION
+
+\***********************************************************************
+\*
+\*    FUNC.FILE.EXISTS: This function checks the existence of
+\*                      passed file by using SIZE function.
+\*
+\***********************************************************************
+FUNCTION FUNC.FILE.EXISTS(FILE.NAME$) EXTERNAL
+    STRING    FILE.NAME$
+    INTEGER*1 FUNC.FILE.EXISTS
+END FUNCTION
+
+\***********************************************************************
+\*
+\* PROCESS.DAY.DIR.SCREEN: This Sub-Program does all the necessary
+\*                         actions needed for directory restore
+\*                         processing including screen navigation.
+\*
+\*                         It receives the directory values as an input.
+\*
+\* As a program modularisation, Directory restore has been made as a
+\* Sub-program to perform all the Directory restore functionalities
+\* within itself. This enables quick extraction from the main module
+\* should breach the 64k limit
+\*
+\***********************************************************************
+SUB SUB.PROCESS.DAY.DIR.SCREEN(IMG.FILE$, ALT.FILE$) PUBLIC
+
+    STRING              \
+        ALT.FILE$,      \
+        IMG.FILE$
+
+    GOSUB SHOW.DIRECTORIES
+
+    ! Directory restore day selection screen and status screen
+    WHILE SCREEN% = DIRECTORY.DAY.SELECT.SCR% OR \
+          SCREEN% = DIRECTORY.PROCESS.SCR%
+
+        ! If day selection screen
+        IF SCREEN% = DIRECTORY.DAY.SELECT.SCR% THEN BEGIN
+
+            ! If the screen is accessed using F3 or ESC
+            IF PREVIOUS.KEY THEN BEGIN
+                GOSUB SHOW.DIRECTORIES
+                PREVIOUS.KEY = FALSE
+            ENDIF
+
+            RET.KEY% = DM.PROCESS.SCREEN (2, 105, TRUE)
+
+            IF (RET.KEY% = ESC.KEY%) OR (RET.KEY% = F3.KEY%) THEN BEGIN
+
+                SCREEN%      = RESTORE.A.DIRECTORY.SCR%
+                PREVIOUS.KEY = TRUE
+
+            ENDIF ELSE BEGIN
+                IF VALUE.INDEX% = XRE.ZERO% THEN BEGIN                  !CJK
+                    CALL DM.FOCUS ("1", STATUS.TEXT.ERROR$(21) + \      !CJK
+                                        STATUS.TEXT.MSG$(58))           !CJK
+                ENDIF ELSE BEGIN                                        !CJK
+                    IF RET.KEY% = ENTER.KEY% THEN BEGIN
+
+                        ! Check the entry in day selection screen
+                        SCREEN.NUM% = DIRECTORY.PROCESS.SCR%
+                        GOSUB CHECK.DAY.SELECTION
+
+                        ! If any error in function, set same screen
+                        IF NOT FUNCTION.ERROR.NOT.EXIST THEN BEGIN
+                            SCREEN% = DIRECTORY.DAY.SELECT.SCR%
+                        ENDIF
+
+                    ENDIF ELSE BEGIN
+                        ! B001 Invalid key pressed
+                        CALL DM.FOCUS ("1", STATUS.TEXT.ERROR$(20))
+                    ENDIF
+                ENDIF
+            ENDIF
+
+        ! Directory restore status screen
+        ENDIF ELSE IF SCREEN% = DIRECTORY.PROCESS.SCR% THEN BEGIN
+            GOSUB SHOW.PROCESS.DIRECTORY
+        ENDIF
+    WEND
+
+EXIT SUB
+
+\***********************************************************************
+\*
+\* SHOW.DIRECTORIES: This Routine displays the directories
+\*
+\***********************************************************************
+SHOW.DIRECTORIES:
+
+    ! Setting the Header and other variables used for screen display
+    SCR.HEADER$   = SCREEN.TEXT.MSG$(1)
+    OPT.SELECTED$ = SCREEN.TEXT.MSG$(2) + SCREEN.TEXT.MSG$(3)
+    OPT.HEADER.1$ = SCREEN.TEXT.MSG$(4)                  + \            !CJK
+                    BKPSCRPT.DIRECTORIES$(SELECT.INDEX%) + \            !CJK
+                    SCREEN.TEXT.MSG$(5)
+    OPT.HEADER$   = SCREEN.TEXT.MSG$(6)
+
+    CALL DM.SHOW.SCREEN(2, SCR.HEADER$, 5, 5)
+
+    ! Setting the XRE value which will be displayed in the Left corner
+    SCREEN.NUM$ = "06"
+
+    ! Dimensioning array
+    DIM DAY.ARRAY$(ARRAY.LIMIT%)                                        !CJK
+    DIM BKP.AVAIL.ARRAY$(ARRAY.LIMIT%)                                  !CJK
+
+    ! Setting the values to get the backup details                      !CJK
+    FIRST.FILE$  = IMG.FILE$                                            !CJK
+    SECOND.FILE$ = ALT.FILE$                                            !CJK
+
+    ! Defaulting to zero                                                !CJK
+    FUNCTION.ERROR.NOT.EXIST = 0                                        !CJK
+    ! Calling the routine to get the backup value details               !CJK
+    GOSUB GET.BKP.DETAILS
+
+    ! Setting the screen number
+    CALL DM.NAME (2, "SCREEN.NUM$", SCREEN.NUM$)
+
+    ! Initialising the output fields in the screen
+    ! before processing the screen
+    !--------------------------------------------
+    CALL DM.NAME (48, "OPT.HEADER.1$", OPT.HEADER.1$)
+
+    ! If backups are available
+    IF VALUE.INDEX% <> XRE.ZERO% AND FUNCTION.ERROR.NOT.EXIST THEN BEGIN
+
+        ! Enabling the DAY and DD/MM string
+        CALL DM.VISIBLE ("75", STATUS.TEXT.MSG$(61))
+        CALL DM.VISIBLE ("76", STATUS.TEXT.MSG$(61))
+
+        ! Setting other relevant string
+        CALL DM.NAME (49, "OPT.HEADER$",   OPT.HEADER$  )               !CJK
+        CALL DM.NAME (50, "OPT.SELECTED$", OPT.SELECTED$)
+
+        ! Setting the first value of the fields before populating it
+        DAY.LOOP%   = DAY.INDEX%                                        !CJK
+        DD.MM.LOOP% = DD.MM.INDEX%                                      !CJK
+        INPUT.LOOP% = INPUT.INDEX%                                      !CJK
+
+        ! Retrieving the values and storing in Field$
+        FOR INDEX% = 1 TO VALUE.INDEX%
+
+            ! DAY value and its visibility
+            FIELD$(DAY.LOOP%) = DAY.ARRAY$(INDEX%)
+            CALL DM.VISIBLE (STR$(DAY.LOOP%), STATUS.TEXT.MSG$(61))
+
+            ! DD/MM value
+            FIELD$(DD.MM.LOOP%) = RIGHT$(BKP.AVAIL.ARRAY$(INDEX%),2) + \
+                                  "/"                                + \
+                                  LEFT$(BKP.AVAIL.ARRAY$(INDEX%),2)
+
+            ! Setting a space for input values
+            FIELD$(INPUT.LOOP%) = XRE.SPACE$
+
+            ! Setting the visibility for DD/MM and input
+            CALL DM.VISIBLE (STR$(DD.MM.LOOP%), STATUS.TEXT.MSG$(61))
+            CALL DM.VISIBLE (STR$(INPUT.LOOP%), STATUS.TEXT.MSG$(61))
+
+            ! Incrementing to move to the next field
+            DAY.LOOP%   = DAY.LOOP%   + 1
+            DD.MM.LOOP% = DD.MM.LOOP% + 1
+            INPUT.LOOP% = INPUT.LOOP% + 1
+
+        NEXT INDEX%
+
+    ENDIF ELSE BEGIN
+        IF FUNCTION.ERROR.NOT.EXIST THEN BEGIN                          !CJK
+            FIELD$(1) = STATUS.TEXT.ERROR$(21)                          !CJK
+        ENDIF ELSE BEGIN                                                !CJK
+            FIELD$(1) = SCREEN.TEXT.MSG$(7) + SCREEN.TEXT.MSG$(8)       !CJK
+        ENDIF                                                           !CJK
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\* SHOW.PROCESS.DIRECTORY: This Routine displays the directory Restoring
+\*                         process.
+\*
+\***********************************************************************
+SHOW.PROCESS.DIRECTORY:
+
+    ! Setting the Header and other variables used for screen display
+    SCR.HEADER$ = SCREEN.TEXT.MSG$(9)                                   !CJK
+
+    ! Changed the help screen to zero, as it is not needed
+    CALL DM.SHOW.SCREEN(6, SCR.HEADER$, XRE.ZERO%, XRE.ZERO%)
+
+    ! Setting the Dynamic directory value
+    IF POSF(7) = 7 THEN BEGIN
+        CALL PUTF(STRING$(3,XRE.SPACE$)                              + \
+                  BKPSCRPT.DIRECTORIES$(SELECT.INDEX%))
+    ENDIF
+
+    ! Displaying the directory name in status bar
+    CALL DM.STATUS ("'" + BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)       + \
+                    SCREEN.TEXT.MSG$(10) + "Please Wait .....")         !CJK
+
+    BKP.INDEX%        = XRE.ZERO%
+    RESTORE.ERR.EXIST = FALSE                                           !EJK
+    RESTORE.STATUS    = FALSE
+
+    STATUS.MSG$ = BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)               + \!CJK
+                  SCREEN.TEXT.MSG$(11) + BKP.DATE.ARRAY$(SEL.INDEX%) + \!CJK
+                  SCREEN.TEXT.MSG$(12) + DAY.ARRAY$(SEL.INDEX%)      + \!CJK
+                  " is being extracted"                                 !CJK
+    GOSUB LOG.STATUS.MSG
+
+    !----------------------------------------------------------!
+    ! Setting the BKP.INDEX% and FULL.TO.MOVING.DATE$ based    !
+    ! on the selected DAY and depending on the SET values the  !
+    ! restoration process will happen                          !
+    !----------------------------------------------------------!
+    GOSUB SET.BACKUP.INDEX
+
+    ! Match for the day and set according to the Full backup day
+    BKP.INDEX% = LONG.DAY.INDEX%
+    F02.DATE$  = BKP.DATE.ARRAY$(SEL.INDEX%)
+    FUN.RC2%   = XRE.ZERO%                                              !CJK
+
+    IF BKP.INDEX% <> 0 THEN BEGIN
+        FUN.RC2% = UPDATE.DATE( ((BKP.INDEX% - 1)* -1 ) )               !CJK
+    ENDIF
+
+    ! Checking the Return code
+    GOSUB CHECK.UPDATE.DATE.RC
+    ! Setting the respective previous Full day
+    FULL.TO.MOVING.DATE$ = F02.DATE$
+
+    ! If directory not exist, create it
+    IF FUNC.DIR.NOT.EXISTS(BKPSCRPT.DIRECTORIES$(SELECT.INDEX%))       \
+    THEN BEGIN
+
+        DIRECT.TO.RESTORE$ = BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)
+
+        ! Trim the last slash found to avoid error using MKDIR
+        CALL TRIM   (DIRECT.TO.RESTORE$)
+        CALL RTRIMC (DIRECT.TO.RESTORE$, ASC("/"))
+        CALL RTRIMC (DIRECT.TO.RESTORE$, ASC("\\"))
+
+        CALL OSSHELL("MKDIR " + DIRECT.TO.RESTORE$ + " >> "          + \
+                     DIR.OUT$ + " >>* " + DIR.OUT$)
+        STATUS.MSG$ = DIRECT.TO.RESTORE$ + " directory is created"
+        GOSUB LOG.STATUS.MSG
+
+    ENDIF
+
+    ! ZIP file extraction process
+    GOSUB EXTRACT.DIRECTORIES
+
+    STATUS.MSG$ = "Checking " + BKPLIST.CURR.FILE$ + " to check the" + \
+                  " extracted file"
+    GOSUB LOG.STATUS.MSG
+
+    !---------------------------------------------------------------!
+    ! Checking whether BKPLIST file exist and the requested date is !
+    ! NOT Full, If true then the respective BKPLIST file will be    !
+    ! checked to delete all the files which are stated as not       !
+    ! exist (NULL) in BKPLIST for the selected day                  !
+    !---------------------------------------------------------------!
+    IF BKP.INDEX% > 1 THEN BEGIN
+        ! Checking the file existence before opening it                 !CJK
+        IF FUNC.FILE.EXISTS(BKPLIST.CURR.FILE$) THEN BEGIN
+            BKPLIST.FILE.RC% = \                                        !DJK
+                    FUNC.OPEN.SEQUENTIAL.FILE (BKPLIST.CURR.FILE$)      !DJK
+            ! If file open unsuccessful
+            IF BKPLIST.FILE.RC% <= XRE.ZERO% THEN BEGIN
+                STATUS.MSG$ = "Error in opening BKPLIST file"
+                GOSUB LOG.STATUS.MSG
+                ! Setting NULL to avoid file read
+                BKPLIST.DIR.VALUE$ = XRE.NULL$
+            ENDIF ELSE BEGIN
+                BKPLIST.OPEN       = TRUE
+                BKPLIST.DIR.VALUE$ = XRE.SPACE$
+            ENDIF
+
+            ! Read the file till the EOF or read error
+            WHILE LEN(BKPLIST.DIR.VALUE$) <> XRE.ZERO%
+
+                BKPLIST.DIR.VALUE$ = \
+                    FUNC.READ.SEQUENTIAL.FILE(BKPLIST.FILE.RC%)         !DJK
+
+                !---------------------------------------------------!
+                ! Checking the directory name of BKPLIST files with !
+                ! the requested directory                           !
+                !---------------------------------------------------!
+                IF (BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)) =            \
+                    LEFT$(BKPLIST.DIR.VALUE$,                          \
+                    LEN(BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)))         \
+                THEN BEGIN
+
+                    ! Extract the individual fields using function
+                    GOSUB EXTRACT.BKPLIST.FIELDS
+
+                    IF NOT FUNCTION.ERROR.NOT.EXIST THEN BEGIN
+                        ! Setting the value for exception
+                        RESTORE.ERR.EXIST = TRUE                        !EJK
+                    ENDIF
+
+                    IF BKPLI.INCREMENTAL.EXIST$(BKP.INDEX%-1) <> "Y" \
+                    THEN BEGIN
+                        GOSUB DELETE.BKPLIST.FILE
+                    ENDIF
+                ENDIF
+            WEND
+
+            ! Closing File
+            IF BKPLIST.OPEN THEN BEGIN
+                CALL FUNC.CLOSE.FILE( BKPLIST.FILE.RC% )                !DJK
+                BKPLIST.OPEN = FALSE
+            ENDIF
+        ENDIF
+    ENDIF
+
+    ! Setting the Dynamic directory value
+    IF POSF(238) = 238 THEN BEGIN
+        CALL PUTF(STRING$(10,XRE.SPACE$) + \
+                          "RESTORE A DIRECTORY RESTORATION STATUS")
+    ENDIF
+
+    !-----------------------------------------!
+    ! Set the field to display the Directory  !
+    ! extraction process completed message    !
+    !-----------------------------------------!
+    FIELD$(6) = " The directory "                                    + \
+                BKPSCRPT.DIRECTORIES$(SELECT.INDEX%) + " from "      + \
+                DAY.ARRAY$(SEL.INDEX%) + ", "                        + \
+                RIGHT$(BKP.DATE.ARRAY$(SEL.INDEX%),2) + "/"          + \
+                MID$(BKP.DATE.ARRAY$(SEL.INDEX%),3,2)                + \
+                " has been restored "
+    FIELD$(7) = " to " + BKPSCRPT.DIRECTORIES$(SELECT.INDEX%) +  "."
+
+    ! Disable the visibility of other irrelevant fields
+    CALL DM.VISIBLE("5",STATUS.TEXT.MSG$(60))
+    CALL DM.VISIBLE("8",STATUS.TEXT.MSG$(60))
+    CALL DM.VISIBLE("9",STATUS.TEXT.MSG$(60))
+
+    ! If restore without any error
+    IF NOT RESTORE.ERR.EXIST THEN BEGIN                                 !EJK
+
+        CALL DM.STATUS ("'Restore completed successfully")
+
+        STATUS.MSG$ = "Restore completed successfully"
+
+    ! If restore with exceptions                                        !EJK
+    ENDIF ELSE BEGIN                                                    !EJK
+
+        CALL DM.STATUS (SCREEN.TEXT.MSG$(26))
+        STATUS.MSG$ = STATUS.TEXT.MSG$(5)
+
+! Commenting out, as the logic is redundant and unused                  !EJK
+!    ! If backup file not present                                       !EJK
+!    ENDIF ELSE BEGIN                                                   !EJK
+!        CALL DM.STATUS ("'Restore unsuccessful. Backup file not" + \   !EJK
+!                        " present")                                    !EJK
+!        STATUS.MSG$ = "Backup file not present"                        !EJK
+    ENDIF
+
+    GOSUB LOG.STATUS.MSG
+
+    WHILE SCREEN% = DIRECTORY.PROCESS.SCR%
+        RET.KEY% = DM.PROCESS.SCREEN (2, 9, FALSE)
+
+        IF RET.KEY% = ESC.KEY% THEN BEGIN                               !CJK
+
+            SCREEN%      = DIRECTORY.DAY.SELECT.SCR%
+            PREVIOUS.KEY = TRUE
+
+        ENDIF ELSE BEGIN
+
+            CALL DM.FOCUS ("1", SCREEN.TEXT.MSG$(13) + \                !CJK
+                                SCREEN.TEXT.MSG$(29))                   !CJK
+        ENDIF
+    WEND
+
+RETURN
+
+\***********************************************************************
+\*
+\* DELETE.BKPLIST.FILE: This Routine deletes the BKPLIST file
+\*                      which is set as Non-exist.
+\*
+\***********************************************************************
+DELETE.BKPLIST.FILE:
+
+    CALL OSSHELL("DEL " + BKPLI.FILENAME$ + " >> " + DIR.OUT$ + \
+                 " >>* " + DIR.OUT$)
+    STATUS.MSG$ = STATUS.TEXT.MSG$(7) + BKPLI.FILENAME$
+    GOSUB LOG.STATUS.MSG
+
+RETURN
+
+\***********************************************************************
+\*
+\* EXTRACT.DIRECTORIES: This Routine extracts the selected directories
+\*                      archive file.
+\*
+\***********************************************************************
+EXTRACT.DIRECTORIES:
+
+    !------------------------------------------------------------------!
+    ! Initiating the Directory restore. Depending on the selected day, !
+    ! BKP.INDEX% value would have been set. For example, if WED then   !
+    ! BKP.INDEX% value would be 4, so that from Full archive 4 next    !
+    ! archive files would be extracted                                 !
+    !------------------------------------------------------------------!
+    FOR LOOP% = 1 TO BKP.INDEX%
+
+        STATUS.MSG$ = BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)        + \   !CJK
+                      STATUS.TEXT.MSG$(31) + FULL.TO.MOVING.DATE$ + \
+                      SCREEN.TEXT.MSG$(16)
+        GOSUB LOG.STATUS.MSG
+
+        GOSUB GET.FILE.EXTENSION
+        MDD.DATE$ = EXTENSION$
+
+        ! Storing the Full MDD
+        IF LOOP% = 1 THEN BEGIN
+            FULL.MDD.DATE$ = MDD.DATE$
+
+            IF UCASE$(LEFT$(BKPSCRPT.DIRECTORIES$(INDEX%),1)) = "C" \   !CJK
+            THEN BEGIN                                                  !CJK
+                ! BKPLIST current file                                  !CJK
+                BKPLIST.CURR.FILE$ = BKPLIST.PREFIX.D.DRIVE$ + \        !CJK
+                                     FULL.MDD.DATE$                     !CJK
+            ENDIF ELSE BEGIN                                            !CJK
+                ! BKPLIST current file                                  !CJK
+                BKPLIST.CURR.FILE$ = BKPLIST.PREFIX.C.DRIVE$ + \        !CJK
+                                     FULL.MDD.DATE$                     !CJK
+            ENDIF                                                       !CJK
+        ENDIF
+
+        ! Setting the Backup files based on the 1st field which is drive
+        IF LEFT$(FILENAME$,1) = "D" THEN BEGIN
+            ! IMG and ALT directory for C drive
+            BKP.FILENAME.IMG$ = C.BKP.IMG$ + FILENAME$ + "." + MDD.DATE$
+            BKP.FILENAME.ALT$ = C.BKP.ALT$ + FILENAME$ + "." + MDD.DATE$
+
+            BKPFAIL.PREFIX$ = C.BKP.IMG$ + "BKPFAILD."                  !CJK
+        ENDIF ELSE BEGIN
+            ! IMG and ALT directory for D drive
+            BKP.FILENAME.IMG$ = D.BKP.IMG$ + FILENAME$ + "." + MDD.DATE$
+            BKP.FILENAME.ALT$ = D.BKP.ALT$ + FILENAME$ + "." + MDD.DATE$
+
+            BKPFAIL.PREFIX$ = D.BKP.IMG$ + "BKPFAILC."                  !CJK
+        ENDIF
+
+        ! Current BKPFAIL file
+        BKPFAIL.CURR.FILE$ = BKPFAIL.PREFIX$ + MDD.DATE$                !CJK
+
+        STATUS.MSG$ = "Checking BKPFAIL " + BKPFAIL.CURR.FILE$
+        GOSUB LOG.STATUS.MSG
+
+        DIR.FILE.RC% = FUNC.OPEN.SEQUENTIAL.FILE( BKPFAIL.CURR.FILE$ )  !DJK
+
+        ! If file open unsuccessful
+        IF DIR.FILE.RC% <= XRE.ZERO% THEN BEGIN
+            ! Setting NULL to avoid file read
+            DIR.VALUE$ = XRE.NULL$
+            DIR.OPEN   = FALSE
+        ENDIF ELSE BEGIN
+            DIR.OPEN   = TRUE
+            DIR.VALUE$ = XRE.SPACE$
+        ENDIF
+
+        !-------------------------------------------------------------!
+        ! Reading the file till the EOF file reached. C file function !
+        ! returns NULL when EOF reached or read error                 !
+        !-------------------------------------------------------------!
+        WHILE LEN(DIR.VALUE$) <> XRE.ZERO%
+            DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )      !DJK
+
+            ! Checking the comma position
+            COMMA.POSITION% = MATCH(COMMA.VALUE$,DIR.VALUE$,1)
+
+            ! If comma found
+            IF COMMA.POSITION% <> XRE.ZERO% THEN BEGIN
+
+                ! Storing the failed file and Distribution type
+                FAILED.FILE$ = LEFT$(DIR.VALUE$,(COMMA.POSITION% - 1))
+                FAILED.FILE.DIST$ = MID$(DIR.VALUE$,           \        !CJK
+                                        (COMMA.POSITION% + 1), \        !CJK
+                                        1)
+
+                ! If directory in BKPFAIL matches with current directory!CJK
+                IF (BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)) =    \        !CJK
+                    LEFT$(FAILED.FILE$,                        \        !CJK
+                    LEN(BKPSCRPT.DIRECTORIES$(SELECT.INDEX%))) \        !CJK
+                THEN BEGIN
+
+                    BEGIN.POSITION% = 4         ! Setting the begin
+                    SLASH.POSITION% = XRE.ZERO% ! position
+                    VALUE.EXISTS    = TRUE
+                    FILENAME$       = XRE.NULL$
+
+                    ! Extracting the file name
+                    WHILE VALUE.EXISTS
+                        SLASH.POSITION% = MATCH("\\", FAILED.FILE$,    \
+                                                 BEGIN.POSITION%)
+
+                        IF SLASH.POSITION% > XRE.ZERO% THEN BEGIN
+                            ! Move to next position to search next field
+                            BEGIN.POSITION% = SLASH.POSITION% + 1
+                        ENDIF ELSE BEGIN
+                            FILENAME$ = MID$(FAILED.FILE$,        \     !CJK
+                                             BEGIN.POSITION%,     \     !CJK
+                                             (LEN(FAILED.FILE$) - \     !CJK
+                                             BEGIN.POSITION% + 1))      !CJK
+                            ! Storing the file name                     !CJK
+                            RESTORE.FILENAME$ = FILENAME$               !BJK
+                            ! File name without extension               !CJK
+                            MATCH.POS% = MATCH(".", FILENAME$,1)        !BJK
+
+                            IF MATCH.POS% <> XRE.ZERO% THEN BEGIN       !BJK
+                                RESTORE.FILENAME$ = LEFT$(FILENAME$, \  !BJK
+                                                    (MATCH.POS% - 1))   !BJK
+                            ENDIF                                       !BJK
+                            VALUE.EXISTS = FALSE
+                        ENDIF
+                    WEND
+
+                    STATUS.MSG$ = STATUS.TEXT.MSG$(9)
+                    GOSUB LOG.STATUS.MSG
+
+                    STATUS.MSG$ = STATUS.TEXT.MSG$(10) + FILENAME$      !CJK
+                    GOSUB LOG.STATUS.MSG
+
+                    ! Depending on the drive, XDISKIMG directory will   !CJK
+                    ! be used in copying failed file                    !CJK
+                    IF LEFT$(FILENAME$,1) = "D" THEN BEGIN              !CJK
+                        ! Copying the file to respective directory      !CJK
+                        CALL OSSHELL("COPY " + C.BKP.IMG$             + \CJK
+                                     RESTORE.FILENAME$ + "."          + \CJK
+                                     MDD.DATE$ + XRE.SPACE$           + \CJK
+                                     FAILED.FILE$ + " > " + DIR.OUT$  + \CJK
+                                     " >>* " + DIR.OUT$)                !CJK
+                    ENDIF ELSE BEGIN                                    !CJK
+                        ! Copying the file to respective directory      !CJK
+                        CALL OSSHELL("COPY " + D.BKP.IMG$             + \CJK
+                                     RESTORE.FILENAME$ + "."          + \CJK
+                                     MDD.DATE$ + XRE.SPACE$           + \CJK
+                                     FAILED.FILE$ + " > " + DIR.OUT$  + \CJK
+                                     " >>* " + DIR.OUT$)                !CJK
+                    ENDIF
+                    !---------------------------------------------!
+                    ! Not distributing the file if SUPPS mode, as !
+                    ! ADXCSU0L won't work under SUPPS             !
+                    !---------------------------------------------!
+                    IF NOT SUPPS.ON THEN BEGIN
+                        ! Setting the distribution type
+                        CALL OSSHELL(ADXCSU0L.FILE.NAME$ + " 3 "     + \!CJK
+                                     FAILED.FILE.DIST$ + XRE.SPACE$  + \
+                                     FAILED.FILE$ + " >> "           + \
+                                     DIR.OUT$ + " >>* " + DIR.OUT$)
+                    ENDIF
+
+                    DIR.FILE.RC% = FUNC.OPEN.SEQUENTIAL.FILE( DIR.OUT$ )!DJK
+
+                    ! If file open unsuccessful
+                    IF DIR.FILE.RC% <= XRE.ZERO% THEN BEGIN
+                        STATUS.MSG$ = STATUS.TEXT.ERROR$(2)
+                        GOSUB LOG.STATUS.MSG
+                        ! Setting NULL to avoid file read
+                        DIR.VALUE$ = XRE.NULL$
+                        DIR.OPEN   = FALSE
+                    ENDIF ELSE BEGIN
+                        DIR.OPEN   = TRUE
+                        DIR.VALUE$ = XRE.SPACE$
+                    ENDIF
+
+                    ! Read the file till EOF or read error
+                    WHILE LEN(DIR.VALUE$) <> XRE.ZERO%
+                        DIR.VALUE$ = \                                  !DJK
+                            FUNC.READ.SEQUENTIAL.FILE(DIR.FILE.RC%)     !DJK
+
+                       !-----------------------------------------------!
+                       ! If error string matches, write the error with !
+                       ! file name in LOG file                         !
+                       !-----------------------------------------------!
+                        IF MATCH("ERROR",UCASE$(DIR.VALUE$),1)     \    !EJK
+                           <> XRE.ZERO% OR                         \    !EJK
+                           MATCH("cannot be found",(DIR.VALUE$),1) \    !EJK
+                           <> XRE.ZERO% THEN BEGIN                      !EJK
+                            ! Copy error and distribution error
+                            STATUS.MSG$ = STATUS.TEXT.ERROR$(14)
+                            GOSUB LOG.STATUS.MSG
+                            STATUS.MSG$ = DIR.VALUE$
+                            GOSUB LOG.STATUS.MSG
+
+                            RESTORE.ERR.EXIST = TRUE                    !EJK
+                            ! To break the WHILE loop                   !EJK
+                            DIR.VALUE$ = XRE.NULL$                      !EJK
+                        ENDIF
+                    WEND
+
+                    ! Closing File
+                    IF DIR.OPEN THEN BEGIN
+                        CALL FUNC.CLOSE.FILE( DIR.FILE.RC% )            !DJK
+                        DIR.OPEN = FALSE
+                    ENDIF
+                ENDIF
+            ENDIF
+        WEND
+
+        ! Closing File
+        IF DIR.OPEN THEN BEGIN
+            CALL FUNC.CLOSE.FILE( DIR.FILE.RC% )                        !DJK
+            DIR.OPEN = FALSE
+        ENDIF
+
+        !--------------------------------------------------------------!
+        ! Checking the archive file existence before extraction. First !
+        ! the file will be checked in IMG location and it not present, !
+        ! then it will be tried in ALT location                        !
+        !--------------------------------------------------------------!
+        IF FUNC.FILE.EXISTS(BKP.FILENAME.IMG$) THEN BEGIN
+            CALL OSSHELL(ADXZUDIR.FILE.NAME$ + " -x "         + \       !CJK
+                         BKP.FILENAME.IMG$   + XRE.SPACE$     + \       !CJK
+                         BKPSCRPT.DIRECTORIES$(SELECT.INDEX%) + \       !CJK
+                         " > " + DIR.OUT$ + " >>* " + DIR.OUT$)
+
+            STATUS.MSG$ = BKP.FILENAME.IMG$ + STATUS.TEXT.MSG$(11) + \  !CJK
+                          BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)
+            GOSUB LOG.STATUS.MSG
+
+            ! Setting the status to check the extraction output file
+            RESTORE.STATUS = TRUE
+
+        ENDIF ELSE BEGIN                                                !DJK
+            IF FUNC.FILE.EXISTS(BKP.FILENAME.ALT$) THEN BEGIN           !DJK
+                CALL OSSHELL(ADXZUDIR.FILE.NAME$ + " -x "         + \   !CJK
+                             BKP.FILENAME.ALT$   + XRE.SPACE$     + \   !CJK
+                             BKPSCRPT.DIRECTORIES$(SELECT.INDEX%) + \   !CJK
+                             " > " + DIR.OUT$ + " >>* " + DIR.OUT$)
+
+                STATUS.MSG$ = BKP.FILENAME.ALT$ + STATUS.TEXT.MSG$(11)+ \CJK
+                              BKPSCRPT.DIRECTORIES$(SELECT.INDEX%)
+                GOSUB LOG.STATUS.MSG
+
+                ! Setting the status to check the extraction output file
+                RESTORE.STATUS = TRUE
+            ENDIF
+        ENDIF                                                           !DJK
+
+        ! If file extraction happened
+        IF RESTORE.STATUS THEN BEGIN                                    !EJK
+
+            DIR.FILE.RC% = FUNC.OPEN.SEQUENTIAL.FILE( DIR.OUT$ )        !DJK
+
+            ! If file open unsuccessful
+            IF DIR.FILE.RC% <= XRE.ZERO% THEN BEGIN
+                DIR.OPEN    = FALSE                                     !CJK
+                STATUS.MSG$ = STATUS.TEXT.ERROR$(2)
+                GOSUB LOG.STATUS.MSG
+                ! Setting NULL to avoid file read
+                DIR.VALUE$ = XRE.NULL$
+            ENDIF ELSE BEGIN
+                DIR.OPEN   = TRUE
+                DIR.VALUE$ = XRE.SPACE$
+            ENDIF
+            ! Read the file till EOF or read error
+            WHILE LEN(DIR.VALUE$) <> XRE.ZERO%
+                DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )  !DJK
+
+                !-----------------------------------------------!
+                ! If error string matches, write the error with !
+                ! file name in LOG file                         !
+                !-----------------------------------------------!
+                IF MATCH("Error extracting file",DIR.VALUE$,1) <> \     !CJK
+                   XRE.ZERO% THEN BEGIN
+
+!                    STATUS.MSG$ = STATUS.TEXT.ERROR$(12)               !EJK
+!                    GOSUB LOG.STATUS.MSG                               !EJK
+
+                    ! Setting the value for extraction error
+                    RESTORE.ERR.EXIST = TRUE                            !EJK
+                    STATUS.MSG$       = DIR.VALUE$                      !EJK
+                    GOSUB LOG.STATUS.MSG
+                ENDIF
+            WEND
+
+            ! Closing File
+            IF DIR.OPEN THEN BEGIN
+                CALL FUNC.CLOSE.FILE( DIR.FILE.RC% )                    !DJK
+                DIR.OPEN = FALSE
+            ENDIF
+
+        ENDIF
+
+        ! Starting from Full increment the date till requested date
+        F02.DATE$ = FULL.TO.MOVING.DATE$
+        FUN.RC2%  = UPDATE.DATE( 1 )                                    !CJK
+        ! Checking the Return code
+        GOSUB CHECK.UPDATE.DATE.RC
+        FULL.TO.MOVING.DATE$ = F02.DATE$
+
+    NEXT LOOP%
+
+RETURN
+
+! duplicated subroutine
+%INCLUDE XREST00E.J86                                                   !DJK
+\************************************************************************
+\***                                                                    *
+\***           %INCLUDE FOR REPEATED SUBROUTINES IN XRESTORE            *
+\***                                                                    *
+\***                    REFERENCE: XREST00E.J86                         *
+\***                                                                    *
+\***                                                                    *
+\*** Version A              Dave Constable                   05/06/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\***                                                                    *
+\*** Version B              Dave Constable                   25/06/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\*** QC775 - Incorrect file extension check changed                     *
+\*** QC750 - Added OS file copy that used to be in CRESTORE batch       *
+\*** Code review changes; alignment of file open status                 *
+\***                                                                    *
+\*** Version C                 Jaya Kumar Inbaraj            23/08/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\*** CR5 changes to perform the drive restore if a drive is empty.      *
+\*** Also commented out few redundant labels and worked on Internal     *
+\*** and APPS management review comments.                               *
+\***                                                                    *
+\*** Version D                 Jaya Kumar Inbaraj            04/09/2014 *
+\*** FOD260 - Enhanced Backup and Recovery                              *
+\*** Worked on APPS management review comments.                         *
+\***                                                                    *
+\************************************************************************
+
+\************************************************************************
+\*
+\* SET.BACKUP.INDEX: Setting the BKP.INDEX% and FULL.TO.MOVING.DATE$
+\*                   based on the selected DAY and depending on the SET
+\*                   values the restoration process will happen
+\*
+\************************************************************************
+SET.BACKUP.INDEX:
+
+    ! Match for the long day name and set using the offset              !CJK
+    LONG.DAY.INDEX% = MATCH( LEFT$(DAY.ARRAY$(SEL.INDEX%)        + \    !CJK
+                      STRING$(CONSTANT.LONGEST.DAY%, XRE.SPACE$),  \    !CJK
+                      CONSTANT.LONGEST.DAY%), BACKUP.LONG.DAYS$,1)      !CJK
+    ! Use the offset to calculate the index                             !CJK
+    LONG.DAY.INDEX% = ((LONG.DAY.INDEX%-1) / CONSTANT.LONGEST.DAY%) + 1
+
+RETURN
+
+\***********************************************************************
+\*
+\* GET.BKP.DETAILS: This function receives the Primary and secondary
+\*                  backup file (without extension) as an input. Then
+\*                  it checks the availability of archived files based
+\*                  on number of BKP.DAYS and store it in arrays for
+\*                  Screen to display.
+\*
+\***********************************************************************
+GET.BKP.DETAILS:
+
+    FUNCTION.ERROR.NOT.EXIST = TRUE
+
+    BEGIN.POSITION% = 4        ! To Ignore the Drive being checked      !CJK
+    SLASH.POSITION% = XRE.ZERO%                                         !CJK
+    VALUE.EXISTS    = TRUE                                              !CJK
+
+    DIM BKP.FILE.MDD.ARRAY$(ARRAY.LIMIT%)                               !CJK
+    DIM BKP.DATE.ARRAY$(ARRAY.LIMIT%)                                   !CJK
+
+    ! Extracting the archive file name
+    WHILE VALUE.EXISTS
+        SLASH.POSITION% = MATCH("\\", FIRST.FILE$, BEGIN.POSITION%)
+
+        IF SLASH.POSITION% > XRE.ZERO% THEN BEGIN
+            ! Move to next position to search next field
+            BEGIN.POSITION% = SLASH.POSITION% + 1
+        ENDIF ELSE BEGIN
+            FILENAME$ = MID$(FIRST.FILE$,BEGIN.POSITION%, \
+                            (LEN(FIRST.FILE$) - BEGIN.POSITION% + 1))
+            VALUE.EXISTS = FALSE
+        ENDIF
+    WEND
+
+    ! Getting all the archive files from Primary backup location
+    CALL OSSHELL("DIR " + FIRST.FILE$ + ".* > " + DIR.OUT$ + " >>* " + \
+                 DIR.OUT$ )
+
+    CALL OSSHELL("DIR " + SECOND.FILE$ + ".* >> " + DIR.OUT$     + \
+                 " >>* " + DIR.OUT$ )
+
+    DIR.FILE.RC% = FUNC.OPEN.SEQUENTIAL.FILE( DIR.OUT$ )                !DJK
+
+    ! If file open unsuccessful
+    IF DIR.FILE.RC% <= XRE.ZERO% THEN BEGIN
+        STATUS.MSG$ = "Error in opening DIR output file"
+        GOSUB LOG.STATUS.MSG
+        DIR.OPEN                 = FALSE
+        FUNCTION.ERROR.NOT.EXIST = FALSE
+!        RETURN                                                         !DJK
+    ENDIF ELSE BEGIN
+        DIR.OPEN = TRUE
+    ENDIF
+
+    FOR F.RECORD.COUNT% = 1 TO 4
+        ! Ignoring the first 4 lines
+        DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )          !DJK
+    NEXT F.RECORD.COUNT%
+
+    BKP.INDEX% = XRE.ZERO%
+
+    WHILE LEN(DIR.VALUE$) <> XRE.ZERO%
+        DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )          !DJK
+        ! we treat an error here as end of file and drop out
+        !--------------------------------------------------------!
+        ! Checking the file name and also making sure that the   !      !BDC
+        ! extension is numeric value ending                      !      !BDC
+        !--------------------------------------------------------!      !BDC
+        IF LEFT$(DIR.VALUE$,LEN(FILENAME$)) = FILENAME$     AND     \   !CJK
+           MATCH("!",MID$(DIR.VALUE$,11,2) ,1) = XRE.ZERO% THEN BEGIN   !CJK
+
+            DIR.VALUE$ = MID$(DIR.VALUE$,10,3)
+
+            DUPLICATE.RECORD = FALSE                                    !CJK
+
+            ! To make sure duplicate records are not added              !CJK
+            IF BKP.INDEX% > XRE.ZERO% THEN BEGIN                        !CJK
+                FOR INDEX% = 1 TO BKP.INDEX%                            !CJK
+                    IF BKP.FILE.MDD.ARRAY$(INDEX%) = DIR.VALUE$ \       !CJK
+                    THEN BEGIN                                          !CJK
+                        DUPLICATE.RECORD = TRUE                         !CJK
+                    ENDIF                                               !CJK
+                NEXT INDEX%                                             !CJK
+            ENDIF                                                       !CJK
+
+            ! Checking the BKP.INDEX% to avoid out of bound error
+            IF BKP.INDEX% < ARRAY.LIMIT% THEN BEGIN                     !CJK
+                IF NOT DUPLICATE.RECORD THEN BEGIN                      !CJK
+                    BKP.INDEX% = BKP.INDEX% + 1                         !CJK
+                    ! Storing the MDD value in an array
+                    BKP.FILE.MDD.ARRAY$(BKP.INDEX%) = DIR.VALUE$
+                ENDIF                                                   !CJK
+            ENDIF ELSE BEGIN
+                STATUS.MSG$ = "'MDD array index error"
+                GOSUB LOG.STATUS.MSG
+                DIR.VALUE$               = XRE.NULL$                    !CJK
+                FUNCTION.ERROR.NOT.EXIST = FALSE
+                !-----------------------------------------------------! !CJK
+                ! As the array index overflow happened, further read  ! !CJK
+                ! is not required and hence setting the value to NULL ! !CJK
+                ! to exit the WHILE loop                              ! !CJK
+                !-----------------------------------------------------! !CJK
+                DIR.VALUE$ = XRE.NULL$                                  !CJK
+            ENDIF
+        ENDIF
+    WEND
+
+    ! Closing File
+    IF DIR.OPEN THEN BEGIN
+        CALL FUNC.CLOSE.FILE( DIR.FILE.RC% )                            !DJK
+        DIR.OPEN = FALSE
+    ENDIF
+
+    VALUE.INDEX% = XRE.ZERO%
+    TODAY.DATE$  = DATE$
+
+    !--------------------------------------------------------!
+    ! As BKP.INDEX is used as an index parameter for all the !
+    ! arrays in below FOR loop, checking the index to avoid  !
+    ! out of bound error                                     !
+    !--------------------------------------------------------!
+    IF BKP.INDEX% > ARRAY.LIMIT% THEN BEGIN                             !CJK
+        STATUS.MSG$ = "'BKP array index error"
+        GOSUB LOG.STATUS.MSG
+        FUNCTION.ERROR.NOT.EXIST = FALSE
+!        RETURN                                                         !DJK
+        ! Setting zero as there is an array limit breach                !DJK
+        BKP.INDEX% = XRE.ZERO%                                          !DJK
+    ENDIF
+
+    ! If Backup available
+    IF BKP.INDEX% <> XRE.ZERO% THEN BEGIN
+        ! Checking last 14 days
+        FOR LOOP% = 1 TO BKP.DAYS%
+            ! Storing MMDD in a variable
+            WORK.DATE.MMDD$ = RIGHT$(TODAY.DATE$,4)
+            ! Checking the available backup dates
+            FOR INDEX% = 1 TO BKP.INDEX%
+
+                ! Getting the Month and date in MDD format
+                IF LEFT$(BKP.FILE.MDD.ARRAY$(INDEX%),1) = "C" THEN BEGIN!CJK
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "12"   + \           !CJK
+                        RIGHT$(BKP.FILE.MDD.ARRAY$(INDEX%),2)           !CJK
+                ENDIF ELSE \
+                IF LEFT$(BKP.FILE.MDD.ARRAY$(INDEX%),1) = "B" THEN BEGIN!CJK
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "11"   + \           !CJK
+                        RIGHT$(BKP.FILE.MDD.ARRAY$(INDEX%),2)           !CJK
+                ENDIF ELSE \
+                IF LEFT$(BKP.FILE.MDD.ARRAY$(INDEX%),1) = "A" THEN BEGIN!CJK
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "10"   + \           !CJK
+                        RIGHT$(BKP.FILE.MDD.ARRAY$(INDEX%),2)           !CJK
+                ENDIF ELSE BEGIN
+                    BKP.FILE.MMDD.ARRAY$(INDEX%) = "0"    + \           !CJK
+                        BKP.FILE.MDD.ARRAY$(INDEX%)                     !CJK
+                ENDIF
+
+                ! If the Work date is available, store it in array
+                IF BKP.FILE.MMDD.ARRAY$(INDEX%) = WORK.DATE.MMDD$ \
+                THEN BEGIN
+
+                    VALUE.INDEX% = VALUE.INDEX% + 1
+
+                    ! Checking the VALUE.INDEX% to avoid out of bound
+                    IF VALUE.INDEX% < ARRAY.LIMIT% THEN BEGIN           !CJK
+
+                        ! Storing the date and MMDD
+                        BKP.DATE.ARRAY$(VALUE.INDEX%)  = TODAY.DATE$
+                        BKP.AVAIL.ARRAY$(VALUE.INDEX%) = WORK.DATE.MMDD$
+
+                        FUN.RC2% = PSDATE(TODAY.DATE$)
+
+                        ! Checking the return value
+                        IF FUN.RC2% <> XRE.ZERO% THEN BEGIN
+                            STATUS.MSG$ = "PSDATE function error"
+                            GOSUB LOG.STATUS.MSG
+                            DAY.ARRAY$(VALUE.INDEX%) = "Date error"
+                            FUNCTION.ERROR.NOT.EXIST = FALSE
+                        ENDIF ELSE BEGIN
+                            ! Storing the DAY value
+                            IF F13.DAY$ = "SUN" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Sunday"
+                            ENDIF ELSE IF F13.DAY$ = "MON" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Monday"
+                            ENDIF ELSE IF F13.DAY$ = "TUE" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Tuesday"
+                            ENDIF ELSE IF F13.DAY$ = "WED" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Wednesday"
+                            ENDIF ELSE IF F13.DAY$ = "THU" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Thursday"
+                            ENDIF ELSE IF F13.DAY$ = "FRI" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Friday"
+                            ENDIF ELSE IF F13.DAY$ = "SAT" THEN BEGIN
+                                DAY.ARRAY$(VALUE.INDEX%) = "Saturday"
+                            ENDIF
+                        ENDIF
+
+                    ENDIF ELSE BEGIN
+                        STATUS.MSG$  = "'MDD array index error"
+                        GOSUB LOG.STATUS.MSG
+                        FUNCTION.ERROR.NOT.EXIST = FALSE
+!                        RETURN                                         !DJK
+                        LOOP%  = BKP.DAYS%  + 10   ! force to exit      !CJK
+                        INDEX% = BKP.INDEX% + 10   ! force to exit      !CJK
+                    ENDIF
+                ENDIF
+            NEXT INDEX%
+
+            IF INDEX% < (BKP.INDEX% + 10) THEN BEGIN                    !CJK
+                F02.DATE$ = TODAY.DATE$
+                FUN.RC2%  = UPDATE.DATE( -1 )           ! Reduce one day!CJK
+
+                GOSUB CHECK.UPDATE.DATE.RC
+
+                TODAY.DATE$ = F02.DATE$
+            ENDIF
+
+        NEXT LOOP%
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\* EXTRACT.BKPLIST.FIELDS:  This function receives the line value of
+\*                          BKPLIST, process it and return the
+\*                          individual BKPLIST field values for use.
+\*
+\***********************************************************************
+EXTRACT.BKPLIST.FIELDS:
+
+    FUNCTION.ERROR.NOT.EXIST = TRUE
+
+    BKPLIST.VALUE$ = BKPLIST.DIR.VALUE$
+
+    DIM BKPLIST.FIELD$(0)         ! Clear the array memory allocation
+    DIM BKPLIST.FIELD$(15)        ! To store BKPLIST values
+
+    BEGIN.POS%    = 1           ! Begin search position                 !CJK
+    INDEX%        = XRE.ZERO%   ! Index for Field Array                 !CJK
+    VALUE.PRESENT = TRUE        ! While Boolean                         !CJK
+
+    !----------------------------------------------------------!
+    ! Extracting all the variables using comma separator value !
+    !----------------------------------------------------------!
+    WHILE VALUE.PRESENT
+        ! Get index of next field delimiter
+        MATCH.POS% = MATCH(COMMA.VALUE$,BKPLIST.VALUE$,BEGIN.POS%)
+
+        INDEX%     = INDEX% + 1     ! Incrementing the index            !CJK
+
+        ! Checking the INDEX% to avoid out of bound error
+        IF VALUE.INDEX% > ARRAY.LIMIT% THEN BEGIN                       !CJK
+            STATUS.MSG$ = "'MDD array index error"
+            GOSUB LOG.STATUS.MSG
+            FUNCTION.ERROR.NOT.EXIST = FALSE
+            !-----------------------------------------------------!     !CJK
+            ! As the array index overflow happened, further check !     !CJK
+            ! is not required and hence setting the value to      !     !CJK
+            ! FALSE to exit the WHILE loop                        !     !CJK
+            !-----------------------------------------------------!     !CJK
+            VALUE.PRESENT = FALSE                                       !CJK
+        ENDIF
+
+        ! If we found a field delimiter
+        IF MATCH.POS% > XRE.ZERO% THEN BEGIN
+            ! Get contents of field
+            BKPLIST.FIELD$(INDEX%) = MID$(BKPLIST.VALUE$, BEGIN.POS%, \
+                                     (MATCH.POS% - BEGIN.POS%)  )
+            ! Move next start position past field delimiter
+            BEGIN.POS% = MATCH.POS% + 1
+        ENDIF ELSE BEGIN
+            ! Else we're at the last field
+            VALUE.PRESENT = FALSE
+        ENDIF
+    WEND
+
+    ! Storing the values
+    BKPLI.FILENAME$                 = BKPLIST.FIELD$(1)
+    BKPLI.FULL.EXIST$               = BKPLIST.FIELD$(2)
+    BKPLI.FULL.FILE.CHNG$           = BKPLIST.FIELD$(3)
+    BKPLI.INCREMENTAL.EXIST$(1)     = BKPLIST.FIELD$(4)
+    BKPLI.INCREMENTAL.FILE.CHNG$(1) = BKPLIST.FIELD$(5)
+    BKPLI.INCREMENTAL.EXIST$(2)     = BKPLIST.FIELD$(6)
+    BKPLI.INCREMENTAL.FILE.CHNG$(2) = BKPLIST.FIELD$(7)
+    BKPLI.INCREMENTAL.EXIST$(3)     = BKPLIST.FIELD$(8)
+    BKPLI.INCREMENTAL.FILE.CHNG$(3) = BKPLIST.FIELD$(9)
+    BKPLI.INCREMENTAL.EXIST$(4)     = BKPLIST.FIELD$(10)
+    BKPLI.INCREMENTAL.FILE.CHNG$(4) = BKPLIST.FIELD$(11)
+    BKPLI.INCREMENTAL.EXIST$(5)     = BKPLIST.FIELD$(12)
+    BKPLI.INCREMENTAL.FILE.CHNG$(5) = BKPLIST.FIELD$(13)
+    BKPLI.INCREMENTAL.EXIST$(6)     = BKPLIST.FIELD$(14)
+    BKPLI.INCREMENTAL.FILE.CHNG$(6) = BKPLIST.FIELD$(15)
+
+RETURN
+
+\***********************************************************************
+\*
+\* CHECK.DAY.SELECTION: This function checks the DAY selection on
+\*                      process. If successful selection, it sets
+\*                      the passed screen number.
+\*
+\***********************************************************************
+CHECK.DAY.SELECTION:
+
+    FUNCTION.ERROR.NOT.EXIST = TRUE
+
+    INPUT.LOOP%   = INPUT.INDEX%    ! First input field value
+    SEL.INDEX%    = XRE.ZERO%
+    SELECT.COUNT% = XRE.ZERO%
+    NON.X.VALUES  = FALSE
+
+    ! Checking the inputs entered
+    FOR LOOP% = 1 TO VALUE.INDEX%
+
+        ! If field contains any value
+        IF FIELD$(INPUT.LOOP%) <> XRE.SPACE$ THEN BEGIN
+
+            ! If entered value is not X
+            IF UCASE$(FIELD$(INPUT.LOOP%)) <> "X" THEN BEGIN
+                NON.X.VALUES = TRUE
+            ENDIF ELSE BEGIN
+                SEL.INDEX% = LOOP%
+            ENDIF
+
+            ! Increment the value to check the multiple selection
+            SELECT.COUNT% = SELECT.COUNT% + 1
+        ENDIF
+        ! Increment to move to the next input field record
+        INPUT.LOOP% = INPUT.LOOP% + 1
+    NEXT LOOP%
+
+    ! If multiple selections made
+    IF SELECT.COUNT% > 1 THEN BEGIN
+        FIELD$(1) = "'Multiple selections not allowed"
+    ENDIF ELSE BEGIN
+
+        ! If only one selection made and X value is entered
+        IF SELECT.COUNT% = 1 AND NOT NON.X.VALUES THEN BEGIN
+            SCREEN% = SCREEN.NUM%
+
+        ! If no selection has been made
+        ENDIF ELSE BEGIN
+            FIELD$(1) = "'No selection has been made. "              + \
+                        "Value entered must be ""X"" OR ""x"" "
+        ENDIF
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\* LOG.STATUS.MSG: Writes status message to log file
+\*
+\***********************************************************************
+LOG.STATUS.MSG:
+
+    IF XRE.LOG.OPEN THEN BEGIN
+
+        ! DD/MM/YY, HH:MM:SS, Text and a CRLF
+        STATUS.MSG$ = RIGHT$(DATE$,2) + "/"        + \    ! DD/         !CJK
+                      MID$(DATE$,3,2) + "/"        + \    ! MM/         !CJK
+                      LEFT$(DATE$,2)  + XRE.SPACE$ + \    ! YY          !CJK
+                      LEFT$(TIME$,2)  + ":"        + \    ! HH:         !CJK
+                      MID$(TIME$,3,2) + ":"        + \    ! MM:         !CJK
+                      RIGHT$(TIME$,2) + XRE.SPACE$ + \    ! SS          !CJK
+                      STATUS.MSG$                  + \    ! message     !CJK
+                      CRLF$                               ! line return !CJK
+
+        ! Return code is not checked here, as it is not mandatory.
+        ! Checking return code is not required here, as it is a         !CJK
+        ! screen program and displaying any error for logging might     !CJK
+        ! confuse the user from actual restore functionality            !CJK
+        FILE.RC% = FUNC.WRITE.SEQUENTIAL.FILE(XRE.FILE.RC%, STATUS.MSG$)!DJK
+
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\* CHECK.UPDATE.DATE.RC: If FUN.RC2% is not equal to zero ... logs
+\*                       the error for reference.
+\***********************************************************************
+CHECK.UPDATE.DATE.RC:
+
+    ! Checking the return value
+    IF FUN.RC2% <> XRE.ZERO% THEN BEGIN
+        STATUS.MSG$ = "UPDATE date function error in " + F02.DATE$
+        GOSUB LOG.STATUS.MSG
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\*   GET.FILE.EXTENSION: Calculate the extension needed based on month
+\*                       and day using month A/B/C for 10/11/12
+\*
+\***********************************************************************
+GET.FILE.EXTENSION:
+
+    EXTENSION$ = RIGHT$(FULL.TO.MOVING.DATE$, 4)
+
+    ! Storing the Month and Date in MDD format in new logic
+    IF LEFT$(EXTENSION$,2) = "12" THEN BEGIN            ! If Dec(12)    !CJK
+        EXTENSION$ = "C" + RIGHT$(EXTENSION$, 2)
+    ENDIF ELSE IF LEFT$(EXTENSION$,2) = "11" THEN BEGIN ! If Nov(11)    !CJK
+        EXTENSION$ = "B" + RIGHT$(EXTENSION$, 2)
+    ENDIF ELSE IF LEFT$(EXTENSION$,2) = "10" THEN BEGIN ! If Oct(10)    !CJK
+        EXTENSION$ = "A" + RIGHT$(EXTENSION$, 2)
+    ENDIF ELSE BEGIN                            ! Rest of the Month
+        EXTENSION$ = RIGHT$(EXTENSION$, 3)
+    ENDIF
+
+RETURN
+
+!* START CHANGE BLOCK FOR BDC
+\***********************************************************************
+\*
+\* COPY.OS.BLANK.FILES: Copy the blank OS files needed that the old
+\*                      CRESTORE batch file used to do
+\*
+\***********************************************************************
+COPY.OS.BLANK.FILES:
+
+    DIM OS.FILE$(0)
+    DIM OS.FILE$(8)
+
+    ! set the required files
+    OS.FILE$(1) = "ADXCSOAF.DAT"
+    OS.FILE$(2) = "ADXCSOBF.DAT"
+    OS.FILE$(3) = "ADXCSOCF.DAT"
+    OS.FILE$(4) = "ADXCSODF.DAT"
+    OS.FILE$(5) = "ADXCSOEF.DAT"
+    OS.FILE$(6) = "ADXCSOFF.DAT"
+    OS.FILE$(7) = "ADXCSOIF.DAT"
+    OS.FILE$(8) = "ADXCSONF.DAT"
+
+    ! set the source and destination for copy
+    OS.DESTINATION$ = "C:\ADX_SDT1\"
+    OS.SOURCE$      = "D:\ADX_UPGM\"
+
+    FOR SELECT.COUNT% = 1 TO 8
+        ! Copying the file from TEMP to the entered location
+        CALL OSSHELL("COPY " + OS.SOURCE$ + OS.FILE$(SELECT.COUNT%) + \ !CJK
+                     XRE.SPACE$ + OS.DESTINATION$                   + \ !CJK
+                     " > " + DIR.OUT$ + " >>* " + DIR.OUT$)
+
+        DIR.FILE.RC% = FUNC.OPEN.SEQUENTIAL.FILE( DIR.OUT$ )            !DJK
+
+        ! If file open unsuccessful
+        IF DIR.FILE.RC% <= XRE.ZERO% THEN BEGIN
+            DIR.OPEN    = FALSE                                         !CJK
+            STATUS.MSG$ = "Error in opening DIR output file"
+            GOSUB LOG.STATUS.MSG
+            ! Setting NULL to avoid file read
+            DIR.VALUE$ = XRE.NULL$
+        ENDIF ELSE BEGIN
+            DIR.OPEN   = TRUE
+            DIR.VALUE$ = XRE.SPACE$
+        ENDIF
+
+        ! Read the file till EOF or read error
+        WHILE LEN(DIR.VALUE$) <> XRE.ZERO%
+            DIR.VALUE$ = FUNC.READ.SEQUENTIAL.FILE( DIR.FILE.RC% )      !DJK
+
+            !-----------------------------------------------!
+            ! If error string matches, write the error with !
+            ! file name in LOG file                         !
+            !-----------------------------------------------!
+            IF MATCH(UCASE$("Error extracting file"),   \               !CJK
+                     UCASE$(DIR.VALUE$),1) <> XRE.ZERO% THEN BEGIN      !CJK
+                ! Logging copy error                                    !CJK
+                STATUS.MSG$ = "Error when copying OS file " + \
+                              OS.FILE$(SELECT.COUNT%)
+                GOSUB LOG.STATUS.MSG
+                RESTORE.STATUS = FALSE
+            ENDIF
+        WEND
+
+        ! Closing File
+        IF DIR.OPEN THEN BEGIN
+            CALL FUNC.CLOSE.FILE( DIR.FILE.RC% )                        !DJK
+            DIR.OPEN = FALSE
+        ENDIF
+    NEXT SELECT.COUNT%
+RETURN
+!* END CHANGE BLOCK FOR BDC
+
+
+END SUB
+

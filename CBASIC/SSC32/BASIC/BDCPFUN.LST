@@ -1,0 +1,278 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           FILE FUNCTIONS Boots.com Parcel File (BDCP)
+   5: 0000: \***
+   6: 0000: \***           REFERENCE:   BDCPFUN.BAS
+   7: 0000: \***
+   8: 0000: \***           VERSION A         Neil Bennett          19th May 2010
+   9: 0000: \***
+  10: 0000: \***
+  11: 0000: \*******************************************************************************
+  12: 0000: \*******************************************************************************
+  13: 0000: 
+  14: 0000: INTEGER*2 GLOBAL                       \
+  15: 0000:           CURRENT.REPORT.NUM%
+  16: 0000: 
+  17: 0000: STRING    GLOBAL                       \
+  18: 0000:           CURRENT.CODE$,               \
+  19: 0000:           FILE.OPERATION$
+  20: 0000: 
+  21: 0000: STRING    BDCP.KEY$
+  22: 0000: 
+  23: 0000: %INCLUDE BDCPDEC.J86
+  24: 0000: \******************************************************************************
+  25: 0000: \******************************************************************************
+  26: 0000: \***
+  27: 0000: \***           FILE DECLARATIONS Boots.com Parcel File (BDCP)
+  28: 0000: \***
+  29: 0000: \***           REFERENCE:   BDCPDEC.J86
+  30: 0000: \***
+  31: 0000: \***           VERSION A         Neil Bennett          19th May 2010
+  32: 0000: \***
+  33: 0000: \***
+  34: 0000: \*******************************************************************************
+  35: 0000: \*******************************************************************************
+  36: 0000: 
+  37: 0000: STRING GLOBAL                          \
+  38: 0000:        BDCP.FILE.NAME$,                \
+  39: 0000:        BDCP.SUPPLIER$,                 \  3 bytes UPD Supplier Number
+  40: 0000:        BDCP.CARTON$,                   \  4 bytes ASC 8 digit consignment number
+  41: 0000:        BDCP.ORDER$,                    \  5 bytes UPD Boots.com order number
+  42: 0000:        BDCP.EXPECT.DATE$,              \  3 bytes UPD Expected Delivery Date
+  43: 0000:        BDCP.STATUS$,                   \  1 bytes ASC Current status
+  44: 0000:        BDCP.DEL.DATETIME$,             \  6 bytes UPD Delivery date/time
+  45: 0000:        BDCP.DEL.EXPORTED$,             \  1 bytes ASC Y/N
+  46: 0000:        BDCP.COL.DATETIME$,             \  6 bytes UPD Collected date/time
+  47: 0000:        BDCP.COL.EXPORTED$,             \  1 bytes ASC Y/N
+  48: 0000:        BDCP.RET.DATETIME$,             \  6 bytes UPD Returned date/time
+  49: 0000:        BDCP.RET.EXPORTED$,             \  1 bytes ASC Y/N
+  50: 0000:        BDCP.LST.DATETIME$,             \  6 bytes UPD Lost date/time
+  51: 0000:        BDCP.LST.EXPORTED$,             \  1 bytes ASC Y/N
+  52: 0000:        BDCP.FND.DATETIME$,             \  6 bytes UPD Found date/time
+  53: 0000:        BDCP.FND.EXPORTED$,             \  1 bytes ASC Y/N
+  54: 0000:        BDCP.FILLER$                    ! 49 bytes filler
+  55: 0000: 
+  56: 0000: INTEGER*1 GLOBAL                       \
+  57: 0000:        BDCP.COL.RC%                    !  1 byte  INT 0 - Till, 1 - Controller
+  58: 0000: 
+  59: 0000: INTEGER*2 GLOBAL                       \
+  60: 0000:        BDCP.KEYL%,                     \
+  61: 0000:        BDCP.RECL%,                     \
+  62: 0000:        BDCP.SESS.NUM%,                 \
+  63: 0000:        BDCP.REPORT.NUM%                !
+  64: 0000: 
+  65: 0000: 
+  66: 0000: 
+  67: 0000: FUNCTION BDCP.SET PUBLIC
+  68: 0014: \****************************
+  69: 0014: 
+  70: 0014:     BDCP.REPORT.NUM% = 803
+  71: 001d:     BDCP.KEYL%       =   7
+  72: 0026:     BDCP.RECL%       = 101
+  73: 002f:     BDCP.FILE.NAME$  = "BDCP"
+  74: 003e: 
+  75: 003e: END FUNCTION
+  76: 004a: 
+  77: 004a: \-----------------------------------------------------------------------------
+  78: 004a: 
+  79: 004a: FUNCTION READ.BDCP PUBLIC
+  80: 005e: \****************************
+  81: 005e: 
+  82: 005e:     INTEGER*2 READ.BDCP
+  83: 005e: 
+  84: 005e:     READ.BDCP = 1
+  85: 0063: 
+  86: 0063:     BDCP.KEY$ = BDCP.SUPPLIER$ + BDCP.CARTON$
+  87: 0085: 
+  88: 0085:     IF END #BDCP.SESS.NUM% THEN READ.BDCP.ERROR
+  89: 0099:     READ FORM "T8,C5,C3,C1,C6,C1,C6,I1,C1,C6,C1,C6,C1,C6,C1,C49";       \
+  90: 0162:        #BDCP.SESS.NUM%                 \
+  91: 0162:        KEY BDCP.KEY$;                  \  7 bytes UPD Supp + Carton
+  92: 0162:        BDCP.ORDER$,                    \  5 bytes UPD Boots.com order number
+  93: 0162:        BDCP.EXPECT.DATE$,              \  3 bytes UPD Expected Delivery Date
+  94: 0162:        BDCP.STATUS$,                   \  1 bytes ASC Current status
+  95: 0162:        BDCP.DEL.DATETIME$,             \  6 bytes UPD Delivery date/time
+  96: 0162:        BDCP.DEL.EXPORTED$,             \  1 bytes ASC Y/N
+  97: 0162:        BDCP.COL.DATETIME$,             \  6 bytes UPD Collected date/time
+  98: 0162:        BDCP.COL.RC%,                   \  1 byte  INT 0 - Till, 1 - Controller
+  99: 0162:        BDCP.COL.EXPORTED$,             \  1 bytes ASC Y/N
+ 100: 0162:        BDCP.RET.DATETIME$,             \  6 bytes UPD Returned date/time
+ 101: 0162:        BDCP.RET.EXPORTED$,             \  1 bytes ASC Y/N
+ 102: 0162:        BDCP.LST.DATETIME$,             \  6 bytes UPD Lost date/time
+ 103: 0162:        BDCP.LST.EXPORTED$,             \  1 bytes ASC Y/N
+ 104: 0162:        BDCP.FND.DATETIME$,             \  6 bytes UPD Found date/time
+ 105: 0162:        BDCP.FND.EXPORTED$,             \  1 bytes ASC Y/N
+ 106: 0162:        BDCP.FILLER$                    ! 49 bytes filler
+ 107: 0162: 
+ 108: 0162: 
+ 109: 0162:     READ.BDCP = 0
+ 110: 0167:     EXIT FUNCTION
+ 111: 0169: 
+ 112: 0169: READ.BDCP.ERROR:
+ 113: 0169: 
+ 114: 0169: 
+ 115: 0169:        FILE.OPERATION$ = "R"
+ 116: 0178:        CURRENT.REPORT.NUM% = BDCP.REPORT.NUM%
+ 117: 0186: 
+ 118: 0186:        EXIT FUNCTION
+ 119: 0188: 
+ 120: 0188: END FUNCTION
+ 121: 0197: 
+ 122: 0197: \-----------------------------------------------------------------------------
+ 123: 0197: 
+ 124: 0197: FUNCTION WRITE.BDCP PUBLIC
+ 125: 01ab: \****************************
+ 126: 01ab: 
+ 127: 01ab:     INTEGER*2 WRITE.BDCP
+ 128: 01ab: 
+ 129: 01ab:     WRITE.BDCP = 1
+ 130: 01b0: 
+ 131: 01b0:     BDCP.KEY$ = BDCP.SUPPLIER$ + BDCP.CARTON$
+ 132: 01d2: 
+ 133: 01d2:     IF END #BDCP.SESS.NUM% THEN WRITE.BDCP.ERROR
+ 134: 01e6:     WRITE FORM "C7,C5,C3,C1,C6,C1,C6,I1,C1,C6,C1,C6,C1,C6,C1,C49";    \
+ 135: 02f3:        #BDCP.SESS.NUM%;                \
+ 136: 02f3:        BDCP.KEY$,                      \  7 bytes UPD Supp + Carton
+ 137: 02f3:        BDCP.ORDER$,                    \  5 bytes UPD Boots.com order number
+ 138: 02f3:        BDCP.EXPECT.DATE$,              \  3 bytes UPD Expected Delivery Date
+ 139: 02f3:        BDCP.STATUS$,                   \  1 bytes ASC Current status
+ 140: 02f3:        BDCP.DEL.DATETIME$,             \  6 bytes UPD Delivery date/time
+ 141: 02f3:        BDCP.DEL.EXPORTED$,             \  1 bytes ASC Y/N
+ 142: 02f3:        BDCP.COL.DATETIME$,             \  6 bytes UPD Collected date/time
+ 143: 02f3:        BDCP.COL.RC%,                   \  1 byte  INT 0 - Till, 1 - Controller
+ 144: 02f3:        BDCP.COL.EXPORTED$,             \  1 bytes ASC Y/N
+ 145: 02f3:        BDCP.RET.DATETIME$,             \  6 bytes UPD Returned date/time
+ 146: 02f3:        BDCP.RET.EXPORTED$,             \  1 bytes ASC Y/N
+ 147: 02f3:        BDCP.LST.DATETIME$,             \  6 bytes UPD Lost date/time
+ 148: 02f3:        BDCP.LST.EXPORTED$,             \  1 bytes ASC Y/N
+ 149: 02f3:        BDCP.FND.DATETIME$,             \  6 bytes UPD Found date/time
+ 150: 02f3:        BDCP.FND.EXPORTED$,             \  1 bytes ASC Y/N
+ 151: 02f3:        BDCP.FILLER$                    ! 49 bytes filler
+ 152: 02f3: 
+ 153: 02f3: 
+ 154: 02f3:     WRITE.BDCP = 0
+ 155: 02f8:     EXIT FUNCTION
+ 156: 02fa: 
+ 157: 02fa: WRITE.BDCP.ERROR:
+ 158: 02fa: 
+ 159: 02fa: 
+ 160: 02fa:        FILE.OPERATION$ = "W"
+ 161: 0309:        CURRENT.REPORT.NUM% = BDCP.REPORT.NUM%
+ 162: 0317: 
+ 163: 0317:        EXIT FUNCTION
+ 164: 0319: 
+ 165: 0319: END FUNCTION
+ 166: 0328: 
+ 167: 0328: \-----------------------------------------------------------------------------
+ 168: 0328: 
+ 169: 0328: FUNCTION READ.BDCP.LOCK PUBLIC
+ 170: 033c: \*****************************
+ 171: 033c: 
+ 172: 033c:     INTEGER*2 READ.BDCP.LOCK
+ 173: 033c: 
+ 174: 033c:     READ.BDCP.LOCK = 1
+ 175: 0341: 
+ 176: 0341:     BDCP.KEY$ = BDCP.SUPPLIER$ + BDCP.CARTON$
+ 177: 0363: 
+ 178: 0363:     IF END #BDCP.SESS.NUM% THEN READ.BDCP.LOCK.ERROR
+ 179: 0377:     READ FORM "T8,C5,C3,C1,C6,C1,C6,I1,C1,C6,C1,C6,C1,C6,C1,C49";       \
+ 180: 0440:        #BDCP.SESS.NUM% AUTOLOCK        \
+ 181: 0440:        KEY BDCP.KEY$;                  \  7 bytes UPD Supp + Carton
+ 182: 0440:        BDCP.ORDER$,                    \  5 bytes UPD Boots.com order number
+ 183: 0440:        BDCP.EXPECT.DATE$,              \  3 bytes UPD Expected Delivery Date
+ 184: 0440:        BDCP.STATUS$,                   \  1 bytes ASC Current status
+ 185: 0440:        BDCP.DEL.DATETIME$,             \  6 bytes UPD Delivery date/time
+ 186: 0440:        BDCP.DEL.EXPORTED$,             \  1 bytes ASC Y/N
+ 187: 0440:        BDCP.COL.DATETIME$,             \  6 bytes UPD Collected date/time
+ 188: 0440:        BDCP.COL.RC%,                   \  1 byte  INT 0 - Till, 1 - Controller
+ 189: 0440:        BDCP.COL.EXPORTED$,             \  1 bytes ASC Y/N
+ 190: 0440:        BDCP.RET.DATETIME$,             \  6 bytes UPD Returned date/time
+ 191: 0440:        BDCP.RET.EXPORTED$,             \  1 bytes ASC Y/N
+ 192: 0440:        BDCP.LST.DATETIME$,             \  6 bytes UPD Lost date/time
+ 193: 0440:        BDCP.LST.EXPORTED$,             \  1 bytes ASC Y/N
+ 194: 0440:        BDCP.FND.DATETIME$,             \  6 bytes UPD Found date/time
+ 195: 0440:        BDCP.FND.EXPORTED$,             \  1 bytes ASC Y/N
+ 196: 0440:        BDCP.FILLER$                    ! 49 bytes filler
+ 197: 0440: 
+ 198: 0440: 
+ 199: 0440:     READ.BDCP.LOCK = 0
+ 200: 0445:     EXIT FUNCTION
+ 201: 0447: 
+ 202: 0447: READ.BDCP.LOCK.ERROR:
+ 203: 0447: 
+ 204: 0447: 
+ 205: 0447:        FILE.OPERATION$ = "R"
+ 206: 0456:        CURRENT.REPORT.NUM% = BDCP.REPORT.NUM%
+ 207: 0464: 
+ 208: 0464:        EXIT FUNCTION
+ 209: 0466: 
+ 210: 0466: END FUNCTION
+ 211: 0475: 
+ 212: 0475: \-----------------------------------------------------------------------------
+ 213: 0475: 
+ 214: 0475: FUNCTION WRITE.BDCP.UNLOCK PUBLIC
+ 215: 0489: \********************************
+ 216: 0489: 
+ 217: 0489:     INTEGER*2 WRITE.BDCP.UNLOCK
+ 218: 0489: 
+ 219: 0489:     WRITE.BDCP.UNLOCK = 1
+ 220: 048e: 
+ 221: 048e:     BDCP.KEY$ = BDCP.SUPPLIER$ + BDCP.CARTON$
+ 222: 04b0: 
+ 223: 04b0:     IF END #BDCP.SESS.NUM% THEN WRITE.BDCP.UNLOCK.ERROR
+ 224: 04c4:     WRITE FORM "C7,C5,C3,C1,C6,C1,C6,I1,C1,C6,C1,C6,C1,C6,C1,C49";    \
+ 225: 05d1:        #BDCP.SESS.NUM% AUTOUNLOCK;     \
+ 226: 05d1:        BDCP.KEY$,                      \  7 bytes UPD Supp + Carton
+ 227: 05d1:        BDCP.ORDER$,                    \  5 bytes UPD Boots.com order number
+ 228: 05d1:        BDCP.EXPECT.DATE$,              \  3 bytes UPD Expected Delivery Date
+ 229: 05d1:        BDCP.STATUS$,                   \  1 bytes ASC Current status
+ 230: 05d1:        BDCP.DEL.DATETIME$,             \  6 bytes UPD Delivery date/time
+ 231: 05d1:        BDCP.DEL.EXPORTED$,             \  1 bytes ASC Y/N
+ 232: 05d1:        BDCP.COL.DATETIME$,             \  6 bytes UPD Collected date/time
+ 233: 05d1:        BDCP.COL.RC%,                   \  1 byte  INT 0 - Till, 1 - Controller
+ 234: 05d1:        BDCP.COL.EXPORTED$,             \  1 bytes ASC Y/N
+ 235: 05d1:        BDCP.RET.DATETIME$,             \  6 bytes UPD Returned date/time
+ 236: 05d1:        BDCP.RET.EXPORTED$,             \  1 bytes ASC Y/N
+ 237: 05d1:        BDCP.LST.DATETIME$,             \  6 bytes UPD Lost date/time
+ 238: 05d1:        BDCP.LST.EXPORTED$,             \  1 bytes ASC Y/N
+ 239: 05d1:        BDCP.FND.DATETIME$,             \  6 bytes UPD Found date/time
+ 240: 05d1:        BDCP.FND.EXPORTED$,             \  1 bytes ASC Y/N
+ 241: 05d1:        BDCP.FILLER$                    ! 49 bytes filler
+ 242: 05d1: 
+ 243: 05d1: 
+ 244: 05d1:     WRITE.BDCP.UNLOCK = 0
+ 245: 05d6:     EXIT FUNCTION
+ 246: 05d8: 
+ 247: 05d8: WRITE.BDCP.UNLOCK.ERROR:
+ 248: 05d8: 
+ 249: 05d8: 
+ 250: 05d8:        FILE.OPERATION$ = "W"
+ 251: 05e7:        CURRENT.REPORT.NUM% = BDCP.REPORT.NUM%
+ 252: 05f5: 
+ 253: 05f5:        EXIT FUNCTION
+ 254: 05f7: 
+ 255: 05f7: END FUNCTION
+ 256: 0606: 
+ 257: 0606: \-----------------------------------------------------------------------------
+ 258: 0606: 
+ 259: 0606: FUNCTION DELETE.BDCP PUBLIC
+ 260: 061a: 
+ 261: 061a:     INTEGER*2 DELETE.BDCP
+ 262: 061a: 
+ 263: 061a:     DELETE.BDCP = 1
+ 264: 061f:     BDCP.KEY$ = BDCP.SUPPLIER$ + BDCP.CARTON$
+ 265: 0641:     IF END # BDCP.SESS.NUM% THEN DELETE.ERROR
+ 266: 0655:     DELREC BDCP.SESS.NUM%; BDCP.KEY$
+ 267: 0669:     DELETE.BDCP = 0
+ 268: 066e:     EXIT FUNCTION
+ 269: 0670: 
+ 270: 0670: DELETE.ERROR:
+ 271: 0670: 
+ 272: 0670:     FILE.OPERATION$     = "D"
+ 273: 067f:     CURRENT.REPORT.NUM% = BDCP.REPORT.NUM%
+ 274: 068d:     CURRENT.CODE$       = BDCP.KEY$
+ 275: 06a0: 
+ 276: 06a0: END FUNCTION
+ 277: 06af: 
+ 278: 06af: End of Compilation

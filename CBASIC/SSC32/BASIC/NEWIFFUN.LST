@@ -1,0 +1,556 @@
+   1: 0000: REM \
+   2: 0000: \*******************************************************************************
+   3: 0000: \*******************************************************************************
+   4: 0000: \***
+   5: 0000: \***          %INCLUDE FOR NEW INVOICES FILE PUBLIC FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***                REFERENCE    : NEWIFFUN.J86
+   8: 0000: \***
+   9: 0000: \***   VERSION A          MICHAEL KELSALL                  12th October 1992
+  10: 0000: \***   Derived from NEWIFFNC.J86
+  11: 0000: \***
+  12: 0000: \***   VERSION B          Neil Bennett                     12th December 2006
+  13: 0000: \***   Added support for record type 'C' - Carton records
+  14: 0000: \***
+  15: 0000: \***   VERSION C          Neil Bennett                          30th May 2007
+  16: 0000: \***   Added support for record type 'R' - Add/Update Recall Record
+  17: 0000: \***                                 'V' - Remove Items from Recall Rcd (or all)
+  18: 0000: \***                                 'W' - Unblock Recall Items for sale
+  19: 0000: \***
+  20: 0000: \***   VERSION D          Charles Skadorwa                      21st Aug 2007
+  21: 0000: \***   Defect 523: Processing fails if "W" unblocking records exist. Mainframe
+  22: 0000: \***               spec incorrect as it includes recall no., however, it was
+  23: 0000: \***               decided to fix the controller end.
+  24: 0000: \***
+  25: 0000: \***   VERSION E          Charles Skadorwa                      30th Aug 2007
+  26: 0000: \***   Defect 523: Processing fails if "W" unblocking records exist.
+  27: 0000: \***               DIM statement added.
+  28: 0000: \***
+  29: 0000: \***   VERSION F          Stuart Highley                        18 July 2008
+  30: 0000: \***   Added new record types P, E, F, and G, for UOD booking in.
+  31: 0000: \***
+  32: 0000: \***   REVISION 1.8.                ROBERT COWEY.                17 DEC 2009.
+  33: 0000: \***   Incorprated SSC3200.BAS functions associated with truncated NEWIF.
+  34: 0000: \***
+  35: 0000: \***   VERSION G               Sumitha Moorthy                14/04/2015
+  36: 0000: \***   FOD - 431 Dallas Positive Receiving
+  37: 0000: \***   Changes as part of NEWIF file layout change, a new variable is
+  38: 0000: \***   added into the NEWIF.ITEM.DETAILS$ array.
+  39: 0000: \***
+  40: 0000: \*******************************************************************************
+  41: 0000: \*******************************************************************************
+  42: 0000: 
+  43: 0000:   %INCLUDE NEWIFDEC.J86
+  44: 0000: REM \
+  45: 0000: \******************************************************************************
+  46: 0000: \******************************************************************************
+  47: 0000: \***
+  48: 0000: \***         %INCLUDE FOR NEW INVOICES FILE VARIABLE DECLARATIONS
+  49: 0000: \***
+  50: 0000: \***               FILE TYPE    : Sequential
+  51: 0000: \***
+  52: 0000: \***               REFERENCE    : NEWIFDEC.J86
+  53: 0000: \***
+  54: 0000: \***   VERSION A          MICHAEL KELSALL                   19th October 1992
+  55: 0000: \***   Derived from NEWIFFLC.J86 and NEWIFNUC.J86
+  56: 0000: \***   Includes new CSR line flag attached to each invoice item.
+  57: 0000: \***
+  58: 0000: \***   VERSION B          LES COOK                         30th December 1992
+  59: 0000: \***   To include 2 new record types for UOD - master and item
+  60: 0000: \***
+  61: 0000: \***   VERSION C          NEIL BENNETT                     12th December 2006
+  62: 0000: \***   To include new record type for Cartons.
+  63: 0000: \***
+  64: 0000: \***   VERSION D          Neil Bennett                          30th May 2007
+  65: 0000: \***   Added support for record type 'R' - Add/Update Recall Record
+  66: 0000: \***                                 'V' - Remove Items from Recall Rcd (or all)
+  67: 0000: \***                                 'W' - Unblock Recall Items for sale
+  68: 0000: \***
+  69: 0000: \***   VERSION E          Stuart Highley                   18 July 2008
+  70: 0000: \***   To include new record type for UOD booking in.
+  71: 0000: \***
+  72: 0000: \***   REVISION 1.8.                ROBERT COWEY.                17 DEC 2009.
+  73: 0000: \***   Incorprated SSC3200.BAS variables associated with truncated NEWIF.
+  74: 0000: \***
+  75: 0000: \***   VERSION F              Sumitha Moorthy                 14/04/2015
+  76: 0000: \***   FOD - 431 Dallas Positive Receiving
+  77: 0000: \***   Changes as part of NEWIF file layout change, a new variable is
+  78: 0000: \***   added into the NEWIF.ITEM.DETAILS$ array.
+  79: 0000: \***
+  80: 0000: \******************************************************************************
+  81: 0000: \******************************************************************************
+  82: 0000: 
+  83: 0000:   STRING GLOBAL           \
+  84: 0000:     NEWIF.ACT.DATE$,      \  8 bytes ASCII                              !DNWB
+  85: 0000:     NEWIF.ACTION.MKR$,    \ 1 byte ASCII
+  86: 0000:     NEWIF.ALLOC.ON.SALE.DATE$,  \ 6 bytes ASCII
+  87: 0000:     NEWIF.ASN.CODE$,      \ 35 bytes ASCII                              !CNWB
+  88: 0000:     NEWIF.BATCH.NOS$,     \ 30 bytes ASCII                              !DNWB
+  89: 0000:     NEWIF.BOL.FLAG$,      \  1 byte  ASCII                              !ESH
+  90: 0000:     NEWIF.BOOTS.CODE$,    \ 7 bytes ASCIINEWIF.BUS.CENTRE
+  91: 0000:     NEWIF.BUS.CENTRE$,    \ 1 byte ASCII
+  92: 0000:     NEWIF.CARTON.NO$,     \  8 byte  ASCII                              !CNWB
+  93: 0000:     NEWIF.CHECK.QTY$,     \  4 bytes ASCII
+  94: 0000:     NEWIF.CRTN.IN.ASN$,   \  3 bytes ASCII                              !CNWB
+  95: 0000:     NEWIF.CSR.MKR$,       \ 1 byte ASCII, 'Y' for CSR line
+  96: 0000:     NEWIF.DALLAS.MKR$,    \ 1 byte Y = DALLAS invoice; Q = quantity alteration
+  97: 0000:     NEWIF.DATE$,          \ 6 byte (YYMMDD) date of last IDUF update
+  98: 0000:     NEWIF.DEL.DTTM$,      \ 12 bytes ASCII                              !CNWB
+  99: 0000:     NEWIF.DESPATCH.DATE$, \  6 bytes ASCII                              !ESH
+ 100: 0000:     NEWIF.DET.FILLER.1$,  \ 3 bytes spaces
+ 101: 0000:     NEWIF.DET.FILLER.2$,  \ 8 bytes spaces
+ 102: 0000:     NEWIF.DISC.PERC$,     \  4 bytes ASCII
+ 103: 0000:     NEWIF.DISC.QTY$,      \  4 bytes ASCII
+ 104: 0000:     NEWIF.DIST.CENTRE$,   \ 2 bytes ASCII                               ! BLC
+ 105: 0000:     NEWIF.ENDREC.MARKER$, \ 3 byte set to "CRLF (CHR$(34) + CHR$(13) + CHR$(10))
+ 106: 0000:     NEWIF.EXP.DATE$,      \  8 bytes ASCII                              !DNWB
+ 107: 0000:     NEWIF.EXP.DEL.DATE$,  \ 6 byte YYMMDD
+ 108: 0000:     NEWIF.EXP.DELIV.DATE$,\ 6 bytes ASCII                               ! BLC
+ 109: 0000:     NEWIF.FILE.NAME$,     \
+ 110: 0000:                           \
+ 111: 0000:     NEWIF.FLAG.TYPE$,     \  1 bytes ASCII                              !DNWB
+ 112: 0000:     NEWIF.FLD.DELIMETER$, \ 1 byte ASCII set to " (CHR$(34))
+ 113: 0000:     NEWIF.FOLIO.MONTH$,   \ 2 byte values 1 - 12
+ 114: 0000:     NEWIF.FOLIO.NO$,      \ 5 bytes with leading zeroes
+ 115: 0000:     NEWIF.FOLIO.NUM$,     \ 5 bytes ASCII                               ! BLC
+ 116: 0000:     NEWIF.FOLIO.YEAR$,    \ 2 bytes values 00 - 99
+ 117: 0000:     NEWIF.FSI$,           \ 1 bytes
+ 118: 0000:     NEWIF.HDR.FILLER$,    \ 5 bytes filler                              ! ESH
+ 119: 0000:     NEWIF.HIER.LVL$,      \  1 byte  ASCII                              !ESH
+ 120: 0000:     NEWIF.INSYST.FLAG$,   \ 1 byte Y = In stock system; N = Not in stock system
+ 121: 0000:     NEWIF.INVCE.DATE$,    \ 6 byte YYMMDD
+ 122: 0000:     NEWIF.INVCE.TYPE$,    \ 1 byte P = Pre-processed
+ 123: 0000:     NEWIF.ITEM.CODE$,     \ 7 bytes ASCII                               ! BLC
+ 124: 0000:     NEWIF.ITEM.COUNT$,    \ 2 bytes values 1 - 17
+ 125: 0000:     NEWIF.ITEM.DETAILS$(2),\ 27 bytes string containing the repeated item
+ 126: 0000:                           \ details. The first dimension has a variable
+ 127: 0000:                           \ no of elements from 1 to 17 incl. The second
+ 128: 0000:                           \ dimension has 6 elements:                   !FSM
+ 129: 0000:                           \ 1. Boots Code
+ 130: 0000:                           \ 2. Price
+ 131: 0000:                           \ 3. Qty
+ 132: 0000:                           \ 4. CSR marker
+ 133: 0000:                           \ 5. UOD number                               !FSM
+ 134: 0000:                           \ 6. Filler                                   !FSM
+ 135: 0000:     NEWIF.ITEM.QTY$(1),   \  3 bytes ASCII                              !CNWB
+ 136: 0000:     NEWIF.ITM.CODE$(1),   \  7 bytes ASCII                              !CNWB
+ 137: 0000:     NEWIF.ITMS.IN.CRTN$,  \  3 bytes ASCII                              !CNWB
+ 138: 0000:     NEWIF.LAPSING.DAYS$,  \ 3 bytes ASCII
+ 139: 0000:     NEWIF.LEAD.TIME.FRI$, \ 3 bytes ASCII
+ 140: 0000:     NEWIF.LEAD.TIME.MON$, \ 3 bytes ASCII
+ 141: 0000:     NEWIF.LEAD.TIME.THU$, \ 3 bytes ASCII
+ 142: 0000:     NEWIF.LEAD.TIME.TUE$, \ 3 bytes ASCII
+ 143: 0000:     NEWIF.LEAD.TIME.WED$, \ 3 bytes ASCII
+ 144: 0000:     NEWIF.LICENCE$,       \ 10 bytes ASCII                              !ESH
+ 145: 0000:     NEWIF.MAX.CHECK.QTY$, \  4 bytes ASCII
+ 146: 0000:     NEWIF.NUM.CHILDREN$,  \  3 bytes ASCII                              !ESH
+ 147: 0000:     NEWIF.NUM.ITEM$,      \ 4 bytes ASCII                               ! BLC
+ 148: 0000:     NEWIF.NUM.ITEMS$,     \  4 bytes ASCII                              !DNWB
+ 149: 0000:     NEWIF.OCCUR.NUMBER$,  \ 4 bytes ASCII                               ! BLC
+ 150: 0000:     NEWIF.ORDER.DATE$,    \ 6 bytes ASCII
+ 151: 0000:     NEWIF.ORDER.FILLER1$, \ 5 bytes spaces
+ 152: 0000:     NEWIF.ORDER.ITEM.CNT$,      \ 3 bytes ASCII
+ 153: 0000:     NEWIF.ORDER.ITEM.DETAILS$(2), \ 27 bytes string containing the
+ 154: 0000:                           \ repeated item details. The first dimension
+ 155: 0000:                           \ has a variable no of elements from 1 to 16
+ 156: 0000:                           \ incl. The second dimension has 5 elements:
+ 157: 0000:                           \ 1. Boots code
+ 158: 0000:                           \ 2. Price
+ 159: 0000:                           \ 3. Qty
+ 160: 0000:                           \ 4. CSR marker
+ 161: 0000:                           \ 5. Filler
+ 162: 0000:     NEWIF.ORDER.NO$,      \ 5 bytes ASCII
+ 163: 0000:     NEWIF.ORDER.SUF$,     \ 1 byte ASCII
+ 164: 0000:     NEWIF.ORDER.SUFFIX$,  \ 1 byte ASCII
+ 165: 0000:     NEWIF.PAGE.NO$,       \ 3 bytes ASCII
+ 166: 0000:     NEWIF.PARENT.LICENCE$,\ 10 bytes ASCII                              !ESH
+ 167: 0000:     NEWIF.PART.ORDER.RULES$,  \ 1 byte ASCII
+ 168: 0000:     NEWIF.PRICE$,         \ 7 bytes ASCII in pence with leading zeroes
+ 169: 0000:     NEWIF.QTY$,           \ 4 bytes ASCII in singles with leading zeroes
+ 170: 0000:     NEWIF.QUANTITY$,      \ 4 bytes ASCII                               ! BLC
+ 171: 0000:     NEWIF.RCL.DESC$,      \ 20 bytes ASCII                              !DNWB
+ 172: 0000:     NEWIF.RCL.LABEL$,     \  2 bytes ASCII                              !DNWB
+ 173: 0000:     NEWIF.RCL.RC$,        \  2 bytes ASCII                              !DNWB
+ 174: 0000:     NEWIF.RCL.REF$,       \  8 bytes ASCII                              !DNWB
+ 175: 0000:     NEWIF.RCL.SI.1$,      \ 80 bytes ASCII                              !DNWB
+ 176: 0000:     NEWIF.RCL.SI.2$,      \ 80 bytes ASCII                              !DNWB
+ 177: 0000:     NEWIF.REC.COUNT$,     \ 5 bytes with leading zeroes
+ 178: 0000:     NEWIF.REC.TYPE$,      \ 1 bytes ASCII H = Header
+ 179: 0000:                           \               D = Detail
+ 180: 0000:                           \               T = Trailer
+ 181: 0000:                           \               U or Q = UOD master record
+ 182: 0000:                           \               I or A = UOD item record
+ 183: 0000:     NEWIF.RECORD$,        \ whole record variable length
+ 184: 0000:     NEWIF.SERIAL.NO$,     \ 5 bytes
+ 185: 0000:     NEWIF.STORE.NO$,      \ 4 bytes
+ 186: 0000:     NEWIF.STORE.SFX$,     \  1 byte  ASCII                              !ESH
+ 187: 0000:     NEWIF.STORE.SUF$,     \ 1 byte
+ 188: 0000:     NEWIF.STORE.SUFFIX$,  \ 1 byte ASCII                                ! BLC
+ 189: 0000:     NEWIF.SUPP.ROUTE$,    \  1 bytes ASCII                              !DNWB
+ 190: 0000:     NEWIF.SUPPLIER.NAME$, \ 10 bytes ASCII
+ 191: 0000:     NEWIF.SUPPLIER.NO$,   \ 7 bytes ASCII
+ 192: 0000:     NEWIF.SUPPLIER.NO.PKD$, \ 3 bytes UPD
+ 193: 0000:     NEWIF.SUPREF.FILLER$, \  6 bytes spaces
+ 194: 0000:     NEWIF.TRL.FILLER$,    \ 10 bytes spaces
+ 195: 0000:     NEWIF.UOD.ACTION$,    \  1 byte  ASCII                              !ESH
+ 196: 0000:     NEWIF.UOD.BATCH.SIZE$,\ 3 bytes. Num of UODs to book in before      ! ESH
+ 197: 0000:                           \ prompt for driver badge                     ! ESH
+ 198: 0000:     NEWIF.UOD.CATEGORY$,  \  1 byte  ASCII                              !ESH
+ 199: 0000:     NEWIF.UOD.ITEM.FILLER$,\ 3 bytes ASCII                              ! BLC
+ 200: 0000:     NEWIF.UOD.MAS.FILLER$,\ 4 bytes ASCII                               ! BLC
+ 201: 0000:     NEWIF.UOD.NIGHT.DELIV$,\ 1 byte. Night delivery store. Y or N.      ! ESH
+ 202: 0000:     NEWIF.UOD.NIGHT.SCAN$,\ 1 byte. Driver scans at night. Y or N.      ! ESH
+ 203: 0000:     NEWIF.UOD.NUMBER$,    \ 6 bytes ASCII                               ! BLC
+ 204: 0000:     NEWIF.UOD.REASON$,    \  1 byte  ASCII                              !ESH
+ 205: 0000:     NEWIF.UOD.TYPE$,      \ 1 byte ASCII                                ! BLC
+ 206: 0000:     NEWIF.UOD.WHAREA$,    \  3 bytes ASCII                              !ESH
+ 207: 0000:     NEWIF.WAREHOUSE.NUM$, \ 2 bytes ASCII                               ! BLC
+ 208: 0000:     NEWIF.WHOUSE.AREA$    ! 3 bytes
+ 209: 0000: 
+ 210: 0000:   STRING GLOBAL \                                                      ! 1.8 RC
+ 211: 0000:     NEWIF.TRUNC.FILE.NAME$, \                                          ! 1.8 RC
+ 212: 0000:     NEWIF.TRUNC.REC.TYPE$                                              ! 1.8 RC
+ 213: 0000: 
+ 214: 0000:   INTEGER*2 GLOBAL           \
+ 215: 0000:     NEWIF.CNT%,              \
+ 216: 0000:     NEWIF.INDEX%,            \
+ 217: 0000:                              \
+ 218: 0000:     NEWIF.SESS.NUM%,         \
+ 219: 0000:     NEWIF.REPORT.NUM%
+ 220: 0000: 
+ 221: 0000:   INTEGER*2 GLOBAL \                                                   ! 1.8 RC
+ 222: 0000:     NEWIF.TRUNC.RECL%, \                                               ! 1.8 RC
+ 223: 0000:     NEWIF.TRUNC.REPORT.NUM%, \                                         ! 1.8 RC
+ 224: 0000:     NEWIF.TRUNC.SESS.NUM%                                              ! 1.8 RC
+ 225: 0000: 
+ 226: 0000:   INTEGER*4  GLOBAL \                                                  ! 1.8 RC
+ 227: 0000:     NEWIF.TRUNC.REC.NUM%                                               ! 1.8 RC
+ 228: 0000: 
+ 229: 0000: 
+ 230: 0000:   STRING GLOBAL                        \
+ 231: 0000:        FILE.OPERATION$,                \
+ 232: 0000:        CURRENT.CODE$
+ 233: 0000: 
+ 234: 0000:   INTEGER*2 GLOBAL                     \
+ 235: 0000:        CURRENT.REPORT.NUM%
+ 236: 0000: 
+ 237: 0000: 
+ 238: 0000:   FUNCTION NEWIF.SET PUBLIC
+ 239: 0014: 
+ 240: 0014:     INTEGER*2       NEWIF.SET
+ 241: 0014:       NEWIF.SET = 1
+ 242: 0019: 
+ 243: 0019:       NEWIF.REPORT.NUM%  = 88
+ 244: 0022:       NEWIF.FILE.NAME$ = "NEWIF"
+ 245: 0031: 
+ 246: 0031:       NEWIF.SET = 0
+ 247: 0036: 
+ 248: 0036:   END FUNCTION
+ 249: 0045: 
+ 250: 0045: 
+ 251: 0045: 
+ 252: 0045:   FUNCTION READ.NEWIF PUBLIC
+ 253: 0059: 
+ 254: 0059:     INTEGER*2       READ.NEWIF
+ 255: 0059:       READ.NEWIF  =  1
+ 256: 005e: 
+ 257: 005e:     IF END # NEWIF.SESS.NUM% THEN ERROR.READ.NEWIF
+ 258: 0072:     READ #NEWIF.SESS.NUM%; LINE NEWIF.RECORD$
+ 259: 008b: 
+ 260: 008b:     NEWIF.REC.TYPE$ = MID$(NEWIF.RECORD$,2,1)
+ 261: 00aa: 
+ 262: 00aa:     IF NEWIF.REC.TYPE$ = "H" THEN BEGIN
+ 263: 00c3:        ! Hdr rec
+ 264: 00c3:        NEWIF.STORE.NO$        = MID$(NEWIF.RECORD$, 3, 4)
+ 265: 00e2:        NEWIF.SERIAL.NO$       = MID$(NEWIF.RECORD$, 7, 5)
+ 266: 0101:        NEWIF.DATE$            = MID$(NEWIF.RECORD$,12, 6)
+ 267: 0120:        NEWIF.UOD.BATCH.SIZE$  = MID$(NEWIF.RECORD$,18, 3)           ! FSH
+ 268: 013f:        NEWIF.UOD.NIGHT.DELIV$ = MID$(NEWIF.RECORD$,21, 1)           ! FSH
+ 269: 015e:        NEWIF.UOD.NIGHT.SCAN$  = MID$(NEWIF.RECORD$,22, 1)           ! FSH
+ 270: 017d:        NEWIF.HDR.FILLER$      = MID$(NEWIF.RECORD$,23, 5)           ! FSH
+ 271: 019c:        NEWIF.ENDREC.MARKER$   = RIGHT$(NEWIF.RECORD$, 3)
+ 272: 01bc:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "T" THEN BEGIN
+ 273: 01d2:        ! Trl rec
+ 274: 01d2:        NEWIF.REC.COUNT$     = MID$(NEWIF.RECORD$, 3, 5)
+ 275: 01f1:        NEWIF.TRL.FILLER$    = MID$(NEWIF.RECORD$, 8,10)
+ 276: 0210:        NEWIF.ENDREC.MARKER$ = RIGHT$(NEWIF.RECORD$, 3)
+ 277: 0230:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "D" THEN BEGIN
+ 278: 0249:         ! Detail rec
+ 279: 0249:         NEWIF.FSI$             = MID$(NEWIF.RECORD$, 3, 1)
+ 280: 0268:         NEWIF.FOLIO.MONTH$     = MID$(NEWIF.RECORD$, 4, 2)
+ 281: 0287:         NEWIF.FOLIO.NO$        = MID$(NEWIF.RECORD$, 6, 5)
+ 282: 02a6:         NEWIF.STORE.SUF$       = MID$(NEWIF.RECORD$,11, 1)
+ 283: 02c5:         NEWIF.FOLIO.YEAR$      = MID$(NEWIF.RECORD$,12, 2)
+ 284: 02e4:         NEWIF.INVCE.DATE$      = MID$(NEWIF.RECORD$,14, 6)
+ 285: 0303:         NEWIF.WHOUSE.AREA$     = MID$(NEWIF.RECORD$,20, 3)
+ 286: 0322:         NEWIF.INSYST.FLAG$     = MID$(NEWIF.RECORD$,23, 1)
+ 287: 0341:         NEWIF.ITEM.COUNT$      = MID$(NEWIF.RECORD$,24, 2)
+ 288: 0360:         NEWIF.INVCE.TYPE$      = MID$(NEWIF.RECORD$,26, 1)
+ 289: 037f:         NEWIF.DALLAS.MKR$      = MID$(NEWIF.RECORD$,27, 1)
+ 290: 039e:         NEWIF.EXP.DEL.DATE$    = MID$(NEWIF.RECORD$,28, 6)
+ 291: 03bd:         NEWIF.SUPPLIER.NO.PKD$ = MID$(NEWIF.RECORD$,34, 3)
+ 292: 03dc:         NEWIF.ORDER.SUF$       = MID$(NEWIF.RECORD$,37, 1)
+ 293: 03fb:         NEWIF.DET.FILLER.1$    = MID$(NEWIF.RECORD$,38, 3)
+ 294: 041a:         DIM NEWIF.ITEM.DETAILS$(VAL(NEWIF.ITEM.COUNT$), 6)              !GSM
+ 295: 0454:         NEWIF.INDEX% = 41
+ 296: 045d:         FOR NEWIF.CNT% = 1 TO VAL(NEWIF.ITEM.COUNT$)
+ 297: 0469:             NEWIF.ITEM.DETAILS$(NEWIF.CNT%, 1) =                      \
+ 298: 04a0:                           MID$(NEWIF.RECORD$, NEWIF.INDEX%, 7)
+ 299: 04a0:             NEWIF.ITEM.DETAILS$(NEWIF.CNT%, 2) =                      \
+ 300: 04db:                           MID$(NEWIF.RECORD$, NEWIF.INDEX% +  7, 7)
+ 301: 04db:             NEWIF.ITEM.DETAILS$(NEWIF.CNT%, 3) =                      \
+ 302: 0516:                           MID$(NEWIF.RECORD$, NEWIF.INDEX% + 14, 4)
+ 303: 0516:             NEWIF.ITEM.DETAILS$(NEWIF.CNT%, 4) =                      \
+ 304: 0551:                           MID$(NEWIF.RECORD$, NEWIF.INDEX% + 18, 1)
+ 305: 0551:             NEWIF.ITEM.DETAILS$(NEWIF.CNT%, 5) =                      \
+ 306: 058c:                           MID$(NEWIF.RECORD$, NEWIF.INDEX% + 19, 6)     !GSM
+ 307: 058c:             NEWIF.ITEM.DETAILS$(NEWIF.CNT%, 6) =                      \ !GSM
+ 308: 05c7:                           MID$(NEWIF.RECORD$, NEWIF.INDEX% + 25, 2)     !GSM
+ 309: 05c7:             NEWIF.INDEX% = NEWIF.INDEX% + 27
+ 310: 05cf:         NEXT NEWIF.CNT%
+ 311: 05ff:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "S" THEN BEGIN
+ 312: 0618:        ! supplier reference record
+ 313: 0618:        NEWIF.BUS.CENTRE$       = MID$(NEWIF.RECORD$, 3, 1)
+ 314: 0637:        NEWIF.SUPPLIER.NO$      = MID$(NEWIF.RECORD$, 4, 7)
+ 315: 0656:        NEWIF.SUPPLIER.NAME$    = MID$(NEWIF.RECORD$,11,10)
+ 316: 0675:        NEWIF.LEAD.TIME.MON$    = MID$(NEWIF.RECORD$,21, 3)
+ 317: 0694:        NEWIF.LEAD.TIME.TUE$    = MID$(NEWIF.RECORD$,24, 3)
+ 318: 06b3:        NEWIF.LEAD.TIME.WED$    = MID$(NEWIF.RECORD$,27, 3)
+ 319: 06d2:        NEWIF.LEAD.TIME.THU$    = MID$(NEWIF.RECORD$,30, 3)
+ 320: 06f1:        NEWIF.LEAD.TIME.FRI$    = MID$(NEWIF.RECORD$,33, 3)
+ 321: 0710:        NEWIF.LAPSING.DAYS$     = MID$(NEWIF.RECORD$,36, 3)
+ 322: 072f:        NEWIF.PART.ORDER.RULES$ = MID$(NEWIF.RECORD$,39, 1)
+ 323: 074e:        NEWIF.MAX.CHECK.QTY$    = MID$(NEWIF.RECORD$,40, 4)
+ 324: 076d:        NEWIF.CHECK.QTY$        = MID$(NEWIF.RECORD$,44, 4)
+ 325: 078c:        NEWIF.DISC.QTY$         = MID$(NEWIF.RECORD$,48, 4)
+ 326: 07ab:        NEWIF.DISC.PERC$        = MID$(NEWIF.RECORD$,52, 4)
+ 327: 07ca:        NEWIF.SUPREF.FILLER$    = MID$(NEWIF.RECORD$,56, 6)
+ 328: 07e9:        NEWIF.ENDREC.MARKER$    = RIGHT$(NEWIF.RECORD$, 3)
+ 329: 0809:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "O" THEN BEGIN
+ 330: 0822:        ! direct order record
+ 331: 0822:        NEWIF.BUS.CENTRE$         = MID$(NEWIF.RECORD$, 3, 1)
+ 332: 0841:        NEWIF.SUPPLIER.NO$        = MID$(NEWIF.RECORD$, 4, 7)
+ 333: 0860:        NEWIF.ORDER.NO$           = MID$(NEWIF.RECORD$,11, 5)
+ 334: 087f:        NEWIF.ORDER.SUFFIX$       = MID$(NEWIF.RECORD$,16, 1)
+ 335: 089e:        NEWIF.PAGE.NO$            = MID$(NEWIF.RECORD$,17, 3)
+ 336: 08bd:        NEWIF.ORDER.DATE$         = MID$(NEWIF.RECORD$,20, 6)
+ 337: 08dc:        NEWIF.ACTION.MKR$         = MID$(NEWIF.RECORD$,26, 1)
+ 338: 08fb:        NEWIF.ALLOC.ON.SALE.DATE$ = MID$(NEWIF.RECORD$,27, 6)
+ 339: 091a:        NEWIF.ORDER.ITEM.CNT$     = MID$(NEWIF.RECORD$,33, 3)
+ 340: 0939:        NEWIF.ORDER.FILLER1$      = MID$(NEWIF.RECORD$,36, 5)
+ 341: 0958:        DIM NEWIF.ORDER.ITEM.DETAILS$(VAL(NEWIF.ORDER.ITEM.CNT$), 5)
+ 342: 0992:        NEWIF.INDEX% = 41
+ 343: 099b:        FOR NEWIF.CNT% = 1 TO VAL(NEWIF.ORDER.ITEM.CNT$)
+ 344: 09a7:           NEWIF.ORDER.ITEM.DETAILS$(NEWIF.CNT%, 1) =                \
+ 345: 09de:                  MID$(NEWIF.RECORD$, NEWIF.INDEX%     , 7)
+ 346: 09de:           NEWIF.ORDER.ITEM.DETAILS$(NEWIF.CNT%, 2) =                \
+ 347: 0a19:                  MID$(NEWIF.RECORD$, NEWIF.INDEX% +  7, 7)
+ 348: 0a19:           NEWIF.ORDER.ITEM.DETAILS$(NEWIF.CNT%, 3) =                \
+ 349: 0a54:                  MID$(NEWIF.RECORD$, NEWIF.INDEX% + 14, 4)
+ 350: 0a54:           NEWIF.ORDER.ITEM.DETAILS$(NEWIF.CNT%, 4) =                \
+ 351: 0a8f:                  MID$(NEWIF.RECORD$, NEWIF.INDEX% + 18, 1)
+ 352: 0a8f:           NEWIF.ORDER.ITEM.DETAILS$(NEWIF.CNT%, 5) =                \
+ 353: 0aca:                  MID$(NEWIF.RECORD$, NEWIF.INDEX% + 19, 8)
+ 354: 0aca:           NEWIF.INDEX% = NEWIF.INDEX% + 27
+ 355: 0ad2:        NEXT NEWIF.CNT%
+ 356: 0b02:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "P" THEN BEGIN                  ! FSH
+ 357: 0b1b:         !UOD Parent                                                 ! FSH
+ 358: 0b1b:         NEWIF.STORE.SFX$      = MID$(NEWIF.RECORD$, 3, 1)           ! FSH
+ 359: 0b3a:         NEWIF.LICENCE$        = MID$(NEWIF.RECORD$, 4, 10)          ! FSH
+ 360: 0b59:         NEWIF.DESPATCH.DATE$  = MID$(NEWIF.RECORD$, 14, 6)          ! FSH
+ 361: 0b78:         NEWIF.EXP.DELIV.DATE$ = MID$(NEWIF.RECORD$, 20, 6)          ! FSH
+ 362: 0b97:         NEWIF.UOD.TYPE$       = MID$(NEWIF.RECORD$, 26, 1)          ! FSH
+ 363: 0bb6:         NEWIF.UOD.CATEGORY$   = MID$(NEWIF.RECORD$, 27, 1)          ! FSH
+ 364: 0bd5:         NEWIF.UOD.REASON$     = MID$(NEWIF.RECORD$, 28, 1)          ! FSH
+ 365: 0bf4:         NEWIF.UOD.ACTION$     = MID$(NEWIF.RECORD$, 29, 1)          ! FSH
+ 366: 0c13:         NEWIF.UOD.WHAREA$     = MID$(NEWIF.RECORD$, 30, 3)          ! FSH
+ 367: 0c32:         NEWIF.NUM.CHILDREN$   = MID$(NEWIF.RECORD$, 33, 3)          ! FSH
+ 368: 0c54:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "E" THEN BEGIN                  ! FSH
+ 369: 0c6d:         !UOD Parent/child                                           ! FSH
+ 370: 0c6d:         NEWIF.HIER.LVL$       = MID$(NEWIF.RECORD$, 3, 1)           ! FSH
+ 371: 0c8c:         NEWIF.LICENCE$        = MID$(NEWIF.RECORD$, 4, 10)          ! FSH
+ 372: 0cab:         NEWIF.PARENT.LICENCE$ = MID$(NEWIF.RECORD$, 14, 10)         ! FSH
+ 373: 0cca:         NEWIF.UOD.TYPE$       = MID$(NEWIF.RECORD$, 24, 1)          ! FSH
+ 374: 0ce9:         NEWIF.NUM.CHILDREN$   = MID$(NEWIF.RECORD$, 25, 3)          ! FSH
+ 375: 0d0b:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "F" THEN BEGIN                  ! FSH
+ 376: 0d24:         !UOD child                                                  ! FSH
+ 377: 0d24:         NEWIF.HIER.LVL$       = MID$(NEWIF.RECORD$, 3, 1)           ! FSH
+ 378: 0d43:         NEWIF.LICENCE$        = MID$(NEWIF.RECORD$, 4, 10)          ! FSH
+ 379: 0d62:         NEWIF.PARENT.LICENCE$ = MID$(NEWIF.RECORD$, 14, 10)         ! FSH
+ 380: 0d81:         NEWIF.UOD.TYPE$       = MID$(NEWIF.RECORD$, 24, 1)          ! FSH
+ 381: 0da0:         NEWIF.NUM.ITEMS$      = MID$(NEWIF.RECORD$, 25, 3)          ! FSH
+ 382: 0dbf:         NEWIF.BOL.FLAG$       = MID$(NEWIF.RECORD$, 28, 1)          ! FSH
+ 383: 0de1:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "G" THEN BEGIN                  ! FSH
+ 384: 0df7:         !UOD child                                                  ! FSH
+ 385: 0df7:         NEWIF.ITEM.CODE$ = MID$(NEWIF.RECORD$, 3, 7)                ! FSH
+ 386: 0e16:         NEWIF.QTY$       = MID$(NEWIF.RECORD$, 10, 5)               ! FSH
+ 387: 0e38:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "U"                             \ BLC
+ 388: 0e85:                OR NEWIF.REC.TYPE$ = "Q" THEN BEGIN                  ! BLC
+ 389: 0e85:        ! UOD Master                                                 ! BLC
+ 390: 0e85:        NEWIF.DIST.CENTRE$    = MID$(NEWIF.RECORD$, 3, 2)            ! BLC
+ 391: 0ea4:        NEWIF.WAREHOUSE.NUM$  = MID$(NEWIF.RECORD$, 5, 2)            ! BLC
+ 392: 0ec3:        NEWIF.UOD.NUMBER$     = MID$(NEWIF.RECORD$, 7, 6)            ! BLC
+ 393: 0ee2:        NEWIF.EXP.DELIV.DATE$ = MID$(NEWIF.RECORD$,13, 6)            ! BLC
+ 394: 0f01:        NEWIF.UOD.TYPE$       = MID$(NEWIF.RECORD$,19, 1)            ! BLC
+ 395: 0f20:        NEWIF.NUM.ITEM$       = MID$(NEWIF.RECORD$,20, 4)            ! BLC
+ 396: 0f3f:        NEWIF.UOD.MAS.FILLER$ = MID$(NEWIF.RECORD$,24, 4)            ! BLC
+ 397: 0f5e:        NEWIF.ENDREC.MARKER$  = RIGHT$(NEWIF.RECORD$, 3)             ! BLC
+ 398: 0f7e:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "I"                             \ BLC
+ 399: 0fcb:                OR NEWIF.REC.TYPE$ = "A" THEN BEGIN                  ! BLC
+ 400: 0fcb:        ! UOD item                                                   ! BLC
+ 401: 0fcb:        NEWIF.STORE.SUFFIX$    = MID$(NEWIF.RECORD$, 3, 1)           ! BLC
+ 402: 0fea:        NEWIF.DIST.CENTRE$     = MID$(NEWIF.RECORD$, 4, 2)           ! BLC
+ 403: 1009:        NEWIF.WAREHOUSE.NUM$   = MID$(NEWIF.RECORD$, 6, 2)           ! BLC
+ 404: 1028:        NEWIF.UOD.NUMBER$      = MID$(NEWIF.RECORD$, 8, 6)           ! BLC
+ 405: 1047:        NEWIF.OCCUR.NUMBER$    = MID$(NEWIF.RECORD$,14, 4)           ! BLC
+ 406: 1066:        NEWIF.FSI$             = MID$(NEWIF.RECORD$,18, 1)           ! BLC
+ 407: 1085:        NEWIF.FOLIO.YEAR$      = MID$(NEWIF.RECORD$,19, 2)           ! BLC
+ 408: 10a4:        NEWIF.FOLIO.MONTH$     = MID$(NEWIF.RECORD$,21, 2)           ! BLC
+ 409: 10c3:        NEWIF.FOLIO.NUM$       = MID$(NEWIF.RECORD$,23, 5)           ! BLC
+ 410: 10e2:        NEWIF.ITEM.CODE$       = MID$(NEWIF.RECORD$,28, 7)           ! BLC
+ 411: 1101:        NEWIF.QUANTITY$        = MID$(NEWIF.RECORD$,35, 4)           ! BLC
+ 412: 1120:        NEWIF.CSR.MKR$         = MID$(NEWIF.RECORD$,39, 1)           ! BLC
+ 413: 113f:        NEWIF.UOD.ITEM.FILLER$ = MID$(NEWIF.RECORD$,40, 3)           ! BLC
+ 414: 115e:        NEWIF.ENDREC.MARKER$   = RIGHT$(NEWIF.RECORD$, 3)            ! BLC
+ 415: 117e:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "C" THEN BEGIN                  !BNWB
+ 416: 1197:        ! Carton Record                                              !BNWB
+ 417: 1197:        NEWIF.CARTON.NO$       = MID$(NEWIF.RECORD$, 3, 8)           !BNWB
+ 418: 11b6:        NEWIF.SUPPLIER.NO$     = MID$(NEWIF.RECORD$,11, 7)           !BNWB
+ 419: 11d5:        NEWIF.ASN.CODE$        = MID$(NEWIF.RECORD$,18,18)           !BNWB
+ 420: 11f4:        NEWIF.ORDER.NO$        = MID$(NEWIF.RECORD$,36, 5)           !BNWB
+ 421: 1213:        NEWIF.ORDER.SUFFIX$    = MID$(NEWIF.RECORD$,41, 1)           !BNWB
+ 422: 1232:        NEWIF.BUS.CENTRE$      = MID$(NEWIF.RECORD$,42, 1)           !BNWB
+ 423: 1251:        NEWIF.DEL.DTTM$        = MID$(NEWIF.RECORD$,43,12)           !BNWB
+ 424: 1270:        NEWIF.CRTN.IN.ASN$     = MID$(NEWIF.RECORD$,55, 3)           !BNWB
+ 425: 128f:        NEWIF.ITMS.IN.CRTN$    = MID$(NEWIF.RECORD$,58, 3)           !BNWB
+ 426: 12ae:        DIM NEWIF.ITM.CODE$(VAL(NEWIF.ITMS.IN.CRTN$))                !BNWB
+ 427: 12e6:        DIM NEWIF.ITEM.QTY$(VAL(NEWIF.ITMS.IN.CRTN$))                !BNWB
+ 428: 131e:        NEWIF.INDEX% = 61                                            !BNWB
+ 429: 1327:        FOR NEWIF.CNT% = 1 TO VAL(NEWIF.ITMS.IN.CRTN$)               !BNWB
+ 430: 1333:           NEWIF.ITM.CODE$(NEWIF.CNT%)                               \BNWB
+ 431: 1368:                           = MID$(NEWIF.RECORD$, NEWIF.INDEX%   , 7) !BNWB
+ 432: 1368:           NEWIF.ITEM.QTY$(NEWIF.CNT%)                               \BNWB
+ 433: 13a1:                           = MID$(NEWIF.RECORD$, NEWIF.INDEX% +7, 4) !BNWB
+ 434: 13a1:           NEWIF.INDEX% = NEWIF.INDEX% +11                           !BNWB
+ 435: 13a9:        NEXT NEWIF.CNT%                                              !BNWB
+ 436: 13d9:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "R" THEN BEGIN                  !CNWB
+ 437: 13f2:        ! Add/Update Recall Record                                   !CNWB
+ 438: 13f2:        NEWIF.RCL.REF$         = MID$(NEWIF.RECORD$,  3, 8)          !CNWB
+ 439: 1411:        NEWIF.RCL.DESC$        = MID$(NEWIF.RECORD$, 11,20)          !CNWB
+ 440: 1430:        NEWIF.RCL.LABEL$       = MID$(NEWIF.RECORD$, 31, 2)          !CNWB
+ 441: 144f:        NEWIF.RCL.SI.1$        = MID$(NEWIF.RECORD$, 33,77)          !CNWB
+ 442: 146e:        NEWIF.RCL.SI.2$        = MID$(NEWIF.RECORD$,110,77)          !CNWB
+ 443: 148d:        NEWIF.SUPP.ROUTE$      = MID$(NEWIF.RECORD$,187, 1)          !CNWB
+ 444: 14ad:        NEWIF.RCL.RC$          = MID$(NEWIF.RECORD$,188, 2)          !CNWB
+ 445: 14cd:        NEWIF.BUS.CENTRE$      = MID$(NEWIF.RECORD$,190, 1)          !CNWB
+ 446: 14ed:        NEWIF.FLAG.TYPE$       = MID$(NEWIF.RECORD$,191, 1)          !CNWB
+ 447: 150d:        NEWIF.BATCH.NOS$       = MID$(NEWIF.RECORD$,192,30)          !CNWB
+ 448: 152d:        NEWIF.NUM.ITEMS$       = MID$(NEWIF.RECORD$,222, 4)          !CNWB
+ 449: 154d:        NEWIF.ACT.DATE$        = MID$(NEWIF.RECORD$,226, 8)          !CNWB
+ 450: 156d:        NEWIF.EXP.DATE$        = MID$(NEWIF.RECORD$,234, 8)          !CNWB
+ 451: 158d:        DIM NEWIF.ITM.CODE$(VAL(NEWIF.NUM.ITEMS$))                   !CNWB
+ 452: 15c5:        NEWIF.INDEX% = 242                                           !CNWB
+ 453: 15ce:        FOR NEWIF.CNT% = 1 TO VAL(NEWIF.NUM.ITEMS$)                  !CNWB
+ 454: 15d9:           NEWIF.ITM.CODE$(NEWIF.CNT%)                               \CNWB
+ 455: 160e:                           = MID$(NEWIF.RECORD$, NEWIF.INDEX%   , 7) !CNWB
+ 456: 160e:           NEWIF.INDEX% = NEWIF.INDEX% +7                            !CNWB
+ 457: 1616:        NEXT NEWIF.CNT%                                              !CNWB
+ 458: 1643:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "V" THEN BEGIN                  !CNWB
+ 459: 165c:        ! Remove Items from Recall Record                            !CNWB
+ 460: 165c:        NEWIF.RCL.REF$         = MID$(NEWIF.RECORD$,  3, 8)          !CNWB
+ 461: 167b:        NEWIF.NUM.ITEMS$       = MID$(NEWIF.RECORD$, 11, 4)          !CNWB
+ 462: 169a:        DIM NEWIF.ITM.CODE$(VAL(NEWIF.NUM.ITEMS$))                   !CNWB
+ 463: 16d2:        NEWIF.INDEX% = 15                                            !CNWB
+ 464: 16db:        FOR NEWIF.CNT% = 1 TO VAL(NEWIF.NUM.ITEMS$)                  !CNWB
+ 465: 16e6:           NEWIF.ITM.CODE$(NEWIF.CNT%)                               \CNWB
+ 466: 171b:                           = MID$(NEWIF.RECORD$, NEWIF.INDEX%   , 7) !CNWB
+ 467: 171b:           NEWIF.INDEX% = NEWIF.INDEX% +7                            !CNWB
+ 468: 1723:        NEXT NEWIF.CNT%                                              !CNWB
+ 469: 1750:     ENDIF ELSE IF NEWIF.REC.TYPE$ = "W" THEN BEGIN                  !CNWB
+ 470: 1769:        ! Unblock Recall Items for sale                              !CNWB
+ 471: 1769:        ! Get no. of 7-digit item codes (subtract 11 bytes for       !DCSk
+ 472: 1769:        ! quotes, record type & recall no.)                          !DCSk
+ 473: 1769:        NEWIF.NUM.ITEMS$ = STR$((LEN(NEWIF.RECORD$) - 11) / 7)       !DCSk
+ 474: 1798:        DIM NEWIF.ITM.CODE$(VAL(NEWIF.NUM.ITEMS$))                   !ECSk
+ 475: 17d0:        NEWIF.INDEX% = 11                                            !DCSk
+ 476: 17d9:        FOR NEWIF.CNT% = 1 TO VAL(NEWIF.NUM.ITEMS$)                  !CNWB
+ 477: 17e4:           NEWIF.ITM.CODE$(NEWIF.CNT%)                               \CNWB
+ 478: 1819:                           = MID$(NEWIF.RECORD$, NEWIF.INDEX%   , 7) !CNWB
+ 479: 1819:           NEWIF.INDEX% = NEWIF.INDEX% +7                            !CNWB
+ 480: 1821:        NEXT NEWIF.CNT%                                              !CNWB
+ 481: 184b:     ENDIF                                                           ! BLC
+ 482: 184b: 
+ 483: 184b:     READ.NEWIF = 0
+ 484: 1850:     EXIT FUNCTION
+ 485: 1852: 
+ 486: 1852: ERROR.READ.NEWIF:
+ 487: 1852: 
+ 488: 1852:     FILE.OPERATION$ = "R"
+ 489: 1861:     CURRENT.REPORT.NUM% = NEWIF.REPORT.NUM%
+ 490: 186f:     CURRENT.CODE$ = NEWIF.REC.TYPE$
+ 491: 1885: 
+ 492: 1885:     EXIT FUNCTION
+ 493: 1887: 
+ 494: 1887: END FUNCTION
+ 495: 1896: 
+ 496: 1896: 
+ 497: 1896: \******************************************************************************
+ 498: 1896: \***
+ 499: 1896: \***    Internal file functions to process truncated NEWIF                                  ! PNWB
+ 500: 1896: \***    READ.NEWIF.TRUNC
+ 501: 1896: \***    WRITE.NEWIF.TRUNC
+ 502: 1896: \***
+ 503: 1896: \******************************************************************************
+ 504: 1896: 
+ 505: 1896: FUNCTION READ.NEWIF.TRUNC PUBLIC ! Entire function moved from SSC3200  ! 1.8 RC
+ 506: 18aa: 
+ 507: 18aa:     INTEGER*2 READ.NEWIF.TRUNC
+ 508: 18aa:     READ.NEWIF.TRUNC EQ 1
+ 509: 18af: 
+ 510: 18af:     IF END # NEWIF.TRUNC.SESS.NUM% THEN READ.NEWIF.TRUNC.IF.END
+ 511: 18c3:     READ FORM "C1"; \
+ 512: 18f5:       # NEWIF.TRUNC.SESS.NUM%, \
+ 513: 18f5:         NEWIF.TRUNC.REC.NUM%; \
+ 514: 18f5:           NEWIF.TRUNC.REC.TYPE$
+ 515: 18f5: 
+ 516: 18f5:     READ.NEWIF.TRUNC EQ 0
+ 517: 18fa:     EXIT FUNCTION
+ 518: 18fc: 
+ 519: 18fc: READ.NEWIF.TRUNC.IF.END:
+ 520: 18fc: 
+ 521: 18fc:     FILE.OPERATION$     EQ "R"
+ 522: 190b:     CURRENT.REPORT.NUM% EQ  NEWIF.TRUNC.REPORT.NUM%
+ 523: 1919:     CURRENT.CODE$       EQ \
+ 524: 1961:       PACK$(RIGHT$("00000000000000" + STR$(NEWIF.TRUNC.REC.NUM%),14))
+ 525: 1961: 
+ 526: 1961:     EXIT FUNCTION
+ 527: 1963: 
+ 528: 1963: END FUNCTION
+ 529: 1972: 
+ 530: 1972: 
+ 531: 1972: FUNCTION WRITE.NEWIF.TRUNC PUBLIC ! Entire function moved from SSC3200 ! 1.8 RC
+ 532: 1986: 
+ 533: 1986:     INTEGER*2 WRITE.NEWIF.TRUNC
+ 534: 1986:     WRITE.NEWIF.TRUNC EQ 1
+ 535: 198b: 
+ 536: 198b:     IF END # NEWIF.TRUNC.SESS.NUM% THEN WRITE.NEWIF.TRUNC.IF.END
+ 537: 199f:     WRITE FORM "C1"; \
+ 538: 19d1:       # NEWIF.TRUNC.SESS.NUM%, \
+ 539: 19d1:         NEWIF.TRUNC.REC.NUM%; \
+ 540: 19d1:           NEWIF.TRUNC.REC.TYPE$
+ 541: 19d1: 
+ 542: 19d1:     WRITE.NEWIF.TRUNC EQ 0
+ 543: 19d6:     EXIT FUNCTION
+ 544: 19d8: 
+ 545: 19d8: WRITE.NEWIF.TRUNC.IF.END:
+ 546: 19d8: 
+ 547: 19d8:     FILE.OPERATION$     EQ "W"
+ 548: 19e7:     CURRENT.REPORT.NUM% EQ  NEWIF.TRUNC.REPORT.NUM%
+ 549: 19f5:     CURRENT.CODE$       EQ \
+ 550: 1a3d:       PACK$(RIGHT$("00000000000000" + STR$(NEWIF.TRUNC.REC.NUM%),14))
+ 551: 1a3d: 
+ 552: 1a3d:     EXIT FUNCTION
+ 553: 1a3f: 
+ 554: 1a3f: END FUNCTION
+ 555: 1a4e: 
+ 556: 1a4e: End of Compilation

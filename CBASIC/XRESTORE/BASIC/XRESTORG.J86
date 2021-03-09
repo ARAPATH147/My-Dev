@@ -1,0 +1,294 @@
+\***********************************************************************
+\*
+\* Program: XRESTORE          Jaya Kumar Inbaraj              04/03/2014
+\*
+\* FOD260 - Enhanced Backup and Recovery
+\*
+\*           %INCLUDE for Global variables used in XRESTORE
+\*
+\*                    REFERENCE: XRESTORG.J86
+\*
+\*       MODULE EXTRACTED FROM ORIGINAL XRESTORE.BAS (RENAMED TO
+\*       XREST000.BAS) AS BREACHED 64K LIMIT AND CRETAED AS XREST001.BAS
+\*
+\*======================================================================
+\*                   V E R S I O N   C O N T R O L
+\*======================================================================
+\*
+\*                            Dave Constable                  25/06/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Code extracted originally from single module (XRESTORE.BAS) and all
+\* code change markers removed.
+\* For maintenance and usage all included variables and includes are
+\* also replicated here and included into both modules.
+\*
+\* Version B                Jaya Kumar Inbaraj                01/08/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* Created a variable for BKPFAIL restore.
+\*
+\* Version C                Jaya Kumar Inbaraj                23/08/2014
+\* FOD260 - Enhanced Backup and Recovery
+\* CR5 changes to perform the drive restore if a drive is empty.
+\* Also updated the header block comments.
+\*
+\* Version D                Jaya Kumar Inbaraj                12/09/2014
+\* QC1145 - Added ADXUNZIP related variables
+\*
+\***********************************************************************
+
+\***********************************************************************
+\*
+\* Included code defining file related global variables
+\*
+\***********************************************************************
+    !-----------------------------------------------------------------!
+    ! Changed the BKPLIST file variables prefix from BKPLIST to BKPLI !
+    ! and hence applied the changes in whole XRESTORE program also    !
+    !-----------------------------------------------------------------!
+    %INCLUDE BKPLIDEC.J86    ! BKPLIST file variables
+
+\***********************************************************************
+\*
+\* Included code defining function related global variables
+\*
+\***********************************************************************
+    %INCLUDE PSBF02G.J86     ! Update Date
+    %INCLUDE PSBF13G.J86     ! PSDATE function
+    %INCLUDE PSBF20G.J86     ! Session number Utility
+    %INCLUDE PSBF39G.J86     ! Display Manager
+
+    %INCLUDE PSBUSEG.J86     ! Chain Parameters
+    %INCLUDE SLPCFDEC.J86    ! Sleeper control
+
+\***********************************************************************
+\*
+\* Global variable definitions
+\*
+\***********************************************************************
+    STRING GLOBAL                   \
+        BATCH.SCREEN.FLAG$,         \
+        CHAIN.TO.PROG$,             \
+        MODULE.NUMBER$
+
+    INTEGER*4 GLOBAL                \
+        BKPLIST.FILE.RC%,           \
+        DIR.FILE.RC%,               \
+        XRE.FILE.RC%
+
+\***********************************************************************
+\*
+\* Local Variables Made Global when multi-modular
+\*
+\***********************************************************************
+    STRING GLOBAL                   \
+        ADX.PARM.2$,                \
+        ADXCSU0L.FILE.NAME$,        \                                   !CJK
+        ADXUNZIP.FILE.NAME$,        \                                   !DJK
+        ADXZUDIR.FILE.NAME$,        \
+        BACKUP.DAYS$,               \
+        BACKUP.LONG.DAYS$,          \
+        BKP.DRIVE$,                 \                                   !CJK
+        BKP.FILENAME.ALT$,          \
+        BKP.FILENAME.IMG$,          \
+        BKP.ZIP.FILE$,              \                                   !DJK
+        BKPFAIL.CURR.FILE$,         \
+        BKPFAIL.PREFIX$,            \                                   !CJK
+        BKPLIST.CURR.FILE$,         \
+        BKPLIST.DIR.VALUE$,         \
+        BKPLIST.FIELD$(1),          \
+        BKPLIST.PREFIX.C.DRIVE$,    \                                   !CJK
+        BKPLIST.PREFIX.D.DRIVE$,    \                                   !CJK
+        BKPLIST.VALUE$,             \
+        BKPSCRPT.COMMAND$,          \
+        BKPSCRPT.DIRECTORY$,        \
+        BKPSCRPT.FILE.NAME$,        \
+        BKPSCRPT.OUT.FILE.NAME$,    \
+        C.BKP.ALT$,                 \
+        C.BKP.IMG$,                 \
+        CDRIVE$,                    \
+        CNTLR.ID$,                  \
+        COMMA.VALUE$,               \
+        CONSTANT.COLON$,            \
+        CONSTANT.DAY$(1),           \
+        CONSTANT.FRIDAY.LONG$,      \
+        CONSTANT.FRIDAY.SHORT$,     \
+        CONSTANT.LONG.DAY$(1),      \
+        CONSTANT.MONDAY.LONG$,      \
+        CONSTANT.MONDAY.SHORT$,     \
+        CONSTANT.SATURDAY.LONG$,    \
+        CONSTANT.SATURDAY.SHORT$,   \
+        CONSTANT.SUNDAY.LONG$,      \
+        CONSTANT.SUNDAY.SHORT$,     \
+        CONSTANT.THURSDAY.LONG$,    \
+        CONSTANT.THURSDAY.SHORT$,   \
+        CONSTANT.TUESDAY.LONG$,     \
+        CONSTANT.TUESDAY.SHORT$,    \
+        CONSTANT.WEDNESDAY.LONG$,   \
+        CONSTANT.WEDNESDAY.SHORT$,  \
+        CRLF$,                      \
+        D.BKP.ALT$,                 \
+        D.BKP.IMG$,                 \
+        DDRIVE$,                    \
+        DIR.OUT$,                   \
+        DIR1.OUT$,                  \   Command pipe output file        !DJK
+        DIR.VALUE$,                 \
+        DIRECT.TO.RESTORE$,         \
+        DRIVE$,                     \
+        ERROR.MSG$,                 \
+        EXTENSION$,                 \
+        FAILED.FILE$,               \
+        FAILED.FILE.DIST$,          \
+        FILENAME$,                  \
+        FIRST.FILE$,                \
+        FSEL$,                      \
+        FULL.DATE$,                 \
+        FULL.MDD.DATE$,             \
+        FULL.TO.MOVING.DATE$,       \
+        FUNC.FLAG$,                 \
+        MDD.DATE$,                  \
+        NORMAL.SLEEPER.FILE.NAME$,  \
+        OPT.HEADER$,                \
+        OPT.HEADER.1$,              \
+        OPT.SELECTED$,              \
+        OS.DESTINATION$,            \
+        OS.FILE$(1),                \
+        OS.SOURCE$,                 \
+        PARM.FULL$,                 \
+\        PARM.INCREMENTAL$,          \                                  !CJK
+        PASSED.STRING$,             \
+        RESTORE.FILENAME$,          \                                   !BJK
+        SCR.HEADER$,                \
+        SCREEN.NUM$,                \
+        SCREEN.TEXT.MSG$(1),        \
+        SECOND.FILE$,               \
+        SELECT.FILE.NAME$,          \
+        SELECTED.FILENAME$,         \
+\        SHELL.COMMAND$,             \  ! variable passed into OSSHELL  !CJK
+        SLEEPER.RECORD$,            \
+        STATUS.MSG$,                \
+        STATUS.TEXT.ERROR$(1),      \
+        STATUS.TEXT.MSG$(1),        \
+        SUPPS.SLEEPER.FILE.NAME$,   \
+        TEMP.DIR$,                  \
+        TODAY.DATE$,                \
+        USER.TEXT$,                 \
+        VERSION$,                   \                                   !CJK
+        WORK.DATE.MMDD$,            \
+        XBACK.PIPE.NAME$,           \
+        XRE.LOG.FILENAME$,          \
+        XRE.NULL$,                  \
+        XRE.PIPE.NAME$,             \
+        XRE.SPACE$
+
+    ! Grouping Arrays
+    STRING GLOBAL                   \
+        BKP.AVAIL.ARRAY$(1),        \
+        BKP.DATE.ARRAY$(1),         \
+        BKP.FILE.MDD.ARRAY$(1),     \
+        BKP.FILE.MMDD.ARRAY$(1),    \
+        BKPSCRPT.DIRECTORIES$(1),   \
+        DAY.ARRAY$(1),              \
+        PRIMARY.ARCHIVED.NAMES$(1), \
+        SECONDARY.ARCHVD.NAMES$(1), \
+        SELECTED.DIR.ARRAY$(1)
+
+    INTEGER*1 GLOBAL                \
+        ADX.FUNCTION%,              \
+        BKP.INDEX%,                 \
+        CNTLR.CONFIG%,              \
+        CONSTANT.LONGEST.DAY%,      \
+        DAY.INDEX%,                 \
+        DAY.SINCE.FULL%,            \
+        DAYS.AFTER.FULL.BAKUP%,     \
+        DD.MM.INDEX%,               \
+        DIR.INDEX%,                 \
+        DIR.TO.SHOW%,               \
+        DIRECTORY.CREATE,           \
+        DIRECTORY.DAY.SELECT.SCR%,  \
+        DIRECTORY.PROCESS.SCR%,     \
+        DISPLAY.MAIN.SCR%,          \
+        DRIVE.DAY.SELECT.SCR%,      \
+        DRIVE.DISK.SELECT.SCR%,     \
+        DRIVE.PROCESS.SCR%,         \
+        ERROR.COUNT%,               \
+        F.RECORD.COUNT%,            \ count for header lines in DIR
+        FILE.CONFIRMATION.SCR%,     \
+        FILE.DAY.SELECT.SCR%,       \
+        FILE.DIR.AND.DIST.SCR%,     \
+        FILE.PROCESS.SCR%,          \
+        FULL.BACKUP.NOT.FOUND%,     \
+        INPUT.INDEX%,               \
+        MASTER.AND.FILE.SERVER%,    \
+        OPT.SEL%,                   \
+        PAGE.DIV%,                  \
+        PAGE.NO%,                   \
+        RESTORE.A.DIRECTORY.SCR%,   \
+        RESTORE.A.FILE.SCR%,        \
+        SCREEN%,                    \
+        SCREEN.NUM%,                \
+        SLEEPER.DAY%,               \
+        SLPCF.OPEN,                 \
+        XRE.ZERO%
+
+    ! Grouping Boolean variables
+    INTEGER*1 GLOBAL                \
+        BKPLIST.OPEN,               \
+        COMMAND.MODE,               \
+        DIR.OPEN,                   \
+        DUPLICATE.RECORD,           \                                   !CJK
+        ERROR.EXIST,                \
+        FALSE,                      \
+        FUNCTION.ERROR.NOT.EXIST,   \
+\        IN.LOG.STATUS.MSG,          \                                  !CJK
+\        IN.UPDATE.DATE.RC,          \                                  !CJK
+        NON.X.VALUES,               \
+        PREVIOUS.KEY,               \
+        RESTORE.ERR.EXIST,          \
+        RESTORE.HAPPENED,           \                                   !CJK
+        RESTORE.STATUS,             \
+        SUPPS.ON,                   \
+        TRUE,                       \
+        VALUE.EXISTS,               \
+        VALUE.PRESENT,              \
+        XBACK.OPEN,                 \
+        XRE.LOG.OPEN,               \
+        XRE.OPEN
+
+    INTEGER*2 GLOBAL                \
+        ARRAY.LIMIT%,               \                                   !CJK
+        BEGIN.POS%,                 \
+        BEGIN.POSITION%,            \
+        BKP.DAYS%,                  \
+        BKPSCRPT.INDEX%,            \
+        COMMA.POSITION%,            \
+        DAY.LOOP%,                  \
+        DD.MM.LOOP%,                \
+        DIR.INPUT.INDEX%,           \
+        DIR.INPUT.LOOP%,            \
+        DIR.LOOP%,                  \
+        FUN.RC2%,                   \ function return value for check
+        INDEX%,                     \
+        INPUT.LOOP%,                \
+        LONG.DAY.INDEX%,            \
+        LOOP%,                      \
+        MATCH.POS%,                 \
+        MAX.DIRECTORIES%,           \
+        PASSED.INTEGER%,            \
+        RET.KEY%,                   \
+        SEL.INDEX%,                 \
+        SEL.INPUT.LOOP%,            \
+        SELECT.COUNT%,              \
+        SELECT.INDEX%,              \
+        SLASH.POSITION%,            \
+        VALUE.INDEX%,               \
+        XBACK.PIPE.REPORT.NUM%,     \
+        XBACK.PIPE.SESS.NUM%,       \
+        XRE.LOG.REPORT.NUM%,        \
+        XRE.LOG.SESS.NUM%,          \
+        XRE.PIPE.REPORT.NUM%,       \
+        XRE.PIPE.SESS.NUM%
+
+    INTEGER*4 GLOBAL                \
+        ADXSERVE.RC%,               \
+        FILE.RC%
+

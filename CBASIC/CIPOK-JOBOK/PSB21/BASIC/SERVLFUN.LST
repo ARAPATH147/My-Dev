@@ -1,0 +1,152 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***               FUNCTIONS FOR THE SERVL FILE
+   5: 0000: \***
+   6: 0000: \***                     REFERENCE    : SERVLFUN.BAS
+   7: 0000: \***
+   8: 0000: \***       Version A      Mark Goode      31st January 2011
+   9: 0000: \***
+  10: 0000: \******************************************************************************
+  11: 0000: \*******************************************************************************
+  12: 0000: 
+  13: 0000:    %INCLUDE SERVLDEC.J86
+  14: 0000: REM \
+  15: 0000: \******************************************************************************
+  16: 0000: \******************************************************************************
+  17: 0000: \***
+  18: 0000: \***                 %INCLUDE FOR THE SERVICE LOG FILE
+  19: 0000: \***   
+  20: 0000: \***                      FILE TYPE  :   Sequential
+  21: 0000: \***
+  22: 0000: \***                      REFERENCE  :   SERVLDEC.J86
+  23: 0000: \***
+  24: 0000: \***    Version A         Mark Goode      31st January 2011
+  25: 0000: \***
+  26: 0000: \******************************************************************************
+  27: 0000: \*******************************************************************************
+  28: 0000: 
+  29: 0000:   STRING GLOBAL              \
+  30: 0000:     SERVL.MESSAGE$,          \
+  31: 0000:     SERVL.DATA$,             \ 
+  32: 0000:     SERVL.RECORD$,           \
+  33: 0000:     SERVL.ARRAY.RECORD$(1),  \  
+  34: 0000:     SERVL.FILE.NAME$
+  35: 0000:     
+  36: 0000:   INTEGER*2 GLOBAL           \
+  37: 0000:     SERVL.REC.NUM%,          \
+  38: 0000:     SERVL.ELEMENT%,          \
+  39: 0000:     SERVL.REPORT.NUM%,       \      
+  40: 0000:     SERVL.SESS.NUM%,         \
+  41: 0000:     SERVL1.SESS.NUM%
+  42: 0000: 
+  43: 0000: 
+  44: 0000: 
+  45: 0000:    INTEGER RETRY%
+  46: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  47: 0000: 
+  48: 0000:    STRING GLOBAL                                                       \
+  49: 0000:       CURRENT.CODE$,                                                   \
+  50: 0000:       FILE.OPERATION$          
+  51: 0000:    
+  52: 0000: \------------------------------------------------------------------------------   
+  53: 0000: 
+  54: 0000:    FUNCTION SERVL.SET PUBLIC   
+  55: 0014:  \***************************
+  56: 0014:   
+  57: 0014:       SERVL.REPORT.NUM% = 826
+  58: 001d:       SERVL.FILE.NAME$  = "SERVL:"
+  59: 002c:   
+  60: 002c:    END FUNCTION
+  61: 0038: 
+  62: 0038: \------------------------------------------------------------------------------
+  63: 0038:   
+  64: 0038:    FUNCTION READ.SERVL PUBLIC
+  65: 004c:  \****************************   
+  66: 004c: 
+  67: 004c:       INTEGER*2 I%, READ.SERVL      
+  68: 004c:     
+  69: 004c:       READ.SERVL = 1
+  70: 0051:       
+  71: 0051:       RETRY% = 0
+  72: 0057: 
+  73: 0057:       IF END #SERVL.SESS.NUM% THEN END.OF.SERVL    
+  74: 006b:       READ   #SERVL.SESS.NUM%,SERVL.REC.NUM%; SERVL.RECORD$
+  75: 0098:     
+  76: 0098:       READ.SERVL = 0     
+  77: 009d:       EXIT FUNCTION      
+  78: 009f:       
+  79: 009f:       
+  80: 009f:       END.OF.SERVL:
+  81: 009f:       
+  82: 009f:          FILE.OPERATION$     = "R"
+  83: 00ae:          CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+  84: 0100:                                       STR$(SERVL.REC.NUM%)), 8)
+  85: 0100:          CURRENT.REPORT.NUM% = SERVL.REPORT.NUM%
+  86: 010e: 
+  87: 010e:       EXIT FUNCTION
+  88: 0110:           
+  89: 0110:    END FUNCTION                             
+  90: 011f:                 
+  91: 011f: \---------------------------------------------------------------------------- 
+  92: 011f: 
+  93: 011f:    FUNCTION WRITE.SERVL PUBLIC
+  94: 0133:  \****************************   
+  95: 0133: 
+  96: 0133:       INTEGER*2 I%, WRITE.SERVL                                                    
+  97: 0133:     
+  98: 0133:       WRITE.SERVL = 1      
+  99: 0138:   
+ 100: 0138:       !SERVL.RECORD$ = {TO BE DEFINED}
+ 101: 0138:   
+ 102: 0138:       IF END #SERVL.SESS.NUM% THEN SERVL.WRITE.PROBLEM  
+ 103: 014c:       WRITE  #SERVL.SESS.NUM%; SERVL.RECORD$ 
+ 104: 016a:       WRITE.SERVL = 0     
+ 105: 016f:       EXIT FUNCTION      
+ 106: 0171:       
+ 107: 0171:       
+ 108: 0171:       SERVL.WRITE.PROBLEM:
+ 109: 0171:       
+ 110: 0171:          ! Check if the error code relates to file locked. If locked wait 5 seconds and retry write.
+ 111: 0171:           
+ 112: 0171:            FILE.OPERATION$     = "W"
+ 113: 0180:            CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+ 114: 01d2:                                         STR$(SERVL.REC.NUM%)), 8)
+ 115: 01d2:            CURRENT.REPORT.NUM% = SERVL.REPORT.NUM%
+ 116: 01e0: 
+ 117: 01e0:    END FUNCTION
+ 118: 01ef:    
+ 119: 01ef:    \---------------------------------------------------------------------------- 
+ 120: 01ef: 
+ 121: 01ef:    FUNCTION WRITE.MATRIX.SERVL PUBLIC
+ 122: 0203:  \****************************   
+ 123: 0203: 
+ 124: 0203:       INTEGER*2 I%, WRITE.MATRIX.SERVL                                                    
+ 125: 0203:     
+ 126: 0203:       WRITE.MATRIX.SERVL = 1      
+ 127: 0208:   
+ 128: 0208:       !SERVL.RECORD$ = {TO BE DEFINED}               
+ 129: 0208:       
+ 130: 0208:       IF END #  SERVL.SESS.NUM% THEN SERVL.WRITE.MATRIX.PROBLEM  
+ 131: 021c:       WRITE MATRIX #SERVL.SESS.NUM%; SERVL.ARRAY.RECORD$(0), SERVL.ELEMENT%+1 
+ 132: 0243:       WRITE.MATRIX.SERVL = 0     
+ 133: 0248:       EXIT FUNCTION      
+ 134: 024a:       
+ 135: 024a:       
+ 136: 024a:       SERVL.WRITE.MATRIX.PROBLEM:
+ 137: 024a:       
+ 138: 024a:          ! Check if the error code relates to file locked. If locked wait 5 seconds and retry write.
+ 139: 024a:           
+ 140: 024a:            FILE.OPERATION$     = "W"
+ 141: 0259:            CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+ 142: 02ab:                                         STR$(SERVL.REC.NUM%)), 8)
+ 143: 02ab:            CURRENT.REPORT.NUM% = SERVL.REPORT.NUM%
+ 144: 02b9: 
+ 145: 02b9:       EXIT FUNCTION
+ 146: 02bb:           
+ 147: 02bb: 
+ 148: 02bb:    END FUNCTION
+ 149: 02ca: 
+ 150: 02ca: \------------------------------------------------------------------------------
+ 151: 02ca: 
+ 152: 02ca: End of Compilation

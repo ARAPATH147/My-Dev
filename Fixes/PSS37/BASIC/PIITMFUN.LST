@@ -1,0 +1,305 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***      PIITM - ITEM LIST FILE - FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***           Reference: PIITMFUN.BAS
+   7: 0000: \***
+   8: 0000: \***
+   9: 0000: \******************************************************************************
+  10: 0000: 
+  11: 0000:    INTEGER*2 GLOBAL             \
+  12: 0000:       CURRENT.REPORT.NUM%
+  13: 0000:       
+  14: 0000:    STRING GLOBAL                \
+  15: 0000:       CURRENT.CODE$,            \
+  16: 0000:       FILE.OPERATION$
+  17: 0000:       
+  18: 0000:    %INCLUDE PIITMDEC.J86
+  19: 0000: 
+  20: 0000: \******************************************************************************
+  21: 0000: \***
+  22: 0000: \***     %INCLUDE FOR PIITM - ITEM LIST FILE - FIELD DECLARATIONS
+  23: 0000: \***                                           FILE REFERENCE PARAMETERS
+  24: 0000: \***
+  25: 0000: \***     REFERENCE: PIITMDEC.J86
+  26: 0000: \***        
+  27: 0000: \***                           8TH OCTOBER 1992
+  28: 0000: \***
+  29: 0000: \******************************************************************************
+  30: 0000: 
+  31: 0000:    INTEGER*1 GLOBAL							\
+  32: 0000: 	PIITM.REPORT.NUM%,						\
+  33: 0000: 	PIITM.SESS.NUM%
+  34: 0000: 
+  35: 0000:    INTEGER*2 GLOBAL			\
+  36: 0000: 	PIITM.RECL%,			\
+  37: 0000: 	PIITM.DISCREPANCY%,		\ discrepancy
+  38: 0000: 	PIITM.DISCREPANCY.AMT%		! discrepancy amount
+  39: 0000: 	
+  40: 0000:    STRING GLOBAL			\
+  41: 0000: 	PIITM.FILE.NAME$,		\
+  42: 0000: 	PIITM.LIST.ITEM.KEY$,		\ 4 + 1 bytes - list no. & item no
+  43: 0000: 	PIITM.LIST.NUMBER$,		\ 4 byte - list number
+  44: 0000: 	PIITM.ITEM.NUMBER$,		\ 2 byte - item number
+  45: 0000: 	PIITM.ITEM.CODE$,		\ 4 byte UPD - item code
+  46: 0000: 	PIITM.ON.IDF$,			\ 1 byte - on IDF flag "Y" / "N"
+  47: 0000: 	PIITM.ACTIVITY.FLAG$,		\ 1 byte - activity flag
+  48: 0000: 	PIITM.CYCLE.LENGTH$,		\ 2 byte - count cycle length (weeks)
+  49: 0000: 	PIITM.FAMILY.MARKER$,		\ 2 byte - family marker
+  50: 0000: 	PIITM.MEMBERS$,			\ 2 byte - number of members
+  51: 0000: 	PIITM.ELIGIBILITY.FLAG$,	\ 1 byte - eligibility flag
+  52: 0000: 	PIITM.LIST.STATUS$,		\ 1 byte - list status :
+  53: 0000: 					\    "C" = to be counted,
+  54: 0000: 					\    "R" = to be re-counted,
+  55: 0000: 					\    "D" = counted,
+  56: 0000: 					\    "F" = completed,
+  57: 0000: 					\    "X" = cancelled.
+  58: 0000: 	PIITM.POTENTIAL.RECOUNT$,	\ 1 byte - potential recount flag :
+  59: 0000: 					\    "0" = not a potential re-count,
+  60: 0000: 					\    "1" = failed value test,
+  61: 0000: 					\    "2" = failed percentage test.
+  62: 0000:         PIITM.FILLER$                   ! 5 bytes
+  63: 0000: 					
+  64: 0000:    
+  65: 0000:    
+  66: 0000:    FUNCTION PIITM.SET PUBLIC
+  67: 0014: \****************************
+  68: 0014: 
+  69: 0014:      PIITM.FILE.NAME$  = "PIITM"
+  70: 0023:      PIITM.REPORT.NUM% = 121
+  71: 002b:      PIITM.RECL%       = 30   
+  72: 0034: 
+  73: 0034:    END FUNCTION
+  74: 0040:    
+  75: 0040: \-----------------------------------------------------------------------------
+  76: 0040:    
+  77: 0040:    FUNCTION READ.PIITM PUBLIC
+  78: 0054: \*****************************
+  79: 0054: 
+  80: 0054:       INTEGER*2 READ.PIITM
+  81: 0054:       
+  82: 0054:       READ.PIITM = 1   
+  83: 0059: 
+  84: 0059:       IF END #PIITM.SESS.NUM% THEN READ.ERROR
+  85: 006f:       READ FORM "T7,C4,2C1,3C2,3C1,2I2,C5";                             \
+  86: 011c:         # PIITM.SESS.NUM%                                               \
+  87: 011c:         KEY PIITM.LIST.ITEM.KEY$;                                       \
+  88: 011c:             PIITM.ITEM.CODE$,                                           \
+  89: 011c:             PIITM.ON.IDF$,                                              \
+  90: 011c:             PIITM.ACTIVITY.FLAG$,                                       \
+  91: 011c:             PIITM.CYCLE.LENGTH$,                                        \
+  92: 011c:             PIITM.FAMILY.MARKER$,                                       \
+  93: 011c:             PIITM.MEMBERS$,                                             \
+  94: 011c:             PIITM.ELIGIBILITY.FLAG$,                                    \
+  95: 011c:             PIITM.LIST.STATUS$,                                         \
+  96: 011c:             PIITM.POTENTIAL.RECOUNT$,                                   \
+  97: 011c:             PIITM.DISCREPANCY%,                                         \
+  98: 011c:             PIITM.DISCREPANCY.AMT%,                                     \
+  99: 011c:             PIITM.FILLER$
+ 100: 011c:    
+ 101: 011c:         READ.PIITM = 0
+ 102: 0121:         EXIT FUNCTION
+ 103: 0123:         
+ 104: 0123:         READ.ERROR:
+ 105: 0123:         
+ 106: 0123:            CURRENT.CODE$ = PIITM.LIST.ITEM.KEY$
+ 107: 0139:            FILE.OPERATION$ = "R"
+ 108: 0148:            CURRENT.REPORT.NUM% = PIITM.REPORT.NUM%
+ 109: 0157:            
+ 110: 0157:            EXIT FUNCTION 
+ 111: 0159:    
+ 112: 0159:    END FUNCTION
+ 113: 0168: \-----------------------------------------------------------------------------
+ 114: 0168: 
+ 115: 0168:   FUNCTION READ.PIITM.LOCK PUBLIC
+ 116: 017c: \*********************************   
+ 117: 017c: 
+ 118: 017c:       INTEGER*2 READ.PIITM.LOCK
+ 119: 017c:      
+ 120: 017c:       READ.PIITM.LOCK = 1
+ 121: 0181:      
+ 122: 0181:       IF END #PIITM.SESS.NUM% THEN READ.LOCK.ERROR
+ 123: 0197:       READ FORM "T7,C4,2C1,3C2,3C1,2I2,C5";                             \
+ 124: 0244:         # PIITM.SESS.NUM% AUTOLOCK                                              \
+ 125: 0244:         KEY PIITM.LIST.ITEM.KEY$;                                       \
+ 126: 0244:             PIITM.ITEM.CODE$,                                           \
+ 127: 0244:             PIITM.ON.IDF$,                                              \
+ 128: 0244:             PIITM.ACTIVITY.FLAG$,                                       \
+ 129: 0244:             PIITM.CYCLE.LENGTH$,                                        \
+ 130: 0244:             PIITM.FAMILY.MARKER$,                                       \
+ 131: 0244:             PIITM.MEMBERS$,                                             \
+ 132: 0244:             PIITM.ELIGIBILITY.FLAG$,                                    \
+ 133: 0244:             PIITM.LIST.STATUS$,                                         \
+ 134: 0244:             PIITM.POTENTIAL.RECOUNT$,                                   \
+ 135: 0244:             PIITM.DISCREPANCY%,                                         \
+ 136: 0244:             PIITM.DISCREPANCY.AMT%,                                     \
+ 137: 0244:             PIITM.FILLER$
+ 138: 0244:        
+ 139: 0244:       READ.PIITM.LOCK = 0 
+ 140: 0249:       EXIT FUNCTION
+ 141: 024b:       
+ 142: 024b:       READ.LOCK.ERROR:
+ 143: 024b:       
+ 144: 024b:          CURRENT.CODE$ = PIITM.LIST.ITEM.KEY$
+ 145: 0261:          FILE.OPERATION$ = "R"
+ 146: 0270:          CURRENT.REPORT.NUM% = PIITM.REPORT.NUM%
+ 147: 027f:          
+ 148: 027f:          EXIT FUNCTION 
+ 149: 0281:    
+ 150: 0281:    END FUNCTION
+ 151: 0290: \-----------------------------------------------------------------------------
+ 152: 0290: 
+ 153: 0290: 
+ 154: 0290:   FUNCTION WRITE.PIITM PUBLIC
+ 155: 02a4: \*****************************   
+ 156: 02a4: 
+ 157: 02a4:       INTEGER*2 WRITE.PIITM
+ 158: 02a4:       
+ 159: 02a4:       WRITE.PIITM = 1
+ 160: 02a9:       
+ 161: 02a9:       IF END #PIITM.SESS.NUM% THEN WRITE.ERROR
+ 162: 02bf:       WRITE FORM "C6,C4,2C1,3C2,3C1,2I2,C5";                            \
+ 163: 039b:         # PIITM.SESS.NUM%;                                              \
+ 164: 039b:             PIITM.LIST.ITEM.KEY$,                                       \
+ 165: 039b:             PIITM.ITEM.CODE$,                                           \
+ 166: 039b:             PIITM.ON.IDF$,                                              \
+ 167: 039b:             PIITM.ACTIVITY.FLAG$,                                       \
+ 168: 039b:             PIITM.CYCLE.LENGTH$,                                        \
+ 169: 039b:             PIITM.FAMILY.MARKER$,                                       \
+ 170: 039b:             PIITM.MEMBERS$,                                             \
+ 171: 039b:             PIITM.ELIGIBILITY.FLAG$,                                    \
+ 172: 039b:             PIITM.LIST.STATUS$,                                         \
+ 173: 039b:             PIITM.POTENTIAL.RECOUNT$,                                   \
+ 174: 039b:             PIITM.DISCREPANCY%,                                         \
+ 175: 039b:             PIITM.DISCREPANCY.AMT%,                                     \
+ 176: 039b:             PIITM.FILLER$
+ 177: 039b: 
+ 178: 039b:       WRITE.PIITM = 0
+ 179: 03a0:       EXIT FUNCTION
+ 180: 03a2:       
+ 181: 03a2:       WRITE.ERROR:
+ 182: 03a2:       
+ 183: 03a2:          CURRENT.CODE$ = PIITM.LIST.ITEM.KEY$
+ 184: 03b8:          FILE.OPERATION$ = "O"
+ 185: 03c7:          CURRENT.REPORT.NUM% = PIITM.REPORT.NUM%
+ 186: 03d6:          
+ 187: 03d6:          EXIT FUNCTION
+ 188: 03d8: 
+ 189: 03d8:    END FUNCTION
+ 190: 03e7: \-----------------------------------------------------------------------------
+ 191: 03e7:    
+ 192: 03e7: 
+ 193: 03e7:   FUNCTION WRITE.PIITM.UNLOCK PUBLIC
+ 194: 03fb: \************************************   
+ 195: 03fb: 
+ 196: 03fb:       INTEGER*2 WRITE.PIITM.UNLOCK
+ 197: 03fb:       
+ 198: 03fb:       WRITE.PIITM.UNLOCK = 1
+ 199: 0400:       
+ 200: 0400:       IF END #PIITM.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 201: 0416:       WRITE FORM "C6,C4,2C1,3C2,3C1,2I2,C5";                            \
+ 202: 04f2:             # PIITM.SESS.NUM% AUTOUNLOCK;                               \
+ 203: 04f2:             PIITM.LIST.ITEM.KEY$,                                       \
+ 204: 04f2:             PIITM.ITEM.CODE$,                                           \
+ 205: 04f2:             PIITM.ON.IDF$,                                              \
+ 206: 04f2:             PIITM.ACTIVITY.FLAG$,                                       \
+ 207: 04f2:             PIITM.CYCLE.LENGTH$,                                        \
+ 208: 04f2:             PIITM.FAMILY.MARKER$,                                       \
+ 209: 04f2:             PIITM.MEMBERS$,                                             \
+ 210: 04f2:             PIITM.ELIGIBILITY.FLAG$,                                    \
+ 211: 04f2:             PIITM.LIST.STATUS$,                                         \
+ 212: 04f2:             PIITM.POTENTIAL.RECOUNT$,                                   \
+ 213: 04f2:             PIITM.DISCREPANCY%,                                         \
+ 214: 04f2:             PIITM.DISCREPANCY.AMT%,                                     \
+ 215: 04f2:             PIITM.FILLER$
+ 216: 04f2: 
+ 217: 04f2:       WRITE.PIITM.UNLOCK = 0
+ 218: 04f7:       EXIT FUNCTION
+ 219: 04f9:       
+ 220: 04f9:       WRITE.UNLOCK.ERROR:
+ 221: 04f9:       
+ 222: 04f9:          CURRENT.CODE$ = PIITM.LIST.ITEM.KEY$
+ 223: 050f:          FILE.OPERATION$ = "O"
+ 224: 051e:          CURRENT.REPORT.NUM% = PIITM.REPORT.NUM%
+ 225: 052d:          
+ 226: 052d:          EXIT FUNCTION
+ 227: 052f:          
+ 228: 052f:    END FUNCTION
+ 229: 053e: \-----------------------------------------------------------------------------
+ 230: 053e: 
+ 231: 053e: 
+ 232: 053e:   FUNCTION WRITE.PIITM.HOLD.UNLOCK PUBLIC
+ 233: 0552: \*****************************************   
+ 234: 0552: 
+ 235: 0552:       INTEGER*2 WRITE.PIITM.HOLD.UNLOCK
+ 236: 0552:       
+ 237: 0552:       WRITE.PIITM.HOLD.UNLOCK = 1
+ 238: 0557:       
+ 239: 0557:       IF END #PIITM.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 240: 056d:       WRITE FORM "C6,C4,2C1,3C2,3C1,2I2,C5"; HOLD                       \
+ 241: 0649:             # PIITM.SESS.NUM% AUTOUNLOCK;                               \
+ 242: 0649:             PIITM.LIST.ITEM.KEY$,                                       \
+ 243: 0649:             PIITM.ITEM.CODE$,                                           \
+ 244: 0649:             PIITM.ON.IDF$,                                              \
+ 245: 0649:             PIITM.ACTIVITY.FLAG$,                                       \
+ 246: 0649:             PIITM.CYCLE.LENGTH$,                                        \
+ 247: 0649:             PIITM.FAMILY.MARKER$,                                       \
+ 248: 0649:             PIITM.MEMBERS$,                                             \
+ 249: 0649:             PIITM.ELIGIBILITY.FLAG$,                                    \
+ 250: 0649:             PIITM.LIST.STATUS$,                                         \
+ 251: 0649:             PIITM.POTENTIAL.RECOUNT$,                                   \
+ 252: 0649:             PIITM.DISCREPANCY%,                                         \
+ 253: 0649:             PIITM.DISCREPANCY.AMT%,                                     \
+ 254: 0649:             PIITM.FILLER$
+ 255: 0649:       WRITE.PIITM.HOLD.UNLOCK = 0
+ 256: 064e:       EXIT FUNCTION
+ 257: 0650:       
+ 258: 0650:       WRITE.HOLD.UNLOCK.ERROR:
+ 259: 0650:       
+ 260: 0650:          CURRENT.CODE$ = PIITM.LIST.ITEM.KEY$
+ 261: 0666:          FILE.OPERATION$ = "O"
+ 262: 0675:          CURRENT.REPORT.NUM% = PIITM.REPORT.NUM%
+ 263: 0684:          
+ 264: 0684:          EXIT FUNCTION
+ 265: 0686:          
+ 266: 0686:    END FUNCTION
+ 267: 0695: 
+ 268: 0695: \-----------------------------------------------------------------------------
+ 269: 0695: 
+ 270: 0695:   FUNCTION WRITE.PIITM.HOLD PUBLIC
+ 271: 06a9: \**********************************   
+ 272: 06a9: 
+ 273: 06a9:       INTEGER*2 WRITE.PIITM.HOLD
+ 274: 06a9:       
+ 275: 06a9:       WRITE.PIITM.HOLD = 1
+ 276: 06ae:       
+ 277: 06ae:       IF END #PIITM.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 278: 06c4:       WRITE FORM "C6,C4,2C1,3C2,3C1,2I2,C5";                            \
+ 279: 07a0:         HOLD # PIITM.SESS.NUM%;                                         \
+ 280: 07a0:             PIITM.LIST.ITEM.KEY$,                                       \
+ 281: 07a0:             PIITM.ITEM.CODE$,                                           \
+ 282: 07a0:             PIITM.ON.IDF$,                                              \
+ 283: 07a0:             PIITM.ACTIVITY.FLAG$,                                       \
+ 284: 07a0:             PIITM.CYCLE.LENGTH$,                                        \
+ 285: 07a0:             PIITM.FAMILY.MARKER$,                                       \
+ 286: 07a0:             PIITM.MEMBERS$,                                             \
+ 287: 07a0:             PIITM.ELIGIBILITY.FLAG$,                                    \
+ 288: 07a0:             PIITM.LIST.STATUS$,                                         \
+ 289: 07a0:             PIITM.POTENTIAL.RECOUNT$,                                   \
+ 290: 07a0:             PIITM.DISCREPANCY%,                                         \
+ 291: 07a0:             PIITM.DISCREPANCY.AMT%,                                     \
+ 292: 07a0:             PIITM.FILLER$
+ 293: 07a0:       WRITE.PIITM.HOLD = 0
+ 294: 07a5:       EXIT FUNCTION
+ 295: 07a7:       
+ 296: 07a7:       WRITE.HOLD.ERROR:
+ 297: 07a7:       
+ 298: 07a7:          CURRENT.CODE$ = PIITM.LIST.ITEM.KEY$
+ 299: 07bd:          FILE.OPERATION$ = "O"
+ 300: 07cc:          CURRENT.REPORT.NUM% = PIITM.REPORT.NUM%
+ 301: 07db:          
+ 302: 07db:          EXIT FUNCTION
+ 303: 07dd:       
+ 304: 07dd:    END FUNCTION
+ 305: 07ec: End of Compilation

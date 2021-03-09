@@ -1,0 +1,358 @@
+   1: 0000: \********************************************************************
+   2: 0000: \***      Space and Range Planogram database Host File (POGOK)
+   3: 0000: \***      Version A           Neil Bennett          6th June 2006
+   4: 0000: \***
+   5: 0000: \....................................................................
+   6: 0000: 
+   7: 0000:    INTEGER*2 GLOBAL                  \
+   8: 0000:       CURRENT.REPORT.NUM%
+   9: 0000: 
+  10: 0000:    STRING GLOBAL                     \
+  11: 0000:       CURRENT.CODE$,                 \
+  12: 0000:       FILE.OPERATION$
+  13: 0000: 
+  14: 0000:    %INCLUDE POGOKDEC.J86
+  15: 0000: \********************************************************************
+  16: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE POGOK FILE
+  17: 0000: \***      REFERENCE : POGOKDEC.J86
+  18: 0000: \***      Version A           Neil Bennett            6th June 2006
+  19: 0000: \***
+  20: 0000: \********************************************************************
+  21: 0000: 
+  22: 0000:   INTEGER*1 GLOBAL                \
+  23: 0000:     POGOK.PE10.RETCODE%,          \
+  24: 0000:     POGOK.PE5.RETCODE%,           \
+  25: 0000:     POGOK.PE6.RETCODE%,           \
+  26: 0000:     POGOK.PE7.RETCODE%,           \
+  27: 0000:     POGOK.PE4.RETCODE%,           \
+  28: 0000:     POGOK.PE19.RETCODE%           !
+  29: 0000: 
+  30: 0000:   INTEGER*2 GLOBAL                \
+  31: 0000:     POGOK.DAYS.TO.RETAIN%,        \
+  32: 0000:     POGOK.SESS.NUM%,              \
+  33: 0000:     POGOK.REPORT.NUM%,            \
+  34: 0000:     POGOK.RECL%                   !
+  35: 0000: 
+  36: 0000:   INTEGER*4 GLOBAL                \
+  37: 0000:     POGOK.SRD.REC.COUNT%,         \
+  38: 0000:     POGOK.SRM.REC.COUNT%
+  39: 0000: 
+  40: 0000:   STRING GLOBAL                   \
+  41: 0000:     POGOK.FILE.NAME$,             \
+  42: 0000:     POGOK.SRD.SER.NO$,            \
+  43: 0000:     POGOK.SRM.SER.NO$,            \
+  44: 0000:     POGOK.SRD.DATE$,              \
+  45: 0000:     POGOK.SRM.DATE$,              \
+  46: 0000:     POGOK.RELOAD$,                \
+  47: 0000:     POGOK.PE10.RUNFLAG$,          \
+  48: 0000:     POGOK.PE5.RUNFLAG$,           \
+  49: 0000:     POGOK.PE6.RUNFLAG$,           \
+  50: 0000:     POGOK.PE7.RUNFLAG$,           \
+  51: 0000:     POGOK.PE4.RUNFLAG$,           \
+  52: 0000:     POGOK.FAILED.SRD.SER.NO$,     \
+  53: 0000:     POGOK.FAILED.SRD.DATE$,       \
+  54: 0000:     POGOK.FAILED.SRM.SER.NO$,     \
+  55: 0000:     POGOK.FAILED.SRM.DATE$,       \
+  56: 0000:     POGOK.PE10.RUNDATE$,          \
+  57: 0000:     POGOK.PE5.RUNDATE$,           \
+  58: 0000:     POGOK.PE6.RUNDATE$,           \
+  59: 0000:     POGOK.PE7.RUNDATE$,           \
+  60: 0000:     POGOK.PE4.RUNDATE$,           \
+  61: 0000:     POGOK.PE19.RUNFLAG$,          \
+  62: 0000:     POGOK.PE19.RUNDATE$,          \
+  63: 0000:     POGOK.FILLER$                 !
+  64: 0000: 
+  65: 0000: \--------------------------------------------------------------------
+  66: 0000: 
+  67: 0000:    FUNCTION POGOK.SET PUBLIC
+  68: 0014: 
+  69: 0014:     POGOK.REPORT.NUM%   = 718
+  70: 001d:     POGOK.RECL%         = 80
+  71: 0026:     POGOK.FILE.NAME$    = "POGOK"
+  72: 0035: 
+  73: 0035:    END FUNCTION
+  74: 0041: 
+  75: 0041: \--------------------------------------------------------------------
+  76: 0041: 
+  77: 0041:   FUNCTION READ.POGOK PUBLIC
+  78: 0055: 
+  79: 0055:    INTEGER*2 READ.POGOK
+  80: 0055: 
+  81: 0055:    READ.POGOK = 1
+  82: 005a: 
+  83: 005a:    IF END #POGOK.SESS.NUM% THEN READ.POGOK.ERROR
+  84: 006e: 
+  85: 006e:    READ FORM "4C4,6C1,5I1,9C4,I2,C1,I1,C4,2I4,C1";                  \
+  86: 01e7:        #POGOK.SESS.NUM%, 1;                                         \
+  87: 01e7:              POGOK.SRD.SER.NO$,                                     \
+  88: 01e7:              POGOK.SRM.SER.NO$,                                     \
+  89: 01e7:              POGOK.SRD.DATE$,                                       \
+  90: 01e7:              POGOK.SRM.DATE$,                                       \
+  91: 01e7:              POGOK.RELOAD$,                                         \
+  92: 01e7:              POGOK.PE10.RUNFLAG$,                                   \
+  93: 01e7:              POGOK.PE5.RUNFLAG$,                                    \
+  94: 01e7:              POGOK.PE6.RUNFLAG$,                                    \
+  95: 01e7:              POGOK.PE7.RUNFLAG$,                                    \
+  96: 01e7:              POGOK.PE4.RUNFLAG$,                                    \
+  97: 01e7:              POGOK.PE10.RETCODE%,                                   \
+  98: 01e7:              POGOK.PE5.RETCODE%,                                    \
+  99: 01e7:              POGOK.PE6.RETCODE%,                                    \
+ 100: 01e7:              POGOK.PE7.RETCODE%,                                    \
+ 101: 01e7:              POGOK.PE4.RETCODE%,                                    \
+ 102: 01e7:              POGOK.FAILED.SRD.SER.NO$,                              \
+ 103: 01e7:              POGOK.FAILED.SRD.DATE$,                                \
+ 104: 01e7:              POGOK.FAILED.SRM.SER.NO$,                              \
+ 105: 01e7:              POGOK.FAILED.SRM.DATE$,                                \
+ 106: 01e7:              POGOK.PE10.RUNDATE$,                                   \
+ 107: 01e7:              POGOK.PE5.RUNDATE$,                                    \
+ 108: 01e7:              POGOK.PE6.RUNDATE$,                                    \
+ 109: 01e7:              POGOK.PE7.RUNDATE$,                                    \
+ 110: 01e7:              POGOK.PE4.RUNDATE$,                                    \
+ 111: 01e7:              POGOK.DAYS.TO.RETAIN%,                                 \
+ 112: 01e7:              POGOK.PE19.RUNFLAG$,                                   \
+ 113: 01e7:              POGOK.PE19.RETCODE%,                                   \
+ 114: 01e7:              POGOK.PE19.RUNDATE$,                                   \
+ 115: 01e7:              POGOK.SRD.REC.COUNT%,                                  \
+ 116: 01e7:              POGOK.SRM.REC.COUNT%,                                  \
+ 117: 01e7:              POGOK.FILLER$
+ 118: 01e7: 
+ 119: 01e7:    READ.POGOK = 0
+ 120: 01ec:    EXIT FUNCTION
+ 121: 01ee: 
+ 122: 01ee:    READ.POGOK.ERROR:
+ 123: 01ee: 
+ 124: 01ee:    CURRENT.REPORT.NUM% = POGOK.REPORT.NUM%
+ 125: 01fc:    FILE.OPERATION$ = "R"
+ 126: 020b:    CURRENT.CODE$ = ""
+ 127: 021a: 
+ 128: 021a:    EXIT FUNCTION
+ 129: 021c:   END FUNCTION
+ 130: 022b: 
+ 131: 022b: \--------------------------------------------------------------------
+ 132: 022b:   FUNCTION READ.POGOK.LOCK PUBLIC
+ 133: 023f: 
+ 134: 023f:    INTEGER*2 READ.POGOK.LOCK
+ 135: 023f: 
+ 136: 023f:    READ.POGOK.LOCK = 1
+ 137: 0244: 
+ 138: 0244:    IF END #POGOK.SESS.NUM% THEN READ.POGOK.LOCK.ERROR
+ 139: 0258: 
+ 140: 0258:    READ FORM "4C4,6C1,5I1,9C4,I2,C1,I1,C4,2I4,C1";                  \
+ 141: 03d1:        #POGOK.SESS.NUM% AUTOLOCK, 1;                                \
+ 142: 03d1:              POGOK.SRD.SER.NO$,                                     \
+ 143: 03d1:              POGOK.SRM.SER.NO$,                                     \
+ 144: 03d1:              POGOK.SRD.DATE$,                                       \
+ 145: 03d1:              POGOK.SRM.DATE$,                                       \
+ 146: 03d1:              POGOK.RELOAD$,                                         \
+ 147: 03d1:              POGOK.PE10.RUNFLAG$,                                   \
+ 148: 03d1:              POGOK.PE5.RUNFLAG$,                                    \
+ 149: 03d1:              POGOK.PE6.RUNFLAG$,                                    \
+ 150: 03d1:              POGOK.PE7.RUNFLAG$,                                    \
+ 151: 03d1:              POGOK.PE4.RUNFLAG$,                                    \
+ 152: 03d1:              POGOK.PE10.RETCODE%,                                   \
+ 153: 03d1:              POGOK.PE5.RETCODE%,                                    \
+ 154: 03d1:              POGOK.PE6.RETCODE%,                                    \
+ 155: 03d1:              POGOK.PE7.RETCODE%,                                    \
+ 156: 03d1:              POGOK.PE4.RETCODE%,                                    \
+ 157: 03d1:              POGOK.FAILED.SRD.SER.NO$,                              \
+ 158: 03d1:              POGOK.FAILED.SRD.DATE$,                                \
+ 159: 03d1:              POGOK.FAILED.SRM.SER.NO$,                              \
+ 160: 03d1:              POGOK.FAILED.SRM.DATE$,                                \
+ 161: 03d1:              POGOK.PE10.RUNDATE$,                                   \
+ 162: 03d1:              POGOK.PE5.RUNDATE$,                                    \
+ 163: 03d1:              POGOK.PE6.RUNDATE$,                                    \
+ 164: 03d1:              POGOK.PE7.RUNDATE$,                                    \
+ 165: 03d1:              POGOK.PE4.RUNDATE$,                                    \
+ 166: 03d1:              POGOK.DAYS.TO.RETAIN%,                                 \
+ 167: 03d1:              POGOK.PE19.RUNFLAG$,                                   \
+ 168: 03d1:              POGOK.PE19.RETCODE%,                                   \
+ 169: 03d1:              POGOK.PE19.RUNDATE$,                                   \
+ 170: 03d1:              POGOK.SRD.REC.COUNT%,                                  \
+ 171: 03d1:              POGOK.SRM.REC.COUNT%,                                  \
+ 172: 03d1:              POGOK.FILLER$
+ 173: 03d1: 
+ 174: 03d1:    READ.POGOK.LOCK = 0
+ 175: 03d6:    EXIT FUNCTION
+ 176: 03d8: 
+ 177: 03d8:    READ.POGOK.LOCK.ERROR:
+ 178: 03d8: 
+ 179: 03d8:    CURRENT.REPORT.NUM% = POGOK.REPORT.NUM%
+ 180: 03e6:    FILE.OPERATION$ = "R"
+ 181: 03f5:    CURRENT.CODE$ = ""
+ 182: 0404: 
+ 183: 0404:    EXIT FUNCTION
+ 184: 0406:   END FUNCTION
+ 185: 0415: 
+ 186: 0415: \--------------------------------------------------------------------
+ 187: 0415: 
+ 188: 0415:   FUNCTION WRITE.POGOK PUBLIC
+ 189: 0429: 
+ 190: 0429:    INTEGER*2 WRITE.POGOK
+ 191: 0429: 
+ 192: 0429:    WRITE.POGOK = 1
+ 193: 042e: 
+ 194: 042e:    IF END #POGOK.SESS.NUM% THEN WRITE.POGOK.ERROR
+ 195: 0442: 
+ 196: 0442:    WRITE FORM "4C4,6C1,5I1,9C4,I2,C1,I1,C4,2I4,C1";                 \
+ 197: 0641:        #POGOK.SESS.NUM%, 1;                                         \
+ 198: 0641:              POGOK.SRD.SER.NO$,                                     \
+ 199: 0641:              POGOK.SRM.SER.NO$,                                     \
+ 200: 0641:              POGOK.SRD.DATE$,                                       \
+ 201: 0641:              POGOK.SRM.DATE$,                                       \
+ 202: 0641:              POGOK.RELOAD$,                                         \
+ 203: 0641:              POGOK.PE10.RUNFLAG$,                                   \
+ 204: 0641:              POGOK.PE5.RUNFLAG$,                                    \
+ 205: 0641:              POGOK.PE6.RUNFLAG$,                                    \
+ 206: 0641:              POGOK.PE7.RUNFLAG$,                                    \
+ 207: 0641:              POGOK.PE4.RUNFLAG$,                                    \
+ 208: 0641:              POGOK.PE10.RETCODE%,                                   \
+ 209: 0641:              POGOK.PE5.RETCODE%,                                    \
+ 210: 0641:              POGOK.PE6.RETCODE%,                                    \
+ 211: 0641:              POGOK.PE7.RETCODE%,                                    \
+ 212: 0641:              POGOK.PE4.RETCODE%,                                    \
+ 213: 0641:              POGOK.FAILED.SRD.SER.NO$,                              \
+ 214: 0641:              POGOK.FAILED.SRD.DATE$,                                \
+ 215: 0641:              POGOK.FAILED.SRM.SER.NO$,                              \
+ 216: 0641:              POGOK.FAILED.SRM.DATE$,                                \
+ 217: 0641:              POGOK.PE10.RUNDATE$,                                   \
+ 218: 0641:              POGOK.PE5.RUNDATE$,                                    \
+ 219: 0641:              POGOK.PE6.RUNDATE$,                                    \
+ 220: 0641:              POGOK.PE7.RUNDATE$,                                    \
+ 221: 0641:              POGOK.PE4.RUNDATE$,                                    \
+ 222: 0641:              POGOK.DAYS.TO.RETAIN%,                                 \
+ 223: 0641:              POGOK.PE19.RUNFLAG$,                                   \
+ 224: 0641:              POGOK.PE19.RETCODE%,                                   \
+ 225: 0641:              POGOK.PE19.RUNDATE$,                                   \
+ 226: 0641:              POGOK.SRD.REC.COUNT%,                                  \
+ 227: 0641:              POGOK.SRM.REC.COUNT%,                                  \
+ 228: 0641:              POGOK.FILLER$
+ 229: 0641: 
+ 230: 0641:    WRITE.POGOK = 0
+ 231: 0646: 
+ 232: 0646:    WRITE.POGOK.ERROR:
+ 233: 0646: 
+ 234: 0646:    CURRENT.REPORT.NUM% = POGOK.REPORT.NUM%
+ 235: 0654:    FILE.OPERATION$ = "W"
+ 236: 0663:    CURRENT.CODE$ = ""
+ 237: 0672: 
+ 238: 0672:    EXIT FUNCTION
+ 239: 0674: 
+ 240: 0674:    END FUNCTION
+ 241: 0683: 
+ 242: 0683: \--------------------------------------------------------------------
+ 243: 0683: 
+ 244: 0683:   FUNCTION WRITE.POGOK.UNLOCK PUBLIC
+ 245: 0697: 
+ 246: 0697:    INTEGER*2 WRITE.POGOK.UNLOCK
+ 247: 0697: 
+ 248: 0697:    WRITE.POGOK.UNLOCK = 1
+ 249: 069c: 
+ 250: 069c:    IF END #POGOK.SESS.NUM% THEN WRITE.POGOK.UNLOCK.ERROR
+ 251: 06b0: 
+ 252: 06b0:    WRITE FORM "4C4,6C1,5I1,9C4,I2,C1,I1,C4,2I4,C1";                 \
+ 253: 08af:        #POGOK.SESS.NUM% AUTOUNLOCK, 1;                              \
+ 254: 08af:              POGOK.SRD.SER.NO$,                                     \
+ 255: 08af:              POGOK.SRM.SER.NO$,                                     \
+ 256: 08af:              POGOK.SRD.DATE$,                                       \
+ 257: 08af:              POGOK.SRM.DATE$,                                       \
+ 258: 08af:              POGOK.RELOAD$,                                         \
+ 259: 08af:              POGOK.PE10.RUNFLAG$,                                   \
+ 260: 08af:              POGOK.PE5.RUNFLAG$,                                    \
+ 261: 08af:              POGOK.PE6.RUNFLAG$,                                    \
+ 262: 08af:              POGOK.PE7.RUNFLAG$,                                    \
+ 263: 08af:              POGOK.PE4.RUNFLAG$,                                    \
+ 264: 08af:              POGOK.PE10.RETCODE%,                                   \
+ 265: 08af:              POGOK.PE5.RETCODE%,                                    \
+ 266: 08af:              POGOK.PE6.RETCODE%,                                    \
+ 267: 08af:              POGOK.PE7.RETCODE%,                                    \
+ 268: 08af:              POGOK.PE4.RETCODE%,                                    \
+ 269: 08af:              POGOK.FAILED.SRD.SER.NO$,                              \
+ 270: 08af:              POGOK.FAILED.SRD.DATE$,                                \
+ 271: 08af:              POGOK.FAILED.SRM.SER.NO$,                              \
+ 272: 08af:              POGOK.FAILED.SRM.DATE$,                                \
+ 273: 08af:              POGOK.PE10.RUNDATE$,                                   \
+ 274: 08af:              POGOK.PE5.RUNDATE$,                                    \
+ 275: 08af:              POGOK.PE6.RUNDATE$,                                    \
+ 276: 08af:              POGOK.PE7.RUNDATE$,                                    \
+ 277: 08af:              POGOK.PE4.RUNDATE$,                                    \
+ 278: 08af:              POGOK.DAYS.TO.RETAIN%,                                 \
+ 279: 08af:              POGOK.PE19.RUNFLAG$,                                   \
+ 280: 08af:              POGOK.PE19.RETCODE%,                                   \
+ 281: 08af:              POGOK.PE19.RUNDATE$,                                   \
+ 282: 08af:              POGOK.SRD.REC.COUNT%,                                  \
+ 283: 08af:              POGOK.SRM.REC.COUNT%,                                  \
+ 284: 08af:              POGOK.FILLER$
+ 285: 08af: 
+ 286: 08af:    WRITE.POGOK.UNLOCK = 0
+ 287: 08b4: 
+ 288: 08b4:    WRITE.POGOK.UNLOCK.ERROR:
+ 289: 08b4: 
+ 290: 08b4:    CURRENT.REPORT.NUM% = POGOK.REPORT.NUM%
+ 291: 08c2:    FILE.OPERATION$ = "W"
+ 292: 08d1:    CURRENT.CODE$ = ""
+ 293: 08e0: 
+ 294: 08e0:    EXIT FUNCTION
+ 295: 08e2: 
+ 296: 08e2:    END FUNCTION
+ 297: 08f1: 
+ 298: 08f1: \--------------------------------------------------------------------
+ 299: 08f1: 
+ 300: 08f1:   FUNCTION CREATE.POGOK PUBLIC
+ 301: 0905: 
+ 302: 0905:    INTEGER*2 CREATE.POGOK
+ 303: 0905:    INTEGER*2 rc%
+ 304: 0905: 
+ 305: 0905:    POGOK.SRD.SER.NO$        = "0000"
+ 306: 0914:    POGOK.SRM.SER.NO$        = "0000"
+ 307: 0923:    POGOK.SRD.DATE$          = PACK$("00000000")
+ 308: 0937:    POGOK.SRM.DATE$          = POGOK.SRD.DATE$
+ 309: 094d:    POGOK.RELOAD$            = "N"
+ 310: 095c:    POGOK.PE10.RUNFLAG$      = " "
+ 311: 096b:    POGOK.PE5.RUNFLAG$       = " "
+ 312: 097a:    POGOK.PE6.RUNFLAG$       = " "
+ 313: 0989:    POGOK.PE7.RUNFLAG$       = " "
+ 314: 0998:    POGOK.PE4.RUNFLAG$       = " "
+ 315: 09a7:    POGOK.PE10.RETCODE%      = 0
+ 316: 09af:    POGOK.PE5.RETCODE%       = 0
+ 317: 09b7:    POGOK.PE6.RETCODE%       = 0
+ 318: 09bf:    POGOK.PE7.RETCODE%       = 0
+ 319: 09c7:    POGOK.PE4.RETCODE%       = 0
+ 320: 09cf:    POGOK.FAILED.SRD.SER.NO$ = "0000"
+ 321: 09de:    POGOK.FAILED.SRD.DATE$   = POGOK.SRD.DATE$
+ 322: 09f4:    POGOK.FAILED.SRM.SER.NO$ = "0000"
+ 323: 0a03:    POGOK.FAILED.SRM.DATE$   = POGOK.SRD.DATE$
+ 324: 0a19:    POGOK.PE10.RUNDATE$      = POGOK.SRD.DATE$
+ 325: 0a2f:    POGOK.PE5.RUNDATE$       = POGOK.SRD.DATE$
+ 326: 0a45:    POGOK.PE6.RUNDATE$       = POGOK.SRD.DATE$
+ 327: 0a5b:    POGOK.PE7.RUNDATE$       = POGOK.SRD.DATE$
+ 328: 0a71:    POGOK.PE4.RUNDATE$       = POGOK.SRD.DATE$
+ 329: 0a87:    POGOK.DAYS.TO.RETAIN%    = 0
+ 330: 0a90:    POGOK.PE19.RUNFLAG$      = " "
+ 331: 0a9f:    POGOK.PE19.RETCODE%      = 0
+ 332: 0aa7:    POGOK.PE19.RUNDATE$      = POGOK.SRD.DATE$
+ 333: 0abd:    POGOK.SRD.REC.COUNT%     = 0
+ 334: 0acc:    POGOK.SRM.REC.COUNT%     = 0
+ 335: 0adb:    POGOK.FILLER$            = " "
+ 336: 0aea: 
+ 337: 0aea:    CREATE.POGOK = 1
+ 338: 0aef: 
+ 339: 0aef:    IF END #POGOK.SESS.NUM% THEN CREATE.POGOK.ERROR
+ 340: 0b03: 
+ 341: 0b03:    CREATE POSFILE POGOK.FILE.NAME$ DIRECT 1 RECL POGOK.RECL%        \
+ 342: 0b2c:           AS POGOK.SESS.NUM% MIRRORED PERUPDATE                     !
+ 343: 0b2c: 
+ 344: 0b2c:    rc% = WRITE.POGOK
+ 345: 0b33:    IF rc% = 0 THEN BEGIN
+ 346: 0b38:       CREATE.POGOK = 0
+ 347: 0b3d:    ENDIF
+ 348: 0b3d: 
+ 349: 0b3d:    EXIT FUNCTION
+ 350: 0b3f: 
+ 351: 0b3f: CREATE.POGOK.ERROR:
+ 352: 0b3f: 
+ 353: 0b3f:    CURRENT.REPORT.NUM% = POGOK.REPORT.NUM%
+ 354: 0b4d:    FILE.OPERATION$ = "C"
+ 355: 0b5c:    CURRENT.CODE$ = ""
+ 356: 0b6b: 
+ 357: 0b6b:   END FUNCTION
+ 358: 0b7a: End of Compilation

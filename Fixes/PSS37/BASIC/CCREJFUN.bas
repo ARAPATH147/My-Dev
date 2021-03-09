@@ -1,0 +1,269 @@
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***              RETURNS / AUTOMATIC CREDIT CLAIMING SYSTEM
+\***
+\***                 EXTERNAL FILE FUNCTION DEFINITIONS
+\***
+\***                    REFERENCE    : CCREJFUN.BAS
+\***
+\***    Version A.         Julia Stones              11th March 2004
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+  INTEGER*2 GLOBAL              \
+         CURRENT.REPORT.NUM%
+
+  STRING GLOBAL                 \
+         CURRENT.CODE$,         \
+         FILE.OPERATION$
+
+  %INCLUDE CCREJDEC.J86
+
+
+  FUNCTION CCREJ.SET PUBLIC
+    INTEGER*2 CCREJ.SET
+
+    CCREJ.SET = 1
+
+      CCREJ.RECL%        = 70
+      CCREJ.REPORT.NUM%  = 682
+      CCREJ.FILE.NAME$   = "ADXLXACN::D:\ADX_UDT1\CCREJ.BIN"
+
+    CCREJ.SET = 0
+
+  END FUNCTION
+
+  FUNCTION CCREJC.SET PUBLIC
+    INTEGER*2 CCREJC.SET
+
+    CCREJC.SET = 1
+
+      CCREJC.RECL%        = 70
+      CCREJC.REPORT.NUM%  = 682
+      CCREJC.FILE.NAME$   = "ADXLXACN::D:\ADX_UDT1\CCREJC.BIN"
+
+    CCREJC.SET = 0
+
+  END FUNCTION
+
+  FUNCTION CCREJP.SET PUBLIC
+    INTEGER*2 CCREJP.SET
+
+    CCREJP.SET = 1
+
+      CCREJP.RECL%        = 70
+      CCREJP.REPORT.NUM%  = 682
+      CCREJP.FILE.NAME$   = "ADXLXACN::D:\ADX_UDT1\CCREJP.BIN"
+
+    CCREJP.SET = 0
+
+  END FUNCTION
+
+  FUNCTION READ.CCREJ PUBLIC
+    INTEGER*2 READ.CCREJ
+
+    READ.CCREJ = 1
+
+       IF END #CCREJ.SESS.NUM% THEN READ.ERROR
+       READ #CCREJ.SESS.NUM%; LINE CCREJ.RECORD$
+       CCREJ.DATE$              = LEFT$(CCREJ.RECORD$,8)
+       CCREJ.RETURN.REASON$     = MID$(CCREJ.RECORD$, 9, 2)
+       CCREJ.BC.LETTER$         = MID$(CCREJ.RECORD$, 11, 1)
+       CCREJ.UOD.NUM$           = MID$(CCREJ.RECORD$, 12, 14)
+       CCREJ.ITEM.BARCODE.FLAG$ = MID$(CCREJ.RECORD$, 26, 1)
+       CCREJ.ITEM.BARCODE$      = MID$(CCREJ.RECORD$, 27, 12)
+       CCREJ.DESC$              = MID$(CCREJ.RECORD$, 39, 24)
+       CCREJ.ITEM.BC$           = MID$(CCREJ.RECORD$, 63, 1)
+       CCREJ.ITEM.QTY$          = MID$(CCREJ.RECORD$, 64, 4)
+       CCREJ.REJECT.REASON$     = MID$(CCREJ.RECORD$, 68, 1)
+       CCREJ.ENDREC.MARKER$     = RIGHT$(CCREJ.RECORD$, 2)
+
+    READ.CCREJ = 0
+    EXIT FUNCTION
+
+    READ.ERROR:
+
+       CURRENT.CODE$ = ""
+       FILE.OPERATION$ = "R"
+       CURRENT.REPORT.NUM% = CCREJ.REPORT.NUM%
+
+       EXIT FUNCTION
+
+  END FUNCTION
+
+  FUNCTION READ.CCREJC PUBLIC
+    INTEGER*2 READ.CCREJC
+
+    READ.CCREJC = 1
+
+       IF END #CCREJC.SESS.NUM% THEN READ.ERROR
+       READ #CCREJC.SESS.NUM%; LINE CCREJ.RECORD$
+       CCREJ.DATE$              = LEFT$(CCREJ.RECORD$,8)
+       CCREJ.RETURN.REASON$     = MID$(CCREJ.RECORD$, 9, 2)
+       CCREJ.BC.LETTER$         = MID$(CCREJ.RECORD$, 11, 1)
+       CCREJ.UOD.NUM$           = MID$(CCREJ.RECORD$, 12, 14)
+       CCREJ.ITEM.BARCODE.FLAG$ = MID$(CCREJ.RECORD$, 26, 1)
+       CCREJ.ITEM.BARCODE$      = MID$(CCREJ.RECORD$, 27, 12)
+       CCREJ.DESC$              = MID$(CCREJ.RECORD$, 39, 24)
+       CCREJ.ITEM.BC$           = MID$(CCREJ.RECORD$, 63, 1)
+       CCREJ.ITEM.QTY$          = MID$(CCREJ.RECORD$, 64, 4)
+       CCREJ.REJECT.REASON$     = MID$(CCREJ.RECORD$, 68, 1)
+       CCREJ.ENDREC.MARKER$     = RIGHT$(CCREJ.RECORD$, 2)
+
+    READ.CCREJC = 0
+    EXIT FUNCTION
+
+    READ.ERROR:
+
+       CURRENT.CODE$ = ""
+       FILE.OPERATION$ = "R"
+       CURRENT.REPORT.NUM% = CCREJC.REPORT.NUM%
+
+       EXIT FUNCTION
+
+  END FUNCTION
+
+  FUNCTION READ.CCREJP PUBLIC
+    INTEGER*2 READ.CCREJP
+
+    READ.CCREJP = 1
+
+       IF END #CCREJP.SESS.NUM% THEN READ.ERROR
+       READ #CCREJP.SESS.NUM%; LINE CCREJ.RECORD$
+       CCREJ.DATE$              = LEFT$(CCREJ.RECORD$,8)
+       CCREJ.RETURN.REASON$     = MID$(CCREJ.RECORD$, 9, 2)
+       CCREJ.BC.LETTER$         = MID$(CCREJ.RECORD$, 11, 1)
+       CCREJ.UOD.NUM$           = MID$(CCREJ.RECORD$, 12, 14)
+       CCREJ.ITEM.BARCODE.FLAG$ = MID$(CCREJ.RECORD$, 26, 1)
+       CCREJ.ITEM.BARCODE$      = MID$(CCREJ.RECORD$, 27, 12)
+       CCREJ.DESC$              = MID$(CCREJ.RECORD$, 39, 24)
+       CCREJ.ITEM.BC$           = MID$(CCREJ.RECORD$, 63, 1)
+       CCREJ.ITEM.QTY$          = MID$(CCREJ.RECORD$, 64, 4)
+       CCREJ.REJECT.REASON$     = MID$(CCREJ.RECORD$, 68, 1)
+       CCREJ.ENDREC.MARKER$     = RIGHT$(CCREJ.RECORD$, 2)
+
+    READ.CCREJP = 0
+    EXIT FUNCTION
+
+    READ.ERROR:
+
+       CURRENT.CODE$ = ""
+       FILE.OPERATION$ = "R"
+       CURRENT.REPORT.NUM% = CCREJP.REPORT.NUM%
+
+       EXIT FUNCTION
+
+  END FUNCTION
+
+
+  FUNCTION WRITE.CCREJ PUBLIC
+
+    INTEGER*2 WRITE.CCREJ
+
+    STRING FORMAT$,                                                   \
+           STRING.LENGTH$
+
+    WRITE.CCREJ = 1
+
+       STRING.LENGTH$ = STR$(LEN(CCREJ.RECORD$))
+       FORMAT$ = "C" + STRING.LENGTH$
+       IF END #CCREJ.SESS.NUM% THEN WRITE.ERROR
+       WRITE FORM FORMAT$; #CCREJ.SESS.NUM%; CCREJ.RECORD$
+
+    WRITE.CCREJ = 0
+    EXIT FUNCTION
+
+    WRITE.ERROR:
+       CURRENT.CODE$ = CCREJ.RECORD$
+       FILE.OPERATION$= "O"
+       CURRENT.REPORT.NUM% = CCREJ.REPORT.NUM%
+
+       EXIT FUNCTION
+
+  END FUNCTION
+
+
+  FUNCTION WRITE.CCREJC PUBLIC
+
+    INTEGER*2 WRITE.CCREJC
+
+    STRING FORMAT$,                                                   \
+           STRING.LENGTH$
+
+    WRITE.CCREJC = 1
+
+       STRING.LENGTH$ = STR$(LEN(CCREJ.RECORD$))
+       FORMAT$ = "C" + STRING.LENGTH$
+       IF END #CCREJC.SESS.NUM% THEN WRITE.ERROR
+       WRITE FORM FORMAT$; #CCREJC.SESS.NUM%; CCREJ.RECORD$
+
+    WRITE.CCREJC = 0
+    EXIT FUNCTION
+
+    WRITE.ERROR:
+       CURRENT.CODE$ = CCREJ.RECORD$
+       FILE.OPERATION$= "O"
+       CURRENT.REPORT.NUM% = CCREJC.REPORT.NUM%
+
+       EXIT FUNCTION
+
+  END FUNCTION
+
+
+  FUNCTION WRITE.HOLD.CCREJ PUBLIC
+
+    INTEGER*2 WRITE.HOLD.CCREJ
+
+    STRING FORMAT$,                                                     \
+           STRING.LENGTH$
+
+    WRITE.HOLD.CCREJ = 1
+
+       STRING.LENGTH$ = STR$(LEN(CCREJ.RECORD$))
+       FORMAT$ = "C" + STRING.LENGTH$
+       IF END #CCREJ.SESS.NUM% THEN WRITE.HOLD.ERROR
+       WRITE FORM FORMAT$; HOLD #CCREJ.SESS.NUM%; CCREJ.RECORD$
+
+    WRITE.HOLD.CCREJ = 0
+    EXIT FUNCTION
+
+    WRITE.HOLD.ERROR:
+
+       CURRENT.CODE$ = CCREJ.RECORD$
+       FILE.OPERATION$= "O"
+       CURRENT.REPORT.NUM% = CCREJ.REPORT.NUM%
+
+       EXIT FUNCTION
+
+  END FUNCTION
+
+
+  FUNCTION WRITE.HOLD.CCREJC PUBLIC
+
+    INTEGER*2 WRITE.HOLD.CCREJC
+
+    STRING FORMAT$,                                                     \
+           STRING.LENGTH$
+
+    WRITE.HOLD.CCREJC = 1
+
+       STRING.LENGTH$ = STR$(LEN(CCREJ.RECORD$))
+       FORMAT$ = "C" + STRING.LENGTH$
+       IF END #CCREJC.SESS.NUM% THEN WRITE.HOLD.ERROR
+       WRITE FORM FORMAT$; HOLD #CCREJC.SESS.NUM%; CCREJ.RECORD$
+
+    WRITE.HOLD.CCREJC = 0
+    EXIT FUNCTION
+
+    WRITE.HOLD.ERROR:
+
+       CURRENT.CODE$ = CCREJ.RECORD$
+       FILE.OPERATION$= "O"
+       CURRENT.REPORT.NUM% = CCREJC.REPORT.NUM%
+
+       EXIT FUNCTION
+
+  END FUNCTION
+

@@ -1,0 +1,648 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           STOCK MOVEMENT QUEUE FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***               REFERENCE    : STKMQFUN.BAS
+   7: 0000: \***
+   8: 0000: \***    Version B.              S.P. Kelsey                  7th Oct 1992
+   9: 0000: \***    Recompiled to pick up version B of the declarations.
+  10: 0000: \***
+  11: 0000: \***    Version C.              Les Cook                     5th Jan 1993
+  12: 0000: \***    To include new WRITE.HOLD function.
+  13: 0000: \***
+  14: 0000: \***    Version D.              Steven Goulding              8th Mar 1993
+  15: 0000: \***    Recompiled to pick up version D of the declarations.
+  16: 0000: \***
+  17: 0000: \***    Version E.              Michael J. Kelsall          15th Sep 1993
+  18: 0000: \***    Recompiled to pick up version E of the declarations.
+  19: 0000: \***
+  20: 0000: \***    Version F.              Robert Cowey                21th Oct 1993
+  21: 0000: \***    Corrected setting of FILE.OPERATION$ within WRITE functions.
+  22: 0000: \***
+  23: 0000: \***    Version G.              Mark Walker                 19th Jun 2015
+  24: 0000: \***    Problem Ticket Reference: PRB0046101
+  25: 0000: \***    Use WRITE MATRIX rather than a standard WRITE for the STKMQ, as
+  26: 0000: \***    the operating system does not guarantee the integrity of multiple
+  27: 0000: \***    applications simultaneously using the WRITE statement to write
+  28: 0000: \***    to the same sequential file.
+  29: 0000: \***
+  30: 0000: \***    NOTE: We cannot do this for the WRITE.HOLD.STKMQ function, as
+  31: 0000: \***          HOLD functionality is not available for WRITE MATRIX.
+  32: 0000: \***
+  33: 0000: \*******************************************************************************
+  34: 0000: \*******************************************************************************
+  35: 0000:  
+  36: 0000:     INTEGER*2 GLOBAL                                                    \
+  37: 0000:         CURRENT.REPORT.NUM%
+  38: 0000:          
+  39: 0000:     STRING GLOBAL                                                       \
+  40: 0000:         CURRENT.CODE$,                                                  \
+  41: 0000:         FILE.OPERATION$
+  42: 0000:          
+  43: 0000: %INCLUDE STKMQDEC.J86                                                       !FRC
+  44: 0000: REM \
+  45: 0000: \******************************************************************************
+  46: 0000: \******************************************************************************
+  47: 0000: \***
+  48: 0000: \***      %INCLUDE FOR STOCK MOVEMENT QUEUE FILE FIELD DECLARATIONS
+  49: 0000: \***                                             FILE REFERENCE PARAMETERS
+  50: 0000: \***
+  51: 0000: \***               FILE TYPE    : Sequential
+  52: 0000: \***
+  53: 0000: \***               REFERENCE    : STKMQDEC.J86
+  54: 0000: \***
+  55: 0000: \***      Version A.     L. Cook
+  56: 0000: \***
+  57: 0000: \***      Combined from STKMQNUE.J86 and STKMQFLE.J86
+  58: 0000: \***
+  59: 0000: \***      Version B.     S.P. Kelsey (CTG)            7th November
+  60: 0000: \***      Include CSR Marker in the Type 1 and Type 18 transactions.
+  61: 0000: \***
+  62: 0000: \***      Version C.     S. Goulding                 8th March
+  63: 0000: \***      Add fields for new tranctions types 21 & 23
+  64: 0000: \***
+  65: 0000: \***      Version D.     ???????????            ????????????
+  66: 0000: \***      ????????????????????????????????????????????????????????
+  67: 0000: \***
+  68: 0000: \***      Version E.     Michael J. Kelsall           16th Dec 1993.
+  69: 0000: \***      Addition of txn types, 24, 25, 26, 27 and 28. As part of the
+  70: 0000: \***      RETURNS/AUTOMATIC CREDIT CLAIMING system.
+  71: 0000: \***
+  72: 0000: \***      Version 1.1    Michael J. Kelsall           10th Aug 1994.
+  73: 0000: \***      Changes as part of R/ACC update to allow for zero price claim
+  74: 0000: \***      processing. Addition of type 29 txn for this change.
+  75: 0000: \***
+  76: 0000: \***      Version 1.2    Nik Sen                       8th November 1994
+  77: 0000: \***      Addition of transaction type 30 as oart of Epsom Life CSR Phase 2
+  78: 0000: \***
+  79: 0000: \***      Version 1.3    Neil Bennett                   2nd January 2007
+  80: 0000: \***      Add ASN processing support. (Rec Type 17)
+  81: 0000: \***
+  82: 0000: \***      Version 1.4    Brian Greenfield               14th may 2007
+  83: 0000: \***      Added STKMQ.RECALL.TYPE$ for use in A7C RECALLS - only type 26 records.
+  84: 0000: \***
+  85: 0000: \***      Version 1.5    Neil Bennett                  31st January 2008
+  86: 0000: \***      Add STKMQ.FLAG$ for record type 11
+  87: 0000: \***
+  88: 0000: \***      Version 1.6    Dave Constable                5th September 2008
+  89: 0000: \***      Add STKMQ.FLAG$ for record type 33
+  90: 0000: \***
+  91: 0000: \***      Version 1.7    Dave Constable                30th December 2008
+  92: 0000: \***      Add STKMQ.RESCAN$ for record type 33
+  93: 0000: \***
+  94: 0000: \***      Version 1.8    Dave Constable                6th January 2009
+  95: 0000: \***      Add Bookin date & time for record type 33
+  96: 0000: \***
+  97: 0000: \***      Version F      Mark Walker                      27th Mar 2014
+  98: 0000: \***      F337 Centralised View of Stock
+  99: 0000: \***      - Relocated STKMQ item processing variables to here.
+ 100: 0000: \***
+ 101: 0000: \******************************************************************************
+ 102: 0000: \*******************************************************************************
+ 103: 0000: \***
+ 104: 0000: \***  The length of the records on this file vary depending on the record
+ 105: 0000: \***  transaction type, but they all comprise combinations of the fields
+ 106: 0000: \***  defined below.
+ 107: 0000: \***
+ 108: 0000: \***  Transaction type 0 (Header record) - RECORD DELIMITER, TRANS TYPE,
+ 109: 0000: \***     FIELD DELIMITER, CREATION DATE, CREATION TIME, RECORD DELIMITER,
+ 110: 0000: \***     END OF RECORD MARKER.
+ 111: 0000: \***
+ 112: 0000: \***  Transaction type 1 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 113: 0000: \***     TIME, FSI, FOLIO YEAR, FOLIO MONTH, FOLIO NUMBER, STORE SUFFIX,
+ 114: 0000: \***     COUNT OF ITEMS, INVOICE DAY,(FIELD DELIMITER, BOOTS CODE,
+ 115: 0000: \***     FIELD DELIMITER, QUANTITY, FIELD DELIMITER, CSR MARKER),
+ 116: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER.
+ 117: 0000: \***     The fields within brackets are repeated as many times as count of items.
+ 118: 0000: \***
+ 119: 0000: \***  Transaction type 2 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 120: 0000: \***     TIME, BOOTS CODE, FIELD DELIMITER, QUANTITY, RECORD DELIMITER,
+ 121: 0000: \***     END OF RECORD MARKER.
+ 122: 0000: \***
+ 123: 0000: \***  Transaction type 3 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 124: 0000: \***     TIME, BOOTS CODE, FIELD DELIMITER, QUANTITY, FIELD DELIMITER,
+ 125: 0000: \***     REASON CODE, STORE/RETURN CODE, RECORD DELIMITER, END OF RECORD MARKER
+ 126: 0000: \***
+ 127: 0000: \***  Transaction type 4 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 128: 0000: \***     TIME, BOOTS CODE, ON IDF FLAG, FIELD DELIMITER, QUANTITY,
+ 129: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+ 130: 0000: \***
+ 131: 0000: \***  Transaction type 5 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 132: 0000: \***     TIME, BOOTS CODE, COUNT FLAG, STOCK MOVEMENT DATE, FIELD DELIMITER,
+ 133: 0000: \***     QUANTITY, RECORD DELIMITER, END OF RECORD MARKER
+ 134: 0000: \***
+ 135: 0000: \***  Transaction type 6 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 136: 0000: \***     TIME, BOOTS CODE, REASON (1 byte ASCII)
+ 137: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+ 138: 0000: \***
+ 139: 0000: \***  Transaction type 7 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 140: 0000: \***     TIME, BOOTS CODE, CONCEPT SEQUENCE
+ 141: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+ 142: 0000: \***
+ 143: 0000: \***  Transaction type 8 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 144: 0000: \***     TIME, PRODUCT GROUP, RECORD DELIMITER, END OF RECORD
+ 145: 0000: \***     MARKER
+ 146: 0000: \***
+ 147: 0000: \***  Transaction type 9 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 148: 0000: \***     TIME, LIST NUMBER, ITEM NUMBER, LIST TYPE,
+ 149: 0000: \***     COUNT.BY.DATE, RECORD DELIMITER, END OF RECORD MARKER
+ 150: 0000: \***
+ 151: 0000: \***  Transaction type 10- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 152: 0000: \***     TIME, BOOTS CODE,
+ 153: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+ 154: 0000: \***
+ 155: 0000: \***  Transaction type 11- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 156: 0000: \***     TIME, BOOTS CODE, FIELD DELIMITER, COUNT QUANTITY, FIELD DELIMITER(opt),
+ 157: 0000: \***     SOURCE(opt), FLAG(opt), RECORD DELIMITER, END OF RECORD MARKER
+ 158: 0000: \***
+ 159: 0000: \***  Transaction type 12- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 160: 0000: \***     TIME, BOOTS CODE,
+ 161: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+ 162: 0000: \***
+ 163: 0000: \***  Transaction type 13- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 164: 0000: \***     TIME, LIST NUMBER, ITEM NUMBER, ITEM STATUS,ITEM CODE,
+ 165: 0000: \***     COUNT DATE, COUNT TIME, PRICE, FIELD DELIMITER, SHOP FLOOR COUNT,
+ 166: 0000: \***     FIELD DELIMITER, BACKROOM COUNT, RECORD DELIMITER, END OF REC MARKER
+ 167: 0000: \***
+ 168: 0000: \***  Transaction type 14- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 169: 0000: \***     TIME, LIST NUMBER, LIST STATUS, RECORD DELIMITER,
+ 170: 0000: \***     END OF RECORD MARKER
+ 171: 0000: \***
+ 172: 0000: \***  Transaction type 16- RECORD DELIMIER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 173: 0000: \***     TIME, BC LETTER, FIELD DELIMITER, ORIGINAL RECOUNT
+ 174: 0000: \***     PERCENTAGE, FIELD DELIMITER, CHANGED RECOUNT PERCENTAGE,
+ 175: 0000: \***     RECORD DELIMITER, END OF RECORD DELIMITER
+ 176: 0000: \***
+ 177: 0000: \***  Transaction type 17- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 178: 0000: \***     TIME, SOURCE, SUPPLIER NUMBER, ORDER NUMBER, ORDER SUFFIX, PAGE
+ 179: 0000: \***     NUMBER, ITEM COUNT,
+ 180: 0000: \***     CARTON NUMBER, CARTON FLAG,                                        ! 1.3NWB
+ 181: 0000: \***     FIELD DELIMITER, ITEM CODE, BAR CODE,
+ 182: 0000: \***     QUANTITY - GOOD, FIELD DELIMITER, QUANTITY - DAMAGED, FIELD DELIMITER,
+ 183: 0000: \***     QUANTITY - STOLEN (the last 8 fields repeat ITEM COUNT times),
+ 184: 0000: \***     RECORD DELIMITER, END OF RECORD DELIMITER
+ 185: 0000: \***
+ 186: 0000: \***  Transaction type 18- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 187: 0000: \***     TIME, FOLIO IDENTIFIER, FOLIO YEAR, FOLIO MONTH, FOLIO NUMBER,
+ 188: 0000: \***     STORE SUFFIX, ITEM COUNT, INVOICE DAY, EXPECTED DATE OF DELIVERY,
+ 189: 0000: \***     DALLAS MARKER, FIELD DELIMITER, ITEM CODE, FIELD DELIMITER,
+ 190: 0000: \***     ORDER QUANTITY, FIELD DELIMITER, CSR MARKER,
+ 191: 0000: \***     (the last six fields repeat ITEM COUNT times),
+ 192: 0000: \***     RECORD DELIMITER, END OF RECORD DELIMITER
+ 193: 0000: \***
+ 194: 0000: \***  Transaction type 19- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 195: 0000: \***     TIME, SUPPLIER NUMBER, ORDER NUMBER, ORDER SUFFIX, CONFIRM/AMEND FLAG,
+ 196: 0000: \***     START TIME, END TIME, NO SINGLES ADDED, NO ITEMS ADDED, NO ITEMS
+ 197: 0000: \***     BOOKED IN, RECORD DELIMITER, END OF RECORD DELIMITER
+ 198: 0000: \***
+ 199: 0000: \***  Transaction type 21 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 200: 0000: \***     TIME, DISTRIBUTION CENTRE, WAREHOUSE NUMBER, STORE NUMBER, UOD NUMBER,
+ 201: 0000: \***     STATUS, RECORD DELIMITER, END OF RECORD MARKER
+ 202: 0000: \***
+ 203: 0000: \***  Transaction type 23 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 204: 0000: \***     TIME, DISTRIBUTION CENTRE, WAREHOUSE NUMBER, STORE NUMBER, UOD NUMBER,
+ 205: 0000: \***     STATUS, BOOTS/BAR CODE, BOOTS/BAR CODE FLAG, QUANTITY, FIELD DELIMITER
+ 206: 0000: \***     FSI,FOLIO YEAR, FOLIO MONTH, STORE SUFFIX, FOLIO NO, CSR MARKER
+ 207: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+ 208: 0000: \***
+ 209: 0000: \***
+ 210: 0000: \***  RETURNS/AUTOMATIC CREDIT CLAIMING RECORD TYPES;
+ 211: 0000: \***
+ 212: 0000: \***  Transaction type 24 - Whole or Part consignment record
+ 213: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+ 214: 0000: \***     CREDIT CLAIM NUM, BC LETTER, CLAIM TYPE, SUPPLIER NUM, INVOICE NUM,
+ 215: 0000: \***     FOLIO NUM, BATCH REF NUM, WHOLE/PART CONSIGNMENT, REPAIR CATEGORY,
+ 216: 0000: \***     REPAIR NUM, PLAN4 POLICY NUM, DDDA/DCDR NUM, DELIV NOTE NUM,
+ 217: 0000: \***     DELIV DATE, NUM OF CARTONS, ORDER NUM, COMMENT, NUM OF ITEMS,
+ 218: 0000: \***     ITEM/BAR CODE FLAG, BOOTS/BAR CODE, QTY, PRICE, RECORD DELIMITER,
+ 219: 0000: \***     END OF RECORD MARKER
+ 220: 0000: \***     (ITEM/BAR CODE FLAG to PRICE repeated NUM OF ITEMS times)
+ 221: 0000: \***
+ 222: 0000: \***  Transaction type 25 - Non-sales func 16 and Misc. txns from controller
+ 223: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+ 224: 0000: \***     CREDIT CLAIM NUM, NUM OF ITEMS, AUTH CODE/CONTACT,
+ 225: 0000: \***     ADJUST STOCK FIGURE FLAG, REASON, ITEM/BAR CODE FLAG, BOOTS/BAR CODE,
+ 226: 0000: \***     QTY, PRICE, RECORD DELIMITER, END OF RECORD MARKER
+ 227: 0000: \***     (ITEM/BAR CODE FLAG to PRICE repeated NUM OF ITEMS times)
+ 228: 0000: \***
+ 229: 0000: \***  Transaction type 26 - Data from LDT
+ 230: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME, UOD NUM,
+ 231: 0000: \***     UOD STATUS, CREDIT CLAIM NUM, NUM OF ITEMS UPDATED, TOTAL QTY IN UOD,
+ 232: 0000: \***     ADJUST STOCK FIGURE FLAG, SUPPLY ROUTE, DISP LOCATION, BC LETTER,
+ 233: 0000: \***     RECALL NUM, AUTHORISATION, SUPPLIER, RETURN METHOD, CARRIER, BIRD NUM,
+ 234: 0000: \***     REASON, WAREHOUSE ROUTE, UOD TYPE, REASON FOR DAMAGE, RECEIVING STORE,
+ 235: 0000: \***     DESTINATION, DATE UOD OPENED, DATE UOD DESPATCHED, TIME UOD
+ 236: 0000: \***     DESPATCHED, RECALL TYPE$, ITEM.BAR CODE FLAG, BOOTS/BAR CODE, QTY,       ! 1.4BG
+ 237: 0000: \***     ITEM UPDATED FLAG, RECORD DELIMITER, END OF RECORD MARKER
+ 238: 0000: \***     (ITEM/BAR CODE FLAG to ITEM UPDATED FLAG repeated NUM OF ITEMS times)
+ 239: 0000: \***
+ 240: 0000: \***  Transaction type 27 - End of LDT session
+ 241: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+ 242: 0000: \***     DATE SESSION ENDED, TIME SESSION ENDED, RECORD DELIMITER,
+ 243: 0000: \***     END OF RECORD MARKER
+ 244: 0000: \***
+ 245: 0000: \***  Transaction type 28 - Cancelled Credit Claim
+ 246: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+ 247: 0000: \***     CLAIM NUMBER, UOD NUM, NEW STATUS FLAG, RECORD DELIMITER,
+ 248: 0000: \***     END OF RECORD MARKER
+ 249: 0000: \***
+ 250: 0000: \***  Transaction type 29 - Zero price update
+ 251: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+ 252: 0000: \***     CLAIM NUMBER, ITEM NUMBER, CLAIM VALUE, RECORD DELIMITER,
+ 253: 0000: \***     END OF RECORD MARKER
+ 254: 0000: \***
+ 255: 0000: \***  Transaction type 30 - CSR Issues
+ 256: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+ 257: 0000: \***     BOOTS CODE, FIELD DELIMITER, QUANTITY, FIELD DELIMITER
+ 258: 0000: \***     EXPECTED DELIVERY DATE, RECORD DELIMITER, END OF RECORD MARKER
+ 259: 0000: \***
+ 260: 0000: \***  Transaction type 31 - Quasi Count
+ 261: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 262: 0000: \***     TIME, LIST NUMBER, ITEM NUMBER, ITEM STATUS,ITEM CODE,
+ 263: 0000: \***     COUNT DATE, COUNT TIME, PRICE, FIELD DELIMITER, SHOP FLOOR COUNT,
+ 264: 0000: \***     FIELD DELIMITER, BACKROOM COUNT (PREV STOCK FIG), RECORD DELIMITER,
+ 265: 0000: \***      END OF REC MARKER
+ 266: 0000: \***
+ 267: 0000: \***  Transaction type 32 - Quasi Adjustment count
+ 268: 0000: \**      RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 269: 0000: \***     TIME, LIST NUMBER, ITEM NUMBER, ITEM STATUS,ITEM CODE,
+ 270: 0000: \***     COUNT DATE, COUNT TIME, PRICE, FIELD DELIMITER, SHOP FLOOR COUNT,
+ 271: 0000: \***     FIELD DELIMITER, BACKROOM COUNT (PREV STOCK FIG), RECORD DELIMITER,
+ 272: 0000: \***     END OF REC MARKER
+ 273: 0000: \***
+ 274: 0000: \***  Transaction type 33 - +UOD Receiving
+ 275: 0000: \**      RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+ 276: 0000: \***     TIME, UOD LICENCE PLATE, DESPATCH DATE, ACTION, ITEM COUNT,
+ 277: 0000: \***     for audit type+(ITEM CODE, BARCODE, DESPATCHED QTY, VARIANCE )
+ 278: 0000: \***     END OF REC MARKER
+ 279: 0000: \***
+ 280: 0000: \******************************************************************************
+ 281: 0000: 
+ 282: 0000:   STRING GLOBAL              \
+ 283: 0000:     STKMQ.FILE.NAME$,        \
+ 284: 0000:     STKMQ.RECORD$,           \ Used to store the whole record which is unstrung
+ 285: 0000:                              \ into the fields below
+ 286: 0000:     STKMQ.RECORD.DELIMITER$, \ 1 byte ASCII set to " (CHR$(34))
+ 287: 0000:     STKMQ.TRANS.TYPE$,       \ 1 byte UPD. 00 = Header record
+ 288: 0000:                              \             01 = W'house invoice delivery record
+ 289: 0000:                              \             02 = Delivery without invoice record
+ 290: 0000:                              \             03 = Stock out record
+ 291: 0000:                              \             04 = Stock count record
+ 292: 0000:                              \             17 = Delivery without confirmation
+ 293: 0000:                              \                  of Direct Order detail
+ 294: 0000:                              \             18 = Confirmed Dallas invoice record
+ 295: 0000:                              \             19 = Delivery without confirmation
+ 296: 0000:                              \                  of Direct Order header
+ 297: 0000:                              \             21 = UOD record
+ 298: 0000:                              \             23 = Item Level UOD record
+ 299: 0000:                              \             24 = Whole/Part consignment (R/ACC)
+ 300: 0000:                              \             25 = NS16 / Misc cont txn (R/ACC)
+ 301: 0000:                              \             26 = Data from LDT (R/ACC)
+ 302: 0000:                              \             27 = End of LDT session (R/ACC)
+ 303: 0000:                              \             28 = Canc. Credit Claim (R/ACC)
+ 304: 0000:                              \             29 = Zero price update (R/ACC)
+ 305: 0000:     STKMQ.FIELD.DELIMITER$,  \ 1 byte ASCII set to ; (CHR$(59))
+ 306: 0000:     STKMQ.CREATION.DATE$,    \ 3 byte UPD set to current date
+ 307: 0000:     STKMQ.CREATION.TIME$,    \ 3 byte UPD set to current time
+ 308: 0000:     STKMQ.CSR.MARKER$,       \ 1 byte ASCII. "Y" - This is a CSR Item      BSPK
+ 309: 0000:                              \               " " - This is not a CSR Item  BSPK
+ 310: 0000:     STKMQ.DATE$,             \ 3 byte UPD set to current date
+ 311: 0000:     STKMQ.TIME$,             \ 3 byte UPD set to current time
+ 312: 0000:     STKMQ.FSI$,              \ 1 byte ASCII
+ 313: 0000:     STKMQ.FOLIO.YEAR$,       \ 1 byte UPD
+ 314: 0000:     STKMQ.FOLIO.MONTH$,      \ 1 byte UPD
+ 315: 0000:     STKMQ.FOLIO.NUMBER$,     \ 2 bytes UPD
+ 316: 0000:     STKMQ.STORE.SUFFIX$,     \ 1 byte ASCII
+ 317: 0000:     STKMQ.ITEM.COUNT$,       \ 1 byte UPD between 1 and 17
+ 318: 0000:     STKMQ.BOOTS.CODE$,       \ 4 bytes UPD
+ 319: 0000:     STKMQ.ON.IDF.FLAG$,      \ 1 byte ASCII. Y = On IDF   N = Not on IDF
+ 320: 0000:     STKMQ.QUANTITY$,         \ variable length string equivalent to
+ 321: 0000:                              \ STR$(STKMQ.QUANTITY%)
+ 322: 0000:                              \ +ve indicates add to stock
+ 323: 0000:                              \ -ve indicates subtract from stock
+ 324: 0000:     STKMQ.REASON.CODE$,      \ 2 bytes UPD
+ 325: 0000:     STKMQ.STORE.RET.CODE$,   \ 2 bytes UPD
+ 326: 0000:     STKMQ.ENDREC.MARKER$,    \ 2 bytes ASCII set to XODOA
+ 327: 0000:     STKMQ.REASON$,           \ 1 byte ASCII. "I" = ineligible,
+ 328: 0000:                              \               "U" = unsuppliable,
+ 329: 0000:                              \               "Z" = deleted,
+ 330: 0000:                              \               " " = not removed.
+ 331: 0000:     STKMQ.CONCEPT.SEQUENCE$, \ 3 byte UPD. Concept group / sequence
+ 332: 0000:     STKMQ.INVOICE.DAY$,      \ 1 byte UPD
+ 333: 0000:     STKMQ.LIST.NUMBER$,      \ 4 byte ASCII
+ 334: 0000:     STKMQ.ITEM.NUMBER$,      \ 2 byte ASCII
+ 335: 0000:     STKMQ.ITEM.STATUS$,      \ 1 byte ASCII
+ 336: 0000:     STKMQ.COUNT.DATE$,       \ 3 byte UPD - YYMMDD
+ 337: 0000:     STKMQ.COUNT.TIME$,       \ 2 byte UPD - HHMM
+ 338: 0000:     STKMQ.PRICE$,            \ 5 byte UPD
+ 339: 0000:     STKMQ.SHOP.COUNT$,       \ variable ASCII
+ 340: 0000:     STKMQ.BKRM.COUNT$,       \ variable ASCII
+ 341: 0000:     STKMQ.LIST.STATUS$,      \ 1 byte ASCII
+ 342: 0000:     STKMQ.LEFT.TO.COUNT$,    \ variable ASCII
+ 343: 0000:     STKMQ.COUNT.BY.DATE$,    \ 3 bytes UPD
+ 344: 0000:     STKMQ.PRODUCT.GROUP$,    \ 3 bytes UPD
+ 345: 0000:     STKMQ.BC.LETTER$,        \ 1 byte ASCII
+ 346: 0000:     STKMQ.ORG.RECOUNT$,      \ VARIABLE ASCII
+ 347: 0000:     STKMQ.NEW.RECOUNT$,      \ VARIABLE ASCII
+ 348: 0000:     STKMQ.LIST.TYPE$,        \ 1 byte ASCII
+ 349: 0000:     STKMQ.COUNT.FLAG$,       \ 1 byte ASC from corrections file
+ 350: 0000:     STKMQ.STMVT.DATE$,       \ 3 bytes UPD
+ 351: 0000:     STKMQ.SUPPLIER.NO$,      \ 4 bytes UPD
+ 352: 0000:     STKMQ.ORDER.NO$,         \ 2 bytes UPD
+ 353: 0000:     STKMQ.ORDER.SFX$,        \ 1 byte ASCII
+ 354: 0000:     STKMQ.PAGE.NO$,          \ 1 byte UPD
+ 355: 0000:     STKMQ.ORDER.DATE$,       \ 3 bytes UPD
+ 356: 0000:     STKMQ.EXP.DELV.DATE$,    \ 3 bytes UPD
+ 357: 0000:     STKMQ.DALLAS.MKR$,       \ 1 byte ASCII DALLAS system marker
+ 358: 0000:                              \ 'Y' - invoice is from DALLAS system,
+ 359: 0000:                              \ 'N' - invoice is not from DALLAS system
+ 360: 0000:                              \ 'Q' - invoice contains quantity alterations
+ 361: 0000:     STKMQ.SOURCE$,           \ 1 byte ASCII Source flag
+ 362: 0000:                              \ 'S' - PSS65, 'P' - PDT, PSS57
+ 363: 0000:                              \ Transaction type 11 'S' - Stocktake else ' '
+ 364: 0000:     STKMQ.FLAG$,             \ Transaction type 11 'F' - First 'L' - Last or ' '
+ 365: 0000:     STKMQ.BAR.CODE$,         \ 6 bytes UPD
+ 366: 0000:     STKMQ.CODE.FLAG$,        \ 1 BYTE ASCII
+ 367: 0000:     STKMQ.QTY.GOOD$,         \ VARIABLE ASCII
+ 368: 0000:                              \ Quantity of singles booked in in good condition
+ 369: 0000:     STKMQ.QTY.BAD$,          \ VARIABLE ASCII
+ 370: 0000:                              \ Quantity of singles booked in in bad condition
+ 371: 0000:     STKMQ.QTY.STOLEN$,       \ VARIABLE ASCII
+ 372: 0000:                              \ Quantity of singles recognised as stolen
+ 373: 0000:     STKMQ.CONF.AMND.FLAG$,   \ 1 byte ASCII - Confirm/ Amend Flag
+ 374: 0000:                              \ 'C' - Order has been confirmed
+ 375: 0000:                              \ 'A' - Order has been amended
+ 376: 0000:                              \ ' ' - Nothing has been done to the order
+ 377: 0000:     STKMQ.START.TIME$,       \ 2 byte UPD (HHMM) time order started to be
+ 378: 0000:                              \ processed
+ 379: 0000:     STKMQ.END.TIME$,         \ 2 byte UPD (HHMM) time order was completed
+ 380: 0000:     STKMQ.SNGLS.ADDED$,      \ 2 byte UPD  Singles added to order
+ 381: 0000:     STKMQ.ITEMS.ADDED$,      \ 2 byte UPD  Items added to order
+ 382: 0000:     STKMQ.ITEMS.BOOKED$,     \ 2 byte UPD  Items booked in on the order
+ 383: 0000:     STKMQ.DIST.CENTRE$,      \ 1 byte UPD
+ 384: 0000:     STKMQ.WHSE.NUMBER$,      \ 1 byte UPD
+ 385: 0000:     STKMQ.STORE.NUMBER$,     \ 2 byte UPD
+ 386: 0000:     STKMQ.UOD.NUMBER$,       \ 3 byte UPD
+ 387: 0000:     STKMQ.STATUS$,           \ 1 byte ASCII
+ 388: 0000:                              \
+ 389: 0000:     STKMQ.CREDIT.CLAIM.NUM$, \ 4 byte UPD
+ 390: 0000:     STKMQ.CLAIM.TYPE$,       \ 1 byte ASC;  "M" = Missing,
+ 391: 0000:                              \              "E" = Excess,
+ 392: 0000:                              \              "R" = Repairs
+ 393: 0000:     STKMQ.SUPPLIER.NUM$,     \ 3 byte UPD
+ 394: 0000:     STKMQ.INVOICE.NUM$,      \*9 byte ASC
+ 395: 0000:     STKMQ.FOLIO.NUM$,        \ 3 byte UPD
+ 396: 0000:     STKMQ.BATCH.REF$,        \ 3 byte UPD
+ 397: 0000:     STKMQ.WHOLE.PART.CON$,   \ 1 byte ASC   "W" = Whole, "P" = Part
+ 398: 0000:     STKMQ.REPAIR.CATEGORY$,  \ 1 byte UPD;   1 = Plan4,
+ 399: 0000:                              \               2 = Estimate,
+ 400: 0000:                              \               3 = Boots guarantee,
+ 401: 0000:                              \               4 = Supplier guarantee,
+ 402: 0000:                              \               5 = Other guarantee,
+ 403: 0000:     STKMQ.REPAIR.NUM$,       \ 6 byte UPD
+ 404: 0000:     STKMQ.PLAN4.POLICY.NUM$, \ 6 byte UPD; (Only if repair cat is Plan4)
+ 405: 0000:     STKMQ.DDDA.DCDR.NUM$,    \ 4 byte UPD
+ 406: 0000:     STKMQ.DELIV.NOTE.NUM$,   \*9 byte ASC
+ 407: 0000:     STKMQ.NUM.CARTONS.RECEIV$,\1 byte UPD
+ 408: 0000:     STKMQ.ORDER.NUM$,        \*7 byte ASC
+ 409: 0000:     STKMQ.COMMENT$,          \*20 byte ASC
+ 410: 0000:     STKMQ.ITEM.BARCODE.FLAG$,\ 1 byte ASC;  "I" = Boots item code,
+ 411: 0000:                              \               "B" = Barcode.
+ 412: 0000:     STKMQ.ITEM.BARCODE$,     \ 7 byte UPD
+ 413: 0000:     STKMQ.ITEM.PRICE$,       \ 3 byte UPD;  Spaces.
+ 414: 0000:     STKMQ.AUTHORISATION$,    \ 15 byte ASC
+ 415: 0000:     STKMQ.ADJ.STOCK.FIGURE$, \ 1 byte ASC;  "Y" or "N"
+ 416: 0000:     STKMQ.RETURN.REASON$,    \ 1 byte UPD;  (See CCRSN file)
+ 417: 0000:     STKMQ.UOD.NUM$,          \ 7 byte UPD
+ 418: 0000:     STKMQ.UOD.STATUS$,       \ 1 byte ASC;  "O" = Open,
+ 419: 0000:                              \              "C" = Closed,
+ 420: 0000:                              \              "D" = Despatched
+ 421: 0000:     STKMQ.SUPPLY.ROUTE$,     \ 1 byte ASC
+ 422: 0000:     STKMQ.DISP.LOCATION$,    \ 1 byte ASC   "M" = MDS,
+ 423: 0000:                              \              "D" = Dispensary
+ 424: 0000:     STKMQ.RECALL.NUM$,       \ 8 byte ASC
+ 425: 0000:     STKMQ.SUPPLIER$,         \ 15 byte ASC
+ 426: 0000:     STKMQ.RETURN.METHOD$,    \ 1 byte UPD;   1 = Carrier,
+ 427: 0000:                              \               2 = BIRD,
+ 428: 0000:                              \               3 = Via D6,
+ 429: 0000:                              \               4 = Representative
+ 430: 0000:     STKMQ.CARRIER$,          \ 1 byte UPD;   1 = GPO,
+ 431: 0000:                              \               2 = Parcelforce,
+ 432: 0000:                              \               3 = Securicor,
+ 433: 0000:                              \               4 = Other
+ 434: 0000:     STKMQ.BIRD.NUM$,         \ 8 byte ASC
+ 435: 0000:     STKMQ.WAREHOUSE.ROUTE$,  \ 1 byte ASC   "R" = RDC,
+ 436: 0000:                              \              "C" = CSR
+ 437: 0000:     STKMQ.UOD.TYPE$,         \ 1 byte UPD;   1 = Travel Outer,
+ 438: 0000:                              \               2 = Town Tray,
+ 439: 0000:                              \               3 = Roll cage,
+ 440: 0000:                              \               4 = Other
+ 441: 0000:     STKMQ.DAMAGE.REASON$,    \ 1 byte UPD    1 = Bad packaging,
+ 442: 0000:                              \               2 = Poor handling
+ 443: 0000:     STKMQ.RECEIVING.STORE$,  \ 2 byte UPD
+ 444: 0000:     STKMQ.DESTINATION$,      \ 1 byte UPD    1 = Business Centre,
+ 445: 0000:                              \               2 = MTS,
+ 446: 0000:                              \               3 = Other
+ 447: 0000:     STKMQ.DATE.UOD.OPENED$,  \ 3 byte UPD
+ 448: 0000:     STKMQ.DATE.DESPATCHED$,  \ 3 byte UPD
+ 449: 0000:     STKMQ.TIME.DESPATCHED$,  \ 3 byte UPD
+ 450: 0000:     STKMQ.ITEM.UPDATED$,     \ 1 byte ASC
+ 451: 0000:     STKMQ.DATE.SESS.END$,    \ 3 byte UPD
+ 452: 0000:     STKMQ.TIME.SESS.END$,    \ 3 byte UPD
+ 453: 0000:     STKMQ.NEW.STATUS.FLAG$,  \ 1 byte ASC   "C" = Closed,
+ 454: 0000:                              \              "D" = Despatched,
+ 455: 0000:                              \              "X" = Cancelled
+ 456: 0000:     STKMQ.ITEM.NUM$,         \ 2 byte UPD   (CCITF key value)
+ 457: 0000:     STKMQ.CLAIM.VALUE$,      \ 3 byte UPD
+ 458: 0000:     STKMQ.CARTON.FLAG$,      \ 1 byte  ASCII - ' ' Old Process,             ! 1.3NWB
+ 459: 0000:                              \                 'N' Normal Book In           ! 1.3NWB
+ 460: 0000:                              \                 'A' Carton Audit Process     ! 1.3NWB
+ 461: 0000:                              \                 'E' Exception Process (nof)  ! 1.3NWB
+ 462: 0000:     STKMQ.CARTON.NO$,        \ 4 bytes UPD (0-9999)                         ! 1.3NWB
+ 463: 0000:     STKMQ.RECALL.TYPE$       ! 1 byte ASC   "B" = Batch Recall              ! 1.4BG
+ 464: 0000:                              !              "N" = Non-batch Recall          ! 1.4BG
+ 465: 0000:                              !              " " = Old Credit Claim          ! 1.4BG
+ 466: 0000: 
+ 467: 0000: !***********************************************************!* DC 1.6
+ 468: 0000: !* Added for +UOD Development                               !* DC 1.6
+ 469: 0000: !***********************************************************!* DC 1.6
+ 470: 0000:   STRING GLOBAL \                                           !* DC 1.6 
+ 471: 0000:     STKMQ.LICENCE.PLATE$, \                                 !* DC 1.6 
+ 472: 0000:     STKMQ.DESPATCH.DATE$, \                                 !* DC 1.6 
+ 473: 0000:     STKMQ.ACTION$, \                                        !* DC 1.6 
+ 474: 0000:     STKMQ.DELIVERY.DATE$, \                                 !* DC 1.6 
+ 475: 0000:     STKMQ.DELIVERY.TIME$, \                                 !* DC 1.6 
+ 476: 0000:     STKMQ.DRIVER.ID$, \                                     !* DC 1.6 
+ 477: 0000:     STKMQ.BOOKIN.DATE$, \                                   !* DC 1.8
+ 478: 0000:     STKMQ.BOOKIN.TIME$, \                                   !* DC 1.8 
+ 479: 0000:     STKMQ.OP.ID$, \                                         !* DC 1.6 
+ 480: 0000:     STKMQ.BOOKIN.METHOD$, \                                 !* DC 1.6 
+ 481: 0000:     STKMQ.BOOKIN.LEVEL$, \                                  !* DC 1.6 
+ 482: 0000:     STKMQ.GIT$, \                                           !* DC 1.6 
+ 483: 0000:     STKMQ.RESCAN$, \                                        !* DC 1.7
+ 484: 0000:     STKMQ.FILLER$                                           !* DC 1.6 
+ 485: 0000: 
+ 486: 0000:   INTEGER*2 GLOBAL           \                              !* DC 1.6 
+ 487: 0000:     STKMQ.SESS.NUM%,         \                              !* DC 1.6 
+ 488: 0000:     STKMQ.REPORT.NUM%                                       !* DC 1.6 
+ 489: 0000: !***********************************************************!* DC 1.6
+ 490: 0000: 
+ 491: 0000:     STRING GLOBAL                                                       \   !FMW
+ 492: 0000:         STKMQ.UOD.QTY$,         \                                       \   !FMW
+ 493: 0000:         STKMQ.CODE$(1),         \ Item Code                             \   !FMW
+ 494: 0000:         STKMQ.TYPE$(1),         \ Code type I = Item code               \   !FMW
+ 495: 0000:                                 \           B = Barcode                 \   !FMW
+ 496: 0000:         STKMQ.CSR.FLAG$(1),     \ CSR Flag                              \   !FMW
+ 497: 0000:         STKMQ.EAN.CODE$(1),     \ Barcode                               \   !FMW
+ 498: 0000:         STKMQ.QTY$(1),          \ Quantity                              \   !FMW
+ 499: 0000:         STKMQ.GOOD.QUAN$(1),    \ Good Quantity                         \   !FMW
+ 500: 0000:         STKMQ.DAM.QUAN$(1),     \ Damaged Quantity                      \   !FMW
+ 501: 0000:         STKMQ.STOL.QUAN$(1),    \ Stolen Quantity                       \   !FMW
+ 502: 0000:         STKMQ.PRICE.ARRAY$(1)   ! Retail Price                              !FMW
+ 503: 0000:                                                                             !FMW
+ 504: 0000:     INTEGER*2 GLOBAL                                                    \   !FMW
+ 505: 0000:         STKMQ.ITEM%             ! Count of items in a transaction           !FMW
+ 506: 0000: 
+ 507: 0000:   
+ 508: 0000: \***********************************************************************
+ 509: 0000: \***
+ 510: 0000: \***    STKMQ.SET
+ 511: 0000: \***
+ 512: 0000: \***    Declare STKMQ file constants
+ 513: 0000: \***
+ 514: 0000: \***********************************************************************
+ 515: 0000: FUNCTION STKMQ.SET PUBLIC
+ 516: 0014: 
+ 517: 0014:     STKMQ.FILE.NAME$  = "STKMQ"
+ 518: 0023:     STKMQ.REPORT.NUM% = 83
+ 519: 002c: 
+ 520: 002c: END FUNCTION
+ 521: 0038: 
+ 522: 0038: \***********************************************************************
+ 523: 0038: \***
+ 524: 0038: \***    READ.STKMQ
+ 525: 0038: \***
+ 526: 0038: \***    Read STKMQ file record
+ 527: 0038: \***
+ 528: 0038: \***********************************************************************
+ 529: 0038: FUNCTION READ.STKMQ PUBLIC
+ 530: 004c:   
+ 531: 004c:     INTEGER*2 READ.STKMQ 
+ 532: 004c:     
+ 533: 004c:     READ.STKMQ = 1
+ 534: 0051:     
+ 535: 0051:     IF END #STKMQ.SESS.NUM% THEN READ.ERROR
+ 536: 0065:     READ #STKMQ.SESS.NUM%; LINE STKMQ.RECORD$
+ 537: 007e:     
+ 538: 007e:     STKMQ.TRANS.TYPE$ = UNPACK$(MID$(STKMQ.RECORD$,2,1))
+ 539: 00a2:     STKMQ.TIME$       = UNPACK$(MID$(STKMQ.RECORD$,7,3))
+ 540: 00c6:     
+ 541: 00c6:     READ.STKMQ = 0
+ 542: 00cb:     
+ 543: 00cb:     EXIT FUNCTION
+ 544: 00cd:     
+ 545: 00cd: READ.ERROR:
+ 546: 00cd:     
+ 547: 00cd:     FILE.OPERATION$     = "R"
+ 548: 00dc:     CURRENT.CODE$       = UNPACK$(MID$(STKMQ.RECORD$,2,1))
+ 549: 0100:     CURRENT.REPORT.NUM% = STKMQ.REPORT.NUM%
+ 550: 010e:                             
+ 551: 010e: END FUNCTION
+ 552: 011d: 
+ 553: 011d: \***********************************************************************
+ 554: 011d: \***
+ 555: 011d: \***    WRITE.STKMQ
+ 556: 011d: \***
+ 557: 011d: \***    Write STKMQ file record
+ 558: 011d: \***
+ 559: 011d: \***********************************************************************
+ 560: 011d: FUNCTION WRITE.STKMQ PUBLIC
+ 561: 0131: 
+ 562: 0131:     INTEGER*2 WRITE.STKMQ
+ 563: 0131:     
+ 564: 0131: !!!!STRING FORMAT$,                                                     \   !GMW
+ 565: 0131: !!!!!!!!!!!STRING.LENGTH$                                                   !GMW
+ 566: 0131:     STRING                                                              \   !GMW
+ 567: 0131:         STKMQ.ARRAY.RECORD$(1)                                              !GMW
+ 568: 0131:             
+ 569: 0131:     WRITE.STKMQ = 1
+ 570: 0136: 
+ 571: 0136:     ! Initialise single element array for write matrix                      !GMW
+ 572: 0136:     DIM STKMQ.ARRAY.RECORD$(1)                                              !GMW
+ 573: 0157:                                                                             !GMW
+ 574: 0157: !!!!STRING.LENGTH$ = STR$(LEN(STKMQ.RECORD$))                               !GMW
+ 575: 0157: !!!!FORMAT$ = "C" + STRING.LENGTH$                                          !GMW
+ 576: 0157: !!!!IF END #STKMQ.SESS.NUM% THEN WRITE.ERROR                                !GMW
+ 577: 0157: !!!!WRITE FORM FORMAT$; #STKMQ.SESS.NUM%; STKMQ.RECORD$                     !GMW
+ 578: 0157:                                                                             !GMW
+ 579: 0157:     ! IF STKMQ record starts with a double quote AND                        !GMW
+ 580: 0157:     !    ends with a double quote and carriage return/line feed             !GMW
+ 581: 0157:     IF (LEFT$(STKMQ.RECORD$,1) = CHR$(22h)) AND                         \   !GMW
+ 582: 01fa:        (RIGHT$(STKMQ.RECORD$,3) =                                       \   !GMW
+ 583: 01fa:        CHR$(22h) + CHR$(0Dh) + CHR$(0Ah)) THEN BEGIN                        !GMW
+ 584: 01fa:                                                                             !GMW
+ 585: 01fa:         ! Remove surrounding double quotes and                              !GMW
+ 586: 01fa:         ! carriage return/line feed                                         !GMW
+ 587: 01fa:         STKMQ.ARRAY.RECORD$(1) =                                        \   !GMW
+ 588: 0237:             MID$(STKMQ.RECORD$,2,LEN(STKMQ.RECORD$) - 4)                    !GMW
+ 589: 0237:                                                                             !GMW
+ 590: 0237:     ENDIF ELSE BEGIN                                                        !GMW
+ 591: 0237:         STKMQ.ARRAY.RECORD$(1) = STKMQ.RECORD$                              !GMW
+ 592: 0256:     ENDIF                                                                   !GMW
+ 593: 0256:                                                                             !GMW
+ 594: 0256:     ! ------------------------------------------------------                !GMW
+ 595: 0256:     ! Write data component of STKMQ record. The WRITE MATRIX                !GMW
+ 596: 0256:     ! command will automatically surround with double quotes                !GMW
+ 597: 0256:     ! and add a carriage return/line feed.                                  !GMW
+ 598: 0256:     ! ------------------------------------------------------                !GMW
+ 599: 0256:     IF END #STKMQ.SESS.NUM% THEN WRITE.ERROR                                !GMW
+ 600: 026a:     WRITE MATRIX #STKMQ.SESS.NUM%; STKMQ.ARRAY.RECORD$(1), 1                !GMW
+ 601: 0287:        
+ 602: 0287:     WRITE.STKMQ = 0
+ 603: 028c:     
+ 604: 028c:     EXIT FUNCTION
+ 605: 028e:     
+ 606: 028e: WRITE.ERROR:
+ 607: 028e:     
+ 608: 028e:     FILE.OPERATION$     = "W"                                               !FRC
+ 609: 029d:     CURRENT.CODE$       = STKMQ.RECORD$
+ 610: 02b3:     CURRENT.REPORT.NUM% = STKMQ.REPORT.NUM%
+ 611: 02c1: 
+ 612: 02c1: END FUNCTION
+ 613: 02d0: 
+ 614: 02d0: \***********************************************************************
+ 615: 02d0: \***
+ 616: 02d0: \***    WRITE.HOLD.STKMQ
+ 617: 02d0: \***
+ 618: 02d0: \***    Write hold STKMQ file record
+ 619: 02d0: \***
+ 620: 02d0: \***********************************************************************
+ 621: 02d0: FUNCTION WRITE.HOLD.STKMQ PUBLIC                                            !CLC
+ 622: 02e4: 
+ 623: 02e4:     INTEGER*2 WRITE.HOLD.STKMQ                                              !CLC
+ 624: 02e4:     
+ 625: 02e4:     STRING FORMAT$,                                                     \   !CLC
+ 626: 02e4:            STRING.LENGTH$                                                   !CLC
+ 627: 02e4:             
+ 628: 02e4:     WRITE.HOLD.STKMQ = 1                                                    !CLC
+ 629: 02e9: 
+ 630: 02e9:     STRING.LENGTH$ = STR$(LEN(STKMQ.RECORD$))                               !CLC
+ 631: 0310:     FORMAT$        = "C" + STRING.LENGTH$                                   !CLC
+ 632: 0328:     
+ 633: 0328:     IF END #STKMQ.SESS.NUM% THEN WRITE.HOLD.ERROR                           !CLC
+ 634: 033c:     WRITE FORM FORMAT$; HOLD #STKMQ.SESS.NUM%; STKMQ.RECORD$                !CLC
+ 635: 0362:        
+ 636: 0362:     WRITE.HOLD.STKMQ = 0                                                    !CLC
+ 637: 0367:     
+ 638: 0367:     EXIT FUNCTION                                                           !CLC
+ 639: 0369:     
+ 640: 0369: WRITE.HOLD.ERROR:                                                           !CLC
+ 641: 0369:     
+ 642: 0369:     FILE.OPERATION$     = "W"                                               !FRC
+ 643: 0378:     CURRENT.CODE$       = STKMQ.RECORD$                                     !CLC
+ 644: 038e:     CURRENT.REPORT.NUM% = STKMQ.REPORT.NUM%                                 !CLC
+ 645: 039c: 
+ 646: 039c:   END FUNCTION                                                              !CLC
+ 647: 03ab: 
+ 648: 03ab: End of Compilation

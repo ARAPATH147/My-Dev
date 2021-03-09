@@ -1,0 +1,341 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   STKCFFUN.bas  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.3  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: \******************************************************************************\*****************************************************************************
+  10: 0000: \*****************************************************************************
+  11: 0000: \***
+  12: 0000: \***                      STKCF  FILE FUNCTIONS 
+  13: 0000: \***
+  14: 0000: \***                      REFERENCE    : STKCFFUA
+  15: 0000: \***
+  16: 0000: \***           VERSION A : STEVEN GOULDING  11.01.93
+  17: 0000: \***
+  18: 0000: \***           VERSION B       Nik Sen         5th June 1997
+  19: 0000: \***           Added Stocktake.In.Progress flag 
+  20: 0000: \***
+  21: 0000: \***           VERSION C       Nik Sen         3rd July 1997
+  22: 0000: \***           Removed Stocktake In Progress flag. Now in Stocktake Control
+  23: 0000: \***           file.
+  24: 0000: \***
+  25: 0000: \*****************************************************************************
+  26: 0000: \*****************************************************************************
+  27: 0000: 
+  28: 0000: 
+  29: 0000:    INTEGER*2 GLOBAL                  \
+  30: 0000:       CURRENT.REPORT.NUM%
+  31: 0000: 
+  32: 0000:    STRING GLOBAL                     \
+  33: 0000:       CURRENT.CODE$,                 \
+  34: 0000:       FILE.OPERATION$
+  35: 0000: 
+  36: 0000:    %INCLUDE STKCFDEC.J86                                       ! BNS
+  37: 0000: \******************************************************************************
+  38: 0000: \******************************************************************************
+  39: 0000: \***
+  40: 0000: \***   $Workfile:   STKCFDEC.J86  $
+  41: 0000: \***
+  42: 0000: \***   $Revision:   1.2  $
+  43: 0000: \***
+  44: 0000: \******************************************************************************
+  45: 0000: \******************************************************************************
+  46: 0000: \***
+  47: 0000: \***   $Log:   V:\archive\j86\stkcfdec.j8v  $
+  48: 0000: \***   
+  49: 0000: \***      Rev 1.2   03 Jul 1997 14:18:38   DEV45PS
+  50: 0000: \***   Stocktake In Progress Flag Removed
+  51: 0000: \***   
+  52: 0000: \***      Rev 1.1   30 Jun 1997 15:29:04   DEV45PS
+  53: 0000: \***   Added Stocktake In Progress flag
+  54: 0000: \***   
+  55: 0000: \******************************************************************************
+  56: 0000: \******************************************************************************\*****************************************************************************
+  57: 0000: \*****************************************************************************
+  58: 0000: \***
+  59: 0000: \***               %INCLUDE FOR STKCF - FIELD DECLARATIONS
+  60: 0000: \***                                    FILE REFERENCE PARAMETERS
+  61: 0000: \***
+  62: 0000: \***                      FILE TYPE    : DIRECT
+  63: 0000: \***
+  64: 0000: \***                      REFERENCE    : STKCFDEA
+  65: 0000: \***
+  66: 0000: \***           VERSION A : STEVEN GOULDING  11.01.93
+  67: 0000: \***
+  68: 0000: \***
+  69: 0000: \***           VERSION B        NIK SEN        5th June 1997
+  70: 0000: \***           Added Stocktake.In.Progress flag.
+  71: 0000: \***           
+  72: 0000: \***           VERSION C        NIK SEN        3rd July 1997
+  73: 0000: \***           Removed Stocktake.In.Progress flag. Now moved to Stocktake
+  74: 0000: \***           Control File to prevent conflicts when STKCF is locked.
+  75: 0000: \***
+  76: 0000: \*****************************************************************************
+  77: 0000: \*****************************************************************************
+  78: 0000: 
+  79: 0000: REM \
+  80: 0000: 
+  81: 0000:   STRING GLOBAL           \
+  82: 0000:     STKCF.FILE.NAME$
+  83: 0000: 
+  84: 0000:   INTEGER*2 GLOBAL        \
+  85: 0000:     STKCF.SESS.NUM%,      \
+  86: 0000:     STKCF.REPORT.NUM%,    \
+  87: 0000:     STKCF.RECL%
+  88: 0000: 
+  89: 0000:   INTEGER*4 GLOBAL        \
+  90: 0000:     STKCF.REC.NUM%
+  91: 0000: REM \
+  92: 0000: 
+  93: 0000: 
+  94: 0000:   INTEGER*4 GLOBAL                                   \
+  95: 0000:             STKCF.STKMQ.POINTER%,                    \ Pointer to STKMQ
+  96: 0000:             STKCF.ITEM.COUNT%                        \ No of items processed
+  97: 0000: 
+  98: 0000:   INTEGER*2 GLOBAL                                   \
+  99: 0000:             STKCF.STMVT.REC.CNT%                     \ No of recs on STMVT file
+ 100: 0000: 
+ 101: 0000:   INTEGER*1 GLOBAL                                   \
+ 102: 0000:             STKCF.PREV.PITRL.UPDATE%                 \ The HOUR of update
+ 103: 0000: 
+ 104: 0000:   STRING    GLOBAL                                   \ 1 BYTE
+ 105: 0000:             STKCF.STOCK.SUPPORT.STATUS$              \ Y = enabled
+ 106: 0000:                                                      \ N = disabled
+ 107: 0000:                                                      \ C = Not available to
+ 108: 0000:                                                      \         Screens
+ 109: 0000:                                                      \ T = Trailer written
+ 110: 0000:                                                      \ 1 - 7 According to
+ 111: 0000:                                                      \       which STKMQ backup
+ 112: 0000:                                                      \       done.
+ 113: 0000: 
+ 114: 0000:   STRING    GLOBAL                                   \
+ 115: 0000:   	    STKCF.LAST.DIRORD.BC$,	 	     \ Last BC processed
+ 116: 0000: 	    					     \ in type 17 (1 byte)
+ 117: 0000:   	    STKCF.LAST.DIRORD.SUPPLIER$,	     \ Last supplier processed
+ 118: 0000: 	    					     \ in type 17 (3 bytes UPD)
+ 119: 0000: 	    STKCF.LAST.DIRORD.ORDER.NO$,	     \ last order no processed
+ 120: 0000: 	    					     \ in type 17 (2 bytes UPD)
+ 121: 0000: 	    STKCF.LAST.DIRORD.ORDER.SUFFIX$,	     \ last order sfx processed
+ 122: 0000: 	    					     \ in type 17 (1 byte)
+ 123: 0000:   	    STKCF.LAST.DIRORD.REC.SOURCE$, 	     \ Last record source
+ 124: 0000: 	    					     \ in type 17 (1 byte)
+ 125: 0000:        STKCF.STK.FILE.AVAIL$,                   \ Y=Yes; N=No; 1 BYTE
+ 126: 0000:        STKCF.STOCK.TAKE.PROCESSING.REQUIRED$,   \ Y=Yes; N=No; 1 BYTE
+ 127: 0000:        STKCF.FILLER$                            \ 
+ 128: 0000: 
+ 129: 0000: 
+ 130: 0000: 
+ 131: 0000: 
+ 132: 0000:    FUNCTION STKCF.SET PUBLIC
+ 133: 0014: REM \
+ 134: 0014: 
+ 135: 0014:     STKCF.REPORT.NUM%  = 109
+ 136: 001d:     STKCF.RECL%        = 80
+ 137: 0026:     STKCF.FILE.NAME$   = "STKCF"
+ 138: 0035:     STKCF.REC.NUM%     = 1
+ 139: 0044: 
+ 140: 0044: END FUNCTION
+ 141: 0050: 
+ 142: 0050: \----------------------------------------------------------------------------
+ 143: 0050: 
+ 144: 0050: REM \
+ 145: 0050:                                                                      
+ 146: 0050: 
+ 147: 0050: 
+ 148: 0050:   FUNCTION READ.STKCF.LOCK PUBLIC
+ 149: 0064: 
+ 150: 0064:    INTEGER*1 READ.STKCF.LOCK
+ 151: 0064: 
+ 152: 0064:    READ.STKCF.LOCK = 1
+ 153: 0068: 
+ 154: 0068:    IF END#STKCF.SESS.NUM% THEN READ.STKCF.LOCK.ERROR
+ 155: 007c: 
+ 156: 007c:     READ FORM "I4,I4,I2,C1,C1,I1,C3,C2,C1,C1,C1,C1,C58";          \CNS
+ 157: 0132:     				    #STKCF.SESS.NUM%  AUTOLOCK,             \
+ 158: 0132:                                     STKCF.REC.NUM%;                         \
+ 159: 0132:                                     STKCF.STKMQ.POINTER%,                   \
+ 160: 0132:                                     STKCF.ITEM.COUNT%,                      \
+ 161: 0132:                                     STKCF.STMVT.REC.CNT%,                   \
+ 162: 0132:                                     STKCF.STOCK.SUPPORT.STATUS$,            \
+ 163: 0132:                                     STKCF.STK.FILE.AVAIL$,                  \
+ 164: 0132:                                     STKCF.PREV.PITRL.UPDATE%,               \
+ 165: 0132: 			  	    STKCF.LAST.DIRORD.SUPPLIER$,	    \
+ 166: 0132: 				    STKCF.LAST.DIRORD.ORDER.NO$,	    \
+ 167: 0132: 			    	    STKCF.LAST.DIRORD.ORDER.SUFFIX$,	    \
+ 168: 0132: 				    STKCF.LAST.DIRORD.BC$,	 	    \
+ 169: 0132: 			  	    STKCF.LAST.DIRORD.REC.SOURCE$, 	    \
+ 170: 0132: 				    STKCF.STOCK.TAKE.PROCESSING.REQUIRED$,  \
+ 171: 0132: 				    STKCF.FILLER$
+ 172: 0132:                             
+ 173: 0132:    READ.STKCF.LOCK = 0
+ 174: 0136:    EXIT FUNCTION
+ 175: 0138: 
+ 176: 0138:    READ.STKCF.LOCK.ERROR:
+ 177: 0138: 
+ 178: 0138:    CURRENT.REPORT.NUM% = STKCF.REPORT.NUM%
+ 179: 0146:    FILE.OPERATION$ = "R"
+ 180: 0155:    CURRENT.CODE$ = STR$(STKCF.REC.NUM%)
+ 181: 0170: 
+ 182: 0170:    EXIT FUNCTION
+ 183: 0172:   END FUNCTION
+ 184: 0181: 
+ 185: 0181: 
+ 186: 0181:   FUNCTION WRITE.STKCF.UNLOCK PUBLIC
+ 187: 0195: 
+ 188: 0195:    INTEGER*1 WRITE.STKCF.UNLOCK
+ 189: 0195: 
+ 190: 0195:    WRITE.STKCF.UNLOCK = 1
+ 191: 0199: 
+ 192: 0199:    IF END#STKCF.SESS.NUM% THEN WRITE.STKCF.UNLOCK.ERROR
+ 193: 01ad: 
+ 194: 01ad:     WRITE FORM "I4,I4,I2,C1,C1,I1,C3,C2,C1,C1,C1,C1,C58";           \ CNS
+ 195: 0299:     				    #STKCF.SESS.NUM%  AUTOUNLOCK,         \
+ 196: 0299:                                     STKCF.REC.NUM%;                       \
+ 197: 0299:                                     STKCF.STKMQ.POINTER%,                 \
+ 198: 0299:                                     STKCF.ITEM.COUNT%,                    \
+ 199: 0299:                                     STKCF.STMVT.REC.CNT%,                 \
+ 200: 0299:                                     STKCF.STOCK.SUPPORT.STATUS$,          \
+ 201: 0299:                                     STKCF.STK.FILE.AVAIL$,                \
+ 202: 0299:                                     STKCF.PREV.PITRL.UPDATE%,             \
+ 203: 0299: 			  	    STKCF.LAST.DIRORD.SUPPLIER$,	    \
+ 204: 0299: 				    STKCF.LAST.DIRORD.ORDER.NO$,	    \
+ 205: 0299: 				    STKCF.LAST.DIRORD.ORDER.SUFFIX$,	    \
+ 206: 0299: 				    STKCF.LAST.DIRORD.BC$,	 	    \
+ 207: 0299: 				    STKCF.LAST.DIRORD.REC.SOURCE$,	    \ 
+ 208: 0299: 				    STKCF.STOCK.TAKE.PROCESSING.REQUIRED$,  \         
+ 209: 0299: 				    STKCF.FILLER$
+ 210: 0299: 
+ 211: 0299:    WRITE.STKCF.UNLOCK = 0
+ 212: 029d:    EXIT FUNCTION
+ 213: 029f: 
+ 214: 029f:    WRITE.STKCF.UNLOCK.ERROR:
+ 215: 029f: 
+ 216: 029f:    CURRENT.REPORT.NUM% = STKCF.REPORT.NUM%
+ 217: 02ad:    FILE.OPERATION$ = "W"
+ 218: 02bc:    CURRENT.CODE$ = STR$(STKCF.REC.NUM%)
+ 219: 02d7: 
+ 220: 02d7:    EXIT FUNCTION
+ 221: 02d9:   END FUNCTION
+ 222: 02e8: 
+ 223: 02e8: 
+ 224: 02e8:   FUNCTION WRITE.STKCF.UNLOCK.HOLD PUBLIC
+ 225: 02fc: 
+ 226: 02fc:    INTEGER*1 WRITE.STKCF.UNLOCK.HOLD
+ 227: 02fc: 
+ 228: 02fc:    WRITE.STKCF.UNLOCK.HOLD = 1
+ 229: 0300: 
+ 230: 0300:    IF END#STKCF.SESS.NUM% THEN WRITE.STKCF.UNLOCK.HOLD.ERROR
+ 231: 0314: 
+ 232: 0314:     WRITE FORM "I4,I4,I2,C1,C1,I1,C3,C2,C1,C1,C1,C1,C58";              \ CNS
+ 233: 0400: 				    HOLD #STKCF.SESS.NUM%  AUTOUNLOCK,    \
+ 234: 0400:                                     STKCF.REC.NUM%;                       \
+ 235: 0400:                                     STKCF.STKMQ.POINTER%,                 \
+ 236: 0400:                                     STKCF.ITEM.COUNT%,                    \
+ 237: 0400:                                     STKCF.STMVT.REC.CNT%,                 \
+ 238: 0400:                                     STKCF.STOCK.SUPPORT.STATUS$,          \
+ 239: 0400:                                     STKCF.STK.FILE.AVAIL$,                \
+ 240: 0400:                                     STKCF.PREV.PITRL.UPDATE%,             \
+ 241: 0400: 			  	    STKCF.LAST.DIRORD.SUPPLIER$,	    \
+ 242: 0400: 				    STKCF.LAST.DIRORD.ORDER.NO$,	    \
+ 243: 0400: 				    STKCF.LAST.DIRORD.ORDER.SUFFIX$,	    \
+ 244: 0400: 				    STKCF.LAST.DIRORD.BC$,	 	    \
+ 245: 0400: 				    STKCF.LAST.DIRORD.REC.SOURCE$,	    \
+ 246: 0400: 	                            STKCF.STOCK.TAKE.PROCESSING.REQUIRED$,  \         
+ 247: 0400:     	                            STKCF.FILLER$
+ 248: 0400: 
+ 249: 0400:    WRITE.STKCF.UNLOCK.HOLD = 0
+ 250: 0404:    EXIT FUNCTION
+ 251: 0406: 
+ 252: 0406:    WRITE.STKCF.UNLOCK.HOLD.ERROR:
+ 253: 0406: 
+ 254: 0406:    CURRENT.REPORT.NUM% = STKCF.REPORT.NUM%
+ 255: 0414:    FILE.OPERATION$ = "W"
+ 256: 0423:    CURRENT.CODE$ = STR$(STKCF.REC.NUM%)
+ 257: 043e: 
+ 258: 043e:    EXIT FUNCTION
+ 259: 0440:   END FUNCTION
+ 260: 044f: 
+ 261: 044f: 
+ 262: 044f:   FUNCTION READ.STKCF PUBLIC
+ 263: 0463: 
+ 264: 0463:    INTEGER*1 READ.STKCF
+ 265: 0463: 
+ 266: 0463:    READ.STKCF = 1
+ 267: 0467: 
+ 268: 0467:    IF END#STKCF.SESS.NUM% THEN READ.STKCF.ERROR
+ 269: 047b: 
+ 270: 047b:     READ FORM "I4,I4,I2,C1,C1,I1,C3,C2,C1,C1,C1,C1,C58";             \ CNS
+ 271: 0531:     				    #STKCF.SESS.NUM%,                \
+ 272: 0531:                                     STKCF.REC.NUM%;                  \ 
+ 273: 0531:                                     STKCF.STKMQ.POINTER%,            \
+ 274: 0531:                                     STKCF.ITEM.COUNT%,               \
+ 275: 0531:                                     STKCF.STMVT.REC.CNT%,            \
+ 276: 0531:                                     STKCF.STOCK.SUPPORT.STATUS$,     \
+ 277: 0531:                                     STKCF.STK.FILE.AVAIL$,           \
+ 278: 0531:                                     STKCF.PREV.PITRL.UPDATE%,        \
+ 279: 0531: 			  	    STKCF.LAST.DIRORD.SUPPLIER$,	    \
+ 280: 0531: 				    STKCF.LAST.DIRORD.ORDER.NO$,	    \
+ 281: 0531: 				    STKCF.LAST.DIRORD.ORDER.SUFFIX$,	    \
+ 282: 0531: 				    STKCF.LAST.DIRORD.BC$,	 	    \
+ 283: 0531: 				    STKCF.LAST.DIRORD.REC.SOURCE$,	    \
+ 284: 0531: 				    STKCF.STOCK.TAKE.PROCESSING.REQUIRED$,  \                            
+ 285: 0531:     	                            STKCF.FILLER$
+ 286: 0531:               
+ 287: 0531: 
+ 288: 0531: 
+ 289: 0531:    READ.STKCF = 0
+ 290: 0535:    EXIT FUNCTION
+ 291: 0537: 
+ 292: 0537:    READ.STKCF.ERROR:
+ 293: 0537: 
+ 294: 0537:    CURRENT.REPORT.NUM% = STKCF.REPORT.NUM%
+ 295: 0545:    FILE.OPERATION$ = "R"
+ 296: 0554:    CURRENT.CODE$ = STR$(STKCF.REC.NUM%)
+ 297: 056f: 
+ 298: 056f:    EXIT FUNCTION
+ 299: 0571:   END FUNCTION
+ 300: 0580: 
+ 301: 0580: 
+ 302: 0580:   FUNCTION WRITE.STKCF PUBLIC
+ 303: 0594: 
+ 304: 0594:    INTEGER*1 WRITE.STKCF        
+ 305: 0594: 
+ 306: 0594:    WRITE.STKCF = 1
+ 307: 0598: 
+ 308: 0598:    IF END#STKCF.SESS.NUM% THEN WRITE.STKCF.ERROR
+ 309: 05ac: 
+ 310: 05ac:     WRITE FORM "I4,I4,I2,C1,C1,I1,C3,C2,C1,C1,C1,C1,C58";         \ CNS
+ 311: 0698:     				    #STKCF.SESS.NUM%,                \
+ 312: 0698:                                     STKCF.REC.NUM%;                  \
+ 313: 0698:                                     STKCF.STKMQ.POINTER%,            \
+ 314: 0698:                                     STKCF.ITEM.COUNT%,               \
+ 315: 0698:                                     STKCF.STMVT.REC.CNT%,            \
+ 316: 0698:                                     STKCF.STOCK.SUPPORT.STATUS$,     \
+ 317: 0698:                                     STKCF.STK.FILE.AVAIL$,           \
+ 318: 0698:                                     STKCF.PREV.PITRL.UPDATE%,        \
+ 319: 0698: 			  	    STKCF.LAST.DIRORD.SUPPLIER$,	    \
+ 320: 0698: 				    STKCF.LAST.DIRORD.ORDER.NO$,	    \
+ 321: 0698: 				    STKCF.LAST.DIRORD.ORDER.SUFFIX$,	    \
+ 322: 0698: 				    STKCF.LAST.DIRORD.BC$,	 	    \
+ 323: 0698: 				    STKCF.LAST.DIRORD.REC.SOURCE$,	    \
+ 324: 0698: 				    STKCF.STOCK.TAKE.PROCESSING.REQUIRED$,  \                             
+ 325: 0698: 	                            STKCF.FILLER$
+ 326: 0698:                             
+ 327: 0698: 
+ 328: 0698:    WRITE.STKCF = 0
+ 329: 069c:    EXIT FUNCTION
+ 330: 069e: 
+ 331: 069e:    WRITE.STKCF.ERROR:
+ 332: 069e: 
+ 333: 069e:    CURRENT.REPORT.NUM% = STKCF.REPORT.NUM%
+ 334: 06ac:    FILE.OPERATION$ = "W"
+ 335: 06bb:    CURRENT.CODE$ = STR$(STKCF.REC.NUM%)
+ 336: 06d6: 
+ 337: 06d6:    EXIT FUNCTION
+ 338: 06d8:   END FUNCTION
+ 339: 06e7: 
+ 340: 06e7: 
+ 341: 06e7: End of Compilation

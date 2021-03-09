@@ -1,0 +1,1174 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                   FILE HANDLING FUNCTION SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  DIRECT
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  CCMVTFUN.J86
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***                               CREDIT CLAIMS STOCK MOVEMENT FILE
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***    VERSION B : Clive Norris             6th December 1993
+  16: 0000: \***      
+  17: 0000: \***    CCMVT.ITEM.INCR.DECR.FLAG$ added to type 4 record      13/1/94
+  18: 0000: \***      
+  19: 0000: \***    Version C :             Mark Walker                 21st Jul 2015
+  20: 0000: \***    F392 Retail Stock 5
+  21: 0000: \***    Fixed format string in READ.CCMVT for type 1 record.
+  22: 0000: \***
+  23: 0000: \*****************************************************************************
+  24: 0000: \*****************************************************************************
+  25: 0000: 
+  26: 0000:    INTEGER*2 GLOBAL                  \
+  27: 0000:       CURRENT.REPORT.NUM%
+  28: 0000: 
+  29: 0000:    STRING GLOBAL                     \
+  30: 0000:       CURRENT.CODE$,                 \
+  31: 0000:       FILE.OPERATION$
+  32: 0000: 
+  33: 0000:    %INCLUDE CCMVTDEC.J86
+  34: 0000: 
+  35: 0000: \*****************************************************************************
+  36: 0000: \*****************************************************************************
+  37: 0000: \***
+  38: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  39: 0000: \***
+  40: 0000: \***                   FILE TYPE:  DIRECT
+  41: 0000: \***
+  42: 0000: \***                   REFERENCE:  CCMVTDEC.J86
+  43: 0000: \***
+  44: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  45: 0000: \***				   CREDIT CLAIMS STOCK MOVEMENT FILE
+  46: 0000: \***
+  47: 0000: \***
+  48: 0000: \***      VERSION B : Clive Norris           13th January 1994
+  49: 0000: \***      
+  50: 0000: \*****************************************************************************
+  51: 0000: \***
+  52: 0000: \***  Notes:
+  53: 0000: \***
+  54: 0000: \***  The length of the records on this file is 256 bytes.  The different
+  55: 0000: \***  record types are detailed as follows:
+  56: 0000: \***
+  57: 0000: \***  The tables used to store the items must be dimensioned in the calling
+  58: 0000: \***  program......
+  59: 0000: \***  
+  60: 0000: \***
+  61: 0000: \***  Transaction type 00 (Header record) - TRANS TYPE, SERIAL NUMBER, DATE,
+  62: 0000: \***     STORE NUMBER, HEADER FILLER, SEQUENCE NUMBER.
+  63: 0000: \***
+  64: 0000: \***  Transaction type 01 (Credit claim hdr record) - TRANS TYPE, CREDIT CLAIM
+  65: 0000: \***     NUMBER, UOD NUMBER, CLAIM STATUS, NUMBER OF ITEMS, SUPPLY ROUTE,
+  66: 0000: \***     DISP LOCATION, BUSINESS CENTRE, RECALL NUMBER, AUTH NUMBER, SUPPLIER,
+  67: 0000: \***     RETURN METHOD, CARRIER, BIRD NUMBER, REASON, RECEIVING STORE, 
+  68: 0000: \***     DESTINATION, WAREHOUSE ROUTE, UOD TYPE, REASON FOR DAMAGE, INVOICE NO,
+  69: 0000: \***     FOLIO NUMBER, BATCH REF NUMBER, WHOLE/PART CONSIGNMENT, 
+  70: 0000: \***     REPAIR CATEGORY, REPAIR NUMBER, PLAN4 POLICY NUMBER, DDDA/DCDR,
+  71: 0000: \***     DELIV NOTE NUMBER, DELIV DATE, NUMBER OF CARTONS, ORDER NUMBER,
+  72: 0000: \***     COMMENTS, DATE OF CLAIM OR DESPATCH, TIME OF CLAIM OR DESPATCH, 
+  73: 0000: \***     FILLER TYPE 1, SEQUENCE NUMBER
+  74: 0000: \***
+  75: 0000: \***  Transaction type 02 (Credit claim item level record) - TRANS TYPE, 
+  76: 0000: \***     CREDIT CLAIM NUMBER, 
+  77: 0000: \***     >>> ITEM/BARCODE FLAG, ITEM/BARCODE, QUANTITY, PRICE, 
+  78: 0000: \***     TYPE 2 ITEM FILLER <<<, TYPE 2 FILLER, SEQUENCE NUMBER.
+  79: 0000: \***     (Sixteen records (>>> <<<) stored to meet record length of 256 bytes)
+  80: 0000: \***
+  81: 0000: \***  Transaction type 03 (Return item level record) - TRANS TYPE, 
+  82: 0000: \***   >>> ITEM/BARCODE FLAG, ITEM/BARCODE, QUANTITY, REASON CODE,
+  83: 0000: \***     TYPE 3 ITEM FILLER <<<, TYPE 3 FILLER, SEQUENCE NUMBER.
+  84: 0000: \***     (Sixteen records (>>> <<<) stored to meet record length of 256 bytes)
+  85: 0000: \***
+  86: 0000: \***  Transaction type 04 (Local Price Reduction item level recd) - TRANS TYPE, 
+  87: 0000: \***   >>> ITEM CODE, REASON CODE, AUTH NUMBER, STOCK VALUE, INCREASE/DECREASE
+  88: 0000: \***     FLAG, TYPE 4 ITEM FILLER <<<, TYPE 4 FILLER, SEQUENCE NUMBER.
+  89: 0000: \***     (Eight records (>>> <<<) stored to meet record length of 256 bytes)
+  90: 0000: \***
+  91: 0000: \***  Transaction type 99 (Trailer record) - TRANS TYPE, RECORD COUNT,
+  92: 0000: \***     TRAILER FILLER, SEQUENCE NUMBER.
+  93: 0000: \***
+  94: 0000: \*****************************************************************************
+  95: 0000: \*****************************************************************************
+  96: 0000: 
+  97: 0000:   STRING GLOBAL                 \
+  98: 0000:     CCMVT.FILE.NAME$,		\
+  99: 0000:     CCMVT.TRANS.TYPE$,          \   2 bytes ASC  00 = Header record
+ 100: 0000:                                 \                01 = Credit claim hdr record
+ 101: 0000:                                 \                02 = Credit claim item record
+ 102: 0000:                                 \                03 = Return item record
+ 103: 0000:                                 \                04 = Local Pricing item record
+ 104: 0000:                                 \                99 = Trailer record
+ 105: 0000:     CCMVT.RECORD$		!				
+ 106: 0000: 
+ 107: 0000:   INTEGER*2 GLOBAL              \
+ 108: 0000:     CCMVT.SESS.NUM%,            \
+ 109: 0000:     CCMVT.REPORT.NUM%
+ 110: 0000: 
+ 111: 0000:   INTEGER*4 GLOBAL              \
+ 112: 0000:     CCMVT.COUNT%
+ 113: 0000: 
+ 114: 0000:   STRING GLOBAL                 \
+ 115: 0000:     CCMVT.SERIAL.NUM$,          \   5 bytes ASC (with leading zeroes)
+ 116: 0000:     CCMVT.DATE$,                \   6 bytes ASC (YYMMDD)
+ 117: 0000:     CCMVT.STORE.NUMBER$,        \   2 bytes UPD (with leading zeroes)
+ 118: 0000:     CCMVT.HEADER.FILLER$,       \*239 bytes ASC (set to spaces by SET.CCMVT)
+ 119: 0000:     CCMVT.CREDIT.CLAIM.NUM$,    \   4 bytes UPD
+ 120: 0000:     CCMVT.UOD.NUM$,             \   7 bytes UPD
+ 121: 0000:     CCMVT.STATUS$,	        \   1 byte  ASC  "D" = Despatched,
+ 122: 0000:     			        \                "X" = Cancelled. 
+ 123: 0000:     			        \   CCMVT.NUM.OF.ITEMS% here (I2)
+ 124: 0000:     CCMVT.SUPPLY.ROUTE$,        \   1 byte ASC;  "W" = Warehouse,
+ 125: 0000:    			        \	 	 "E" = EPSOM,
+ 126: 0000: 			        \	         "O" = Other Directs,
+ 127: 0000: 			        \                "D" = Dispensary.
+ 128: 0000:     CCMVT.DISP.LOCATION$,       \   1 byte ASC   "M" = MDS, "D" = Dispensary.
+ 129: 0000:     CCMVT.BC.LETTER$,	        \   1 byte ASC    
+ 130: 0000:     CCMVT.RECALL.NUM$,	        \   8 byte ASC
+ 131: 0000:     CCMVT.AUTHORISATION$,       \  15 byte ASC
+ 132: 0000:     CCMVT.SUPPLIER$,	        \  15 byte ASC
+ 133: 0000:     CCMVT.METHOD.OF.RETURN$,    \   1 byte UPD;   1 = Carrier,
+ 134: 0000:    			        \                 2 = BIRD,
+ 135: 0000: 			        \ 	  	  3 = Via D6,
+ 136: 0000: 			        \		  4 = Representative.
+ 137: 0000:     CCMVT.CARRIER$,	        \   1 byte UPD;   1 = GPO,
+ 138: 0000:    			        \                 2 = Parcelforce,
+ 139: 0000: 			        \ 	 	  3 = Securicor,
+ 140: 0000: 			        \ 		  4 = Other.
+ 141: 0000:     CCMVT.BIRD.NUM$,	        \   8 byte ASC					
+ 142: 0000:     CCMVT.REASON.NUM$,	        \   1 byte UPD     (See CSRNS declaration)
+ 143: 0000:     CCMVT.RECEIVING.STORE$,     \   2 byte UPD    
+ 144: 0000:     CCMVT.DESTINATION$,	        \   1 byte UPD    1 = Business Centre, 
+ 145: 0000:    			        \	          2 = MTS,
+ 146: 0000:    			        \	  	  3 = Pharmacy, 
+ 147: 0000: 			        \		  4 = Other.
+ 148: 0000:     CCMVT.WAREHOUSE.ROUTE$,     \   1 byte ASC   "R" = RDC, "C" = CSR.
+ 149: 0000:     CCMVT.UOD.TYPE$,	        \   1 byte UPD    1 = Travel Outer,
+ 150: 0000:    			        \		  2 = Town tray,
+ 151: 0000: 			        \		  3 = Roll cage,
+ 152: 0000: 			        \     	          4 = Other.
+ 153: 0000:     CCMVT.DAMAGE.REASON$,       \   1 byte UPD    1 = Bad packaging,	
+ 154: 0000:    			        \		  2 = Poor handling.
+ 155: 0000:     CCMVT.INVOICE.NUM$,	        \  *9 byte ASC 
+ 156: 0000:     CCMVT.FOLIO.NUM$,	        \   3 byte UPD
+ 157: 0000:     CCMVT.BATCH.REF$,	        \   3 byte UPD
+ 158: 0000:     CCMVT.WHOLE.PART.CON$,      \   1 byte ASC   "W" = Whole, "P" = Part.
+ 159: 0000:     CCMVT.REPAIR.CATEGORY$,     \   1 byte UPD;   1 = Plan4,
+ 160: 0000:    			        \   		  2 = Estimate,
+ 161: 0000: 			        \		  3 = Boots guarantee,
+ 162: 0000: 			        \		  4 = Supplier guarantee,
+ 163: 0000: 			        \		  5 = Other guarantee,
+ 164: 0000:     CCMVT.REPAIR.NUM$,          \   6 byte UPD
+ 165: 0000:     CCMVT.PLAN4.POLICY.NUM$,    \   6 byte UPD 
+ 166: 0000:     CCMVT.DDDA.DCDR.NUM$,       \   4 byte UPD
+ 167: 0000:     CCMVT.DELIV.NOTE.NUM$,      \  *9 byte ASC
+ 168: 0000:     CCMVT.DELIV.DATE$,		\   3 byte UPD (YYMMDD)
+ 169: 0000:     CCMVT.NUM.CARTONS.RECEIV$,	\   1 byte UPD
+ 170: 0000:     CCMVT.ORDER.NUM$,		\  *7 byte ASC
+ 171: 0000:     CCMVT.COMMENT$,		\ *20 byte ASC
+ 172: 0000:     CCMVT.DATE.OF.CLAIM$,	\   3 byte UPD; Date of UOD despatch (YYMMDD)
+ 173: 0000:     CCMVT.TIME.OF.CLAIM$,	\   3 byte UPD; Time of UOD despatch
+ 174: 0000:     CCMVT.FILLER.01$,		\*101 byte ASC; Spaces.
+ 175: 0000: 				\
+ 176: 0000: 				\
+ 177: 0000: 				\
+ 178: 0000:     CCMVT.ITEM.BARCODE.FLAG$(1),\   1 byte ASC;  "I" = Boots item code,
+ 179: 0000:     				\                "B" = Barcode.
+ 180: 0000:     CCMVT.ITEM.BARCODE$(1),        \   7 byte UPD
+ 181: 0000:     CCMVT.ITEM.QTY$(1),		   \   2 byte UPD
+ 182: 0000:     CCMVT.ITEM.PRICE$(1),	   \   3 byte UPD
+ 183: 0000:     CCMVT.ITEM.FILLER.02$(1),	   \   2 byte ASC;  Spaces.
+ 184: 0000:     CCMVT.ITEM.REASON$(1),         \   1 byte UPD
+ 185: 0000:     CCMVT.ITEM.FILLER.03$(1),	   \   4 byte ASC;  Spaces.
+ 186: 0000:     CCMVT.ITEM.ITEM.CODE$(1),  	   \   7 byte UPD
+ 187: 0000:     CCMVT.ITEM.ITEM.CODE.04$(1),   \   4 byte UPD
+ 188: 0000:     CCMVT.ITEM.REASON.CODE.04$(1), \   3 byte ASC 
+ 189: 0000:     CCMVT.ITEM.AUTH.NUM.04$(1),    \   4 byte UPD
+ 190: 0000:     CCMVT.ITEM.STOCK.VALUE.04$(1), \   6 byte UPD
+ 191: 0000:     CCMVT.ITEM.INCR.DECR.FLAG$(1), \   1 byte ASC;  I = Increase, D = Decrease
+ 192: 0000:     CCMVT.ITEM.FILLER.04$(1),	   \  13 byte ASC;  Spaces.
+ 193: 0000:     CCMVT.RECORD.COUNT$,	   \   6 byte ASC
+ 194: 0000:     CCMVT.FILLER.02$,		   \  *8 byte ASC
+ 195: 0000:     CCMVT.FILLER.03$,		   \ *12 byte ASC
+ 196: 0000:     CCMVT.FILLER.04$,		   \ *12 byte ASC
+ 197: 0000:     CCMVT.TRAILER.FILLER$          !*246 byte ASC;  Spaces.
+ 198: 0000: 
+ 199: 0000: 
+ 200: 0000:   INTEGER*2 GLOBAL		   \
+ 201: 0000:     CCMVT.RECL%,    		   \
+ 202: 0000:     CCMVT.NUM.OF.ITEMS%,    	   \
+ 203: 0000:     CCMVT.SEQUENCE%
+ 204: 0000: 
+ 205: 0000: 
+ 206: 0000: 
+ 207: 0000:    FUNCTION CCMVT.SET PUBLIC
+ 208: 0014:  
+ 209: 0014:       INTEGER*2 CCMVT.SET
+ 210: 0014:       INTEGER*2 LOOP%
+ 211: 0014: 
+ 212: 0014:       CCMVT.SET = 1
+ 213: 0019: 
+ 214: 0019:          CCMVT.REPORT.NUM%        = 318
+ 215: 0022:          CCMVT.FILE.NAME$         = "CCMVT"
+ 216: 0031:          CCMVT.RECL%              = 256
+ 217: 003a:          CCMVT.HEADER.FILLER$     = STRING$(239," ")
+ 218: 0051:          CCMVT.FILLER.01$         = STRING$(101," ")
+ 219: 0067:          CCMVT.FILLER.02$         = STRING$(8," ")
+ 220: 007d:          CCMVT.FILLER.03$         = STRING$(12," ")
+ 221: 0093:          CCMVT.FILLER.04$         = STRING$(12," ")
+ 222: 00a9:          CCMVT.TRAILER.FILLER$    = STRING$(246," ")
+ 223: 00c0: 
+ 224: 00c0:          LOOP% = 1
+ 225: 00c6:          WHILE LOOP%<=16
+ 226: 00c8:            CCMVT.ITEM.FILLER.02$(LOOP%) = STRING$(2," ")
+ 227: 00ec:            LOOP% = LOOP% + 1
+ 228: 00f0:          WEND
+ 229: 00f7: 
+ 230: 00f7:          LOOP% = 1
+ 231: 00fd:          WHILE LOOP%<=16
+ 232: 00ff:            CCMVT.ITEM.FILLER.03$(LOOP%) = STRING$(4," ")
+ 233: 0123:            LOOP% = LOOP% + 1
+ 234: 0127:          WEND
+ 235: 012e:          
+ 236: 012e:          LOOP% = 1
+ 237: 0134:          WHILE LOOP%<=8
+ 238: 0136:            CCMVT.ITEM.FILLER.04$(LOOP%) = STRING$(12," ")
+ 239: 015a:            LOOP% = LOOP% + 1
+ 240: 015e:          WEND
+ 241: 0165: 
+ 242: 0165:       CCMVT.SET = 0
+ 243: 016a:     
+ 244: 016a:    END FUNCTION
+ 245: 0179: 
+ 246: 0179: 
+ 247: 0179: 
+ 248: 0179:    FUNCTION READ.CCMVT PUBLIC
+ 249: 018d: 
+ 250: 018d:     INTEGER*2 READ.CCMVT
+ 251: 018d:     STRING    FORMAT$
+ 252: 018d: 
+ 253: 018d:     READ.CCMVT = 1
+ 254: 0192: 
+ 255: 0192:      IF END #CCMVT.SESS.NUM% THEN READ.CCMVT.ERROR
+ 256: 01a6:      READ FORM "C2"; # CCMVT.SESS.NUM%; CCMVT.TRANS.TYPE$
+ 257: 01c8: 
+ 258: 01c8:      IF CCMVT.TRANS.TYPE$   = "00" THEN       \Header record
+ 259: 01de:         READ FORM "C5,C6,C2,C239,I2"; # CCMVT.SESS.NUM%;                \
+ 260: 022f:            CCMVT.SERIAL.NUM$,                                           \
+ 261: 022f:            CCMVT.DATE$,                                                 \
+ 262: 022f:            CCMVT.STORE.NUMBER$,                                         \
+ 263: 022f:            CCMVT.HEADER.FILLER$,                                        \
+ 264: 022f:            CCMVT.SEQUENCE%                                              \
+ 265: 022f:      ELSE                                                               \
+ 266: 022f:        IF CCMVT.TRANS.TYPE$   = "01" THEN     \Credit claim hdr record
+ 267: 0248:           FORMAT$ = "C4,C7,C1,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,C9,2C3" + \
+ 268: 025c:                     ",2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,C101,I2"          :\   !CMW
+ 269: 025c:           READ FORM FORMAT$; #CCMVT.SESS.NUM%;                          \   
+ 270: 0406:              CCMVT.CREDIT.CLAIM.NUM$,                                   \   
+ 271: 0406:              CCMVT.UOD.NUM$,                                            \   
+ 272: 0406:              CCMVT.STATUS$,                                             \   
+ 273: 0406:              CCMVT.NUM.OF.ITEMS%,                                       \
+ 274: 0406:              CCMVT.SUPPLY.ROUTE$,                                       \   
+ 275: 0406:              CCMVT.DISP.LOCATION$,                                      \   
+ 276: 0406:              CCMVT.BC.LETTER$,                                          \   
+ 277: 0406:              CCMVT.RECALL.NUM$,                                         \   
+ 278: 0406:              CCMVT.AUTHORISATION$,                                      \  
+ 279: 0406:              CCMVT.SUPPLIER$,                                           \  
+ 280: 0406:              CCMVT.METHOD.OF.RETURN$,                                   \   
+ 281: 0406:              CCMVT.CARRIER$,                                            \   
+ 282: 0406:              CCMVT.BIRD.NUM$,                                           \   
+ 283: 0406:              CCMVT.REASON.NUM$,                                         \   
+ 284: 0406:              CCMVT.RECEIVING.STORE$,                                    \   
+ 285: 0406:              CCMVT.DESTINATION$,                                        \   
+ 286: 0406:              CCMVT.WAREHOUSE.ROUTE$,                                    \  
+ 287: 0406:              CCMVT.UOD.TYPE$,                                           \   
+ 288: 0406:              CCMVT.DAMAGE.REASON$,                                      \   
+ 289: 0406:              CCMVT.INVOICE.NUM$,                                        \   
+ 290: 0406:              CCMVT.FOLIO.NUM$,                                          \   
+ 291: 0406:              CCMVT.BATCH.REF$,                                          \   
+ 292: 0406:              CCMVT.WHOLE.PART.CON$,                                     \
+ 293: 0406:              CCMVT.REPAIR.CATEGORY$,                                    \   
+ 294: 0406:              CCMVT.REPAIR.NUM$,                                         \   
+ 295: 0406:              CCMVT.PLAN4.POLICY.NUM$,                                   \   
+ 296: 0406:              CCMVT.DDDA.DCDR.NUM$,                                      \   
+ 297: 0406:              CCMVT.DELIV.NOTE.NUM$,                                     \   
+ 298: 0406:              CCMVT.DELIV.DATE$,                                         \
+ 299: 0406:              CCMVT.NUM.CARTONS.RECEIV$,                                 \   
+ 300: 0406:              CCMVT.ORDER.NUM$,                                          \   
+ 301: 0406:              CCMVT.COMMENT$,                                            \   
+ 302: 0406:              CCMVT.DATE.OF.CLAIM$,                                      \   
+ 303: 0406:              CCMVT.TIME.OF.CLAIM$,                                      \   
+ 304: 0406:              CCMVT.FILLER.01$,                                          \  
+ 305: 0406:              CCMVT.SEQUENCE%                                            \
+ 306: 0406:        ELSE                                                             \
+ 307: 0406:          IF CCMVT.TRANS.TYPE$ = "02" THEN      \Credit claim item record
+ 308: 041f:             FORMAT$ = "C4," + STRING$(16,"C1,C7,C2,C3,C2,") + "C8,I2"  :\
+ 309: 0449:             READ FORM FORMAT$; #CCMVT.SESS.NUM%;                        \
+ 310: 0bb8:                 CCMVT.CREDIT.CLAIM.NUM$,                                \   
+ 311: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(1),                            \   
+ 312: 0bb8:                 CCMVT.ITEM.BARCODE$(1),                                 \   
+ 313: 0bb8:                 CCMVT.ITEM.QTY$(1),                                     \          
+ 314: 0bb8:                 CCMVT.ITEM.PRICE$(1),                                   \          
+ 315: 0bb8:                 CCMVT.ITEM.FILLER.02$(1),                               \  
+ 316: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(2),                            \   
+ 317: 0bb8:                 CCMVT.ITEM.BARCODE$(2),                                 \   
+ 318: 0bb8:                 CCMVT.ITEM.QTY$(2),                                     \          
+ 319: 0bb8:                 CCMVT.ITEM.PRICE$(2),                                   \          
+ 320: 0bb8:                 CCMVT.ITEM.FILLER.02$(2),                               \  
+ 321: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(3),                            \   
+ 322: 0bb8:                 CCMVT.ITEM.BARCODE$(3),                                 \   
+ 323: 0bb8:                 CCMVT.ITEM.QTY$(3),                                     \          
+ 324: 0bb8:                 CCMVT.ITEM.PRICE$(3),                                   \          
+ 325: 0bb8:                 CCMVT.ITEM.FILLER.02$(3),                               \  
+ 326: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(4),                            \   
+ 327: 0bb8:                 CCMVT.ITEM.BARCODE$(4),                                 \   
+ 328: 0bb8:                 CCMVT.ITEM.QTY$(4),                                     \          
+ 329: 0bb8:                 CCMVT.ITEM.PRICE$(4),                                   \          
+ 330: 0bb8:                 CCMVT.ITEM.FILLER.02$(4),                               \  
+ 331: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(5),                            \   
+ 332: 0bb8:                 CCMVT.ITEM.BARCODE$(5),                                 \   
+ 333: 0bb8:                 CCMVT.ITEM.QTY$(5),                                     \          
+ 334: 0bb8:                 CCMVT.ITEM.PRICE$(5),                                   \          
+ 335: 0bb8:                 CCMVT.ITEM.FILLER.02$(5),                               \  
+ 336: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(6),                            \   
+ 337: 0bb8:                 CCMVT.ITEM.BARCODE$(6),                                 \   
+ 338: 0bb8:                 CCMVT.ITEM.QTY$(6),                                     \          
+ 339: 0bb8:                 CCMVT.ITEM.PRICE$(6),                                   \          
+ 340: 0bb8:                 CCMVT.ITEM.FILLER.02$(6),                               \  
+ 341: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(7),                            \   
+ 342: 0bb8:                 CCMVT.ITEM.BARCODE$(7),                                 \   
+ 343: 0bb8:                 CCMVT.ITEM.QTY$(7),                                     \          
+ 344: 0bb8:                 CCMVT.ITEM.PRICE$(7),                                   \          
+ 345: 0bb8:                 CCMVT.ITEM.FILLER.02$(7),                               \  
+ 346: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(8),                            \   
+ 347: 0bb8:                 CCMVT.ITEM.BARCODE$(8),                                 \   
+ 348: 0bb8:                 CCMVT.ITEM.QTY$(8),                                     \          
+ 349: 0bb8:                 CCMVT.ITEM.PRICE$(8),                                   \          
+ 350: 0bb8:                 CCMVT.ITEM.FILLER.02$(8),                               \       
+ 351: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(9),                            \   
+ 352: 0bb8:                 CCMVT.ITEM.BARCODE$(9),                                 \   
+ 353: 0bb8:                 CCMVT.ITEM.QTY$(9),                                     \          
+ 354: 0bb8:                 CCMVT.ITEM.PRICE$(9),                                   \          
+ 355: 0bb8:                 CCMVT.ITEM.FILLER.02$(9),                               \  
+ 356: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(10),                           \   
+ 357: 0bb8:                 CCMVT.ITEM.BARCODE$(10),                                \   
+ 358: 0bb8:                 CCMVT.ITEM.QTY$(10),                                    \          
+ 359: 0bb8:                 CCMVT.ITEM.PRICE$(10),                                  \          
+ 360: 0bb8:                 CCMVT.ITEM.FILLER.02$(10),                              \  
+ 361: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(11),                           \   
+ 362: 0bb8:                 CCMVT.ITEM.BARCODE$(11),                                \   
+ 363: 0bb8:                 CCMVT.ITEM.QTY$(11),                                    \          
+ 364: 0bb8:                 CCMVT.ITEM.PRICE$(11),                                  \          
+ 365: 0bb8:                 CCMVT.ITEM.FILLER.02$(11),                              \  
+ 366: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(12),                           \   
+ 367: 0bb8:                 CCMVT.ITEM.BARCODE$(12),                                \   
+ 368: 0bb8:                 CCMVT.ITEM.QTY$(12),                                    \          
+ 369: 0bb8:                 CCMVT.ITEM.PRICE$(12),                                  \          
+ 370: 0bb8:                 CCMVT.ITEM.FILLER.02$(12),                              \  
+ 371: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(13),                           \   
+ 372: 0bb8:                 CCMVT.ITEM.BARCODE$(13),                                \   
+ 373: 0bb8:                 CCMVT.ITEM.QTY$(13),                                    \          
+ 374: 0bb8:                 CCMVT.ITEM.PRICE$(13),                                  \          
+ 375: 0bb8:                 CCMVT.ITEM.FILLER.02$(13),                              \  
+ 376: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(14),                           \   
+ 377: 0bb8:                 CCMVT.ITEM.BARCODE$(14),                                \   
+ 378: 0bb8:                 CCMVT.ITEM.QTY$(14),                                    \          
+ 379: 0bb8:                 CCMVT.ITEM.PRICE$(14),                                  \          
+ 380: 0bb8:                 CCMVT.ITEM.FILLER.02$(14),                              \  
+ 381: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(15),                           \   
+ 382: 0bb8:                 CCMVT.ITEM.BARCODE$(15),                                \   
+ 383: 0bb8:                 CCMVT.ITEM.QTY$(15),                                    \          
+ 384: 0bb8:                 CCMVT.ITEM.PRICE$(15),                                  \          
+ 385: 0bb8:                 CCMVT.ITEM.FILLER.02$(15),                              \  
+ 386: 0bb8:                 CCMVT.ITEM.BARCODE.FLAG$(16),                           \   
+ 387: 0bb8:                 CCMVT.ITEM.BARCODE$(16),                                \   
+ 388: 0bb8:                 CCMVT.ITEM.QTY$(16),                                    \          
+ 389: 0bb8:                 CCMVT.ITEM.PRICE$(16),                                  \          
+ 390: 0bb8:                 CCMVT.ITEM.FILLER.02$(16),                              \       
+ 391: 0bb8:                 CCMVT.FILLER.02$,                                       \
+ 392: 0bb8:                 CCMVT.SEQUENCE%                                         \
+ 393: 0bb8:          ELSE                                                           \
+ 394: 0bb8:            IF CCMVT.TRANS.TYPE$     = "03" THEN     \Return record
+ 395: 0bd1:               FORMAT$ = STRING$(16,"C1,C7,C2,C1,C4,") + "C12,I2"       :\
+ 396: 0bf7:               READ FORM FORMAT$; #CCMVT.SESS.NUM%;                      \
+ 397: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(1),                           \   
+ 398: 135b:                  CCMVT.ITEM.BARCODE$(1),                                \   
+ 399: 135b:                  CCMVT.ITEM.QTY$(1),                                    \          
+ 400: 135b:                  CCMVT.ITEM.REASON$(1),                                 \
+ 401: 135b:                  CCMVT.ITEM.FILLER.03$(1),                              \  
+ 402: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(2),                           \   
+ 403: 135b:                  CCMVT.ITEM.BARCODE$(2),                                \   
+ 404: 135b:                  CCMVT.ITEM.QTY$(2),                                    \          
+ 405: 135b:                  CCMVT.ITEM.REASON$(2),                                 \
+ 406: 135b:                  CCMVT.ITEM.FILLER.03$(2),                              \  
+ 407: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(3),                           \   
+ 408: 135b:                  CCMVT.ITEM.BARCODE$(3),                                \   
+ 409: 135b:                  CCMVT.ITEM.QTY$(3),                                    \          
+ 410: 135b:                  CCMVT.ITEM.REASON$(3),                                 \
+ 411: 135b:                  CCMVT.ITEM.FILLER.03$(3),                              \  
+ 412: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(4),                           \   
+ 413: 135b:                  CCMVT.ITEM.BARCODE$(4),                                \   
+ 414: 135b:                  CCMVT.ITEM.QTY$(4),                                    \          
+ 415: 135b:                  CCMVT.ITEM.REASON$(4),                                 \
+ 416: 135b:                  CCMVT.ITEM.FILLER.03$(4),                              \  
+ 417: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(5),                           \   
+ 418: 135b:                  CCMVT.ITEM.BARCODE$(5),                                \   
+ 419: 135b:                  CCMVT.ITEM.QTY$(5),                                    \          
+ 420: 135b:                  CCMVT.ITEM.REASON$(5),                                 \
+ 421: 135b:                  CCMVT.ITEM.FILLER.03$(5),                              \  
+ 422: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(6),                           \   
+ 423: 135b:                  CCMVT.ITEM.BARCODE$(6),                                \   
+ 424: 135b:                  CCMVT.ITEM.QTY$(6),                                    \          
+ 425: 135b:                  CCMVT.ITEM.REASON$(6),                                 \
+ 426: 135b:                  CCMVT.ITEM.FILLER.03$(6),                              \  
+ 427: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(7),                           \   
+ 428: 135b:                  CCMVT.ITEM.BARCODE$(7),                                \   
+ 429: 135b:                  CCMVT.ITEM.QTY$(7),                                    \          
+ 430: 135b:                  CCMVT.ITEM.REASON$(7),                                 \
+ 431: 135b:                  CCMVT.ITEM.FILLER.03$(7),                              \  
+ 432: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(8),                           \   
+ 433: 135b:                  CCMVT.ITEM.BARCODE$(8),                                \   
+ 434: 135b:                  CCMVT.ITEM.QTY$(8),                                    \          
+ 435: 135b:                  CCMVT.ITEM.REASON$(8),                                 \
+ 436: 135b:                  CCMVT.ITEM.FILLER.03$(8),                              \ 
+ 437: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(9),                           \   
+ 438: 135b:                  CCMVT.ITEM.BARCODE$(9),                                \   
+ 439: 135b:                  CCMVT.ITEM.QTY$(9),                                    \          
+ 440: 135b:                  CCMVT.ITEM.REASON$(9),                                 \
+ 441: 135b:                  CCMVT.ITEM.FILLER.03$(9),                              \  
+ 442: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(10),                          \   
+ 443: 135b:                  CCMVT.ITEM.BARCODE$(10),                               \   
+ 444: 135b:                  CCMVT.ITEM.QTY$(10),                                   \          
+ 445: 135b:                  CCMVT.ITEM.REASON$(10),                                \
+ 446: 135b:                  CCMVT.ITEM.FILLER.03$(10),                             \  
+ 447: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(11),                          \   
+ 448: 135b:                  CCMVT.ITEM.BARCODE$(11),                               \   
+ 449: 135b:                  CCMVT.ITEM.QTY$(11),                                   \          
+ 450: 135b:                  CCMVT.ITEM.REASON$(11),                                \
+ 451: 135b:                  CCMVT.ITEM.FILLER.03$(11),                             \  
+ 452: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(12),                          \   
+ 453: 135b:                  CCMVT.ITEM.BARCODE$(12),                               \   
+ 454: 135b:                  CCMVT.ITEM.QTY$(12),                                   \          
+ 455: 135b:                  CCMVT.ITEM.REASON$(12),                                \
+ 456: 135b:                  CCMVT.ITEM.FILLER.03$(12),                             \  
+ 457: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(13),                          \   
+ 458: 135b:                  CCMVT.ITEM.BARCODE$(13),                               \   
+ 459: 135b:                  CCMVT.ITEM.QTY$(13),                                   \          
+ 460: 135b:                  CCMVT.ITEM.REASON$(13),                                \
+ 461: 135b:                  CCMVT.ITEM.FILLER.03$(13),                             \  
+ 462: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(14),                          \   
+ 463: 135b:                  CCMVT.ITEM.BARCODE$(14),                               \   
+ 464: 135b:                  CCMVT.ITEM.QTY$(14),                                   \          
+ 465: 135b:                  CCMVT.ITEM.REASON$(14),                                \
+ 466: 135b:                  CCMVT.ITEM.FILLER.03$(14),                             \  
+ 467: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(15),                          \   
+ 468: 135b:                  CCMVT.ITEM.BARCODE$(15),                               \   
+ 469: 135b:                  CCMVT.ITEM.QTY$(15),                                   \          
+ 470: 135b:                  CCMVT.ITEM.REASON$(15),                                \
+ 471: 135b:                  CCMVT.ITEM.FILLER.03$(15),                             \  
+ 472: 135b:                  CCMVT.ITEM.BARCODE.FLAG$(16),                          \   
+ 473: 135b:                  CCMVT.ITEM.BARCODE$(16),                               \   
+ 474: 135b:                  CCMVT.ITEM.QTY$(16),                                   \          
+ 475: 135b:                  CCMVT.ITEM.REASON$(16),                                \
+ 476: 135b:                  CCMVT.ITEM.FILLER.03$(16),                             \                
+ 477: 135b:                  CCMVT.FILLER.03$,                                      \
+ 478: 135b:                  CCMVT.SEQUENCE%                                        \                                 
+ 479: 135b:            ELSE                                                         \
+ 480: 135b:              IF CCMVT.TRANS.TYPE$     = "04" THEN     \Local Pricing recd
+ 481: 1374:                 FORMAT$ = STRING$(8,"C4,C3,C4,C6,C1,C12,") + "C12,I2"  :\
+ 482: 139a:                 READ FORM FORMAT$; #CCMVT.SESS.NUM%;                    \
+ 483: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(1),                           \   
+ 484: 181d:                  CCMVT.ITEM.REASON.CODE.04$(1),                         \          
+ 485: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(1),                            \          
+ 486: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(1),                         \
+ 487: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(1),                         \
+ 488: 181d:                  CCMVT.ITEM.FILLER.04$(1),                              \  
+ 489: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(2),                           \   
+ 490: 181d:                  CCMVT.ITEM.REASON.CODE.04$(2),                         \          
+ 491: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(2),                            \          
+ 492: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(2),                         \
+ 493: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(2),                         \
+ 494: 181d:                  CCMVT.ITEM.FILLER.04$(2),                              \  
+ 495: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(3),                           \   
+ 496: 181d:                  CCMVT.ITEM.REASON.CODE.04$(3),                         \          
+ 497: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(3),                            \          
+ 498: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(3),                         \
+ 499: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(3),                         \
+ 500: 181d:                  CCMVT.ITEM.FILLER.04$(3),                              \  
+ 501: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(4),                           \   
+ 502: 181d:                  CCMVT.ITEM.REASON.CODE.04$(4),                         \          
+ 503: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(4),                            \          
+ 504: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(4),                         \
+ 505: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(4),                         \
+ 506: 181d:                  CCMVT.ITEM.FILLER.04$(4),                              \  
+ 507: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(5),                           \   
+ 508: 181d:                  CCMVT.ITEM.REASON.CODE.04$(5),                         \          
+ 509: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(5),                            \          
+ 510: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(5),                         \
+ 511: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(5),                         \
+ 512: 181d:                  CCMVT.ITEM.FILLER.04$(5),                              \  
+ 513: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(6),                           \   
+ 514: 181d:                  CCMVT.ITEM.REASON.CODE.04$(6),                         \          
+ 515: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(6),                            \          
+ 516: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(6),                         \
+ 517: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(6),                         \
+ 518: 181d:                  CCMVT.ITEM.FILLER.04$(6),                              \  
+ 519: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(7),                           \   
+ 520: 181d:                  CCMVT.ITEM.REASON.CODE.04$(7),                         \          
+ 521: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(7),                            \          
+ 522: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(7),                         \
+ 523: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(7),                         \
+ 524: 181d:                  CCMVT.ITEM.FILLER.04$(7),                              \  
+ 525: 181d:                  CCMVT.ITEM.ITEM.CODE.04$(8),                           \   
+ 526: 181d:                  CCMVT.ITEM.REASON.CODE.04$(8),                         \          
+ 527: 181d:                  CCMVT.ITEM.AUTH.NUM.04$(8),                            \          
+ 528: 181d:                  CCMVT.ITEM.STOCK.VALUE.04$(8),                         \
+ 529: 181d:                  CCMVT.ITEM.INCR.DECR.FLAG$(8),                         \
+ 530: 181d:                  CCMVT.ITEM.FILLER.04$(8),                              \                
+ 531: 181d:                  CCMVT.FILLER.04$,                                      \
+ 532: 181d:                  CCMVT.SEQUENCE%                                        \                                 
+ 533: 181d:              ELSE                                                       \
+ 534: 181d:                IF CCMVT.TRANS.TYPE$ = "99" THEN       \Trailer record
+ 535: 1833:                   READ FORM "C6,C246,I2"; #CCMVT.SESS.NUM%;             \
+ 536: 186b:                      CCMVT.RECORD.COUNT$,                               \
+ 537: 186b:                      CCMVT.TRAILER.FILLER$,                             \
+ 538: 186b:                      CCMVT.SEQUENCE%
+ 539: 186b:    READ.CCMVT = 0
+ 540: 1870:    EXIT FUNCTION
+ 541: 1872: 
+ 542: 1872:    READ.CCMVT.ERROR:
+ 543: 1872: 
+ 544: 1872:      CURRENT.REPORT.NUM% = CCMVT.REPORT.NUM%
+ 545: 1880:      FILE.OPERATION$ = "R"
+ 546: 188f:      CURRENT.CODE$ = ""
+ 547: 189e:      EXIT FUNCTION
+ 548: 18a0: 
+ 549: 18a0:   END FUNCTION
+ 550: 18af: 
+ 551: 18af: 
+ 552: 18af: 
+ 553: 18af:   FUNCTION WRITE.CCMVT PUBLIC
+ 554: 18c3: 
+ 555: 18c3:      INTEGER*2 WRITE.CCMVT
+ 556: 18c3:      STRING    FORMAT$
+ 557: 18c3: 
+ 558: 18c3:      WRITE.CCMVT = 1
+ 559: 18c8: 
+ 560: 18c8:         IF END #CCMVT.SESS.NUM% THEN WRITE.CCMVT.ERROR
+ 561: 18dc: 
+ 562: 18dc:         IF CCMVT.TRANS.TYPE$   = "00" THEN       \Header record
+ 563: 18f2:            WRITE FORM "C2,C5,C6,C2,C239,I2"; #CCMVT.SESS.NUM%;          \
+ 564: 1963:               CCMVT.TRANS.TYPE$,                                        \
+ 565: 1963:               CCMVT.SERIAL.NUM$,                                        \
+ 566: 1963:               CCMVT.DATE$,                                              \
+ 567: 1963:               CCMVT.STORE.NUMBER$,                                      \
+ 568: 1963:               CCMVT.HEADER.FILLER$,                                     \
+ 569: 1963:               CCMVT.SEQUENCE%                                           \
+ 570: 1963:         ELSE                                                            \
+ 571: 1963:            IF CCMVT.TRANS.TYPE$   = "01" THEN     \Credit claim hdr record
+ 572: 197c:              FORMAT$ = "C2,C4,C7,C1,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1" +  \
+ 573: 1990:                        ",C9,2C3,2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,C101,I2":\
+ 574: 1990:              WRITE FORM FORMAT$; #CCMVT.SESS.NUM%;                      \
+ 575: 1bf1:                 CCMVT.TRANS.TYPE$,                                      \
+ 576: 1bf1:                 CCMVT.CREDIT.CLAIM.NUM$,                                \   
+ 577: 1bf1:                 CCMVT.UOD.NUM$,                                         \   
+ 578: 1bf1:                 CCMVT.STATUS$,                                          \   
+ 579: 1bf1:                 CCMVT.NUM.OF.ITEMS%,                                    \
+ 580: 1bf1:                 CCMVT.SUPPLY.ROUTE$,                                    \   
+ 581: 1bf1:                 CCMVT.DISP.LOCATION$,                                   \   
+ 582: 1bf1:                 CCMVT.BC.LETTER$,                                       \   
+ 583: 1bf1:                 CCMVT.RECALL.NUM$,                                      \   
+ 584: 1bf1:                 CCMVT.AUTHORISATION$,                                   \  
+ 585: 1bf1:                 CCMVT.SUPPLIER$,                                        \  
+ 586: 1bf1:                 CCMVT.METHOD.OF.RETURN$,                                \   
+ 587: 1bf1:                 CCMVT.CARRIER$,                                         \   
+ 588: 1bf1:                 CCMVT.BIRD.NUM$,                                        \   
+ 589: 1bf1:                 CCMVT.REASON.NUM$,                                      \   
+ 590: 1bf1:                 CCMVT.RECEIVING.STORE$,                                 \   
+ 591: 1bf1:                 CCMVT.DESTINATION$,                                     \   
+ 592: 1bf1:                 CCMVT.WAREHOUSE.ROUTE$,                                 \  
+ 593: 1bf1:                 CCMVT.UOD.TYPE$,                                        \   
+ 594: 1bf1:                 CCMVT.DAMAGE.REASON$,                                   \   
+ 595: 1bf1:                 CCMVT.INVOICE.NUM$,                                     \   
+ 596: 1bf1:                 CCMVT.FOLIO.NUM$,                                       \   
+ 597: 1bf1:                 CCMVT.BATCH.REF$,                                       \   
+ 598: 1bf1:                 CCMVT.WHOLE.PART.CON$,                                  \
+ 599: 1bf1:                 CCMVT.REPAIR.CATEGORY$,                                 \   
+ 600: 1bf1:                 CCMVT.REPAIR.NUM$,                                      \   
+ 601: 1bf1:                 CCMVT.PLAN4.POLICY.NUM$,                                \   
+ 602: 1bf1:                 CCMVT.DDDA.DCDR.NUM$,                                   \   
+ 603: 1bf1:                 CCMVT.DELIV.NOTE.NUM$,                                  \   
+ 604: 1bf1:                 CCMVT.DELIV.DATE$,                                      \
+ 605: 1bf1:                 CCMVT.NUM.CARTONS.RECEIV$,                              \   
+ 606: 1bf1:                 CCMVT.ORDER.NUM$,                                       \   
+ 607: 1bf1:                 CCMVT.COMMENT$,                                         \   
+ 608: 1bf1:                 CCMVT.DATE.OF.CLAIM$,                                   \   
+ 609: 1bf1:                 CCMVT.TIME.OF.CLAIM$,                                   \   
+ 610: 1bf1:                 CCMVT.FILLER.01$,                                       \  
+ 611: 1bf1:                 CCMVT.SEQUENCE%                                         \
+ 612: 1bf1:            ELSE                                                         \
+ 613: 1bf1:               IF CCMVT.TRANS.TYPE$ = "02" THEN      \Credit claim item record
+ 614: 1c0a:                  FORMAT$ = "C2,C4,"+STRING$(16,"C1,C7,C2,C3,C2,")+"C8,I2" :\
+ 615: 1c34:                  WRITE FORM FORMAT$; #CCMVT.SESS.NUM%;                  \
+ 616: 2549:                     CCMVT.TRANS.TYPE$,                                  \
+ 617: 2549:                     CCMVT.CREDIT.CLAIM.NUM$,                            \   
+ 618: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(1),                        \   
+ 619: 2549:                     CCMVT.ITEM.BARCODE$(1),                             \   
+ 620: 2549:                     CCMVT.ITEM.QTY$(1),                                 \          
+ 621: 2549:                     CCMVT.ITEM.PRICE$(1),                               \          
+ 622: 2549:                     CCMVT.ITEM.FILLER.02$(1),                           \  
+ 623: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(2),                        \   
+ 624: 2549:                     CCMVT.ITEM.BARCODE$(2),                             \   
+ 625: 2549:                     CCMVT.ITEM.QTY$(2),                                 \          
+ 626: 2549:                     CCMVT.ITEM.PRICE$(2),                               \          
+ 627: 2549:                     CCMVT.ITEM.FILLER.02$(2),                           \  
+ 628: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(3),                        \   
+ 629: 2549:                     CCMVT.ITEM.BARCODE$(3),                             \   
+ 630: 2549:                     CCMVT.ITEM.QTY$(3),                                 \          
+ 631: 2549:                     CCMVT.ITEM.PRICE$(3),                               \          
+ 632: 2549:                     CCMVT.ITEM.FILLER.02$(3),                           \  
+ 633: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(4),                        \   
+ 634: 2549:                     CCMVT.ITEM.BARCODE$(4),                             \   
+ 635: 2549:                     CCMVT.ITEM.QTY$(4),                                 \          
+ 636: 2549:                     CCMVT.ITEM.PRICE$(4),                               \          
+ 637: 2549:                     CCMVT.ITEM.FILLER.02$(4),                           \  
+ 638: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(5),                        \   
+ 639: 2549:                     CCMVT.ITEM.BARCODE$(5),                             \   
+ 640: 2549:                     CCMVT.ITEM.QTY$(5),                                 \          
+ 641: 2549:                     CCMVT.ITEM.PRICE$(5),                               \          
+ 642: 2549:                     CCMVT.ITEM.FILLER.02$(5),                           \  
+ 643: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(6),                        \   
+ 644: 2549:                     CCMVT.ITEM.BARCODE$(6),                             \   
+ 645: 2549:                     CCMVT.ITEM.QTY$(6),                                 \          
+ 646: 2549:                     CCMVT.ITEM.PRICE$(6),                               \          
+ 647: 2549:                     CCMVT.ITEM.FILLER.02$(6),                           \  
+ 648: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(7),                        \   
+ 649: 2549:                     CCMVT.ITEM.BARCODE$(7),                             \   
+ 650: 2549:                     CCMVT.ITEM.QTY$(7),                                 \          
+ 651: 2549:                     CCMVT.ITEM.PRICE$(7),                               \          
+ 652: 2549:                     CCMVT.ITEM.FILLER.02$(7),                           \  
+ 653: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(8),                        \   
+ 654: 2549:                     CCMVT.ITEM.BARCODE$(8),                             \   
+ 655: 2549:                     CCMVT.ITEM.QTY$(8),                                 \          
+ 656: 2549:                     CCMVT.ITEM.PRICE$(8),                               \          
+ 657: 2549:                     CCMVT.ITEM.FILLER.02$(8),                           \                   
+ 658: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(9),                        \   
+ 659: 2549:                     CCMVT.ITEM.BARCODE$(9),                             \   
+ 660: 2549:                     CCMVT.ITEM.QTY$(9),                                 \          
+ 661: 2549:                     CCMVT.ITEM.PRICE$(9),                               \          
+ 662: 2549:                     CCMVT.ITEM.FILLER.02$(9),                           \  
+ 663: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(10),                       \   
+ 664: 2549:                     CCMVT.ITEM.BARCODE$(10),                            \   
+ 665: 2549:                     CCMVT.ITEM.QTY$(10),                                \          
+ 666: 2549:                     CCMVT.ITEM.PRICE$(10),                              \          
+ 667: 2549:                     CCMVT.ITEM.FILLER.02$(10),                          \  
+ 668: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(11),                       \   
+ 669: 2549:                     CCMVT.ITEM.BARCODE$(11),                            \   
+ 670: 2549:                     CCMVT.ITEM.QTY$(11),                                \          
+ 671: 2549:                     CCMVT.ITEM.PRICE$(11),                              \          
+ 672: 2549:                     CCMVT.ITEM.FILLER.02$(11),                          \  
+ 673: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(12),                       \   
+ 674: 2549:                     CCMVT.ITEM.BARCODE$(12),                            \   
+ 675: 2549:                     CCMVT.ITEM.QTY$(12),                                \          
+ 676: 2549:                     CCMVT.ITEM.PRICE$(12),                              \          
+ 677: 2549:                     CCMVT.ITEM.FILLER.02$(12),                          \  
+ 678: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(13),                       \   
+ 679: 2549:                     CCMVT.ITEM.BARCODE$(13),                            \   
+ 680: 2549:                     CCMVT.ITEM.QTY$(13),                                \          
+ 681: 2549:                     CCMVT.ITEM.PRICE$(13),                              \          
+ 682: 2549:                     CCMVT.ITEM.FILLER.02$(13),                          \  
+ 683: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(14),                       \   
+ 684: 2549:                     CCMVT.ITEM.BARCODE$(14),                            \   
+ 685: 2549:                     CCMVT.ITEM.QTY$(14),                                \          
+ 686: 2549:                     CCMVT.ITEM.PRICE$(14),                              \          
+ 687: 2549:                     CCMVT.ITEM.FILLER.02$(14),                          \  
+ 688: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(15),                       \   
+ 689: 2549:                     CCMVT.ITEM.BARCODE$(15),                            \   
+ 690: 2549:                     CCMVT.ITEM.QTY$(15),                                \          
+ 691: 2549:                     CCMVT.ITEM.PRICE$(15),                              \          
+ 692: 2549:                     CCMVT.ITEM.FILLER.02$(15),                          \  
+ 693: 2549:                     CCMVT.ITEM.BARCODE.FLAG$(16),                       \   
+ 694: 2549:                     CCMVT.ITEM.BARCODE$(16),                            \   
+ 695: 2549:                     CCMVT.ITEM.QTY$(16),                                \          
+ 696: 2549:                     CCMVT.ITEM.PRICE$(16),                              \          
+ 697: 2549:                     CCMVT.ITEM.FILLER.02$(16),                          \       
+ 698: 2549:                     CCMVT.FILLER.02$,                                   \
+ 699: 2549:                     CCMVT.SEQUENCE%                                     \
+ 700: 2549:               ELSE                                                      \
+ 701: 2549:                  IF CCMVT.TRANS.TYPE$     = "03" THEN     \Return record
+ 702: 2562:                    FORMAT$ = "C2,"+STRING$(16,"C1,C7,C2,C1,C4,")+"C12,I2":\
+ 703: 258c:                    WRITE FORM FORMAT$; #CCMVT.SESS.NUM%;                \
+ 704: 2e91:                        CCMVT.TRANS.TYPE$,                               \
+ 705: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(1),                     \   
+ 706: 2e91:                        CCMVT.ITEM.BARCODE$(1),                          \   
+ 707: 2e91:                        CCMVT.ITEM.QTY$(1),                              \          
+ 708: 2e91:                        CCMVT.ITEM.REASON$(1),                           \
+ 709: 2e91:                        CCMVT.ITEM.FILLER.03$(1),                        \  
+ 710: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(2),                     \   
+ 711: 2e91:                        CCMVT.ITEM.BARCODE$(2),                          \   
+ 712: 2e91:                        CCMVT.ITEM.QTY$(2),                              \          
+ 713: 2e91:                        CCMVT.ITEM.REASON$(2),                           \
+ 714: 2e91:                        CCMVT.ITEM.FILLER.03$(2),                        \  
+ 715: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(3),                     \   
+ 716: 2e91:                        CCMVT.ITEM.BARCODE$(3),                          \   
+ 717: 2e91:                        CCMVT.ITEM.QTY$(3),                              \          
+ 718: 2e91:                        CCMVT.ITEM.REASON$(3),                           \
+ 719: 2e91:                        CCMVT.ITEM.FILLER.03$(3),                        \  
+ 720: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(4),                     \   
+ 721: 2e91:                        CCMVT.ITEM.BARCODE$(4),                          \   
+ 722: 2e91:                        CCMVT.ITEM.QTY$(4),                              \          
+ 723: 2e91:                        CCMVT.ITEM.REASON$(4),                           \
+ 724: 2e91:                        CCMVT.ITEM.FILLER.03$(4),                        \  
+ 725: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(5),                     \   
+ 726: 2e91:                        CCMVT.ITEM.BARCODE$(5),                          \   
+ 727: 2e91:                        CCMVT.ITEM.QTY$(5),                              \          
+ 728: 2e91:                        CCMVT.ITEM.REASON$(5),                           \
+ 729: 2e91:                        CCMVT.ITEM.FILLER.03$(5),                        \  
+ 730: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(6),                     \   
+ 731: 2e91:                        CCMVT.ITEM.BARCODE$(6),                          \   
+ 732: 2e91:                        CCMVT.ITEM.QTY$(6),                              \          
+ 733: 2e91:                        CCMVT.ITEM.REASON$(6),                           \
+ 734: 2e91:                        CCMVT.ITEM.FILLER.03$(6),                        \  
+ 735: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(7),                     \   
+ 736: 2e91:                        CCMVT.ITEM.BARCODE$(7),                          \   
+ 737: 2e91:                        CCMVT.ITEM.QTY$(7),                              \          
+ 738: 2e91:                        CCMVT.ITEM.REASON$(7),                           \
+ 739: 2e91:                        CCMVT.ITEM.FILLER.03$(7),                        \  
+ 740: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(8),                     \   
+ 741: 2e91:                        CCMVT.ITEM.BARCODE$(8),                          \   
+ 742: 2e91:                        CCMVT.ITEM.QTY$(8),                              \          
+ 743: 2e91:                        CCMVT.ITEM.REASON$(8),                           \
+ 744: 2e91:                        CCMVT.ITEM.FILLER.03$(8),                        \  
+ 745: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(9),                     \   
+ 746: 2e91:                        CCMVT.ITEM.BARCODE$(9),                          \   
+ 747: 2e91:                        CCMVT.ITEM.QTY$(9),                              \          
+ 748: 2e91:                        CCMVT.ITEM.REASON$(9),                           \
+ 749: 2e91:                        CCMVT.ITEM.FILLER.03$(9),                        \  
+ 750: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(10),                    \   
+ 751: 2e91:                        CCMVT.ITEM.BARCODE$(10),                         \   
+ 752: 2e91:                        CCMVT.ITEM.QTY$(10),                             \          
+ 753: 2e91:                        CCMVT.ITEM.REASON$(10),                          \
+ 754: 2e91:                        CCMVT.ITEM.FILLER.03$(10),                       \  
+ 755: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(11),                    \   
+ 756: 2e91:                        CCMVT.ITEM.BARCODE$(11),                         \   
+ 757: 2e91:                        CCMVT.ITEM.QTY$(11),                             \          
+ 758: 2e91:                        CCMVT.ITEM.REASON$(11),                          \
+ 759: 2e91:                        CCMVT.ITEM.FILLER.03$(11),                       \  
+ 760: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(12),                    \   
+ 761: 2e91:                        CCMVT.ITEM.BARCODE$(12),                         \   
+ 762: 2e91:                        CCMVT.ITEM.QTY$(12),                             \          
+ 763: 2e91:                        CCMVT.ITEM.REASON$(12),                          \
+ 764: 2e91:                        CCMVT.ITEM.FILLER.03$(12),                       \  
+ 765: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(13),                    \   
+ 766: 2e91:                        CCMVT.ITEM.BARCODE$(13),                         \   
+ 767: 2e91:                        CCMVT.ITEM.QTY$(13),                             \          
+ 768: 2e91:                        CCMVT.ITEM.REASON$(13),                          \
+ 769: 2e91:                        CCMVT.ITEM.FILLER.03$(13),                       \  
+ 770: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(14),                    \   
+ 771: 2e91:                        CCMVT.ITEM.BARCODE$(14),                         \   
+ 772: 2e91:                        CCMVT.ITEM.QTY$(14),                             \          
+ 773: 2e91:                        CCMVT.ITEM.REASON$(14),                          \
+ 774: 2e91:                        CCMVT.ITEM.FILLER.03$(14),                       \  
+ 775: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(15),                    \   
+ 776: 2e91:                        CCMVT.ITEM.BARCODE$(15),                         \   
+ 777: 2e91:                        CCMVT.ITEM.QTY$(15),                             \          
+ 778: 2e91:                        CCMVT.ITEM.REASON$(15),                          \
+ 779: 2e91:                        CCMVT.ITEM.FILLER.03$(15),                       \  
+ 780: 2e91:                        CCMVT.ITEM.BARCODE.FLAG$(16),                    \   
+ 781: 2e91:                        CCMVT.ITEM.BARCODE$(16),                         \   
+ 782: 2e91:                        CCMVT.ITEM.QTY$(16),                             \          
+ 783: 2e91:                        CCMVT.ITEM.REASON$(16),                          \
+ 784: 2e91:                        CCMVT.ITEM.FILLER.03$(16),                       \                
+ 785: 2e91:                        CCMVT.FILLER.03$,                                \
+ 786: 2e91:                        CCMVT.SEQUENCE%                                  \                                 
+ 787: 2e91:                  ELSE                                                      \
+ 788: 2e91:                    IF CCMVT.TRANS.TYPE$     = "04" THEN     \Local Pricing recd
+ 789: 2eaa:                     FORMAT$ = "C2,"+STRING$(8,"C4,C3,C4,C6,C1,C12,")+"C12,I2":\
+ 790: 2ed4:                     WRITE FORM FORMAT$; #CCMVT.SESS.NUM%;               \
+ 791: 3458:                        CCMVT.TRANS.TYPE$,                               \
+ 792: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(1),                     \   
+ 793: 3458:                        CCMVT.ITEM.REASON.CODE.04$(1),                   \          
+ 794: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(1),                      \          
+ 795: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(1),                   \
+ 796: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(1),                   \
+ 797: 3458:                        CCMVT.ITEM.FILLER.04$(1),                        \  
+ 798: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(2),                     \   
+ 799: 3458:                        CCMVT.ITEM.REASON.CODE.04$(2),                   \          
+ 800: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(2),                      \          
+ 801: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(2),                   \
+ 802: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(2),                   \
+ 803: 3458:                        CCMVT.ITEM.FILLER.04$(2),                        \  
+ 804: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(3),                     \   
+ 805: 3458:                        CCMVT.ITEM.REASON.CODE.04$(3),                   \          
+ 806: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(3),                      \          
+ 807: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(3),                   \
+ 808: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(3),                   \
+ 809: 3458:                        CCMVT.ITEM.FILLER.04$(3),                        \  
+ 810: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(4),                     \   
+ 811: 3458:                        CCMVT.ITEM.REASON.CODE.04$(4),                   \          
+ 812: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(4),                      \          
+ 813: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(4),                   \
+ 814: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(4),                   \
+ 815: 3458:                        CCMVT.ITEM.FILLER.04$(4),                        \  
+ 816: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(5),                     \   
+ 817: 3458:                        CCMVT.ITEM.REASON.CODE.04$(5),                   \          
+ 818: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(5),                      \          
+ 819: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(5),                   \
+ 820: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(5),                   \
+ 821: 3458:                        CCMVT.ITEM.FILLER.04$(5),                        \  
+ 822: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(6),                     \   
+ 823: 3458:                        CCMVT.ITEM.REASON.CODE.04$(6),                   \          
+ 824: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(6),                      \          
+ 825: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(6),                   \
+ 826: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(6),                   \
+ 827: 3458:                        CCMVT.ITEM.FILLER.04$(6),                        \  
+ 828: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(7),                     \   
+ 829: 3458:                        CCMVT.ITEM.REASON.CODE.04$(7),                   \          
+ 830: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(7),                      \          
+ 831: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(7),                   \
+ 832: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(7),                   \
+ 833: 3458:                        CCMVT.ITEM.FILLER.04$(7),                        \  
+ 834: 3458:                        CCMVT.ITEM.ITEM.CODE.04$(8),                     \   
+ 835: 3458:                        CCMVT.ITEM.REASON.CODE.04$(8),                   \          
+ 836: 3458:                        CCMVT.ITEM.AUTH.NUM.04$(8),                      \          
+ 837: 3458:                        CCMVT.ITEM.STOCK.VALUE.04$(8),                   \
+ 838: 3458:                        CCMVT.ITEM.INCR.DECR.FLAG$(8),                   \
+ 839: 3458:                        CCMVT.ITEM.FILLER.04$(8),                        \                
+ 840: 3458:                        CCMVT.FILLER.04$,                                \
+ 841: 3458:                        CCMVT.SEQUENCE%                                  \                                 
+ 842: 3458:                  ELSE                                                   \
+ 843: 3458:                     IF CCMVT.TRANS.TYPE$ = "99" THEN       \Trailer record
+ 844: 346e:                        WRITE FORM "C2,C6,C246,I2"; #CCMVT.SESS.NUM%;    \
+ 845: 34bc:                           CCMVT.TRANS.TYPE$,                            \
+ 846: 34bc:                           CCMVT.RECORD.COUNT$,                          \
+ 847: 34bc:                           CCMVT.TRAILER.FILLER$,                        \
+ 848: 34bc:                           CCMVT.SEQUENCE%
+ 849: 34bc: 
+ 850: 34bc:      WRITE.CCMVT = 0
+ 851: 34c1:      EXIT FUNCTION
+ 852: 34c3: 
+ 853: 34c3:      WRITE.CCMVT.ERROR:
+ 854: 34c3: 
+ 855: 34c3:         CURRENT.REPORT.NUM% = CCMVT.REPORT.NUM%
+ 856: 34d1:         FILE.OPERATION$ = "W"
+ 857: 34e0:         CURRENT.CODE$ = ""
+ 858: 34ef:         EXIT FUNCTION
+ 859: 34f1: 
+ 860: 34f1:   END FUNCTION
+ 861: 3500: 
+ 862: 3500: 
+ 863: 3500: 
+ 864: 3500: 
+ 865: 3500:   FUNCTION WRITE.HOLD.CCMVT PUBLIC
+ 866: 3514: 
+ 867: 3514:      INTEGER*2 WRITE.HOLD.CCMVT
+ 868: 3514:      STRING    FORMAT$
+ 869: 3514: 
+ 870: 3514:      WRITE.HOLD.CCMVT = 1
+ 871: 3519: 
+ 872: 3519:         IF END #CCMVT.SESS.NUM% THEN WRITE.HOLD.CCMVT.ERROR
+ 873: 352d: 
+ 874: 352d:         IF CCMVT.TRANS.TYPE$   = "00" THEN       \Header record
+ 875: 3543:            WRITE FORM "C2,C5,C6,C2,C239,I2"; HOLD #CCMVT.SESS.NUM%;     \
+ 876: 35b4:               CCMVT.TRANS.TYPE$,                                        \
+ 877: 35b4:               CCMVT.SERIAL.NUM$,                                        \
+ 878: 35b4:               CCMVT.DATE$,                                              \
+ 879: 35b4:               CCMVT.STORE.NUMBER$,                                      \
+ 880: 35b4:               CCMVT.HEADER.FILLER$,                                     \
+ 881: 35b4:               CCMVT.SEQUENCE%                                           \
+ 882: 35b4:         ELSE                                                            \
+ 883: 35b4:            IF CCMVT.TRANS.TYPE$   = "01" THEN     \Credit claim hdr record
+ 884: 35cd:              FORMAT$ = "C2,C4,C7,C1,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1" +  \
+ 885: 35e1:                        ",C9,2C3,2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,C101,I2":\
+ 886: 35e1:              WRITE FORM FORMAT$; HOLD #CCMVT.SESS.NUM%;                 \
+ 887: 3842:                 CCMVT.TRANS.TYPE$,                                      \
+ 888: 3842:                 CCMVT.CREDIT.CLAIM.NUM$,                                \   
+ 889: 3842:                 CCMVT.UOD.NUM$,                                         \   
+ 890: 3842:                 CCMVT.STATUS$,                                          \   
+ 891: 3842:                 CCMVT.NUM.OF.ITEMS%,                                    \
+ 892: 3842:                 CCMVT.SUPPLY.ROUTE$,                                    \   
+ 893: 3842:                 CCMVT.DISP.LOCATION$,                                   \   
+ 894: 3842:                 CCMVT.BC.LETTER$,                                       \   
+ 895: 3842:                 CCMVT.RECALL.NUM$,                                      \   
+ 896: 3842:                 CCMVT.AUTHORISATION$,                                   \  
+ 897: 3842:                 CCMVT.SUPPLIER$,                                        \  
+ 898: 3842:                 CCMVT.METHOD.OF.RETURN$,                                \   
+ 899: 3842:                 CCMVT.CARRIER$,                                         \   
+ 900: 3842:                 CCMVT.BIRD.NUM$,                                        \   
+ 901: 3842:                 CCMVT.REASON.NUM$,                                      \   
+ 902: 3842:                 CCMVT.RECEIVING.STORE$,                                 \   
+ 903: 3842:                 CCMVT.DESTINATION$,                                     \   
+ 904: 3842:                 CCMVT.WAREHOUSE.ROUTE$,                                 \  
+ 905: 3842:                 CCMVT.UOD.TYPE$,                                        \   
+ 906: 3842:                 CCMVT.DAMAGE.REASON$,                                   \   
+ 907: 3842:                 CCMVT.INVOICE.NUM$,                                     \   
+ 908: 3842:                 CCMVT.FOLIO.NUM$,                                       \   
+ 909: 3842:                 CCMVT.BATCH.REF$,                                       \   
+ 910: 3842:                 CCMVT.WHOLE.PART.CON$,                                  \
+ 911: 3842:                 CCMVT.REPAIR.CATEGORY$,                                 \   
+ 912: 3842:                 CCMVT.REPAIR.NUM$,                                      \   
+ 913: 3842:                 CCMVT.PLAN4.POLICY.NUM$,                                \   
+ 914: 3842:                 CCMVT.DDDA.DCDR.NUM$,                                   \   
+ 915: 3842:                 CCMVT.DELIV.NOTE.NUM$,                                  \   
+ 916: 3842:                 CCMVT.DELIV.DATE$,                                      \
+ 917: 3842:                 CCMVT.NUM.CARTONS.RECEIV$,                              \   
+ 918: 3842:                 CCMVT.ORDER.NUM$,                                       \   
+ 919: 3842:                 CCMVT.COMMENT$,                                         \   
+ 920: 3842:                 CCMVT.DATE.OF.CLAIM$,                                   \   
+ 921: 3842:                 CCMVT.TIME.OF.CLAIM$,                                   \   
+ 922: 3842:                 CCMVT.FILLER.01$,                                       \  
+ 923: 3842:                 CCMVT.SEQUENCE%                                         \
+ 924: 3842:            ELSE                                                         \
+ 925: 3842:               IF CCMVT.TRANS.TYPE$ = "02" THEN      \Credit claim item record
+ 926: 385b:                  FORMAT$ = "C2,C4,"+STRING$(16,"C1,C7,C2,C3,C2,")+"C8,I2"  :\
+ 927: 3885:                  WRITE FORM FORMAT$; HOLD #CCMVT.SESS.NUM%;             \
+ 928: 419a:                     CCMVT.TRANS.TYPE$,                                  \
+ 929: 419a:                     CCMVT.CREDIT.CLAIM.NUM$,                            \   
+ 930: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(1),                        \   
+ 931: 419a:                     CCMVT.ITEM.BARCODE$(1),                             \   
+ 932: 419a:                     CCMVT.ITEM.QTY$(1),                                 \          
+ 933: 419a:                     CCMVT.ITEM.PRICE$(1),                               \          
+ 934: 419a:                     CCMVT.ITEM.FILLER.02$(1),                           \  
+ 935: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(2),                        \   
+ 936: 419a:                     CCMVT.ITEM.BARCODE$(2),                             \   
+ 937: 419a:                     CCMVT.ITEM.QTY$(2),                                 \          
+ 938: 419a:                     CCMVT.ITEM.PRICE$(2),                               \          
+ 939: 419a:                     CCMVT.ITEM.FILLER.02$(2),                           \  
+ 940: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(3),                        \   
+ 941: 419a:                     CCMVT.ITEM.BARCODE$(3),                             \   
+ 942: 419a:                     CCMVT.ITEM.QTY$(3),                                 \          
+ 943: 419a:                     CCMVT.ITEM.PRICE$(3),                               \          
+ 944: 419a:                     CCMVT.ITEM.FILLER.02$(3),                           \  
+ 945: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(4),                        \   
+ 946: 419a:                     CCMVT.ITEM.BARCODE$(4),                             \   
+ 947: 419a:                     CCMVT.ITEM.QTY$(4),                                 \          
+ 948: 419a:                     CCMVT.ITEM.PRICE$(4),                               \          
+ 949: 419a:                     CCMVT.ITEM.FILLER.02$(4),                           \  
+ 950: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(5),                        \   
+ 951: 419a:                     CCMVT.ITEM.BARCODE$(5),                             \   
+ 952: 419a:                     CCMVT.ITEM.QTY$(5),                                 \          
+ 953: 419a:                     CCMVT.ITEM.PRICE$(5),                               \          
+ 954: 419a:                     CCMVT.ITEM.FILLER.02$(5),                           \  
+ 955: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(6),                        \   
+ 956: 419a:                     CCMVT.ITEM.BARCODE$(6),                             \   
+ 957: 419a:                     CCMVT.ITEM.QTY$(6),                                 \          
+ 958: 419a:                     CCMVT.ITEM.PRICE$(6),                               \          
+ 959: 419a:                     CCMVT.ITEM.FILLER.02$(6),                           \  
+ 960: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(7),                        \   
+ 961: 419a:                     CCMVT.ITEM.BARCODE$(7),                             \   
+ 962: 419a:                     CCMVT.ITEM.QTY$(7),                                 \          
+ 963: 419a:                     CCMVT.ITEM.PRICE$(7),                               \          
+ 964: 419a:                     CCMVT.ITEM.FILLER.02$(7),                           \  
+ 965: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(8),                        \   
+ 966: 419a:                     CCMVT.ITEM.BARCODE$(8),                             \   
+ 967: 419a:                     CCMVT.ITEM.QTY$(8),                                 \          
+ 968: 419a:                     CCMVT.ITEM.PRICE$(8),                               \          
+ 969: 419a:                     CCMVT.ITEM.FILLER.02$(8),                           \                   
+ 970: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(9),                        \   
+ 971: 419a:                     CCMVT.ITEM.BARCODE$(9),                             \   
+ 972: 419a:                     CCMVT.ITEM.QTY$(9),                                 \          
+ 973: 419a:                     CCMVT.ITEM.PRICE$(9),                               \          
+ 974: 419a:                     CCMVT.ITEM.FILLER.02$(9),                           \  
+ 975: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(10),                       \   
+ 976: 419a:                     CCMVT.ITEM.BARCODE$(10),                            \   
+ 977: 419a:                     CCMVT.ITEM.QTY$(10),                                \          
+ 978: 419a:                     CCMVT.ITEM.PRICE$(10),                              \          
+ 979: 419a:                     CCMVT.ITEM.FILLER.02$(10),                          \  
+ 980: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(11),                       \   
+ 981: 419a:                     CCMVT.ITEM.BARCODE$(11),                            \   
+ 982: 419a:                     CCMVT.ITEM.QTY$(11),                                \          
+ 983: 419a:                     CCMVT.ITEM.PRICE$(11),                              \          
+ 984: 419a:                     CCMVT.ITEM.FILLER.02$(11),                          \  
+ 985: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(12),                       \   
+ 986: 419a:                     CCMVT.ITEM.BARCODE$(12),                            \   
+ 987: 419a:                     CCMVT.ITEM.QTY$(12),                                \          
+ 988: 419a:                     CCMVT.ITEM.PRICE$(12),                              \          
+ 989: 419a:                     CCMVT.ITEM.FILLER.02$(12),                          \  
+ 990: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(13),                       \   
+ 991: 419a:                     CCMVT.ITEM.BARCODE$(13),                            \   
+ 992: 419a:                     CCMVT.ITEM.QTY$(13),                                \          
+ 993: 419a:                     CCMVT.ITEM.PRICE$(13),                              \          
+ 994: 419a:                     CCMVT.ITEM.FILLER.02$(13),                          \  
+ 995: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(14),                       \   
+ 996: 419a:                     CCMVT.ITEM.BARCODE$(14),                            \   
+ 997: 419a:                     CCMVT.ITEM.QTY$(14),                                \          
+ 998: 419a:                     CCMVT.ITEM.PRICE$(14),                              \          
+ 999: 419a:                     CCMVT.ITEM.FILLER.02$(14),                          \  
+1000: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(15),                       \   
+1001: 419a:                     CCMVT.ITEM.BARCODE$(15),                            \   
+1002: 419a:                     CCMVT.ITEM.QTY$(15),                                \          
+1003: 419a:                     CCMVT.ITEM.PRICE$(15),                              \          
+1004: 419a:                     CCMVT.ITEM.FILLER.02$(15),                          \  
+1005: 419a:                     CCMVT.ITEM.BARCODE.FLAG$(16),                       \   
+1006: 419a:                     CCMVT.ITEM.BARCODE$(16),                            \   
+1007: 419a:                     CCMVT.ITEM.QTY$(16),                                \          
+1008: 419a:                     CCMVT.ITEM.PRICE$(16),                              \          
+1009: 419a:                     CCMVT.ITEM.FILLER.02$(16),                          \       
+1010: 419a:                     CCMVT.FILLER.02$,                                   \
+1011: 419a:                     CCMVT.SEQUENCE%                                     \
+1012: 419a:               ELSE                                                      \
+1013: 419a:                  IF CCMVT.TRANS.TYPE$     = "03" THEN     \Return record
+1014: 41b3:                    FORMAT$ = "C2,"+STRING$(16,"C1,C7,C2,C1,C4,")+"C12,I2":\
+1015: 41dd:                    WRITE FORM FORMAT$; HOLD #CCMVT.SESS.NUM%;           \
+1016: 4ae2:                        CCMVT.TRANS.TYPE$,                               \
+1017: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(1),                     \   
+1018: 4ae2:                        CCMVT.ITEM.BARCODE$(1),                          \   
+1019: 4ae2:                        CCMVT.ITEM.QTY$(1),                              \          
+1020: 4ae2:                        CCMVT.ITEM.REASON$(1),                           \
+1021: 4ae2:                        CCMVT.ITEM.FILLER.03$(1),                        \  
+1022: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(2),                     \   
+1023: 4ae2:                        CCMVT.ITEM.BARCODE$(2),                          \   
+1024: 4ae2:                        CCMVT.ITEM.QTY$(2),                              \          
+1025: 4ae2:                        CCMVT.ITEM.REASON$(2),                           \
+1026: 4ae2:                        CCMVT.ITEM.FILLER.03$(2),                        \  
+1027: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(3),                     \   
+1028: 4ae2:                        CCMVT.ITEM.BARCODE$(3),                          \   
+1029: 4ae2:                        CCMVT.ITEM.QTY$(3),                              \          
+1030: 4ae2:                        CCMVT.ITEM.REASON$(3),                           \
+1031: 4ae2:                        CCMVT.ITEM.FILLER.03$(3),                        \  
+1032: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(4),                     \   
+1033: 4ae2:                        CCMVT.ITEM.BARCODE$(4),                          \   
+1034: 4ae2:                        CCMVT.ITEM.QTY$(4),                              \          
+1035: 4ae2:                        CCMVT.ITEM.REASON$(4),                           \
+1036: 4ae2:                        CCMVT.ITEM.FILLER.03$(4),                        \  
+1037: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(5),                     \   
+1038: 4ae2:                        CCMVT.ITEM.BARCODE$(5),                          \   
+1039: 4ae2:                        CCMVT.ITEM.QTY$(5),                              \          
+1040: 4ae2:                        CCMVT.ITEM.REASON$(5),                           \
+1041: 4ae2:                        CCMVT.ITEM.FILLER.03$(5),                        \  
+1042: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(6),                     \   
+1043: 4ae2:                        CCMVT.ITEM.BARCODE$(6),                          \   
+1044: 4ae2:                        CCMVT.ITEM.QTY$(6),                              \          
+1045: 4ae2:                        CCMVT.ITEM.REASON$(6),                           \
+1046: 4ae2:                        CCMVT.ITEM.FILLER.03$(6),                        \  
+1047: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(7),                     \   
+1048: 4ae2:                        CCMVT.ITEM.BARCODE$(7),                          \   
+1049: 4ae2:                        CCMVT.ITEM.QTY$(7),                              \          
+1050: 4ae2:                        CCMVT.ITEM.REASON$(7),                           \
+1051: 4ae2:                        CCMVT.ITEM.FILLER.03$(7),                        \  
+1052: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(8),                     \   
+1053: 4ae2:                        CCMVT.ITEM.BARCODE$(8),                          \   
+1054: 4ae2:                        CCMVT.ITEM.QTY$(8),                              \          
+1055: 4ae2:                        CCMVT.ITEM.REASON$(8),                           \
+1056: 4ae2:                        CCMVT.ITEM.FILLER.03$(8),                        \  
+1057: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(9),                     \   
+1058: 4ae2:                        CCMVT.ITEM.BARCODE$(9),                          \   
+1059: 4ae2:                        CCMVT.ITEM.QTY$(9),                              \          
+1060: 4ae2:                        CCMVT.ITEM.REASON$(9),                           \
+1061: 4ae2:                        CCMVT.ITEM.FILLER.03$(9),                        \  
+1062: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(10),                    \   
+1063: 4ae2:                        CCMVT.ITEM.BARCODE$(10),                         \   
+1064: 4ae2:                        CCMVT.ITEM.QTY$(10),                             \          
+1065: 4ae2:                        CCMVT.ITEM.REASON$(10),                          \
+1066: 4ae2:                        CCMVT.ITEM.FILLER.03$(10),                       \  
+1067: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(11),                    \   
+1068: 4ae2:                        CCMVT.ITEM.BARCODE$(11),                         \   
+1069: 4ae2:                        CCMVT.ITEM.QTY$(11),                             \          
+1070: 4ae2:                        CCMVT.ITEM.REASON$(11),                          \
+1071: 4ae2:                        CCMVT.ITEM.FILLER.03$(11),                       \  
+1072: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(12),                    \   
+1073: 4ae2:                        CCMVT.ITEM.BARCODE$(12),                         \   
+1074: 4ae2:                        CCMVT.ITEM.QTY$(12),                             \          
+1075: 4ae2:                        CCMVT.ITEM.REASON$(12),                          \
+1076: 4ae2:                        CCMVT.ITEM.FILLER.03$(12),                       \  
+1077: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(13),                    \   
+1078: 4ae2:                        CCMVT.ITEM.BARCODE$(13),                         \   
+1079: 4ae2:                        CCMVT.ITEM.QTY$(13),                             \          
+1080: 4ae2:                        CCMVT.ITEM.REASON$(13),                          \
+1081: 4ae2:                        CCMVT.ITEM.FILLER.03$(13),                       \  
+1082: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(14),                    \   
+1083: 4ae2:                        CCMVT.ITEM.BARCODE$(14),                         \   
+1084: 4ae2:                        CCMVT.ITEM.QTY$(14),                             \          
+1085: 4ae2:                        CCMVT.ITEM.REASON$(14),                          \
+1086: 4ae2:                        CCMVT.ITEM.FILLER.03$(14),                       \  
+1087: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(15),                    \   
+1088: 4ae2:                        CCMVT.ITEM.BARCODE$(15),                         \   
+1089: 4ae2:                        CCMVT.ITEM.QTY$(15),                             \          
+1090: 4ae2:                        CCMVT.ITEM.REASON$(15),                          \
+1091: 4ae2:                        CCMVT.ITEM.FILLER.03$(15),                       \  
+1092: 4ae2:                        CCMVT.ITEM.BARCODE.FLAG$(16),                    \   
+1093: 4ae2:                        CCMVT.ITEM.BARCODE$(16),                         \   
+1094: 4ae2:                        CCMVT.ITEM.QTY$(16),                             \          
+1095: 4ae2:                        CCMVT.ITEM.REASON$(16),                          \
+1096: 4ae2:                        CCMVT.ITEM.FILLER.03$(16),                       \                
+1097: 4ae2:                        CCMVT.FILLER.03$,                                \
+1098: 4ae2:                        CCMVT.SEQUENCE%                                  \                                 
+1099: 4ae2:                  ELSE                                                   \
+1100: 4ae2:                    IF CCMVT.TRANS.TYPE$     = "04" THEN     \Local Pricing recd
+1101: 4afb:                     FORMAT$ = "C2,"+STRING$(8,"C4,C3,C4,C6,C1,C12,")+"C12,I2":\
+1102: 4b25:                     WRITE FORM FORMAT$; HOLD #CCMVT.SESS.NUM%;          \       
+1103: 50a9:                        CCMVT.TRANS.TYPE$,                               \
+1104: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(1),                     \   
+1105: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(1),                   \          
+1106: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(1),                      \          
+1107: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(1),                   \
+1108: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(1),                   \
+1109: 50a9:                        CCMVT.ITEM.FILLER.04$(1),                        \  
+1110: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(2),                     \   
+1111: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(2),                   \          
+1112: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(2),                      \          
+1113: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(2),                   \
+1114: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(2),                   \
+1115: 50a9:                        CCMVT.ITEM.FILLER.04$(2),                        \  
+1116: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(3),                     \   
+1117: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(3),                   \          
+1118: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(3),                      \          
+1119: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(3),                   \
+1120: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(3),                   \
+1121: 50a9:                        CCMVT.ITEM.FILLER.04$(3),                        \  
+1122: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(4),                     \   
+1123: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(4),                   \          
+1124: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(4),                      \          
+1125: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(4),                   \
+1126: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(4),                   \
+1127: 50a9:                        CCMVT.ITEM.FILLER.04$(4),                        \  
+1128: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(5),                     \   
+1129: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(5),                   \          
+1130: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(5),                      \          
+1131: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(5),                   \
+1132: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(5),                   \
+1133: 50a9:                        CCMVT.ITEM.FILLER.04$(5),                        \  
+1134: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(6),                     \   
+1135: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(6),                   \          
+1136: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(6),                      \          
+1137: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(6),                   \
+1138: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(6),                   \
+1139: 50a9:                        CCMVT.ITEM.FILLER.04$(6),                        \  
+1140: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(7),                     \   
+1141: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(7),                   \          
+1142: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(7),                      \          
+1143: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(7),                   \
+1144: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(7),                   \
+1145: 50a9:                        CCMVT.ITEM.FILLER.04$(7),                        \  
+1146: 50a9:                        CCMVT.ITEM.ITEM.CODE.04$(8),                     \   
+1147: 50a9:                        CCMVT.ITEM.REASON.CODE.04$(8),                   \          
+1148: 50a9:                        CCMVT.ITEM.AUTH.NUM.04$(8),                      \          
+1149: 50a9:                        CCMVT.ITEM.STOCK.VALUE.04$(8),                   \
+1150: 50a9:                        CCMVT.ITEM.INCR.DECR.FLAG$(8),                   \
+1151: 50a9:                        CCMVT.ITEM.FILLER.04$(8),                        \                
+1152: 50a9:                        CCMVT.FILLER.04$,                                \
+1153: 50a9:                        CCMVT.SEQUENCE%                                  \                                 
+1154: 50a9:                  ELSE                                                   \
+1155: 50a9:                     IF CCMVT.TRANS.TYPE$ = "99" THEN       \Trailer record
+1156: 50bf:                       WRITE FORM "C2,C6,C246,I2"; HOLD #CCMVT.SESS.NUM%;\
+1157: 510d:                           CCMVT.TRANS.TYPE$,                            \
+1158: 510d:                           CCMVT.RECORD.COUNT$,                          \
+1159: 510d:                           CCMVT.TRAILER.FILLER$,                        \
+1160: 510d:                           CCMVT.SEQUENCE%
+1161: 510d: 
+1162: 510d:      WRITE.HOLD.CCMVT = 0
+1163: 5112:      EXIT FUNCTION
+1164: 5114: 
+1165: 5114:      WRITE.HOLD.CCMVT.ERROR:
+1166: 5114: 
+1167: 5114:         CURRENT.REPORT.NUM% = CCMVT.REPORT.NUM%
+1168: 5122:         FILE.OPERATION$ = "W"
+1169: 5131:         CURRENT.CODE$ = ""
+1170: 5140:         EXIT FUNCTION
+1171: 5142: 
+1172: 5142:   END FUNCTION
+1173: 5151: 
+1174: 5151: End of Compilation

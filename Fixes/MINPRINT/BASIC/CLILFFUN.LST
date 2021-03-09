@@ -1,0 +1,420 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************\******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***              RF COUNT LISTS FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***               REFERENCE    : CLILFFUN.BAS
+   8: 0000: \***
+   9: 0000: \***         VERSION A            Nik Sen                  13th October 1998
+  10: 0000: \***
+  11: 0000: \***         VERSION B            Charles Skadorwa         22nd January 1999
+  12: 0000: \***                      Head Office Sequence Number now held (from PIITM
+  13: 0000: \***                      record) in order that a "complete" Type 13 transaction
+  14: 0000: \***                      record is written to the STKMQ file. 
+  15: 0000: \***
+  16: 0000: \***         VERSION C            Charles Skadorwa         22nd January 1999
+  17: 0000: \***                      Filler on WRITE not decreased correctly.
+  18: 0000: \***
+  19: 0000: \***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+  20: 0000: \***    Changes for RF trial.
+  21: 0000: \***    Removed redundant PVCS revision control block from top of code.
+  22: 0000: \***    Recompiled to prevent future automatic recompiles.
+  23: 0000: \***    No changes to actual code.
+  24: 0000: \***
+  25: 0000: \***    REVISION 1.5             ALAN CARR                      12 AUG 2004.
+  26: 0000: \***    Changes for RF OSSR solution.
+  27: 0000: \***    Added new fields for Off-Site StockRoom (OSSR) Basic Solution
+  28: 0000: \***
+  29: 0000: \***    REVISION 1.6             Mark Goode                     25th January 2005.
+  30: 0000: \***    Changes due to OSSR WAN
+  31: 0000: \***
+  32: 0000: \***    REVISION 1.7             Syam Jayan                     25th January 2012.
+  33: 0000: \***    The change is to rearrange/remove redundant fields and to add new  
+  34: 0000: \***    fields in CLILF Format as part of Stock file accuracy project.Few 
+  35: 0000: \***    variables are commented and few have been converted to array variables.
+  36: 0000: \*******************************************************************************
+  37: 0000: \*******************************************************************************
+  38: 0000: 
+  39: 0000:     INTEGER*2 GLOBAL                \
+  40: 0000:        CURRENT.REPORT.NUM%
+  41: 0000:        
+  42: 0000:     STRING GLOBAL                    \
+  43: 0000:        CURRENT.CODE$,                \
+  44: 0000:        FILE.OPERATION$,              \ 1.7 SJ
+  45: 0000:        CLILF.ARRAY$                  ! 1.7 SJ
+  46: 0000:     
+  47: 0000:     %INCLUDE CLILFDEC.J86 
+  48: 0000: 
+  49: 0000: \******************************************************************************\******************************************************************************
+  50: 0000: \******************************************************************************
+  51: 0000: \***
+  52: 0000: \***         %INCLUDE FOR RF COUNT LISTS FILE FIELD DECLARATIONS
+  53: 0000: \***
+  54: 0000: \***               FILE TYPE    : KEYED
+  55: 0000: \***
+  56: 0000: \***               REFERENCE    : CLILFDEC.J86
+  57: 0000: \***
+  58: 0000: \***    VERSION A.              Nik Sen.                 13 October 1998
+  59: 0000: \***                 New file for RF system. Holds count lists information.
+  60: 0000: \***
+  61: 0000: \***    VERSION B               Charles Skadorwa         22nd January 1999
+  62: 0000: \***                 Head Office Sequence Number now held (from PIITM
+  63: 0000: \***                 record) in order that a "complete" Type 13 transaction
+  64: 0000: \***                 record is written to the STKMQ file. 
+  65: 0000: \***
+  66: 0000: \***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+  67: 0000: \***    Changes for RF trial.
+  68: 0000: \***    Removed redundant PVCS revision control block from top of code.
+  69: 0000: \***    Recompiled to prevent future automatic recompiles.
+  70: 0000: \***    No changes to actual code.
+  71: 0000: \***
+  72: 0000: \***    REVISION 1.5             ALAN CARR                      12 AUG 2004.
+  73: 0000: \***    Changes for RF OSSR solution.
+  74: 0000: \***    Added new fields for Off-Site StockRoom (OSSR) Basic Solution
+  75: 0000: \***
+  76: 0000: \***    REVISION 1.6             Mark Goode                     25th January 2005 
+  77: 0000: \***
+  78: 0000: \***    REVISION 1.7             Syam Jayan                     25th January 2012
+  79: 0000: \***    The change is to rearrange/remove redundant fields and to add new
+  80: 0000: \***    fields in CLILF Format as part of Stock file accuracy project
+  81: 0000: \***
+  82: 0000: \*******************************************************************************
+  83: 0000: \*******************************************************************************
+  84: 0000: 
+  85: 0000: STRING GLOBAL                     \
+  86: 0000:     CLILF.BOOTSCODE$,             \                                          ! 1.7 SJ
+  87: 0000:     CLILF.COUNTED.STATUS$,        \ U-not counted, P-partially counted,      ! 1.7 SJ
+  88: 0000:                                   \ C-counted                                ! 1.7 SJ
+  89: 0000:     CLILF.DATE.LASTCNT$,          \ Date of Last Count field                 ! 1.7 SJ
+  90: 0000:     CLILF.FILE.NAME$,             \                                          ! 1.7 SJ
+  91: 0000:     CLILF.FILLER$(1),             \ Filler Array                             ! 1.7 SJ
+  92: 0000:     CLILF.HO.SEQNO$,              \ Head Office Sequence No. from PIITM for  ! 1.7 SJ
+  93: 0000:                                   \ Stock Support                            ! BCS ! 1.7 SJ
+  94: 0000:     CLILF.ITEMSEQ$,               \ Item Sequence Number                     ! 1.7 SJ
+  95: 0000:     CLILF.KEY$,                   \ LISTID + ITEMSEQ                         ! 1.7 SJ
+  96: 0000:     CLILF.LISTID$,                \ List Number                              ! 1.7 SJ
+  97: 0000:     CLILF.SPACE$                  ! Free space                               ! 1.7 SJ
+  98: 0000:     !CLILF.BARCODE$,              \                                          ! 1.7 SJ
+  99: 0000:     !CLILF.SELDESC$,              \ Shelf Edge Label Descriptor              ! 1.7 SJ
+ 100: 0000:     !CLILF.DEALMKR$,              \ Active Deal Marker                       ! 1.7 SJ
+ 101: 0000:     !CLILF.PRODGRP$,              \ Concept/Sequence Number                  ! 1.7 SJ
+ 102: 0000:     !CLILF.PRODGRPDESC$,          \ Product Group Descriptor                 ! 1.7 SJ 
+ 103: 0000:     !CLILF.BSCNT$,                \ Back Shop Counts                         ! 1.7 SJ
+ 104: 0000:     !CLILF.SFCNT$,                \ Shop Floor Counts                        ! 1.7 SJ
+ 105: 0000:     !CLILF.SALESSFCNT$,           \ Signed Sales at time of Shop Floor Count ! 1.7 SJ
+ 106: 0000:     !CLILF.SALEBSCNT$,            \ Sale at time of back shop count \ 1.5 AC ! 1.7 SJ
+ 107: 0000:     !CLILF.SALEOSSRCNT$,          \ Sale at time of OSSR count      \ 1.5 AC ! 1.7 SJ
+ 108: 0000:     !CLILF.OSSR.ITMSTKCNT$,       \ OSSR Item Stock count figure    \ 1.5 AC ! 1.7 SJ
+ 109: 0000:     !CLILF.TIMESFCNT$,            \ Time of Stock Floor count hh:mm \ 1.5 AC ! 1.7 SJ
+ 110: 0000:     !CLILF.TIMEBSCNT$,            \ Time of Back shop count hh:mm   \ 1.5 AC ! 1.7 SJ
+ 111: 0000:     !CLILF.TIMEOSSRCNT$,          \ Time of OSSR count hh:mm        \ 1.5 AC ! 1.7 SJ
+ 112: 0000: 
+ 113: 0000: INTEGER*4 GLOBAL                 \
+ 114: 0000:     CLILF.MODULE.ID%(1)          ! Planner ID Array (SRITL.POGDB%)           ! 1.7 SJ
+ 115: 0000: 
+ 116: 0000: INTEGER*2 GLOBAL                 \
+ 117: 0000:     CLILF.BSCNT%,                \ Main Backshop MBS Count                   ! 1.7 SJ
+ 118: 0000:     CLILF.BS.PEND.SA.CNT%,       \ Back Shop pending sales plan Count        ! 1.7 SJ
+ 119: 0000:     CLILF.COUNT%(1),             \ Count Array                               ! 1.7 SJ
+ 120: 0000:     CLILF.FILL.QUANTITY%(1),     \                                           ! 1.7 SJ
+ 121: 0000:     CLILF.OSSR.ITMSTKCNT%,       \ OSSR Item Stock count figure              ! 1.7 SJ
+ 122: 0000:     CLILF.OSSR.PEND.SA.CNT%,     \ OSSR pending sales plan Count field       ! 1.7 SJ
+ 123: 0000:     CLILF.RECL%,                 \                                           ! 1.7 SJ
+ 124: 0000:     CLILF.REPORT.NUM%,           \                                           ! 1.7 SJ
+ 125: 0000:     CLILF.SALESCNT%,             \ Sales count                               ! 1.7 SJ
+ 126: 0000:     CLILF.SESS.NUM%,             \ Clilf session number                      ! 1.7 SJ
+ 127: 0000:     CLILF.SFCNT%                 ! Shop floor count                          ! 1.7 SJ
+ 128: 0000:   
+ 129: 0000: INTEGER*1 GLOBAL                 \
+ 130: 0000:     CLILF.MODULE.SEQ%(1),        \ Module Seq Array (SRITL.MODULE.SEQ%)      ! 1.7 SJ
+ 131: 0000:     CLILF.REPEAT.CNT%(1)         ! Repeat Count Array (SRITL.REPEAT.CNT%)    ! 1.7 SJ
+ 132: 0000:     !CLILF.RECL%                 !                                           ! 1.7 SJ
+ 133: 0000: 
+ 134: 0000:     %INCLUDE BTCMEM.J86               ! 1.7 SJ
+ 135: 0000: !********************************************************************
+ 136: 0000: !***
+ 137: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+ 138: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 139: 0000: !***    DATE:           26th February 2006
+ 140: 0000: !***
+ 141: 0000: !********************************************************************
+ 142: 0000: !***
+ 143: 0000: !***    Controller CBASIC Memory Functions
+ 144: 0000: !***
+ 145: 0000: !********************************************************************
+ 146: 0000: 
+ 147: 0000: !Get a single byte integer from a string offset
+ 148: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 149: 0000:     STRING S$
+ 150: 0000:     INTEGER*2 P%
+ 151: 0000:     INTEGER*2 GETN1
+ 152: 0000: END FUNCTION
+ 153: 0000: 
+ 154: 0000: !Get a two byte integer from a string offset
+ 155: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 156: 0000:     STRING S$
+ 157: 0000:     INTEGER*2 P%
+ 158: 0000:     INTEGER*2 GETN2
+ 159: 0000: END FUNCTION
+ 160: 0000: 
+ 161: 0000: !Get a four byte integer from a string offset
+ 162: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 163: 0000:     STRING S$
+ 164: 0000:     INTEGER*2 P%
+ 165: 0000:     INTEGER*4 GETN4
+ 166: 0000: END FUNCTION
+ 167: 0000: 
+ 168: 0000: !Get a 10 byte CBASIC real from a string offset
+ 169: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 170: 0000:     STRING S$
+ 171: 0000:     INTEGER*2 P%
+ 172: 0000:     REAL GETR10
+ 173: 0000: END FUNCTION
+ 174: 0000: 
+ 175: 0000: !Put a single byte integer into a string at offset
+ 176: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 177: 0000:     STRING S$
+ 178: 0000:     INTEGER*2 P%
+ 179: 0000:     INTEGER*1 N%
+ 180: 0000:     INTEGER*1 PUTN1
+ 181: 0000: END FUNCTION
+ 182: 0000: 
+ 183: 0000: !Put a two byte integer into a string at offset
+ 184: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 185: 0000:     STRING S$
+ 186: 0000:     INTEGER*2 P%
+ 187: 0000:     INTEGER*2 N%
+ 188: 0000:     INTEGER*1 PUTN2
+ 189: 0000: END FUNCTION
+ 190: 0000: 
+ 191: 0000: !Put a four byte integer into a string at offset
+ 192: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 193: 0000:     STRING S$
+ 194: 0000:     INTEGER*2 P%
+ 195: 0000:     INTEGER*4 N%
+ 196: 0000:     INTEGER*1 PUTN4
+ 197: 0000: END FUNCTION
+ 198: 0000: 
+ 199: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 200: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 201: 0000:     STRING S$
+ 202: 0000:     INTEGER*2 P%
+ 203: 0000:     REAL R
+ 204: 0000:     INTEGER*1 PUTR10
+ 205: 0000: END FUNCTION
+ 206: 0000: 
+ 207: 0000: !Peek a two byte integer from a memory address
+ 208: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 209: 0000:     INTEGER*4 A%
+ 210: 0000:     INTEGER*2 PEEKN2
+ 211: 0000: END FUNCTION
+ 212: 0000: 
+ 213: 0000: !Peek a four byte integer from a memory address
+ 214: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 215: 0000:     INTEGER*4 A%
+ 216: 0000:     INTEGER*4 PEEKN4
+ 217: 0000: END FUNCTION
+ 218: 0000: 
+ 219: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 220: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 221: 0000:     INTEGER*4 A%
+ 222: 0000:     REAL PEEKR10
+ 223: 0000: END FUNCTION
+ 224: 0000: 
+ 225: 0000: !Poke a two byte integer to a memory address
+ 226: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 227: 0000:     INTEGER*4 A%
+ 228: 0000:     INTEGER*2 N%
+ 229: 0000:     INTEGER*1 POKEN2
+ 230: 0000: END FUNCTION
+ 231: 0000: 
+ 232: 0000: !Poke a four byte integer to a memory address
+ 233: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 234: 0000:     INTEGER*4 A%
+ 235: 0000:     INTEGER*4 N%
+ 236: 0000:     INTEGER*1 POKEN4
+ 237: 0000: END FUNCTION
+ 238: 0000: 
+ 239: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 240: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 241: 0000:     INTEGER*4 A%
+ 242: 0000:     REAL R
+ 243: 0000:     INTEGER*1 POKER10
+ 244: 0000: END FUNCTION
+ 245: 0000: 
+ 246: 0000: 
+ 247: 0000:   FUNCTION CLILF.SET PUBLIC
+ 248: 0014: \***************************
+ 249: 0014: 
+ 250: 0014:     CLILF.REPORT.NUM% = 557
+ 251: 001d:     CLILF.RECL%       = 492           ! 1.7 SJ
+ 252: 0026:     CLILF.FILE.NAME$  = "CLILF"
+ 253: 0035:     DIM CLILF.MODULE.ID%(32)          ! 1.7 SJ
+ 254: 005c:     DIM CLILF.MODULE.SEQ%(32)         ! 1.7 SJ
+ 255: 0083:     DIM CLILF.REPEAT.CNT%(32)         ! 1.7 SJ
+ 256: 00aa:     DIM CLILF.COUNT%(32)              ! 1.7 SJ
+ 257: 00d1:     DIM CLILF.FILL.QUANTITY%(32)      ! 1.7 SJ
+ 258: 00f8:     DIM CLILF.FILLER$(32)             ! 1.7 SJ
+ 259: 011f:     
+ 260: 011f:   END FUNCTION
+ 261: 012b:     
+ 262: 012b: \-----------------------------------------------------------------------------   
+ 263: 012b: 
+ 264: 012b:   SUB CLILF.SPLIT.ARRAY                                               ! 1.7 SJ
+ 265: 013f: \***************************                                          ! 1.7 SJ
+ 266: 013f: 
+ 267: 013f: ! This subprogram will split CLILF.ARRAY into CLILF.MODULE.ID%,       ! 1.7 SJ
+ 268: 013f: ! CLILF.MODULE.SEQ%, CLILF.REPEAT.CNT%, CLILF.COUNT%,                 ! 1.7 SJ
+ 269: 013f: ! CLILF.FILL.QUANTITY%, CLILF.FILLER$                                 ! 1.7 SJ
+ 270: 013f:     
+ 271: 013f:     INTEGER*2 i%                                                      ! 1.7 SJ
+ 272: 013f: 
+ 273: 013f:     FOR i% = 0 TO 31                                                  ! 1.7 SJ
+ 274: 0148: 
+ 275: 0148:         CLILF.MODULE.ID%(i%) = GETN4(CLILF.ARRAY$, i%*14 + 0)         ! 1.7 SJ
+ 276: 0181:         CLILF.MODULE.SEQ%(i%) = GETN1(CLILF.ARRAY$, i%*14 + 4)        ! 1.7 SJ
+ 277: 01b8:         CLILF.REPEAT.CNT%(i%) = GETN1(CLILF.ARRAY$, i%*14 + 5)        ! 1.7 SJ
+ 278: 01ef:         CLILF.COUNT%(i%) = GETN2(CLILF.ARRAY$, i%*14 + 6)             ! 1.7 SJ
+ 279: 0226:         CLILF.FILL.QUANTITY%(i%) = GETN2(CLILF.ARRAY$, i%*14 + 8)     ! 1.7 SJ
+ 280: 025d:         CLILF.FILLER$(i%) = MID$(CLILF.ARRAY$, i%*14 + 11, 4)         ! 1.7 SJ
+ 281: 0291: 
+ 282: 0291:     NEXT i%                                                           ! 1.7 SJ
+ 283: 02a2:     
+ 284: 02a2:   END SUB                                                             ! 1.7 SJ
+ 285: 02ae: 
+ 286: 02ae: \-----------------------------------------------------------------------------   
+ 287: 02ae:   
+ 288: 02ae:   SUB CLILF.CONCAT.ARRAY                                              ! 1.7 SJ
+ 289: 02c2: \***************************                                          ! 1.7 SJ
+ 290: 02c2: 
+ 291: 02c2: ! This subprogram will concatenate CLILF.MODULE.ID%,                  ! 1.7 SJ
+ 292: 02c2: ! CLILF.MODULE.SEQ%, CLILF.REPEAT.CNT%, CLILF.COUNT%,                 ! 1.7 SJ
+ 293: 02c2: ! CLILF.FILL.QUANTITY%, CLILF.FILLER$ into CLILF.ARRAY$               ! 1.7 SJ
+ 294: 02c2: 
+ 295: 02c2:     INTEGER*2 i%                                                      ! 1.7 SJ
+ 296: 02c2:     
+ 297: 02c2:     CLILF.ARRAY$ = STRING$(14, CHR$(00))                              ! 1.7 SJ
+ 298: 02db:     CLILF.ARRAY$ = STRING$(32, CLILF.ARRAY$)                          ! 1.7 SJ
+ 299: 02f8:     
+ 300: 02f8:     FOR i% = 0 TO 31                                                  ! 1.7 SJ
+ 301: 0301: 
+ 302: 0301:         CALL PUTN4 (CLILF.ARRAY$, i%*14 + 0, CLILF.MODULE.ID%(i%) )   ! 1.7 SJ
+ 303: 0336:         CALL PUTN1 (CLILF.ARRAY$, i%*14 + 4, CLILF.MODULE.SEQ%(i%))   ! 1.7 SJ
+ 304: 0369:         CALL PUTN1 (CLILF.ARRAY$, i%*14 + 5, CLILF.REPEAT.CNT%(i%))   ! 1.7 SJ
+ 305: 039c:         CALL PUTN2 (CLILF.ARRAY$, i%*14 + 6, CLILF.COUNT%(i%))        ! 1.7 SJ
+ 306: 03cd:         CALL PUTN2 (CLILF.ARRAY$, i%*14 + 8, CLILF.FILL.QUANTITY%(i%))! 1.7 SJ
+ 307: 03fe:         CALL PUTN4 (CLILF.ARRAY$, i%*14 + 10, ASC(CLILF.FILLER$(i%))) ! 1.7 SJ
+ 308: 043b:     
+ 309: 043b:     NEXT i%
+ 310: 044c: 
+ 311: 044c:   END SUB
+ 312: 0458: 
+ 313: 0458: \-----------------------------------------------------------------------------   
+ 314: 0458:   
+ 315: 0458: FUNCTION READ.CLILF PUBLIC
+ 316: 046c: \****************************
+ 317: 046c: 
+ 318: 046c:     INTEGER*2 READ.CLILF
+ 319: 046c:     
+ 320: 046c:     READ.CLILF = 1
+ 321: 0471:                  
+ 322: 0471:     CLILF.KEY$ = CLILF.LISTID$ + CLILF.ITEMSEQ$
+ 323: 0495: 
+ 324: 0495:     IF END #CLILF.SESS.NUM% THEN READ.CLILF.ERROR
+ 325: 04a9:     READ FORM "T7,C4,C2,C1,C3,6I2,C16,C448"; #CLILF.SESS.NUM% \ 1.5 AC \ BCS \ 1.6 MG \ 1.7 SJ
+ 326: 0554:        KEY CLILF.KEY$;                                                 \
+ 327: 0554:        CLILF.BOOTSCODE$,                                               \
+ 328: 0554:        CLILF.HO.SEQNO$,                                                \ BCS    \ 1.7 SJ
+ 329: 0554:        CLILF.COUNTED.STATUS$,                                          \ 1.7 SJ
+ 330: 0554:        CLILF.DATE.LASTCNT$,                                            \ 1.7 SJ
+ 331: 0554:        CLILF.SALESCNT%,                                                \ 1.7 SJ
+ 332: 0554:        CLILF.BSCNT%,                                                   \ 1.7 SJ
+ 333: 0554:        CLILF.OSSR.ITMSTKCNT%,                                          \ 1.7 SJ
+ 334: 0554:        CLILF.BS.PEND.SA.CNT%,                                          \ 1.7 SJ
+ 335: 0554:        CLILF.OSSR.PEND.SA.CNT%,                                        \ 1.7 SJ 
+ 336: 0554:        CLILF.SFCNT%,                                                   \ 1.7 SJ
+ 337: 0554:        CLILF.SPACE$,                                                   \ 1.7 SJ
+ 338: 0554:        CLILF.ARRAY$                                                    ! 1.7 SJ
+ 339: 0554:        !CLILF.BARCODE$,                                                \ 1.7 SJ
+ 340: 0554:        !CLILF.SELDESC$,                                                \ 1.7 SJ
+ 341: 0554:        !CLILF.DEALMKR$,                                                \ 1.7 SJ
+ 342: 0554:        !CLILF.PRODGRP$,                                                \ 1.7 SJ
+ 343: 0554:        !CLILF.PRODGRPDESC$,                                            \ 1.7 SJ
+ 344: 0554:        !CLILF.SALESSFCNT%,                                             \ 1.7 SJ
+ 345: 0554:        !CLILF.BSCNT$,                                                  \ 1.7 SJ
+ 346: 0554:        !CLILF.SFCNT$,                                                  \ 1.7 SJ
+ 347: 0554:        !CLILF.OSSR.ITMSTKCNT$,                                         \ 1.5 AC \ 1.7 SJ
+ 348: 0554:        !CLILF.SALESSFCNT$,                                             \ 1.7 SJ
+ 349: 0554:        !CLILF.SALEBSCNT$,                                              \ 1.5 AC \ 1.7 SJ
+ 350: 0554:        !CLILF.SALEOSSRCNT$,                                            \ 1.5 AC \ 1.7 SJ
+ 351: 0554:       
+ 352: 0554:     CALL CLILF.SPLIT.ARRAY
+ 353: 0558: 
+ 354: 0558:     READ.CLILF = 0
+ 355: 055d:     EXIT FUNCTION
+ 356: 055f:     
+ 357: 055f: READ.CLILF.ERROR:
+ 358: 055f: 
+ 359: 055f:     FILE.OPERATION$ = "R"
+ 360: 056e:     CURRENT.REPORT.NUM% = CLILF.REPORT.NUM%
+ 361: 057c:        
+ 362: 057c:     EXIT FUNCTION
+ 363: 057e: 
+ 364: 057e: END FUNCTION
+ 365: 058d: 
+ 366: 058d: \-----------------------------------------------------------------------------
+ 367: 058d:   
+ 368: 058d: FUNCTION WRITE.CLILF PUBLIC
+ 369: 05a1: \****************************
+ 370: 05a1: 
+ 371: 05a1:     INTEGER*2 WRITE.CLILF
+ 372: 05a1:     
+ 373: 05a1:     WRITE.CLILF = 1
+ 374: 05a6:                  
+ 375: 05a6:     CLILF.KEY$ = CLILF.LISTID$ + CLILF.ITEMSEQ$
+ 376: 05ca:     CALL CLILF.CONCAT.ARRAY
+ 377: 05ce:     
+ 378: 05ce:     IF END #CLILF.SESS.NUM% THEN WRITE.CLILF.ERROR
+ 379: 05e2:     WRITE FORM "C6,C4,C2,C1,C3,6I2,C16,C448"; #CLILF.SESS.NUM% ;   \ 1.5 AC \ CCS 1.6 MG \ 1.7 SJ 
+ 380: 06ac:        CLILF.KEY$,                                                     \
+ 381: 06ac:        CLILF.BOOTSCODE$,                                               \
+ 382: 06ac:        CLILF.HO.SEQNO$,                                                \ BCS    \ 1.7 SJ
+ 383: 06ac:        CLILF.COUNTED.STATUS$,                                          \ 1.7 SJ
+ 384: 06ac:        CLILF.DATE.LASTCNT$,                                            \ 1.7 SJ
+ 385: 06ac:        CLILF.SALESCNT%,                                                \ 1.7 SJ
+ 386: 06ac:        CLILF.BSCNT%,                                                   \ 1.7 SJ
+ 387: 06ac:        CLILF.OSSR.ITMSTKCNT%,                                          \ 1.7 SJ
+ 388: 06ac:        CLILF.BS.PEND.SA.CNT%,                                          \ 1.7 SJ
+ 389: 06ac:        CLILF.OSSR.PEND.SA.CNT%,                                        \ 1.7 SJ 
+ 390: 06ac:        CLILF.SFCNT%,                                                   \ 1.7 SJ
+ 391: 06ac:        CLILF.SPACE$,                                                   \ 1.7 SJ
+ 392: 06ac:        CLILF.ARRAY$                                                    ! 1.7 SJ
+ 393: 06ac:        !CLILF.BARCODE$,                                                \ 1.7 SJ
+ 394: 06ac:        !CLILF.SELDESC$,                                                \ 1.7 SJ
+ 395: 06ac:        !CLILF.DEALMKR$,                                                \ 1.7 SJ
+ 396: 06ac:        !CLILF.PRODGRP$,                                                \ 1.7 SJ
+ 397: 06ac:        !CLILF.PRODGRPDESC$,                                            \ 1.7 SJ
+ 398: 06ac:        !CLILF.SALESSFCNT%,                                             \ 1.7 SJ
+ 399: 06ac:        !CLILF.BSCNT$,                                                  \ 1.7 SJ
+ 400: 06ac:        !CLILF.SFCNT$,                                                  \ 1.7 SJ
+ 401: 06ac:        !CLILF.OSSR.ITMSTKCNT$,                                         \ 1.5 AC \ 1.7 SJ
+ 402: 06ac:        !CLILF.SALESSFCNT$,                                             \ 1.7 SJ
+ 403: 06ac:        !CLILF.SALEBSCNT$,                                              \ 1.5 AC \ 1.7 SJ
+ 404: 06ac:        !CLILF.SALEOSSRCNT$,                                            \ 1.5 AC \ 1.7 SJ
+ 405: 06ac:       
+ 406: 06ac:     WRITE.CLILF = 0
+ 407: 06b1:     EXIT FUNCTION
+ 408: 06b3:     
+ 409: 06b3: WRITE.CLILF.ERROR:
+ 410: 06b3: 
+ 411: 06b3:     FILE.OPERATION$ = "W"
+ 412: 06c2:     CURRENT.REPORT.NUM% = CLILF.REPORT.NUM%
+ 413: 06d0:        
+ 414: 06d0:     EXIT FUNCTION
+ 415: 06d2: 
+ 416: 06d2: END FUNCTION
+ 417: 06e1: 
+ 418: 06e1: 
+ 419: 06e1: 
+ 420: 06e1: End of Compilation

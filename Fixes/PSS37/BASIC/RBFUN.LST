@@ -1,0 +1,145 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* Recalls Buffer (RB) FILE FUNCTIONS                             */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : RBFUN.BAS                                        */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Brian Greenfield        11th may 2007      */
+   8: 0000: \/*                                                                */
+   9: 0000: \/******************************************************************/
+  10: 0000: 
+  11: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  12: 0000: 
+  13: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  14: 0000:                     FILE.OPERATION$
+  15: 0000: 
+  16: 0000:    %INCLUDE RBDEC.J86
+  17: 0000: \/******************************************************************/
+  18: 0000: \/*                                                                */
+  19: 0000: \/* Recalls Buffer FILE GLOBAL VARIABLE DECLARATIONS               */
+  20: 0000: \/*                                                                */
+  21: 0000: \/* REFERENCE   : RBDEC.J86                                        */
+  22: 0000: \/*                                                                */
+  23: 0000: \/* VERSION A.          Brian Greenfield        11th may 2007      */
+  24: 0000: \/*                                                                */
+  25: 0000: \/******************************************************************/
+  26: 0000: 
+  27: 0000:    STRING GLOBAL                \
+  28: 0000:       RB.FILE.NAME$,            \
+  29: 0000:                                 \
+  30: 0000:       RB.RCD$,                  \  ? bytes  (25/14/12)
+  31: 0000:       RB.REC.TYPE$,             \  1 byte   (H/D/T)
+  32: 0000:       RB.REFERENCE$,            \  8 bytes
+  33: 0000:       RB.LABEL$,                \ 14 bytes (8 bytes label type)
+  34: 0000:                                 \          (6 bytes label number)
+  35: 0000:       RB.ITEM.CODE$,            \  7 bytes (with check digit)
+  36: 0000:       RB.STOCK.COUNT$,          \  4 bytes (1 - 9999)
+  37: 0000:       RB.ITEM.COUNT$,           \  5 bytes (1 - 99999)
+  38: 0000:       RB.RECORD.COUNT$          !  4 bytes (1 - 9999 inc header and trailer)
+  39: 0000: 
+  40: 0000:    INTEGER*2 GLOBAL             \
+  41: 0000:       RB.REPORT.NUM%,           \
+  42: 0000:       RB.SESS.NUM%              !
+  43: 0000: 
+  44: 0000: \/******************************************************************/
+  45: 0000: 
+  46: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  47: 0000: \/* FUNCTION RB.SET                                                */
+  48: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  49: 0000: 
+  50: 0000:    FUNCTION RB.SET PUBLIC
+  51: 0014: 
+  52: 0014:       INTEGER*1 RB.SET
+  53: 0014: 
+  54: 0014:       RB.REPORT.NUM% = 744
+  55: 001d:       RB.FILE.NAME$  = "RB:"
+  56: 002c: 
+  57: 002c:    END FUNCTION
+  58: 003b: 
+  59: 003b: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  60: 003b: \/* FUNCTION READ.RB                                               */
+  61: 003b: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  62: 003b: 
+  63: 003b:    FUNCTION READ.RB PUBLIC
+  64: 004f: 
+  65: 004f:       INTEGER*2 READ.RB
+  66: 004f: 
+  67: 004f:       READ.RB = 1
+  68: 0054: 
+  69: 0054:       IF END #RB.SESS.NUM% THEN READ.ERROR
+  70: 0068:       READ #RB.SESS.NUM%; LINE RB.RCD$
+  71: 0081: 
+  72: 0081:       RB.REC.TYPE$ = MID$(RB.RCD$,1,1)
+  73: 00a0: 
+  74: 00a0:       IF RB.REC.TYPE$ = "H" THEN BEGIN
+  75: 00b6:          RB.REFERENCE$    = MID$(RB.RCD$,2,8)
+  76: 00d5:          RB.LABEL$        = MID$(RB.RCD$,10,14)
+  77: 00f7:       ENDIF ELSE IF RB.REC.TYPE$ = "D" THEN BEGIN
+  78: 010d:          RB.ITEM.CODE$    = MID$(RB.RCD$,2,7)
+  79: 012c:          RB.STOCK.COUNT$  = MID$(RB.RCD$,9,4)
+  80: 014d:       ENDIF ELSE IF RB.REC.TYPE$ = "T" THEN BEGIN
+  81: 0163:          RB.ITEM.COUNT$   = MID$(RB.RCD$,2,5)
+  82: 0182:          RB.RECORD.COUNT$ = MID$(RB.RCD$,7,4)
+  83: 01a1:       ENDIF
+  84: 01a1: 
+  85: 01a1:       READ.RB = 0
+  86: 01a6:    EXIT FUNCTION
+  87: 01a8: 
+  88: 01a8: 
+  89: 01a8: READ.ERROR:
+  90: 01a8: 
+  91: 01a8:       FILE.OPERATION$     = "R"
+  92: 01b7:       CURRENT.REPORT.NUM% = RB.REPORT.NUM%
+  93: 01c5:       CURRENT.CODE$       = ""
+  94: 01d4: 
+  95: 01d4:    END FUNCTION
+  96: 01e3: 
+  97: 01e3: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  98: 01e3: \/* FUNCTION WRITE.RB                                              */
+  99: 01e3: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 100: 01e3: 
+ 101: 01e3:    FUNCTION WRITE.RB PUBLIC
+ 102: 01f7: 
+ 103: 01f7:       INTEGER*2 WRITE.RB
+ 104: 01f7:       STRING    CRLF$
+ 105: 01f7:       STRING    FORM$
+ 106: 01f7: 
+ 107: 01f7:       WRITE.RB = 1
+ 108: 01fc: 
+ 109: 01fc:       CRLF$ = CHR$(13) + CHR$(10)
+ 110: 0221: 
+ 111: 0221:       IF RB.REC.TYPE$ = "H" THEN BEGIN
+ 112: 023a:          RB.RCD$ = RB.REC.TYPE$ \
+ 113: 02e8:                  + RIGHT$(STRING$(8,"0") + RB.REFERENCE$,8) \
+ 114: 02e8:                  + RIGHT$(STRING$(14,"0") + RB.LABEL$,14) \
+ 115: 02e8:                  + CRLF$
+ 116: 02e8:       ENDIF ELSE IF RB.REC.TYPE$ = "D" THEN BEGIN
+ 117: 0301:          RB.RCD$ = RB.REC.TYPE$ \
+ 118: 03af:                  + RIGHT$(STRING$(7,"0") + RB.ITEM.CODE$,7) \
+ 119: 03af:                  + RIGHT$(STRING$(4,"0") + RB.STOCK.COUNT$,4) \
+ 120: 03af:                  + CRLF$
+ 121: 03af:       ENDIF ELSE IF RB.REC.TYPE$ = "T" THEN BEGIN
+ 122: 03c8:          RB.RCD$ = RB.REC.TYPE$ \
+ 123: 0473:                  + RIGHT$(STRING$(5,"0") + RB.ITEM.COUNT$,5) \
+ 124: 0473:                  + RIGHT$(STRING$(4,"0") + RB.RECORD.COUNT$,4) \
+ 125: 0473:                  + CRLF$
+ 126: 0473:       ENDIF
+ 127: 0473: 
+ 128: 0473:       FORM$ = "C" + STR$(LEN(RB.RCD$))
+ 129: 04a1: 
+ 130: 04a1:       IF END #RB.SESS.NUM% THEN WRITE.ERROR
+ 131: 04b5:       WRITE FORM FORM$; #RB.SESS.NUM%; RB.RCD$
+ 132: 04db: 
+ 133: 04db:       WRITE.RB = 0
+ 134: 04e0:       EXIT FUNCTION
+ 135: 04e2: 
+ 136: 04e2: WRITE.ERROR:
+ 137: 04e2: 
+ 138: 04e2:       FILE.OPERATION$ = "W"
+ 139: 04f1:       CURRENT.REPORT.NUM% = RB.REPORT.NUM%
+ 140: 04ff:       CURRENT.CODE$ = ""
+ 141: 050e: 
+ 142: 050e:    END FUNCTION
+ 143: 051d: 
+ 144: 051d: \/******************************************************************/
+ 145: 051d: End of Compilation

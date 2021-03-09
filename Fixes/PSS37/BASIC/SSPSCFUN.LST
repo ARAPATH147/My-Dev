@@ -1,0 +1,210 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***                   SSPSCTRL FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***                  REFERENCE  : SSPSCFUN.BAS
+   8: 0000: \***
+   9: 0000: \***    Version A         Julia Stones             23rd October 2003
+  10: 0000: \***
+  11: 0000: \******************************************************************************
+  12: 0000: \*******************************************************************************
+  13: 0000: 
+  14: 0000:   STRING GLOBAL                                                        \
+  15: 0000:      CURRENT.CODE$,                                                    \
+  16: 0000:      FILE.OPERATION$
+  17: 0000: 
+  18: 0000:   INTEGER*2 GLOBAL                                                     \
+  19: 0000:      CURRENT.REPORT.NUM%
+  20: 0000: 
+  21: 0000: 
+  22: 0000:   %INCLUDE SSPSCDEC.J86
+  23: 0000: \*****************************************************************************
+  24: 0000: \*****************************************************************************
+  25: 0000: \***
+  26: 0000: \***               %INCLUDE FOR SSPSCTRL - FIELD DECLARATIONS
+  27: 0000: \***                                          FILE REFERENCE PARAMETERS
+  28: 0000: \***
+  29: 0000: \***                      FILE TYPE    : DIRECT
+  30: 0000: \***
+  31: 0000: \***                      REFERENCE    : SSPSCdea.J86
+  32: 0000: \***
+  33: 0000: \***    Version A               Julia Stones          23 Oct 2003
+  34: 0000: \***
+  35: 0000: \***
+  36: 0000: \*****************************************************************************
+  37: 0000: \*****************************************************************************
+  38: 0000: 
+  39: 0000: REM \
+  40: 0000: 
+  41: 0000:   STRING GLOBAL           \
+  42: 0000:     SSPSCTRL.FILE.NAME$
+  43: 0000: 
+  44: 0000:   INTEGER*2 GLOBAL        \
+  45: 0000:     SSPSCTRL.REPORT.NUM%,   \
+  46: 0000:     SSPSCTRL.SESS.NUM%
+  47: 0000: REM \
+  48: 0000: 
+  49: 0000:   STRING GLOBAL           \
+  50: 0000:     SSPS.BTCSK.NUM$,      \ 3 byte, file ext number (000 - 999)
+  51: 0000:     SSPS.BTCSF.NUM$,      \ 3 byte, file ext number (000 - 999)
+  52: 0000:     SSPS.BTCSK.FTP$,      \ 3 byte, last file ext number sent to SMARTSCRIPT
+  53: 0000:     SSPS.BTCSF.FTP$,      \ 3 byte, last file ext number sent to SMARTSCRIPT
+  54: 0000:     SSPS.FILLER$          ! 68 byte, spaces
+  55: 0000: 
+  56: 0000:   INTEGER*2 GLOBAL        \
+  57: 0000:     SSPSCTRL.RECL%
+  58: 0000: 
+  59: 0000: 
+  60: 0000:   FUNCTION SSPSCTRL.SET PUBLIC
+  61: 0014: \***************************
+  62: 0014: 
+  63: 0014:     SSPSCTRL.REPORT.NUM%  = 664
+  64: 001d:     SSPSCTRL.RECL%        = 80
+  65: 0026:     SSPSCTRL.FILE.NAME$ = "ADXLXACN::D:\ADX_UDT1\SSPSCTRL.BIN"
+  66: 0035: 
+  67: 0035:   END FUNCTION
+  68: 0041: \-------------------------------------------------------------------------------
+  69: 0041: REM EJECT
+  70: 0041: 
+  71: 0041:   FUNCTION READ.SSPSCTRL PUBLIC
+  72: 0055: \****************************
+  73: 0055: 
+  74: 0055:     STRING FORMAT$
+  75: 0055:     INTEGER*2 READ.SSPSCTRL
+  76: 0055: 
+  77: 0055:     READ.SSPSCTRL = 1
+  78: 005a:     FORMAT$ = "C3,C3,C3,C3,C68"
+  79: 0067: 
+  80: 0067:     IF END #SSPSCTRL.SESS.NUM% THEN ERROR.READ.SSPSCTRL
+  81: 007b:     READ FORM FORMAT$;                                                \
+  82: 00da:                  #SSPSCTRL.SESS.NUM%                                    \
+  83: 00da:                  ,1;                                                    \
+  84: 00da:                  SSPS.BTCSK.NUM$,                                       \
+  85: 00da:                  SSPS.BTCSF.NUM$,                                       \
+  86: 00da:                  SSPS.BTCSK.FTP$,                                       \
+  87: 00da:                  SSPS.BTCSF.FTP$,                                       \
+  88: 00da:                  SSPS.FILLER$
+  89: 00da: 
+  90: 00da:     READ.SSPSCTRL = 0
+  91: 00df:     EXIT FUNCTION
+  92: 00e1: 
+  93: 00e1: 
+  94: 00e1:     ERROR.READ.SSPSCTRL:
+  95: 00e1: 
+  96: 00e1:        FILE.OPERATION$     = "R"
+  97: 00f0:        CURRENT.REPORT.NUM% = SSPSCTRL.REPORT.NUM%
+  98: 00fe:        CURRENT.CODE$       = PACK$("0000000000000000")
+  99: 0112: 
+ 100: 0112:        EXIT FUNCTION
+ 101: 0114: 
+ 102: 0114:   END FUNCTION
+ 103: 0123: \----------------------------------------------------------------------
+ 104: 0123: REM EJECT
+ 105: 0123: 
+ 106: 0123:  FUNCTION READ.SSPSCTRL.LOCKED PUBLIC
+ 107: 0137: \*********************************
+ 108: 0137: 
+ 109: 0137:     STRING    FORMAT$
+ 110: 0137:     INTEGER*2 READ.SSPSCTRL.LOCKED
+ 111: 0137: 
+ 112: 0137:     READ.SSPSCTRL.LOCKED = 1
+ 113: 013c:     FORMAT$ = "C3,C3,C3,C3,C68"
+ 114: 0149: 
+ 115: 0149:     IF END #SSPSCTRL.SESS.NUM% THEN ERROR.READ.SSPSCTRL.LOCKED
+ 116: 015d:     READ FORM FORMAT$;                                                  \
+ 117: 01bc:                  #SSPSCTRL.SESS.NUM%                                    \
+ 118: 01bc:                  AUTOLOCK,1;                                            \
+ 119: 01bc:                  SSPS.BTCSK.NUM$,                                       \
+ 120: 01bc:                  SSPS.BTCSF.NUM$,                                       \
+ 121: 01bc:                  SSPS.BTCSK.FTP$,                                       \
+ 122: 01bc:                  SSPS.BTCSF.FTP$,                                       \
+ 123: 01bc:                  SSPS.FILLER$
+ 124: 01bc: 
+ 125: 01bc:        READ.SSPSCTRL.LOCKED = 0
+ 126: 01c1: 
+ 127: 01c1:        EXIT FUNCTION
+ 128: 01c3: 
+ 129: 01c3: ERROR.READ.SSPSCTRL.LOCKED:
+ 130: 01c3: 
+ 131: 01c3:        FILE.OPERATION$     = "R"
+ 132: 01d2:        CURRENT.REPORT.NUM% = SSPSCTRL.REPORT.NUM%
+ 133: 01e0:        CURRENT.CODE$       = PACK$("0000000000000000")
+ 134: 01f4: 
+ 135: 01f4:        EXIT FUNCTION
+ 136: 01f6: 
+ 137: 01f6:   END FUNCTION
+ 138: 0205: \----------------------------------------------------------------------
+ 139: 0205: REM EJECT
+ 140: 0205: 
+ 141: 0205:  FUNCTION WRITE.SSPSCTRL PUBLIC
+ 142: 0219: \***************************
+ 143: 0219: 
+ 144: 0219:     STRING    FORMAT$
+ 145: 0219:     INTEGER*2 WRITE.SSPSCTRL
+ 146: 0219: 
+ 147: 0219:     WRITE.SSPSCTRL = 1
+ 148: 021e:     FORMAT$ = "C3,C3,C3,C3,C68"
+ 149: 022b: 
+ 150: 022b:     IF END #SSPSCTRL.SESS.NUM% THEN ERROR.WRITE.SSPSCTRL
+ 151: 023f: 
+ 152: 023f:     WRITE FORM FORMAT$;                                                 \
+ 153: 02b2:                  #SSPSCTRL.SESS.NUM%                                    \
+ 154: 02b2:                  ,1;                                                    \
+ 155: 02b2:                  SSPS.BTCSK.NUM$,                                       \
+ 156: 02b2:                  SSPS.BTCSF.NUM$,                                       \
+ 157: 02b2:                  SSPS.BTCSK.FTP$,                                       \
+ 158: 02b2:                  SSPS.BTCSF.FTP$,                                       \
+ 159: 02b2:                  SSPS.FILLER$
+ 160: 02b2: 
+ 161: 02b2:        WRITE.SSPSCTRL = 0
+ 162: 02b7: 
+ 163: 02b7:        EXIT FUNCTION
+ 164: 02b9: 
+ 165: 02b9: ERROR.WRITE.SSPSCTRL:
+ 166: 02b9: 
+ 167: 02b9:        FILE.OPERATION$     = "W"
+ 168: 02c8:        CURRENT.REPORT.NUM% = SSPSCTRL.REPORT.NUM%
+ 169: 02d6:        CURRENT.CODE$       = PACK$("0000000000000000")
+ 170: 02ea: 
+ 171: 02ea:        EXIT FUNCTION
+ 172: 02ec: 
+ 173: 02ec:   END FUNCTION
+ 174: 02fb: \----------------------------------------------------------------------
+ 175: 02fb: REM EJECT
+ 176: 02fb: 
+ 177: 02fb:  FUNCTION WRITE.SSPSCTRL.UNLOCK PUBLIC
+ 178: 030f: \*************************************
+ 179: 030f: 
+ 180: 030f:     STRING    FORMAT$
+ 181: 030f:     INTEGER*2 WRITE.SSPSCTRL.UNLOCK
+ 182: 030f: 
+ 183: 030f:     WRITE.SSPSCTRL.UNLOCK = 1
+ 184: 0314:     FORMAT$ = "C3,C3,C3,C3,C68"
+ 185: 0321: 
+ 186: 0321:     IF END #SSPSCTRL.SESS.NUM% THEN ERROR.WRITE.SSPSCTRL.UNLOCK
+ 187: 0335: 
+ 188: 0335:     WRITE FORM FORMAT$;                                                 \
+ 189: 03a8:                  #SSPSCTRL.SESS.NUM%                                    \
+ 190: 03a8:                  AUTOUNLOCK,1;                                          \
+ 191: 03a8:                  SSPS.BTCSK.NUM$,                                       \
+ 192: 03a8:                  SSPS.BTCSF.NUM$,                                       \
+ 193: 03a8:                  SSPS.BTCSK.FTP$,                                       \
+ 194: 03a8:                  SSPS.BTCSF.FTP$,                                       \
+ 195: 03a8:                  SSPS.FILLER$
+ 196: 03a8: 
+ 197: 03a8:        WRITE.SSPSCTRL.UNLOCK = 0
+ 198: 03ad: 
+ 199: 03ad:        EXIT FUNCTION
+ 200: 03af: 
+ 201: 03af: ERROR.WRITE.SSPSCTRL.UNLOCK:
+ 202: 03af: 
+ 203: 03af:        FILE.OPERATION$     = "W"
+ 204: 03be:        CURRENT.REPORT.NUM% = SSPSCTRL.REPORT.NUM%
+ 205: 03cc:        CURRENT.CODE$       = PACK$("0000000000000000")
+ 206: 03e0: 
+ 207: 03e0:        EXIT FUNCTION
+ 208: 03e2: 
+ 209: 03e2:   END FUNCTION
+ 210: 03f1: End of Compilation

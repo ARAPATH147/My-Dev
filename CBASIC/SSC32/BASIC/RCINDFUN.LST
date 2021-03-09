@@ -1,0 +1,256 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***                                                                
+   5: 0000: \***    RCINDX File Functions
+   6: 0000: \***                                                               
+   7: 0000: \***    REFERENCE   : RCINDFUN.BAS
+   8: 0000: \***                                                                
+   9: 0000: \***    FILE TYPE   : Direct
+  10: 0000: \***
+  11: 0000: \******************************************************************************
+  12: 0000: \******************************************************************************
+  13: 0000: \***                                                                
+  14: 0000: \***    VERSION A.          Neil Bennett.                4 June 2007
+  15: 0000: \***                                                                
+  16: 0000: \***    REVISION 1.1.                ROBERT COWEY.                23 MAY 2008.
+  17: 0000: \***    Defined variables EXPIRY.DATE$ and MRQ$ and increased record length 
+  18: 0000: \***    to 48 bytes.
+  19: 0000: \***
+  20: 0000: \******************************************************************************
+  21: 0000: \******************************************************************************
+  22: 0000:                                                                        
+  23: 0000: 
+  24: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  25: 0000: 
+  26: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  27: 0000:                     FILE.OPERATION$
+  28: 0000: 
+  29: 0000:    %INCLUDE RCINDDEC.J86
+  30: 0000: 
+  31: 0000: \******************************************************************************
+  32: 0000: \******************************************************************************
+  33: 0000: \***                                                                
+  34: 0000: \***    RCINDX FILE GLOBAL VARIABLE DECLARATIONS                       
+  35: 0000: \***                                                                
+  36: 0000: \***    REFERENCE   : RCINDDEC.J86                                     
+  37: 0000: \***
+  38: 0000: \***    FILE TYPE   : Direct
+  39: 0000: \***                                                                
+  40: 0000: \******************************************************************************
+  41: 0000: \******************************************************************************
+  42: 0000: \***
+  43: 0000: \***    RECORD LAYOUT
+  44: 0000: \***
+  45: 0000: \***    ST  LN   TYP   DESCRIPTION
+  46: 0000: \***     1   2   UPD   INDEX.NUM$    Recall index number (Start 0000)
+  47: 0000: \***     3   4   UPD   REFERENCE$    Recall reference number
+  48: 0000: \***     7  20   ASC   DESCRIPTION$  Recall description
+  49: 0000: \***    27   4   UPD   ACTIVE.DATE$  YYYYMMDD
+  50: 0000: \***    31   1   ASC   TYPE$         Recall type 
+  51: 0000: \***                                 'C' Excess Stock 'I' Planner Leaver
+  52: 0000: \***    32   2   UPD   ITEM.COUNT$   Number of items in recall
+  53: 0000: \***    34   1   ASC   STATUS$       'A' Actioned 'P' Partially Actioned 'N' Not actioned
+  54: 0000: \***    35   1   ASC   SPECIAL.INSTRUCTIONS$  'Y' Special instructions flag
+  55: 0000: \***    36   2   ASC   LABEL.TYPE$   01 Black  02 Grey  03 Yellow  04 Orange  
+  56: 0000: \***                                 05 Red  06 White  07 Purple
+  57: 0000: \***    38   4   UPD   EXPIRY.DATE$  YYYYMMDD
+  58: 0000: \***    42   2   ASC   MRQ$          Minimum Return Quantity
+  59: 0000: \***    44   5   ASC   FILLER$
+  60: 0000: \***
+  61: 0000: \******************************************************************************
+  62: 0000: \******************************************************************************
+  63: 0000: 
+  64: 0000: 
+  65: 0000: \******************************************************************************
+  66: 0000: \******************************************************************************
+  67: 0000: \***
+  68: 0000: \***    VERSION A.          Neil Bennett.                4 JUNE 2007   
+  69: 0000: \***                                                                
+  70: 0000: \***    REVISION 1.1.                ROBERT COWEY.                23 MAY 2008.
+  71: 0000: \***    Documented record layout.
+  72: 0000: \***    Defined variables EXPIRY.DATE$ and MRQ$ and increased record length 
+  73: 0000: \***    to 48 bytes.
+  74: 0000: \***
+  75: 0000: \******************************************************************************
+  76: 0000: \******************************************************************************
+  77: 0000: 
+  78: 0000: 
+  79: 0000:    STRING GLOBAL                          \
+  80: 0000:       RCINDX.FILE.NAME$,                  \
+  81: 0000:                                           \
+  82: 0000:       RCINDX.RCD$,                        \ ASC 40
+  83: 0000:       RCINDX.RECALL.INDEX.NUM$,           \ UPD  2
+  84: 0000:       RCINDX.RECALL.REFERENCE$,           \ UPD  4
+  85: 0000:       RCINDX.RECALL.DESCRIPTION$,         \ ASC 20
+  86: 0000:       RCINDX.ACTIVE.DATE$,                \ UPD  4
+  87: 0000:       RCINDX.RECALL.TYPE$,                \ ASC  1
+  88: 0000:       RCINDX.ITEM.COUNT$,                 \ UPD  2
+  89: 0000:       RCINDX.RECALL.STATUS$,              \ ASC  1
+  90: 0000:       RCINDX.RECALL.SPECIAL.INSTRUCTION$, \ ASC  1
+  91: 0000:       RCINDX.RECALL.LABEL.TYPE$,          \ ASC  2
+  92: 0000:       RCINDX.EXPIRY.DATE$,                \ ASC  4
+  93: 0000:       RCINDX.MRQ$,                        \ ASC  2
+  94: 0000:       RCINDX.FILLER$                      ! ASC  3
+  95: 0000: 
+  96: 0000: 
+  97: 0000:    INTEGER*2 GLOBAL             \
+  98: 0000:       RCINDX.RECL%,             \
+  99: 0000:       RCINDX.REPORT.NUM%,       \
+ 100: 0000:       RCINDX.SESS.NUM%          !
+ 101: 0000: 
+ 102: 0000:    
+ 103: 0000:    INTEGER*4 GLOBAL                       \
+ 104: 0000:       RCINDX.REC.NUM%                     !
+ 105: 0000: 
+ 106: 0000: 
+ 107: 0000: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 108: 0000: \*** FUNCTION RCINDX.SET                                            */
+ 109: 0000: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 110: 0000: 
+ 111: 0000:    FUNCTION RCINDX.SET PUBLIC
+ 112: 0014: 
+ 113: 0014:       INTEGER*1 RCINDX.SET
+ 114: 0014: 
+ 115: 0014:       RCINDX.REPORT.NUM% = 746
+ 116: 001d:       RCINDX.RECL%       = 48                                          ! 1.1 RC
+ 117: 0026:       RCINDX.FILE.NAME$  = "RCINDX"
+ 118: 0035: 
+ 119: 0035:    END FUNCTION
+ 120: 0044: 
+ 121: 0044: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 122: 0044: \*** FUNCTION READ.RCINDX (Direct Read)                             */
+ 123: 0044: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 124: 0044: 
+ 125: 0044:    FUNCTION READ.RCINDX PUBLIC
+ 126: 0058: 
+ 127: 0058:       INTEGER*2 READ.RCINDX
+ 128: 0058:       INTEGER*2 indx%
+ 129: 0058: 
+ 130: 0058:       READ.RCINDX = 1
+ 131: 005d:       indx% = VAL(UNPACK$(RCINDX.RECALL.INDEX.NUM$))
+ 132: 007a: 
+ 133: 007a:       IF END #RCINDX.SESS.NUM% THEN READ.ERROR
+ 134: 008e:       READ FORM "C2,C4,C20,C4,C1,C2,C1,C1,C2,C4,C2,C5"; \              ! 1.1 RC
+ 135: 0134:            #RCINDX.SESS.NUM%, indx%;                \
+ 136: 0134:                RCINDX.RECALL.INDEX.NUM$,            \
+ 137: 0134:                RCINDX.RECALL.REFERENCE$,            \
+ 138: 0134:                RCINDX.RECALL.DESCRIPTION$,          \
+ 139: 0134:                RCINDX.ACTIVE.DATE$,                 \
+ 140: 0134:                RCINDX.RECALL.TYPE$,                 \
+ 141: 0134:                RCINDX.ITEM.COUNT$,                  \
+ 142: 0134:                RCINDX.RECALL.STATUS$,               \
+ 143: 0134:                RCINDX.RECALL.SPECIAL.INSTRUCTION$,  \
+ 144: 0134:                RCINDX.RECALL.LABEL.TYPE$,           \
+ 145: 0134:                RCINDX.EXPIRY.DATE$,                 \                  ! 1.1 RC
+ 146: 0134:                RCINDX.MRQ$,                         \                  ! 1.1 RC
+ 147: 0134:                RCINDX.FILLER$                     
+ 148: 0134: 
+ 149: 0134:       READ.RCINDX = 0
+ 150: 0139: 
+ 151: 0139:    EXIT FUNCTION
+ 152: 013b: 
+ 153: 013b: READ.ERROR:
+ 154: 013b: 
+ 155: 013b:       FILE.OPERATION$     = "R"
+ 156: 014a:       CURRENT.REPORT.NUM% = RCINDX.REPORT.NUM%
+ 157: 0158:       CURRENT.CODE$       = ""
+ 158: 0167: 
+ 159: 0167:    END FUNCTION
+ 160: 0176: 
+ 161: 0176: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 162: 0176: \*** FUNCTION WRITE.RCINDX (Direct Write)                           */
+ 163: 0176: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 164: 0176: 
+ 165: 0176:    FUNCTION WRITE.RCINDX PUBLIC
+ 166: 018a: 
+ 167: 018a:       INTEGER*2 WRITE.RCINDX
+ 168: 018a:       INTEGER*2 indx%
+ 169: 018a: 
+ 170: 018a:       WRITE.RCINDX = 1
+ 171: 018f: 
+ 172: 018f:       indx% = VAL(UNPACK$(RCINDX.RECALL.INDEX.NUM$))
+ 173: 01ac:       RCINDX.FILLER$ = STRING$(5, " ")
+ 174: 01c2: 
+ 175: 01c2:       IF END #RCINDX.SESS.NUM% THEN WRITE.ERROR
+ 176: 01d6:       WRITE FORM "C2,C4,C20,C4,C1,C2,C1,C1,C2,C4,C2,C5"; \             ! 1.1 RC
+ 177: 02b3:            #RCINDX.SESS.NUM%, indx%;                \
+ 178: 02b3:                RCINDX.RECALL.INDEX.NUM$,            \
+ 179: 02b3:                RCINDX.RECALL.REFERENCE$,            \
+ 180: 02b3:                RCINDX.RECALL.DESCRIPTION$,          \
+ 181: 02b3:                RCINDX.ACTIVE.DATE$,                 \
+ 182: 02b3:                RCINDX.RECALL.TYPE$,                 \
+ 183: 02b3:                RCINDX.ITEM.COUNT$,                  \
+ 184: 02b3:                RCINDX.RECALL.STATUS$,               \
+ 185: 02b3:                RCINDX.RECALL.SPECIAL.INSTRUCTION$,  \
+ 186: 02b3:                RCINDX.RECALL.LABEL.TYPE$,           \
+ 187: 02b3:                RCINDX.EXPIRY.DATE$,                 \                  ! 1.1 RC
+ 188: 02b3:                RCINDX.MRQ$,                         \                  ! 1.1 RC
+ 189: 02b3:                RCINDX.FILLER$                     
+ 190: 02b3: 
+ 191: 02b3:       WRITE.RCINDX = 0
+ 192: 02b8:       EXIT FUNCTION
+ 193: 02ba: 
+ 194: 02ba: WRITE.ERROR:
+ 195: 02ba: 
+ 196: 02ba:       FILE.OPERATION$ = "W"
+ 197: 02c9:       CURRENT.REPORT.NUM% = RCINDX.REPORT.NUM%
+ 198: 02d7:       CURRENT.CODE$ = ""
+ 199: 02e6: 
+ 200: 02e6:    END FUNCTION
+ 201: 02f5: 
+ 202: 02f5: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 203: 02f5: \*** FUNCTION READ.RCINDX.RCD (Sequential Read)                     */
+ 204: 02f5: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 205: 02f5: 
+ 206: 02f5:    FUNCTION READ.RCINDX.RCD PUBLIC
+ 207: 0309: 
+ 208: 0309:       INTEGER*2 READ.RCINDX.RCD
+ 209: 0309: 
+ 210: 0309:       READ.RCINDX.RCD = 1
+ 211: 030e: 
+ 212: 030e:       IF END #RCINDX.SESS.NUM% THEN READ.RCD.ERROR
+ 213: 0322:       READ FORM "C2,C46";                                           \  ! 1.1 RC
+ 214: 034f:            #RCINDX.SESS.NUM%;                                       \
+ 215: 034f:                RCINDX.RECALL.INDEX.NUM$,                            \
+ 216: 034f:                RCINDX.RCD$
+ 217: 034f: 
+ 218: 034f:       READ.RCINDX.RCD = 0
+ 219: 0354:       EXIT FUNCTION
+ 220: 0356: 
+ 221: 0356: READ.RCD.ERROR:
+ 222: 0356: 
+ 223: 0356:       FILE.OPERATION$ = "R"
+ 224: 0365:       CURRENT.REPORT.NUM% = RCINDX.REPORT.NUM%
+ 225: 0373:       CURRENT.CODE$ = ""
+ 226: 0382: 
+ 227: 0382:    END FUNCTION
+ 228: 0391: 
+ 229: 0391: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 230: 0391: \*** FUNCTION WRITE.RCINDX.RCD (Sequential Write)                   */
+ 231: 0391: \*** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 232: 0391: 
+ 233: 0391:    FUNCTION WRITE.RCINDX.RCD PUBLIC
+ 234: 03a5: 
+ 235: 03a5:       INTEGER*2 WRITE.RCINDX.RCD
+ 236: 03a5: 
+ 237: 03a5:       WRITE.RCINDX.RCD = 1
+ 238: 03aa: 
+ 239: 03aa:       IF END #RCINDX.SESS.NUM% THEN WRITE.RCD.ERROR
+ 240: 03be:       WRITE FORM "C2,C46";                                          \  ! 1.1 RC
+ 241: 03f0:            #RCINDX.SESS.NUM%;                                       \
+ 242: 03f0:                RCINDX.RECALL.INDEX.NUM$,                            \
+ 243: 03f0:                RCINDX.RCD$
+ 244: 03f0: 
+ 245: 03f0:       WRITE.RCINDX.RCD = 0
+ 246: 03f5:       EXIT FUNCTION
+ 247: 03f7: 
+ 248: 03f7: WRITE.RCD.ERROR:
+ 249: 03f7: 
+ 250: 03f7:       FILE.OPERATION$ = "W"
+ 251: 0406:       CURRENT.REPORT.NUM% = RCINDX.REPORT.NUM%
+ 252: 0414:       CURRENT.CODE$ = ""
+ 253: 0423: 
+ 254: 0423:    END FUNCTION
+ 255: 0432: 
+ 256: 0432: End of Compilation

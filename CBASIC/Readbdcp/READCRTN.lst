@@ -1,0 +1,1559 @@
+    1: 	    \*******************************************************************
+>***********
+    2: 	    \*******************************************************************
+>***********
+    3: 	    \***
+    4: 	    \***     READCRTN 
+    5: 	    \***
+    6: 	    \***     Original version          17/08/2015            RANJITH GOP
+>ALANKUTTY
+    7: 	    \***
+    8: 	    \***     
+    9: 	    \***
+   10: 	    \*******************************************************************
+>***********
+   11: 	    \*******************************************************************
+>***********
+   12: 	    \***
+   13: 	    \***    READCRTN
+   14: 	    \***    ********
+   15: 	    \***   
+   16: 	    \***    
+   17: 	    \***    In the past it came to AppsMgmt attention that PDT stores ha
+>ve issues
+   18: 	    \***    while booking in BOOTS.COM orders due to the fact that past 
+>orders are 
+   19: 	    \***    piled up in the CARTON.BIN file and its not able to take any
+> new 
+   20: 	    \***    orders.
+   21: 	    \***    
+   22: 	    \***    The issue is that even after an order is being collected by 
+>customer
+   23: 	    \***    it still shows as not booked in CARTON.BIN file as a result 
+>house
+   24: 	    \***    keeping program does not remove old entries. This utility wi
+>ll address 
+   25: 	    \***    the conflicts between BDCP file and CARTON file.
+   26: 	    \***
+   27: 	    \***    The READCRTN program performs the following tasks ...  
+   28: 	    \***
+   29: 	    \***    Reads CARTON.BIN file and filter BOOTS.COM orders which are 
+>not booked
+   30: 	    \***    and compare the status with BDCP.BIN file. if there are mism
+>atches
+   31: 	    \***    it changes the status of the order in CARTON.BIN file as 'Bo
+>oked in
+   32: 	    \***    by exception
+   33: 	    \***
+   34: 	    \*******************************************************************
+>***********
+   35: 	    \*******************************************************************
+>***********
+   36: 	    \***
+   37: 	    \***    DEC included code defining file related fields
+   38: 	    \***
+   39: 	    \*******************************************************************
+>***********
+   40: 	    \*******************************************************************
+>***********
+   41: 	    
+   42: 	        %INCLUDE BDCPDEC.J86
+   43=a	    \*******************************************************************
+>***********
+   44=a	    \*******************************************************************
+>***********
+   45=a	    \***
+   46=a	    \***           FILE DECLARATIONS Boots.com Parcel File (BDCP)
+   47=a	    \***
+   48=a	    \***           REFERENCE:   BDCPDEC.J86
+   49=a	    \***
+   50=a	    \***           VERSION A         Neil Bennett          19th May 2010
+   51=a	    \***
+   52=a	    \***
+   53=a	    \*******************************************************************
+>************
+   54=a	    \*******************************************************************
+>************
+   55=a	    
+   56=a	    STRING GLOBAL                          \
+   57=a	           BDCP.FILE.NAME$,                \
+   58=a	           BDCP.SUPPLIER$,                 \  3 bytes UPD Supplier Numbe
+>r
+   59=a	           BDCP.CARTON$,                   \  4 bytes ASC 8 digit consig
+>nment number
+   60=a	           BDCP.ORDER$,                    \  5 bytes UPD Boots.com orde
+>r number
+   61=a	           BDCP.EXPECT.DATE$,              \  3 bytes UPD Expected Deliv
+>ery Date
+   62=a	           BDCP.STATUS$,                   \  1 bytes ASC Current status
+   63=a	           BDCP.DEL.DATETIME$,             \  6 bytes UPD Delivery date/
+>time
+   64=a	           BDCP.DEL.EXPORTED$,             \  1 bytes ASC Y/N
+   65=a	           BDCP.COL.DATETIME$,             \  6 bytes UPD Collected date
+>/time
+   66=a	           BDCP.COL.EXPORTED$,             \  1 bytes ASC Y/N
+   67=a	           BDCP.RET.DATETIME$,             \  6 bytes UPD Returned date/
+>time
+   68=a	           BDCP.RET.EXPORTED$,             \  1 bytes ASC Y/N
+   69=a	           BDCP.LST.DATETIME$,             \  6 bytes UPD Lost date/time
+   70=a	           BDCP.LST.EXPORTED$,             \  1 bytes ASC Y/N
+   71=a	           BDCP.FND.DATETIME$,             \  6 bytes UPD Found date/tim
+>e
+   72=a	           BDCP.FND.EXPORTED$,             \  1 bytes ASC Y/N
+   73=a	           BDCP.FILLER$                    ! 49 bytes filler
+   74=a	    
+   75=a	    INTEGER*1 GLOBAL                       \
+   76=a	           BDCP.COL.RC%                    !  1 byte  INT 0 - Till, 1 - 
+>Controller
+   77=a	    
+   78=a	    INTEGER*2 GLOBAL                       \
+   79=a	           BDCP.KEYL%,                     \
+   80=a	           BDCP.RECL%,                     \
+   81=a	           BDCP.SESS.NUM%,                 \
+   82=a	           BDCP.REPORT.NUM%                !
+   83=a	    
+   84: 	        %INCLUDE BOOTSDEC.J86
+   85=a	    \*******************************************************************
+>***********
+   86=a	    \*******************************************************************
+>***********
+   87=a	    \***
+   88=a	    \***
+   89=a	    \***
+   90=a	    \*******************************************************************
+>***********
+   91=a	    
+   92=a	    
+   93: 	        %INCLUDE CBDEC.J86
+   94=a	    \/******************************************************************
+>/
+   95=a	    \/*                                                                *
+>/
+   96=a	    \/* Carton Buffer FILE GLOBAL VARIABLE DECLARATIONS                *
+>/
+   97=a	    \/*                                                                *
+>/
+   98=a	    \/* REFERENCE   : CBDEC.J86                                        *
+>/
+   99=a	    \/*                                                                *
+>/
+  100=a	    \/* VERSION A.          Neil Bennett.           27 DECEMBER 2006   *
+>/
+  101=a	    \/*                                                                *
+>/
+  102=a	    \/******************************************************************
+>/
+  103=a	    
+  104=a	       STRING GLOBAL                \
+  105=a	          CB.FILE.NAME$,            \
+  106=a	                                    \
+  107=a	          CB.RCD$,                  \  ? bytes  (18/17/20/ 8)
+  108=a	          CB.REC.TYPE$,             \  1 byte   ( C/ H/ D/ T)
+  109=a	          CB.ITEM.BARCODE$,         \ 13 bytes  (with check digit)
+  110=a	          CB.CARTON.BARCODE$,       \ 14 bytes (6 bytes supplier ref.)
+  111=a	                                    \          (8 bytes Carton Number)
+  112=a	          CB.REPORT.RQD$,           \  1 byte  (Y/N)
+  113=a	          CB.ITEM.QUANTITY$,        \  4 bytes (1 -  9999)
+  114=a	          CB.ITEM.COUNT$            !  5 bytes (1 - 99999)
+  115=a	    
+  116=a	       INTEGER*2 GLOBAL             \
+  117=a	          CB.REPORT.NUM%,           \
+  118=a	          CB.SESS.NUM%              !
+  119=a	    
+  120=a	    \/******************************************************************
+>/
+  121: 	        %INCLUDE CRTNDEC.J86
+  122=a	    \/******************************************************************
+>/
+  123=a	    \/*                                                                *
+>/
+  124=a	    \/* CARTON FILE GLOBAL VARIABLE DECLARATIONS                       *
+>/
+  125=a	    \/*                                                                *
+>/
+  126=a	    \/* REFERENCE   : CRTNDEC.J86                                      *
+>/
+  127=a	    \/*                                                                *
+>/
+  128=a	    \/* VERSION A.          Neil Bennett.           12 DECEMBER 2006   *
+>/
+  129=a	    \/*                                                                *
+>/
+  130=a	    \/* VERSION B.          Arun Sudhakaran.        10 APRIL 2013      *
+>/
+  131=a	    \/* Added new variables for including CRTN field positions and     *
+>/
+  132=a	    \/* lengths as part of Automatic Booking In of Chilled Food        *
+>/
+  133=a	    \/* ASNs project                                                   *
+>/
+  134=a	    \/*                                                                *
+>/
+  135=a	    \/******************************************************************
+>/
+  136=a	    
+  137=a	       STRING GLOBAL                \
+  138=a	          CRTN.FILE.NAME$,          \
+  139=a	                                    \
+  140=a	          CRTN.SUPPLIER$,           \ PD 3
+  141=a	          CRTN.NO$,                 \ PD 4
+  142=a	          CRTN.STATUS$,             \ ASC 1
+  143=a	          CRTN.ASN.CODE$,           \ ASC 35
+  144=a	          CRTN.ORD.NO$,             \ ASC  5
+  145=a	          CRTN.ORD.SUFFIX$,         \ ASC  1
+  146=a	          CRTN.BUS.CNTR$,           \ ASC  1
+  147=a	          CRTN.DEL.DTTM$,           \ ASC 12 (CCYYMMDDHHmm)
+  148=a	          CRTN.ITEM.CNT$,           \ ASC  3
+  149=a	          CRTN.ITEM.CODE$(1),       \ PD 3
+  150=a	          CRTN.FILLER$              ! ASC 22
+  151=a	    
+  152=a	       INTEGER*2 GLOBAL             \
+  153=a	          CHAIN.OFFSET%,            \ CHAIN% field offset               
+>!BAS
+  154=a	          CRTN.NO.KEY.LEN%,         \ CARTON.NO$ field length           
+>!BAS
+  155=a	          CRTN.NO.KEY.OFFSET%,      \ CARTON.NO$ field offset           
+>!BAS
+  156=a	          CRTN.RECL%,               \
+  157=a	          CRTN.REPORT.NUM%,         \
+  158=a	          CRTN.SESS.NUM%,           \
+  159=a	                                    \
+  160=a	          CRTN.DESP.QTY%(1),        \
+  161=a	          CRTN.IN.QTY%(1),          \
+  162=a	          DELIVERY.DATE.LEN%,       \ Length of delivery date           
+>!BAS
+  163=a	          DELIVERY.DATE.OFFSET%,    \ Offset of delivery date           
+>!BAS
+  164=a	          STATUS.LEN%,              \ STATUS$ field length              
+>!BAS
+  165=a	          STATUS.OFFSET%,           \ STATUS$ field offset              
+>!BAS
+  166=a	          SUPPLIER.NUMBER.LEN%,     \ SUPPLIER$ field length            
+>!BAS
+  167=a	          SUPPLIER.NUMBER.OFFSET%   ! SUPPLIER$ field offset            
+>!BAS
+  168=a	    
+  169=a	       INTEGER*1 GLOBAL             \
+  170=a	          CRTN.CHAIN%               !
+  171=a	    
+  172=a	    \/******************************************************************
+>/
+  173: 	        %INCLUDE PSBF01G.J86
+  174=a	    REM \
+  175=a	    \*******************************************************************
+>************
+  176=a	    \*******************************************************************
+>************
+  177=a	    \***
+  178=a	    \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.
+>LOG
+  179=a	    \***
+  180=a	    \***                FUNCTION NUMBER    : PSBF01
+  181=a	    \***
+  182=a	    \***                REFERENCE          : PSBF01G.J86
+  183=a	    \***
+  184=a	    \***                DATE OF LAST AMENDMENT  - 27/2/86
+  185=a	    \***
+  186=a	    \***
+  187=a	    \*******************************************************************
+>************
+  188=a	    
+  189=a	          INTEGER GLOBAL  F01.RETURN.CODE%
+  190=a	    
+  191=a	    
+  192: 	        %INCLUDE PSBF20G.J86
+  193=a	    REM\
+  194=a	    \*******************************************************************
+>************
+  195=a	    \*******************************************************************
+>************
+  196=a	    \***
+  197=a	    \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY F
+>UNCTION
+  198=a	    \***
+  199=a	    \***                       REFERENCE     : PSBF20G.J86
+  200=a	    \*** 
+  201=a	    \***     Version A              Bruce Scrive                   5th M
+>ay 1988   
+  202=a	    \*** 
+  203=a	    \***     Version B              Robert Cowey                   7th M
+>ay 1991
+  204=a	    \***     Global variable F20.INTEGER.FILE.NO% changed from one byte 
+>integer
+  205=a	    \***     to two byte integer.
+  206=a	    \***
+  207=a	    \***     Version D              Andrew Wedgeworth             1st Ju
+>ly 1992
+  208=a	    \***     F20.RETURN.CODE% removed as it is no longer required.
+  209=a	    \***
+  210=a	    \*******************************************************************
+>************
+  211=a	    \*******************************************************************
+>************
+  212=a	    
+  213=a	          STRING    GLOBAL F20.FILE.NAME$,                              
+>   \
+  214=a	                           F20.STRING.FILE.NO$,                         
+>   \
+  215=a	                           F20.TABLE.DIMENSIONED.FLAG$,                 
+>   \
+  216=a	                           SESS.NUM.TABLE$(1)
+  217=a	    
+  218=a	          INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+  219=a	    
+  220=a	          ! 1 line deleted from here                                    
+>   ! DAW 
+  221=a	    
+  222: 	       
+  223: 	    \*******************************************************************
+>***********
+  224: 	    \***
+  225: 	    \***    Global Variable definitions
+  226: 	    \***
+  227: 	    \*******************************************************************
+>***********
+  228: 	    
+  229: 	    
+  230: 	         STRING GLOBAL                                                  
+>    \
+  231: 	             BATCH.SCREEN.FLAG$,                                        
+>    \
+  232: 	             BDCP.OUTPUT.FILE$,                                         
+>    \
+  233: 	             CRTN.OUTPUT.FILE$,                                         
+>    \
+  234: 	             CURRENT.CODE$,                                             
+>    \
+  235: 	             CURRENT.CODE.LOGGED$,                                      
+>    \
+  236: 	             ERR.FILE.NAME$,                                            
+>    \
+  237: 	             FILE.OPERATION$,                                           
+>    \
+  238: 	             FUNCTION.FLAG$,                                            
+>    \
+  239: 	             MODULE$,                                                   
+>    \
+  240: 	             MODULE.NUMBER$,                                            
+>    \
+  241: 	             PROGRAM$,                                                  
+>    \
+  242: 	             PASSED.STRING$,                                            
+>    \
+  243: 	             TEXT.FORMAT$,                                              
+>    \
+  244: 	             VAR.STRING.1$,                                             
+>    \
+  245: 	             VAR.STRING.2$,                                             
+>    \
+  246: 	             CARTON.NO$,                                                
+>    \
+  247: 	             CHAIN$,                                                    
+>    \
+  248: 	             STATUS$,                                                   
+>    \
+  249: 	             ORDER.NUM$,                                                
+>    \
+  250: 	             ORDER.SUFFIX$,                                             
+>    \
+  251: 	             BUS.CENTRE$,                                               
+>    \
+  252: 	             E.D.D$,                                                    
+>    \
+  253: 	             ITEM.COUNT$,                                               
+>    \
+  254: 	             REPEATED$,                                                 
+>    \
+  255: 	             FILLER$,                                                   
+>       \
+  256: 	             ASN.CODE$                                                  
+>     
+  257: 	    
+  258: 	         INTEGER*1 GLOBAL                                               
+>    \
+  259: 	             ERROR.COUNT%,                                              
+>    \
+  260: 	             FALSE,                                                     
+>    \
+  261: 	             TRUE                                                       
+>    !
+  262: 	            
+  263: 	         INTEGER*2 GLOBAL                                               
+>    \
+  264: 	             BDCP.OUTPUT.SESS%,                                         
+>    \
+  265: 	             BDCP.OUTPUT.SESS.NUM%,                                     
+>    \
+  266: 	             CRTN.OUTPUT.NUM%,                                          
+>    \
+  267: 	             CURRENT.REPORT.NUM%,                                       
+>    \
+  268: 	             ERR.SESS.NUM%,                                             
+>    \
+  269: 	             EVENT.NO%,                                                 
+>    \
+  270: 	             MESSAGE.NO%,                                               
+>    \
+  271: 	             PASSED.INTEGER%                                            
+>    !
+  272: 	    
+  273: 	    \*******************************************************************
+>***********
+  274: 	    \***
+  275: 	    \***    Variable definitions
+  276: 	    \***
+  277: 	    \*******************************************************************
+>***********
+  278: 	            
+  279: 	        STRING                                    \
+  280: 	                LINE.RECORD$,                     \
+  281: 	                READCRTN.FILE.NAME$,              \
+  282: 	                READCRTN.RPT.FILE.NAME$,          \
+  283: 	                SUPPLIER$                         \
+  284: 	    
+  285: 	    
+  286: 	        INTEGER*1                                 \
+  287: 	                RC%
+  288: 	        
+  289: 	        INTEGER*2                                 \
+  290: 	                CONFLICT%,                        \
+  291: 	                COUNT%,                           \
+  292: 	                CRTN.OUTPUT.SESS.NUM%,            \
+  293: 	                ERR.CNT%,                         \
+  294: 	                EOF%,                             \
+  295: 	                FUNCTION.RETURN.CODE%,            \
+  296: 	                READCRTN.RPT.SESS.NUM%,           \
+  297: 	                READCRTN.RPT.REPORT.NUM%,         \
+  298: 	                READCRTN.RPT.OPEN%,               \
+  299: 	                CNTR%
+  300: 	     
+  301: 	    \*******************************************************************
+>***********
+  302: 	    \***
+  303: 	    \***    Included code defining function related global variables
+  304: 	    \***
+  305: 	    \*******************************************************************
+>***********
+  306: 	           
+  307: 	           %INCLUDE PSBF01E.J86   ! APPLICATION.LOG
+  308=a	    REM \
+  309=a	    \*******************************************************************
+>************
+  310=a	    \*******************************************************************
+>************
+  311=a	    \***
+  312=a	    \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.L
+>OG
+  313=a	    \***
+  314=a	    \***                      FUNCTION NUMBER   : PSBF01
+  315=a	    \***
+  316=a	    \***                    INCLUDE REFERENCE : PSBF01E.J86
+  317=a	    \*** 
+  318=a	    \***      Version B           Andrew Wedgeworth          1st July 19
+>92
+  319=a	    \***      Three parameters which passed to the function have been re
+>moved.
+  320=a	    \***      APPLICATION.LOG has been added as a variable name (this ho
+>lds the
+  321=a	    \***      return code).
+  322=a	    \***
+  323=a	    \*******************************************************************
+>************
+  324=a	    
+  325=a	    
+  326=a	       FUNCTION APPLICATION.LOG (MESSAGE.NO%,                           
+>          \
+  327=a	                                 VAR.STRING.1$,                         
+>          \
+  328=a	                                 VAR.STRING.2$,                         
+>          \
+  329=a	                                 EVENT.NO%)  EXTERNAL
+  330=a	    
+  331=a	          INTEGER*1 EVENT.NO%
+  332=a	    
+  333=a	          INTEGER*2 APPLICATION.LOG,                                    
+>   \ GAW
+  334=a	                    MESSAGE.NO%
+  335=a	    
+  336=a	          STRING VAR.STRING.1$,                                         
+>   \
+  337=a	                 VAR.STRING.2$
+  338=a	    
+  339=a	       END FUNCTION
+  340=a	    
+  341=a	    \*******************************************************************
+>************
+  342: 	        %INCLUDE PSBF20E.J86   ! ALLOCATE.DEALLOCATE.SESS.NUM
+  343=a	    REM\
+  344=a	    \*******************************************************************
+>************
+  345=a	    \*******************************************************************
+>************
+  346=a	    \***
+  347=a	    \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+  348=a	    \***
+  349=a	    \***                  REFERENCE     : PSBF20E.J86
+  350=a	    \***
+  351=a	    \***     VERSION C            Janet Smith                13th May 19
+>92
+  352=a	    \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+  353=a	    \***     128 files.
+  354=a	    \***
+  355=a	    \***     VERSION D.           Andrew Wedgeworth          1st July 19
+>92
+  356=a	    \***     Removal of redundant parameters and addition of SESS.NUM.UT
+>ILITY
+  357=a	    \***     as a variable.  This new variable contains the function's r
+>eturn
+  358=a	    \***     code.
+  359=a	    \***
+  360=a	    \*******************************************************************
+>************
+  361=a	    \*******************************************************************
+>************
+  362=a	    
+  363=a	       FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                       
+>   \
+  364=a	                                  PASSED.INTEGER%,                      
+>   \
+  365=a	                                  PASSED.STRING$)                       
+>   \
+  366=a	       EXTERNAL
+  367=a	    
+  368=a	       STRING    FUNCTION.FLAG$,                                        
+>   \
+  369=a	                 PASSED.STRING$
+  370=a	       ! 3 variables removed from here                                  
+>   ! CAW
+  371=a	    
+  372=a	    
+  373=a	       INTEGER*2 SESS.NUM.UTILITY,                                      
+>   \ CAW
+  374=a	                 PASSED.INTEGER%                                        
+>  ! CJAS
+  375=a	    
+  376=a	       END FUNCTION
+  377=a	    
+  378: 	        %INCLUDE PSBF30E.J86   ! 
+  379=a	    \*******************************************************************
+>**********
+  380=a	    \*******************************************************************
+>**********
+  381=a	    \***
+  382=a	    \***                 EXTERNAL FUNCTION DEFINITION PSBF30
+  383=a	    \***
+  384=a	    \*******************************************************************
+>**********
+  385=a	    \*******************************************************************
+>**********
+  386=a	    
+  387=a	    \*******************************************************************
+>**********
+  388=a	    \*******************************************************************
+>**********
+  389=a	    \***
+  390=a	    \***   Version 96A              Mark Walker                31st May 
+>1995
+  391=a	    \***   Original version.
+  392=a	    \***
+  393=a	    \***   Version B                Andrew Wedgeworth          17th Marc
+>h 1997
+  394=a	    \***   Added READONLY$ variable.  This parameter may be used to spec
+>ify 
+  395=a	    \***   whether the file is to be opened with the READONLY option.
+  396=a	    \***
+  397=a	    \*******************************************************************
+>**********
+  398=a	    \*******************************************************************
+>**********
+  399=a	     
+  400=a	           FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                      
+>   \ 
+  401=a	                                       REPORT.NUM%,                     
+>   \  
+  402=a	                                       READONLY$) EXTERNAL
+  403=a	    
+  404=a	           STRING FILE.NAME$,READONLY$
+  405=a	           INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+  406=a	    
+  407=a	           END FUNCTION
+  408=a	    
+  409: 	        %INCLUDE PSBF24E.J86   ! STANDARD.ERROR.DETECTED
+  410=a	    REM \
+  411=a	    \*******************************************************************
+>************
+  412=a	    \*******************************************************************
+>************
+  413=a	    \***
+  414=a	    \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED 
+>FUNCTION
+  415=a	    \***
+  416=a	    \***                      REFERENCE     : PSBF24E.J86
+  417=a	    \***
+  418=a	    \***    Version A                 Janet Smith                  13th 
+>May 1992
+  419=a	    \***
+  420=a	    \*******************************************************************
+>************
+  421=a	    \*******************************************************************
+>************
+  422=a	    
+  423=a	       FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+  424=a	                                       ERRFILE%,              \
+  425=a	                                       ERRL%,                 \
+  426=a	                                       ERR$)        EXTERNAL
+  427=a	                                       
+  428=a	              STRING    ERR$
+  429=a	    
+  430=a	              INTEGER*2 ERRFILE%,              \
+  431=a	                       ERRL%,                 \
+  432=a	                       STANDARD.ERROR.DETECTED
+  433=a	                       
+  434=a	              INTEGER*4 ERRN%
+  435=a	                               
+  436=a	       END FUNCTION
+  437=a	    
+  438=a	    
+  439: 	        %INCLUDE BOOTSEXT.J86  ! GENERIC BOOTS LIB
+  440=a	    \*******************************************************************
+>***********
+  441=a	    \*******************************************************************
+>***********
+  442=a	    SUB LOG.ERROR(F.1$) EXTERNAL
+  443=a	        STRING  F.1$
+  444=a	    END SUB
+  445=a	    
+  446=a	    \*******************************************************************
+>***********
+  447=a	    \*******************************************************************
+>***********
+  448=a	    FUNCTION FORCE.CASE$(DATA$,TYPE%) EXTERNAL
+  449=a	        STRING      FORCE.CASE$
+  450=a	        STRING      DATA$
+  451=a	        INTEGER*2   TYPE%
+  452=a	        STRING      IN$, OUT$
+  453=a	        STRING      LWR$, UPR$
+  454=a	    END FUNCTION
+  455=a	    
+  456=a	    \*******************************************************************
+>***********
+  457=a	    \*******************************************************************
+>***********
+  458=a	    FUNCTION REMOVE.CHARACTER$(DATA$,F.CHR$) EXTERNAL
+  459=a	        STRING      DATA$
+  460=a	        STRING      F.CHR$
+  461=a	        STRING      REMOVE.CHARACTER$
+  462=a	        INTEGER*2   START%
+  463=a	        INTEGER*2   END%
+  464=a	        INTEGER*2   POS%
+  465=a	        INTEGER*2   F.LEN%
+  466=a	    END FUNCTION
+  467=a	    
+  468=a	    \*******************************************************************
+>***********
+  469=a	    \*******************************************************************
+>***********
+  470=a	    FUNCTION REMOVE.SPACES$(DATA$) EXTERNAL
+  471=a	        STRING      DATA$
+  472=a	        STRING      REMOVE.SPACES$
+  473=a	        INTEGER*2   START%
+  474=a	        INTEGER*2   END%
+  475=a	        INTEGER*2   POS%
+  476=a	    END FUNCTION
+  477=a	    
+  478=a	    \*******************************************************************
+>************
+  479=a	    \***
+  480=a	    \***    FUNCTION     :    TIME.STAMP$
+  481=a	    \***    
+  482=a	    \***    Returns a string with formatted date and/or time detail
+  483=a	    \***                 Passed values are 1 = Date, 2 = Time
+  484=a	    \*******************************************************************
+>************
+  485=a	    FUNCTION TIME.STAMP$(F.TYPE%) EXTERNAL
+  486=a	        STRING      TIME.STAMP$
+  487=a	        INTEGER*2   F.TYPE%
+  488=a	        STRING      F.DT$
+  489=a	        STRING      F.RET$
+  490=a	    END FUNCTION
+  491=a	    \*******************************************************************
+>************
+  492=a	    
+  493=a	    
+  494=a	    \*******************************************************************
+>************
+  495=a	    \*******************************************************************
+>************
+  496=a	    FUNCTION PRINT.MSG$(MSG$,F%,L%) EXTERNAL
+  497=a	    STRING      PRINT.MSG$
+  498=a	    STRING      MSG$
+  499=a	    INTEGER*2   F%
+  500=a	    INTEGER*2   L%
+  501=a	    STRING      IN$
+  502=a	    STRING      F.FORM$
+  503=a	    END FUNCTION
+  504=a	    \*******************************************************************
+>************
+  505=a	    
+  506=a	    \*******************************************************************
+>************
+  507=a	    \***
+  508=a	    \***    SUBROUTINE     :    BACKGROUND.MSG(B.MSG$)
+  509=a	    \***    
+  510=a	    \***    Displays passed message to the background message.
+  511=a	    \*******************************************************************
+>************
+  512=a	    SUB BACKGROUND.MSG(B.MSG$) EXTERNAL
+  513=a	        STRING      B.MSG$
+  514=a	        INTEGER*4   B.RET%
+  515=a	    END SUB
+  516=a	    \*******************************************************************
+>************
+  517=a	    
+  518=a	    !*******************************************************************
+>**********!
+  519=a	    !***                                                                
+>          !
+  520=a	    !*** SUBROUTINE :   NO.OPEN.FILE                                    
+>          !
+  521=a	    !***                    F.REPORT%       - Passed report number for l
+>ogging    !
+  522=a	    !***                    F.OPEN.FLAG$    - Returned flag for not-open
+>ed        !
+  523=a	    !***                                                                
+>          !
+  524=a	    !*** This subroutine logs an application 106 error with the passed r
+>eport     !
+  525=a	    !*** number. It also sets a return variable to "N" to flag that the 
+>file is   !
+  526=a	    !*** not Open because of the failure.                               
+>          !
+  527=a	    !***                                                                
+>          !
+  528=a	    !*******************************************************************
+>**********!
+  529=a	    SUB NO.OPEN.FILE(F.REPORT%,F.OPEN.FLAG$) EXTERNAL                   
+>                   
+  530=a	        INTEGER*2   F.REPORT%                                           
+>              
+  531=a	        STRING      F.OPEN.FLAG$                                        
+>              
+  532=a	        STRING      F.1$, F.2$
+  533=a	        INTEGER*2   F.EVENT%
+  534=a	    END SUB                                                             
+>          
+  535=a	    !*******************************************************************
+>**********!
+  536=a	    
+  537=a	    
+  538=a	    FUNCTION NUMBER.OF.DAYS%(START$,END$) EXTERNAL
+  539=a	    INTEGER*2   NUMBER.OF.DAYS%
+  540=a	    STRING      START$
+  541=a	    STRING      END$
+  542=a	    INTEGER*2   F.DAYS%
+  543=a	    INTEGER*4   S.DAYS%
+  544=a	    INTEGER*4   E.DAYS%
+  545=a	    END FUNCTION
+  546=a	    
+  547=a	    FUNCTION HEX.FORMAT$(F.DATA$) EXTERNAL
+  548=a	    STRING  HEX.FORMAT$
+  549=a	    STRING  F.DATA$
+  550=a	    STRING      F.RET$
+  551=a	    INTEGER*2   F.LEN%
+  552=a	    STRING      F.TMP$(2)
+  553=a	    STRING      F.FORM$
+  554=a	    STRING      F.ASCII$
+  555=a	    STRING      F.ASC$
+  556=a	    STRING      F.HEX$
+  557=a	    STRING      F.WORK$, F.W2$
+  558=a	    INTEGER*2   F.LOOP%, F.L2%
+  559=a	    END FUNCTION
+  560=a	    
+  561=a	    FUNCTION FORMAT.NUMBER$(F.NUM$,F.DEC%) EXTERNAL
+  562=a	    STRING      FORMAT.NUMBER$
+  563=a	    STRING      F.NUM$
+  564=a	    INTEGER*2   F.DEC%
+  565=a	    INTEGER*4   F.NUM%
+  566=a	    END FUNCTION
+  567=a	    
+  568=a	    \*******************************************************************
+>************
+  569=a	    FUNCTION FORMAT.BOOTS.CODE$(F.CODE$) EXTERNAL
+  570=a	    STRING  FORMAT.BOOTS.CODE$
+  571=a	    STRING  F.CODE$
+  572=a	    END FUNCTION
+  573=a	    
+  574=a	    FUNCTION FORMAT.STRING$(F.STRING$,F.L%,F.P$,F.J%) EXTERNAL
+  575=a	    STRING    FORMAT.STRING$
+  576=a	    STRING    F.STRING$
+  577=a	    INTEGER*2 F.L%
+  578=a	    STRING    F.P$
+  579=a	    INTEGER*2 F.J%
+  580=a	    END FUNCTION
+  581=a	    
+  582=a	    SUB GET.BLOCK.SIZE(F.BLOCK.SIZE%,F.FILENAME$,F.SIZE%) EXTERNAL
+  583=a	    INTEGER*4   F.BLOCK.SIZE%
+  584=a	    STRING      F.FILENAME$
+  585=a	    INTEGER*4   F.SIZE%
+  586=a	    INTEGER*4   F.BLOCK%
+  587=a	    INTEGER*2   F.SECTOR%
+  588=a	    INTEGER*2   F.LOOP%
+  589=a	    STRING      F.BLOCK.LENGTH$
+  590=a	    END SUB
+  591: 	           %INCLUDE BDCPEXT.J86   ! BDCP
+  592=a	    \*******************************************************************
+>***********
+  593=a	    \*******************************************************************
+>***********
+  594=a	    \***
+  595=a	    \***           FUNCTION DEFINITIONS Boots.com Parcel File (BDCP)
+  596=a	    \***
+  597=a	    \***           REFERENCE:   BDCPEXT.J86
+  598=a	    \***
+  599=a	    \***           VERSION A         Neil Bennett          19th May 2010
+  600=a	    \***
+  601=a	    \***
+  602=a	    \*******************************************************************
+>************
+  603=a	    \*******************************************************************
+>************
+  604=a	    
+  605=a	    
+  606=a	       FUNCTION BDCP.SET EXTERNAL
+  607=a	       END FUNCTION
+  608=a	    
+  609=a	       FUNCTION READ.BDCP EXTERNAL
+  610=a	          INTEGER*2 READ.BDCP
+  611=a	       END FUNCTION
+  612=a	    
+  613=a	       FUNCTION WRITE.BDCP EXTERNAL
+  614=a	          INTEGER*2 WRITE.BDCP
+  615=a	       END FUNCTION
+  616=a	    
+  617=a	       FUNCTION READ.BDCP.LOCK EXTERNAL
+  618=a	          INTEGER*2 READ.BDCP.LOCK
+  619=a	       END FUNCTION
+  620=a	    
+  621=a	       FUNCTION WRITE.BDCP.UNLOCK EXTERNAL
+  622=a	          INTEGER*2 WRITE.BDCP.UNLOCK
+  623=a	       END FUNCTION
+  624=a	       
+  625=a	       FUNCTION DELETE.BDCP EXTERNAL
+  626=a	          INTEGER*2 DELETE.BDCP
+  627=a	       END FUNCTION
+  628=a	       
+  629: 	        %INCLUDE BTCMEM.J86
+  630=a	    !*******************************************************************
+>*
+  631=a	    !***
+  632=a	    !***    INCLUDED CODE:  BTCMEM.J86
+  633=a	    !***    AUTHOR:         Stuart William McConnachie
+  634=a	    !***    DATE:           26th February 2006
+  635=a	    !***
+  636=a	    !*******************************************************************
+>*
+  637=a	    !***
+  638=a	    !***    Controller CBASIC Memory Functions
+  639=a	    !***
+  640=a	    !*******************************************************************
+>*
+  641=a	    
+  642=a	    !Get a single byte integer from a string offset
+  643=a	    FUNCTION GETN1 (S$, P%) EXTERNAL
+  644=a	        STRING S$
+  645=a	        INTEGER*2 P%
+  646=a	        INTEGER*2 GETN1
+  647=a	    END FUNCTION
+  648=a	    
+  649=a	    !Get a two byte integer from a string offset
+  650=a	    FUNCTION GETN2 (S$, P%) EXTERNAL
+  651=a	        STRING S$
+  652=a	        INTEGER*2 P%
+  653=a	        INTEGER*2 GETN2
+  654=a	    END FUNCTION
+  655=a	    
+  656=a	    !Get a four byte integer from a string offset
+  657=a	    FUNCTION GETN4 (S$, P%) EXTERNAL
+  658=a	        STRING S$
+  659=a	        INTEGER*2 P%
+  660=a	        INTEGER*4 GETN4
+  661=a	    END FUNCTION
+  662=a	    
+  663=a	    !Get a 10 byte CBASIC real from a string offset
+  664=a	    FUNCTION GETR10 (S$, P%) EXTERNAL
+  665=a	        STRING S$
+  666=a	        INTEGER*2 P%
+  667=a	        REAL GETR10
+  668=a	    END FUNCTION
+  669=a	    
+  670=a	    !Put a single byte integer into a string at offset
+  671=a	    FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+  672=a	        STRING S$
+  673=a	        INTEGER*2 P%
+  674=a	        INTEGER*1 N%
+  675=a	        INTEGER*1 PUTN1
+  676=a	    END FUNCTION
+  677=a	    
+  678=a	    !Put a two byte integer into a string at offset
+  679=a	    FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+  680=a	        STRING S$
+  681=a	        INTEGER*2 P%
+  682=a	        INTEGER*2 N%
+  683=a	        INTEGER*1 PUTN2
+  684=a	    END FUNCTION
+  685=a	    
+  686=a	    !Put a four byte integer into a string at offset
+  687=a	    FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+  688=a	        STRING S$
+  689=a	        INTEGER*2 P%
+  690=a	        INTEGER*4 N%
+  691=a	        INTEGER*1 PUTN4
+  692=a	    END FUNCTION
+  693=a	    
+  694=a	    !Put a 10 byte CBASIC real into a string at offset
+  695=a	    FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+  696=a	        STRING S$
+  697=a	        INTEGER*2 P%
+  698=a	        REAL R
+  699=a	        INTEGER*1 PUTR10
+  700=a	    END FUNCTION
+  701=a	    
+  702=a	    !Peek a two byte integer from a memory address
+  703=a	    FUNCTION PEEKN2 (A%) EXTERNAL
+  704=a	        INTEGER*4 A%
+  705=a	        INTEGER*2 PEEKN2
+  706=a	    END FUNCTION
+  707=a	    
+  708=a	    !Peek a four byte integer from a memory address
+  709=a	    FUNCTION PEEKN4 (A%) EXTERNAL
+  710=a	        INTEGER*4 A%
+  711=a	        INTEGER*4 PEEKN4
+  712=a	    END FUNCTION
+  713=a	    
+  714=a	    !Peek a 10 byte CBASIC real from a memory address
+  715=a	    FUNCTION PEEKR10 (A%) EXTERNAL
+  716=a	        INTEGER*4 A%
+  717=a	        REAL PEEKR10
+  718=a	    END FUNCTION
+  719=a	    
+  720=a	    !Poke a two byte integer to a memory address
+  721=a	    FUNCTION POKEN2 (A%, N%) EXTERNAL
+  722=a	        INTEGER*4 A%
+  723=a	        INTEGER*2 N%
+  724=a	        INTEGER*1 POKEN2
+  725=a	    END FUNCTION
+  726=a	    
+  727=a	    !Poke a four byte integer to a memory address
+  728=a	    FUNCTION POKEN4 (A%, N%) EXTERNAL
+  729=a	        INTEGER*4 A%
+  730=a	        INTEGER*4 N%
+  731=a	        INTEGER*1 POKEN4
+  732=a	    END FUNCTION
+  733=a	    
+  734=a	    !Poke a 10 byte CBASIC real to a memory address
+  735=a	    FUNCTION POKER10 (A%, R) EXTERNAL
+  736=a	        INTEGER*4 A%
+  737=a	        REAL R
+  738=a	        INTEGER*1 POKER10
+  739=a	    END FUNCTION
+  740=a	    
+  741: 	        %INCLUDE ERRNH.J86
+  742=a	    \*******************************************************************
+>***********
+  743=a	    \***
+  744=a	    \***   FUNCTION ERRNH
+  745=a	    \***
+  746=a	    \***   Convert the 4-byte error number to an 8-byte ASCII string
+  747=a	    \***
+  748=a	    \*******************************************************************
+>***********
+  749=a	    
+  750=a	           FUNCTION ERRNH PUBLIC
+  751=a	    
+  752=a	           STRING                  ERRNH,                          
+>\
+  753=a	                                   E$
+  754=a	    
+  755=a	           INTEGER*2               I%
+  756=a	           INTEGER*4               H%
+  757=a	    
+  758=a	           E$ = ""
+  759=a	           H% = ERRN
+  760=a	    
+  761=a	           FOR I% = 28 TO 0 STEP -4
+  762=a	               E$ = E$ + CHR$((SHIFT(H%,I%) AND 000FH) + 48)
+  763=a	           NEXT I%
+  764=a	    
+  765=a	           ERRNH = TRANSLATE$(E$,":;<=>?","ABCDEF")
+  766=a	    
+  767=a	           END FUNCTION
+  768: 	        %INCLUDE ADXSERVE.J86  ! Controller Services
+  769=a	    \*******************************************************************
+>***********
+  770=a	    \*******************************************************************
+>***********
+  771=a	    \***                                                                
+>        ***
+  772=a	    \***    %INCLUDE FOR FUNCTION ADXSERVE (an I.B.M. system function)  
+>        ***
+  773=a	    \***                                                                
+>        ***
+  774=a	    \***         AUTHOR        :  Bruce Scriver                         
+>        ***
+  775=a	    \***                                                                
+>        ***
+  776=a	    \***         DATE WRITTEN  :  14th March 1986                       
+>        ***
+  777=a	    \***                                                                
+>        ***
+  778=a	    \***         DATE OF LAST REVISION  - 14th March 1986               
+>        ***
+  779=a	    \***                                                                
+>        ***
+  780=a	    \***                                                                
+>        ***
+  781=a	    \*******************************************************************
+>***********
+  782=a	    \*******************************************************************
+>***********
+  783=a	    
+  784=a	       SUB ADXSERVE (RETURN.CODE%,                                      
+>          \
+  785=a	                     ADX.FUNCTION%,                                     
+>          \
+  786=a	                     ADX.PARM.1%,                                       
+>          \
+  787=a	                     ADX.PARM.2$)                                       
+>          \
+  788=a	       EXTERNAL
+  789=a	      
+  790=a	          STRING     ADX.PARM.2$
+  791=a	    
+  792=a	          INTEGER*2  ADX.FUNCTION%,                                     
+>          \
+  793=a	                     ADX.PARM.1%
+  794=a	    
+  795=a	          INTEGER*4  RETURN.CODE%                                       
+>          \
+  796=a	    
+  797=a	       END SUB     
+  798=a	    
+  799: 	           %INCLUDE CBEXT.J86
+  800=a	    \/******************************************************************
+>/
+  801=a	    \/*                                                                *
+>/
+  802=a	    \/* Carton Buffer FILE EXTERNAL FUNCTION DEFNS                     *
+>/
+  803=a	    \/*                                                                *
+>/
+  804=a	    \/* REFERENCE   : CBEXT.J86                                        *
+>/
+  805=a	    \/*                                                                *
+>/
+  806=a	    \/* VERSION A.          Neil Bennett.           27 DECEMBER 2006   *
+>/
+  807=a	    \/*                                                                *
+>/
+  808=a	    \/******************************************************************
+>/
+  809=a	    
+  810=a	       FUNCTION CB.SET EXTERNAL
+  811=a	          INTEGER*1 CB.SET
+  812=a	       END FUNCTION
+  813=a	    
+  814=a	       FUNCTION READ.CB EXTERNAL
+  815=a	          INTEGER*2 READ.CB
+  816=a	       END FUNCTION
+  817=a	    
+  818=a	       FUNCTION WRITE.CB EXTERNAL
+  819=a	          INTEGER*2 WRITE.CB
+  820=a	       END FUNCTION
+  821=a	    
+  822=a	    \/******************************************************************
+>/
+  823: 	        %INCLUDE CRTNEXT.J86
+  824=a	    \/******************************************************************
+>/
+  825=a	    \/*                                                                *
+>/
+  826=a	    \/* CARTON FILE EXTERNAL FUNCTION DEFNS                            *
+>/
+  827=a	    \/*                                                                *
+>/
+  828=a	    \/* REFERENCE   : CRTNEXT.J86                                      *
+>/
+  829=a	    \/*                                                                *
+>/
+  830=a	    \/* VERSION A.          Neil Bennett.           12 DECEMBER 2006   *
+>/
+  831=a	    \/*                                                                *
+>/
+  832=a	    \/******************************************************************
+>/
+  833=a	    
+  834=a	       FUNCTION CRTN.SET EXTERNAL
+  835=a	          INTEGER*1 CRTN.SET
+  836=a	       END FUNCTION
+  837=a	    
+  838=a	       FUNCTION READ.CRTN EXTERNAL
+  839=a	          INTEGER*2 READ.CRTN
+  840=a	       END FUNCTION
+  841=a	    
+  842=a	       FUNCTION WRITE.CRTN EXTERNAL
+  843=a	          INTEGER*2 WRITE.CRTN
+  844=a	       END FUNCTION
+  845=a	       
+  846=a	        FUNCTION DELETE.CRTN EXTERNAL
+  847=a	          INTEGER*2 DELETE.CRTN
+  848=a	       END FUNCTION
+  849=a	    
+  850=a	    
+  851=a	    \/******************************************************************
+>/
+  852: 	           
+  853: 	    \*******************************************************************
+>***********
+  854: 	    \***
+  855: 	    \***    Sub routine for writing the records
+  856: 	    \***
+  857: 	    \*******************************************************************
+>***********       
+  858: 	    
+  859: 	    SUB LOG.MESSAGE(F.MSG$)
+  860: 	    STRING F.MSG$
+  861: 	           
+  862: 	      ! IF UNPACK$(SUPPLIER$) = "117838" AND STATUS$ = "U" THEN BEGIN
+  863: 	            PRINT USING TEXT.FORMAT$ ; #CRTN.OUTPUT.SESS.NUM% ; F.MSG$
+  864: 	    
+  865: 	      ! ENDIF
+  866: 	    
+  867: 	    
+  868: 	    END SUB
+  869: 	    
+  870: 	    \*******************************************************************
+>***********
+  871: 	    \***
+  872: 	    \***    START.PROGRAM
+  873: 	    \***
+  874: 	    \*******************************************************************
+>***********       
+  875: 	    START.PROGRAM:
+  876: 	    
+  877: 	        ON ERROR GOTO ERROR.DETECTED
+  878: 	    
+  879: 	    
+  880: 	        RC% = CRTN.SET  
+  881: 	        RC% = BDCP.SET     
+  882: 	    
+  883: 	        TEXT.FORMAT$       = "&" 
+  884: 	        CRTN.OUTPUT.FILE$ = "C:\READCRTN.OUT"
+  885: 	        CRTN.OUTPUT.NUM%  = 150
+  886: 	        BDCP.OUTPUT.FILE$ = "C:\BDCP.OUT"
+  887: 	        BDCP.OUTPUT.SESS% = 200  
+  888: 	        GOSUB ALLOCATE.SESSION.NUMBERS
+  889: 	        
+  890: 	        ERR.FILE.NAME$ = "C:\READCRTN.ERR"
+  891: 	        ERR.SESS.NUM% = 250
+  892: 	    
+  893: 	        CREATE CRTN.OUTPUT.FILE$ AS CRTN.OUTPUT.SESS.NUM%
+  894: 	        CREATE BDCP.OUTPUT.FILE$ AS BDCP.OUTPUT.SESS%
+  895: 	        CREATE ERR.FILE.NAME$ AS ERR.SESS.NUM%
+  896: 	    
+  897: 	        GOSUB READ.CRTN.FILE
+  898: 	        GOSUB READ.BDCP.FILE
+  899: 	    
+  900: 	        PRINT  TIME.STAMP$(2) + "-Found " + STR$(COUNT%) + " Unbooked BO
+>OTS.COM Orders" 
+  901: 	        PRINT  TIME.STAMP$(2) + "-Found " + STR$(CONFLICT%) + " Conflict
+>ing BOOTS.COM Orders" 
+  902: 	    
+  903: 	        IF CONFLICT% > 0 THEN BEGIN
+  904: 	           PRINT  TIME.STAMP$(2) + "-Fixed " + STR$(CONFLICT%) + " Confl
+>icting BOOTS.COM Orders" 
+  905: 	        ENDIF
+  906: 	    
+  907: 	        IF  ERR.CNT% = 0 THEN BEGIN  
+  908: 	            PRINT  TIME.STAMP$(2) + "-Application Completed Successfully
+> "  
+  909: 	        ENDIF ELSE BEGIN
+  910: 	           PRINT #ERR.SESS.NUM% ; TIME.STAMP$(2) + "Program ended with e
+>rror"  
+  911: 	        ENDIF
+  912: 	        
+  913: 	        GOSUB TERMINATION
+  914: 	    
+  915: 	    STOP
+  916: 	    
+  917: 	    \*******************************************************************
+>***********
+  918: 	    \***
+  919: 	    \***    ALLOCATE.SESSION.NUMBERS
+  920: 	    \***         
+  921: 	    \***
+  922: 	    \*******************************************************************
+>***********
+  923: 	    
+  924: 	    ALLOCATE.SESSION.NUMBERS:   
+  925: 	    
+  926: 	         FUNCTION.FLAG$ EQ "O"
+  927: 	    
+  928: 	         PASSED.INTEGER% EQ CRTN.REPORT.NUM%
+  929: 	         PASSED.STRING$ EQ CRTN.FILE.NAME$
+  930: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+  931: 	         CRTN.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+  932: 	    
+  933: 	         PASSED.INTEGER% EQ BDCP.REPORT.NUM%
+  934: 	         PASSED.STRING$ EQ BDCP.FILE.NAME$
+  935: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+  936: 	         BDCP.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+  937: 	    
+  938: 	         PASSED.INTEGER% EQ CRTN.OUTPUT.NUM%
+  939: 	         PASSED.STRING$ EQ CRTN.OUTPUT.FILE$
+  940: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+  941: 	         CRTN.OUTPUT.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+  942: 	    
+  943: 	         PASSED.INTEGER% EQ BDCP.OUTPUT.SESS%
+  944: 	         PASSED.STRING$ EQ BDCP.OUTPUT.FILE$
+  945: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+  946: 	         BDCP.OUTPUT.SESS% EQ F20.INTEGER.FILE.NO%
+  947: 	    
+  948: 	         PASSED.INTEGER% EQ ERR.SESS.NUM%
+  949: 	         PASSED.STRING$ EQ ERR.FILE.NAME$
+  950: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+  951: 	         ERR.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+  952: 	    
+  953: 	    
+  954: 	    RETURN
+  955: 	    
+  956: 	    \*******************************************************************
+>***********
+  957: 	    \***
+  958: 	    \***    CALL.F20.SESS.NUM.UTILITY
+  959: 	    \***    Perform CALL.F20.SESS.NUM.UTILITY to allocate file session n
+>umbers
+  960: 	    \***    for all files referenced by the program.
+  961: 	    \***
+  962: 	    \*******************************************************************
+>***********
+  963: 	    CALL.F20.SESS.NUM.UTILITY: 
+  964: 	            
+  965: 	             FILE.OPERATION$ = FUNCTION.FLAG$
+  966: 	             CURRENT.REPORT.NUM% = PASSED.INTEGER%
+  967: 	             RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,   
+>    \
+  968: 	                                     PASSED.STRING$)
+  969: 	             IF RC% <> 0 THEN GOTO ERROR.DETECTED
+  970: 	    
+  971: 	    RETURN
+  972: 	    
+  973: 	    \*******************************************************************
+>***********
+  974: 	    \***
+  975: 	    \***    READ.CRTN.FILE:
+  976: 	    \***    Reads CARTON.BIN file sequentially and dumps BOOTS.COM order
+> which has
+  977: 	    \***    status of un booked in to file C:READCRTN.OUT
+  978: 	    \***
+  979: 	    \*******************************************************************
+>***********
+  980: 	    
+  981: 	    READ.CRTN.FILE: 
+  982: 	     
+  983: 	          
+  984: 	         OPEN CRTN.FILE.NAME$ KEYED RECL CRTN.RECL% AS CRTN.SESS.NUM%
+  985: 	         CALL LOG.MESSAGE(TIME.STAMP$(2) + "  File opened")
+  986: 	         PRINT TIME.STAMP$(2) + "-Reading Carton file started"  
+  987: 	         CALL PROCESS.KEYED.FILE(CRTN.FILE.NAME$ , \ Sequential process 
+>of keyed file
+  988: 	                                   CRTN.REPORT.NUM%,\
+  989: 	                                    "N")
+  990: 	                               
+  991: 	        
+  992: 	    RETURN 
+  993: 	    
+  994: 	    \*******************************************************************
+>***********
+  995: 	    \***
+  996: 	    \***    READ.BDCP.FILE:
+  997: 	    \***    After reading CARTON.BIN file program dumps the records sequ
+>entially
+  998: 	    \***    in to C:/READCRTN.OUT which is BOOTS.COM and has an Un booke
+>d status
+  999: 	    \***    Now the program reads the file sequentially and starts compa
+>ring with 
+ 1000: 	    \***    the value of the same cartons in BDCP.BIN file. 
+ 1001: 	    \***    
+ 1002: 	    \***    
+ 1003: 	    \*******************************************************************
+>***********
+ 1004: 	    
+ 1005: 	    READ.BDCP.FILE:
+ 1006: 	    
+ 1007: 	         COUNT%    = 0     
+ 1008: 	         CONFLICT% = 0      
+ 1009: 	         OPEN CRTN.OUTPUT.FILE$ AS CRTN.OUTPUT.NUM% 
+ 1010: 	         PRINT TIME.STAMP$(2) + "-Checking Carton file for Unbooked Cart
+>ons"
+ 1011: 	         OPEN BDCP.FILE.NAME$ KEYED RECL BDCP.RECL% AS BDCP.SESS.NUM%
+ 1012: 	    
+ 1013: 	         WHILE EOF% = FALSE
+ 1014: 	    
+ 1015: 	             IF END #CRTN.OUTPUT.NUM% THEN CRTN.OUTPUT.ERROR
+ 1016: 	             READ #CRTN.OUTPUT.NUM% ; LINE.RECORD$ 
+ 1017: 	             
+ 1018: 	             BDCP.SUPPLIER$ = PACK$(LEFT$(LINE.RECORD$,6))
+ 1019: 	             BDCP.CARTON$   = PACK$(MID$(LINE.RECORD$,9,8))
+ 1020: 	             
+ 1021: 	             RC% = READ.BDCP
+ 1022: 	    
+ 1023: 	    
+ 1024: 	             WRITE #BDCP.OUTPUT.SESS%   ;                     \
+ 1025: 	                         UNPACK$(SUPPLIER$) +              \  7 bytes UP
+>D Supp + Carton
+ 1026: 	                   " " +  UNPACK$(BDCP.CARTON$) +          \
+ 1027: 	                   " " +  UNPACK$(BDCP.ORDER$) +           \  5 bytes UP
+>D Boots.com order number
+ 1028: 	                   " " +  UNPACK$(BDCP.EXPECT.DATE$) +     \  3 bytes UP
+>D Expected Delivery Date
+ 1029: 	                   " " +  BDCP.STATUS$        +            \  1 bytes AS
+>C Current status
+ 1030: 	                   " " +  BDCP.DEL.DATETIME$ +             \  6 bytes UP
+>D Delivery date/time
+ 1031: 	                   " " +  BDCP.DEL.EXPORTED$ +             \  1 bytes AS
+>C Y/N
+ 1032: 	                   " " +  BDCP.COL.DATETIME$ +             \  6 bytes UP
+>D Collected date/time
+ 1033: 	                   " " +  STR$(BDCP.COL.RC%) +             \  1 byte  IN
+>T 0 - Till, 1 - Controller
+ 1034: 	                   " " +  BDCP.COL.EXPORTED$ +             \  1 bytes AS
+>C Y/N
+ 1035: 	                   " " +  BDCP.RET.DATETIME$ +             \  6 bytes UP
+>D Returned date/time
+ 1036: 	                   " " +  BDCP.RET.EXPORTED$ +             \  1 bytes AS
+>C Y/N
+ 1037: 	                   " " +  BDCP.LST.DATETIME$ +             \  6 bytes UP
+>D Lost date/time
+ 1038: 	                   " " +  BDCP.LST.EXPORTED$ +             \  1 bytes AS
+>C Y/N
+ 1039: 	                   " " +  BDCP.FND.DATETIME$ +             \  6 bytes UP
+>D Found date/time
+ 1040: 	                   " " +  BDCP.FND.EXPORTED$               \  1 bytes AS
+>C Y/N
+ 1041: 	                 
+ 1042: 	    
+ 1043: 	                
+ 1044: 	    
+ 1045: 	    
+ 1046: 	          WEND
+ 1047: 	    
+ 1048: 	    RETURN
+ 1049: 	     
+ 1050: 	    CRTN.OUTPUT.ERROR:
+ 1051: 	    
+ 1052: 	    
+ 1053: 	        EOF% = TRUE        
+ 1054: 	    
+ 1055: 	    RETURN
+ 1056: 	     
+ 1057: 	    
+ 1058: 	    \*******************************************************************
+>***********
+ 1059: 	    \***
+ 1060: 	    \***    PROCESS.KEYED.RECORD$
+ 1061: 	    \***    Boots generic function to process a keyed file sequentially
+ 1062: 	    \***     
+ 1063: 	    \*******************************************************************
+>***********
+ 1064: 	    
+ 1065: 	    FUNCTION PROCESS.KEYED.RECORD$(RECORD$) PUBLIC
+ 1066: 	    
+ 1067: 	       
+ 1068: 	        STRING RECORD$,                                                \
+ 1069: 	               PROCESS.KEYED.RECORD$
+ 1070: 	               
+ 1071: 	        SUPPLIER$        = MID$(RECORD$,1,3)
+ 1072: 	        CARTON.NO$       = MID$(RECORD$,4,4)
+ 1073: 	        PARENT.ORDER$    = MID$(RECORD$,8,5)
+*** error		    ^8
+ 1074: 	        E.D.D$           = MID$(RECORD$,13,3)
+ 1075: 	           STATUS$          = MID$(RECORD$,16,1)
+ 1076: 	           DELV.DTIME$      = MID$(RECORD$,17,6)
+*** error		      ^8
+ 1077: 	        DELV.EXPORTED$   = MID$(RECORD$,23,1)
+*** error		     ^8
+ 1078: 	        COLLECTED.TIME$  = MID$(RECORD$,24,6)
+*** error		      ^8
+ 1079: 	        RSN.CODE$        = MID$(RECORD$,30,1)
+*** error		^8
+ 1080: 	        COLLECTION.EXP$  = MID$(RECORD$,31,1)
+*** error		      ^8
+ 1081: 	        RETURN.D.D$      = MID$(RECORD$,32,6)
+*** error		  ^8
+ 1082: 	        RETCENT.EXPRTD$  = MID$(RECORD$,38,1)
+*** error		      ^8
+ 1083: 	        LOST.DATE$       = MID$(RECORD$,39,6)
+*** error		 ^8
+ 1084: 	           LOST.EVENT$      = MID$(RECORD$,45,1)
+*** error		      ^8
+ 1085: 	           F.D.T$           = MID$(RECORD$,46,6)
+*** error		 ^8
+ 1086: 	           FOUND.EXPRTD$    = MID$(RECORD$,52,1)
+*** error			^8
+ 1087: 	           FILLER$          = MID$(RECORD$,53,49)
+ 1088: 	        FILLER$          = MID$(RECORD$,470,38)    
+ 1089: 	    
+ 1090: 	    
+ 1091: 	           CALL LOG.MESSAGE(UNPACK$(RECORD$))
+ 1092: 	    
+ 1093: 	    
+ 1094: 	        PROCESS.KEYED.RECORD$ = RECORD$
+ 1095: 	    
+ 1096: 	    END FUNCTION
+ 1097: 	    
+ 1098: 	    \*******************************************************************
+>***********
+ 1099: 	    \***
+ 1100: 	    \***    TERMINATION:
+ 1101: 	    \***    Process dellocation and close of files 
+ 1102: 	    \***     
+ 1103: 	    \***
+ 1104: 	    \*******************************************************************
+>***********
+ 1105: 	    
+ 1106: 	    TERMINATION:
+ 1107: 	    
+ 1108: 	      GOSUB DEALLOCATE.SESSION.NUMBERS
+ 1109: 	      GOSUB CLOSE.FILES
+ 1110: 	       
+ 1111: 	    STOP
+ 1112: 	    
+ 1113: 	    \*******************************************************************
+>***********
+ 1114: 	    \***
+ 1115: 	    \***    DEALLOCATE.SESSION.NUMBERS:
+ 1116: 	    \***     
+ 1117: 	    \***     
+ 1118: 	    \***
+ 1119: 	    \*******************************************************************
+>***********
+ 1120: 	    
+ 1121: 	    DEALLOCATE.SESSION.NUMBERS:
+ 1122: 	    
+ 1123: 	         FUNCTION.FLAG$ EQ "C"
+ 1124: 	    
+ 1125: 	         PASSED.INTEGER% EQ CRTN.REPORT.NUM%
+ 1126: 	         PASSED.STRING$ EQ CRTN.FILE.NAME$
+ 1127: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+ 1128: 	         CRTN.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+ 1129: 	    
+ 1130: 	         PASSED.INTEGER% EQ BDCP.REPORT.NUM%
+ 1131: 	         PASSED.STRING$ EQ BDCP.FILE.NAME$
+ 1132: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+ 1133: 	         BDCP.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+ 1134: 	    
+ 1135: 	         PASSED.INTEGER% EQ CRTN.OUTPUT.NUM%
+ 1136: 	         PASSED.STRING$ EQ CRTN.OUTPUT.FILE$
+ 1137: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+ 1138: 	         CRTN.OUTPUT.SESS.NUM% EQ F20.INTEGER.FILE.NO% 
+ 1139: 	    
+ 1140: 	         PASSED.INTEGER% EQ BDCP.OUTPUT.SESS%
+ 1141: 	         PASSED.STRING$ EQ BDCP.OUTPUT.FILE$
+ 1142: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+ 1143: 	         BDCP.OUTPUT.SESS% EQ F20.INTEGER.FILE.NO% 
+ 1144: 	    
+ 1145: 	         PASSED.INTEGER% EQ ERR.SESS.NUM%
+ 1146: 	         PASSED.STRING$ EQ ERR.FILE.NAME$
+ 1147: 	         GOSUB CALL.F20.SESS.NUM.UTILITY
+ 1148: 	         ERR.SESS.NUM% EQ F20.INTEGER.FILE.NO% 
+ 1149: 	    
+ 1150: 	    RETURN
+ 1151: 	    
+ 1152: 	    \*******************************************************************
+>***********
+ 1153: 	    \***
+ 1154: 	    \***    CLOSE.FILES:
+ 1155: 	    \***    
+ 1156: 	    \***
+ 1157: 	    \*******************************************************************
+>***********
+ 1158: 	    
+ 1159: 	    CLOSE.FILES:
+ 1160: 	    
+ 1161: 	         CLOSE CRTN.SESS.NUM%
+ 1162: 	         CLOSE BDCP.SESS.NUM%
+ 1163: 	         CLOSE CRTN.OUTPUT.SESS.NUM%
+ 1164: 	         CLOSE BDCP.OUTPUT.SESS% 
+ 1165: 	         CLOSE ERR.SESS.NUM%
+ 1166: 	    
+ 1167: 	    RETURN
+ 1168: 	    \*******************************************************************
+>***********
+ 1169: 	    \***
+ 1170: 	    \***    FILE.ERROR:
+ 1171: 	    \***     
+ 1172: 	    \***     
+ 1173: 	    \***
+ 1174: 	    \*******************************************************************
+>***********
+ 1175: 	    
+ 1176: 	    FILE.ERROR:
+ 1177: 	    
+ 1178: 	    
+ 1179: 	              VAR.STRING.1$ = FILE.OPERATION$                     +     
+>     \
+ 1180: 	                    CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +      
+>    \
+ 1181: 	                    CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +      
+>    \
+ 1182: 	                    CURRENT.CODE$
+ 1183: 	             VAR.STRING.2$ = "READCRTN"
+ 1184: 	             MESSAGE.NO%   = 0
+ 1185: 	             EVENT.NO%     = 106
+ 1186: 	    
+ 1187: 	             RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,           
+>    \
+ 1188: 	                          VAR.STRING.2$,EVENT.NO%)
+ 1189: 	    
+ 1190: 	             GOTO TERMINATION
+ 1191: 	    
+ 1192: 	    \*******************************************************************
+>************
+ 1193: 	    \***
+ 1194: 	    \***    ERROR.DETECTED:
+ 1195: 	    \***    
+ 1196: 	    \***     
+ 1197: 	    \***
+ 1198: 	    \*******************************************************************
+>***********
+ 1199: 	    
+ 1200: 	    ERROR.DETECTED:
+ 1201: 	    
+ 1202: 	             ERR.CNT% = ERR.CNT% + 1
+ 1203: 	    
+ 1204: 	             IF ERR = "OE" AND  ERRF% = CRTN.SESS.NUM% THEN BEGIN
+ 1205: 	    
+ 1206: 	                 PRINT "CARTON File is missing"
+ 1207: 	    
+ 1208: 	             ENDIF
+ 1209: 	    
+ 1210: 	            IF ERR = "OE" AND  ERRF% = BDCP.SESS.NUM% THEN BEGIN
+ 1211: 	    
+ 1212: 	                PRINT "BDCP File is missing - Program Ending"
+ 1213: 	                 ENDIF
+ 1214: 	    
+ 1215: 	             PRINT #ERR.SESS.NUM%; "An Error Occurred "
+ 1216: 	             PRINT #ERR.SESS.NUM%; "Fatal Error:" + ERR
+ 1217: 	             PRINT #ERR.SESS.NUM%; "Session Number: " + STR$(ERRF%)
+ 1218: 	             PRINT #ERR.SESS.NUM%; "Line Number:" + STR$(ERRL)
+ 1219: 	    
+ 1220: 	    GOTO FILE.ERROR
+ 1221: 	    
+ 1222: 	    
+ 1223: 	    END
+ 1224: 	    
+ 1225: 	    
+ 1226: 	     
+ 1227: 	    
+ 1228: 	     
+End of Compilation

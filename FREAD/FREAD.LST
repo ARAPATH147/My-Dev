@@ -1,0 +1,1908 @@
+   1: 0003: \***********************************************************************
+   2: 0003: \*
+   3: 0003: \* Program: FREAD
+   4: 0003: \*
+   5: 0003: \* FREAD utility helps the user to read all types of files
+   6: 0003: \* Sequential, Direct and Keyed Files
+   7: 0003: \*
+   8: 0003: \* Version B               Sreemol Mini                      25 MAY 2017
+   9: 0003: \*   To change FREAD to a screen program
+  10: 0003: \*
+  11: 0003: \***********************************************************************
+  12: 0003: 
+  13: 0003: %INCLUDE PSBF20G.J86        ! Session number utility
+  14: 0003: REM\
+  15: 0003: \*******************************************************************************
+  16: 0003: \*******************************************************************************
+  17: 0003: \***
+  18: 0003: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+  19: 0003: \***
+  20: 0003: \***                       REFERENCE     : PSBF20G.J86
+  21: 0003: \*** 
+  22: 0003: \***     Version A              Bruce Scrive                   5th May 1988   
+  23: 0003: \*** 
+  24: 0003: \***     Version B              Robert Cowey                   7th May 1991
+  25: 0003: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+  26: 0003: \***     to two byte integer.
+  27: 0003: \***
+  28: 0003: \***     Version D              Andrew Wedgeworth             1st July 1992
+  29: 0003: \***     F20.RETURN.CODE% removed as it is no longer required.
+  30: 0003: \***
+  31: 0003: \*******************************************************************************
+  32: 0003: \*******************************************************************************
+  33: 0003: 
+  34: 0003:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+  35: 0003:                        F20.STRING.FILE.NO$,                            \
+  36: 0003:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+  37: 0003:                        SESS.NUM.TABLE$(1)
+  38: 0003: 
+  39: 0003:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+  40: 0003: 
+  41: 0003:       ! 1 line deleted from here                                       ! DAW 
+  42: 0003: 
+  43: 0003: %INCLUDE PSBF39G.J86        ! Display Manager                           !BSM
+  44: 0003: !******************************************************************************
+  45: 0003: !******************************************************************************
+  46: 0003: !***
+  47: 0003: !***            PROGRAM         :       PSBF39G.J86
+  48: 0003: !***
+  49: 0003: !***            DESCRIPTION     :       DISPLAY MANAGER INTERFACE
+  50: 0003: !***
+  51: 0003: !***            AUTHOR          :       Stuart William McConnachie
+  52: 0003: !***            DATE WRITTEN    :       September 2000
+  53: 0003: !***
+  54: 0003: !***        Provides a much needed and easier to use interface to
+  55: 0003: !***        IBM Display Manager.
+  56: 0003: !***
+  57: 0003: !***        Saves the user having to set up, highlight, tab between and
+  58: 0003: !***        validate fields.  Also handles the help screens and conversion
+  59: 0003: !***        of date fields to external/internal format.
+  60: 0003: !***
+  61: 0003: !******************************************************************************
+  62: 0003: !******************************************************************************
+  63: 0003:     
+  64: 0003:     STRING GLOBAL       MESSAGE$(1)
+  65: 0003:     STRING GLOBAL       VALID$(1)
+  66: 0003:     STRING GLOBAL       VISIBLE$(1)
+  67: 0003:     STRING GLOBAL       FIELD$(1)
+  68: 0003:     STRING GLOBAL       TITLE$
+  69: 0003: 
+  70: 0003:     INTEGER*2 GLOBAL    DM.SCREEN%
+  71: 0003:     INTEGER*2 GLOBAL    DM.FIELD%
+  72: 0003:     
+  73: 0003:     INTEGER*2 GLOBAL    HOME.KEY%
+  74: 0003:     INTEGER*2 GLOBAL    END.KEY%
+  75: 0003:     INTEGER*2 GLOBAL    PGUP.KEY%
+  76: 0003:     INTEGER*2 GLOBAL    PGDN.KEY%
+  77: 0003:     INTEGER*2 GLOBAL    TAB.KEY%
+  78: 0003:     INTEGER*2 GLOBAL    BTAB.KEY%
+  79: 0003:     INTEGER*2 GLOBAL    UP.KEY%
+  80: 0003:     INTEGER*2 GLOBAL    DOWN.KEY%
+  81: 0003:     INTEGER*2 GLOBAL    ESC.KEY%
+  82: 0003:     INTEGER*2 GLOBAL    ENTER.KEY%
+  83: 0003:     INTEGER*2 GLOBAL    INS.KEY%
+  84: 0003:     INTEGER*2 GLOBAL    PREV.KEY%
+  85: 0003:     INTEGER*2 GLOBAL    NEXT.KEY%
+  86: 0003:         
+  87: 0003:     INTEGER*2 GLOBAL    F1.KEY%
+  88: 0003:     INTEGER*2 GLOBAL    F2.KEY%
+  89: 0003:     INTEGER*2 GLOBAL    F3.KEY%
+  90: 0003:     INTEGER*2 GLOBAL    F4.KEY%
+  91: 0003:     INTEGER*2 GLOBAL    F5.KEY%
+  92: 0003:     INTEGER*2 GLOBAL    F6.KEY%
+  93: 0003:     INTEGER*2 GLOBAL    F7.KEY%
+  94: 0003:     INTEGER*2 GLOBAL    F8.KEY%
+  95: 0003:     INTEGER*2 GLOBAL    F9.KEY%
+  96: 0003:     INTEGER*2 GLOBAL    F10.KEY%
+  97: 0003:                 
+  98: 0003: !******************************************************************************
+  99: 0003: 
+ 100: 0003: 
+ 101: 0003: STRING GLOBAL               \                                           !BSM
+ 102: 0003:     MODULE.NUMBER$          ! Module number                             !BSM
+ 103: 0003: 
+ 104: 0003: STRING                      \
+ 105: 0003:     FREAD.RECORD$,          \
+ 106: 0003:     FIELD.LEN$,             \
+ 107: 0003:     RECORD$,                \
+ 108: 0003:     FIELD.TYPE.ARRAY$(1),   \
+ 109: 0003:     FINAL.FIELD.VALUE$,     \
+ 110: 0003:     FIELD.VALUE$,           \
+ 111: 0003:     FIELD.STRING$,          \                                           !BSM
+ 112: 0003:     WRITE.FORM$,            \                                           !BSM
+ 113: 0003:     INPUT.FILE.NAME$,       \
+ 114: 0003:     FREAD.FILE.NAME$,       \
+ 115: 0003:     OUTPUT.FILE.NAME$,      \
+ 116: 0003:     NO.OF.FIELDS$,          \                                           !BSM
+ 117: 0003:     FUNCTION.FLAG$,         \
+ 118: 0003:     FIELD.NAME$,            \
+ 119: 0003:     FIELD.TYPE$,            \
+ 120: 0003:     FINAL.FIELD.NAMES$,     \
+ 121: 0003:     FORM$,                  \
+ 122: 0003:     FILE.OPERATION$,        \
+ 123: 0003:     FILE.TYPE$,             \
+ 124: 0003:     FILES.TYPE$,            \                                           !BSM
+ 125: 0003:     FILE.RECL$,             \
+ 126: 0003:     FIELD.NOS$,             \
+ 127: 0003:     ERROR$,                 \
+ 128: 0003:     FILE.NAME$,             \
+ 129: 0003:     RECORD.LENGTH$,         \                                           !BSM
+ 130: 0003:     FLD$,                   \                                           !BSM
+ 131: 0003:     TEMP.FORM$,             \
+ 132: 0003:     CRLF$,                  \
+ 133: 0003:     INPUT.FILE$,            \                                           !BSM
+ 134: 0003:     DM.INPUT.FILE$,         \                                           !BSM
+ 135: 0003:     DM.FILE.TYPE$,          \                                           !BSM
+ 136: 0003:     DM.RECORD.LENGTH$,      \                                           !BSM
+ 137: 0003:     DM.NO.OF.FIELDS$,       \                                           !BSM
+ 138: 0003:     DM.FIELD.NAME$,         \                                           !BSM
+ 139: 0003:     DM.FIELD.TYPE$                                                      !BSM
+ 140: 0003: 
+ 141: 0003: INTEGER*1                   \
+ 142: 0003:     EOF,                    \
+ 143: 0003:     FREAD.OPEN.FLAG,        \
+ 144: 0003:     OUTPUT.FILE.OPEN.FLAG,  \
+ 145: 0003:     FREAD.RECORD.PRESENT,   \
+ 146: 0003:     FREAD.SESS.NUM.FLAG,    \
+ 147: 0003:     OUTPUT.SESS.NUM.FLAG,   \
+ 148: 0003:     FILE.OPEN.FLAG,         \
+ 149: 0003:     FILE.EXIST.FLAG,        \                                           !BSM
+ 150: 0003:     FILE.SESS.NUM.FLAG,     \
+ 151: 0003:     FALSE,                  \
+ 152: 0003:     TRUE,                   \
+ 153: 0003:     INVALID.TYPE,           \                                           !BSM
+ 154: 0003:     INVALID,                \                                           !BSM
+ 155: 0003:     READ.FILE.NAME,         \
+ 156: 0003:     READ.FREAD.FILE.NAME
+ 157: 0003: 
+ 158: 0003: INTEGER*2                   \
+ 159: 0003:     FIELD.OFFSET%,          \
+ 160: 0003:     DM.OFFSET%,             \                                           !BSM
+ 161: 0003:     FILE.LENGTH%,           \                                           !BSM
+ 162: 0003:     FREAD.REPORT.NUM%,      \
+ 163: 0003:     OUTPUT.FILE.REPORT.NUM%,\
+ 164: 0003:     FREAD.SESS.NUM%,        \
+ 165: 0003:     SLASH.POSITION%,        \                                           !BSM
+ 166: 0003:     OUTPUT.FILE.SESS.NUM%,  \
+ 167: 0003:     FILE.REPORT.NUM%,       \
+ 168: 0003:     FILE.SESS.NUM%,         \
+ 169: 0003:     COUNTER%,               \
+ 170: 0003:     VALID%,                 \                                           !BSM
+ 171: 0003:     FIELD.COUNT%,           \                                           !BSM
+ 172: 0003:     CURRENT.REPORT.NUM%, A%,B%,C%,D%,\
+ 173: 0003:     RET.KEY%,               \                                           !BSM
+ 174: 0003:     START.FIELD%                                                        !BSM
+ 175: 0003: 
+ 176: 0003: INTEGER*4                   \
+ 177: 0003:     LOOP%,                  \
+ 178: 0003:     FIELD.NOS%,             \
+ 179: 0003:     TEMP.OFFSET%,           \
+ 180: 0003:     RECORD.NOS%,            \
+ 181: 0003:     COUNT%
+ 182: 0003: 
+ 183: 0003: %INCLUDE QXLFUNC2.J86                                                   !BSM
+ 184: 0003: \/* TIME STAMP BLOCK **********************************************
+ 185: 0003: \*PROM  PVEJ QXLFUNC2 J86      02/09/98 07:45:15 PIDBLD   BVEJ IR35895
+ 186: 0003: \*RTIME PVEJ QXLFUNC2 J86      02/09/98 07:45:15 PIDBLD   BVEJ IR35895
+ 187: 0003: \*PROM  BVEJ QXLFUNC2 J86      08/21/97 17:30:22 PIDBLD   MVEJ IR35895
+ 188: 0003: \*RTIME BVEJ QXLFUNC2 J86      08/21/97 17:30:22 PIDBLD   MVEJ IR35895
+ 189: 0003: \*LIB   MVEJ QXLFUNC2 J86      07/14/97 11:21:43 EDJRAL   *    IR35895
+ 190: 0003: \*PROM  PVEJ QXLFUNC2 J86      04/02/97 08:06:12 PIDBLD   BVEJ IR34352
+ 191: 0003: \*RTIME PVEJ QXLFUNC2 J86      04/02/97 08:06:12 PIDBLD   BVEJ IR34352
+ 192: 0003: \*PROM  BVEJ QXLFUNC2 J86      03/10/97 17:18:53 PIDBLD3  MVEJ IR34352
+ 193: 0003: \*RTIME BVEJ QXLFUNC2 J86      03/10/97 17:18:54 PIDBLD3  MVEJ IR34352
+ 194: 0003: \*LIB   MVEJ QXLFUNC2 J86      03/04/97 15:48:13 EDJRAL   *    IR34352
+ 195: 0003: \*LIB   MVEJ QXLFUNC2 J86      02/14/97 16:00:43 EDJRAL   *    REASONAR
+ 196: 0003: \** END OF TIME STAMP BLOCK **************************************/
+ 197: 0003: !***********************************************************************
+ 198: 0003: !       DEV IR35895 -
+ 199: 0003: !                     970616 This include file does not need reference to
+ 200: 0003: !                            EDJDIR routines
+ 201: 0003: !***********************************************************************
+ 202: 0003: 
+ 203: 0003: !*****************************************************************
+ 204: 0003: !
+ 205: 0003: !     FileCreateDate
+ 206: 0003: !
+ 207: 0003: !        Return date file was created in 8 byte string: YYYYMMDD
+ 208: 0003: !        Return Null String if File does not exist
+ 209: 0003: !
+ 210: 0003: !*****************************************************************
+ 211: 0003: FUNCTION FileCreateDate(FileName) EXTERNAL
+ 212: 0003:          String FileCreateDate, FileName
+ 213: 0003: FEND
+ 214: 0003: !*****************************************************************
+ 215: 0003: !
+ 216: 0003: !     ?Exist
+ 217: 0003: !            Returns -1 if file exists
+ 218: 0003: !                     0 if file does not exist
+ 219: 0003: !
+ 220: 0003: !*****************************************************************
+ 221: 0003: FUNCTION ?Exist(FileName) EXTERNAL
+ 222: 0003:          Integer*1 ?Exist
+ 223: 0003:          String    FileName
+ 224: 0003: FEND
+ 225: 0003: FUNCTION EscTime         EXTERNAL
+ 226: 0003:          STRING EscTime
+ 227: 0003: FEND
+ 228: 0003: SUB file.list.nz$(file.name$, file.list$, name.count, name.length) EXTERNAL
+ 229: 0003:         STRING file.name$, file.list$
+ 230: 0003:         INTEGER*4 name.count
+ 231: 0003:         INTEGER*2 name.length
+ 232: 0003: END SUB
+ 233: 0003: !***************************
+ 234: 0003: !AIR35895
+ 235: 0003: !970616 Start
+ 236: 0003: !unction edjdir (file.name$,dtbl.buffer$,name.length) external
+ 237: 0003: !       integer*4       edjdir
+ 238: 0003: !       string          file.name$                      ! file name to start
+ 239: 0003: !       string          dtbl.buffer$                    ! must be initialized
+ 240: 0003: !       integer*2       name.length                     ! returned name length
+ 241: 0003: !nd function
+ 242: 0003: !970616 End
+ 243: 0003: !EIR35895
+ 244: 0003: !***************************
+ 245: 0003: SUB file.list.z$(file.name$, file.list$, name.count) EXTERNAL
+ 246: 0003:          STRING file.name$, file.list$
+ 247: 0003:         INTEGER*4 name.count
+ 248: 0003: END SUB
+ 249: 0003: !AIR35895
+ 250: 0003: !970616 Start
+ 251: 0003: !FUNCTION dated.list$(file.name$) EXTERNAL
+ 252: 0003: !        STRING   dated.list$, file.name$
+ 253: 0003: !
+ 254: 0003: !FEND
+ 255: 0003: !970616 End
+ 256: 0003: !EIR35895
+ 257: 0003: 
+ 258: 0003: %INCLUDE BTCMEM.J86
+ 259: 0003: !********************************************************************
+ 260: 0003: !***
+ 261: 0003: !***    INCLUDED CODE:  BTCMEM.J86
+ 262: 0003: !***    AUTHOR:         Stuart William McConnachie
+ 263: 0003: !***    DATE:           26th February 2006
+ 264: 0003: !***
+ 265: 0003: !********************************************************************
+ 266: 0003: !***
+ 267: 0003: !***    Controller CBASIC Memory Functions
+ 268: 0003: !***
+ 269: 0003: !********************************************************************
+ 270: 0003: 
+ 271: 0003: !Get a single byte integer from a string offset
+ 272: 0003: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 273: 0003:     STRING S$
+ 274: 0003:     INTEGER*2 P%
+ 275: 0003:     INTEGER*2 GETN1
+ 276: 0003: END FUNCTION
+ 277: 0003: 
+ 278: 0003: !Get a two byte integer from a string offset
+ 279: 0003: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 280: 0003:     STRING S$
+ 281: 0003:     INTEGER*2 P%
+ 282: 0003:     INTEGER*2 GETN2
+ 283: 0003: END FUNCTION
+ 284: 0003: 
+ 285: 0003: !Get a four byte integer from a string offset
+ 286: 0003: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 287: 0003:     STRING S$
+ 288: 0003:     INTEGER*2 P%
+ 289: 0003:     INTEGER*4 GETN4
+ 290: 0003: END FUNCTION
+ 291: 0003: 
+ 292: 0003: !Get a 10 byte CBASIC real from a string offset
+ 293: 0003: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 294: 0003:     STRING S$
+ 295: 0003:     INTEGER*2 P%
+ 296: 0003:     REAL GETR10
+ 297: 0003: END FUNCTION
+ 298: 0003: 
+ 299: 0003: !Put a single byte integer into a string at offset
+ 300: 0003: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 301: 0003:     STRING S$
+ 302: 0003:     INTEGER*2 P%
+ 303: 0003:     INTEGER*1 N%
+ 304: 0003:     INTEGER*1 PUTN1
+ 305: 0003: END FUNCTION
+ 306: 0003: 
+ 307: 0003: !Put a two byte integer into a string at offset
+ 308: 0003: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 309: 0003:     STRING S$
+ 310: 0003:     INTEGER*2 P%
+ 311: 0003:     INTEGER*2 N%
+ 312: 0003:     INTEGER*1 PUTN2
+ 313: 0003: END FUNCTION
+ 314: 0003: 
+ 315: 0003: !Put a four byte integer into a string at offset
+ 316: 0003: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 317: 0003:     STRING S$
+ 318: 0003:     INTEGER*2 P%
+ 319: 0003:     INTEGER*4 N%
+ 320: 0003:     INTEGER*1 PUTN4
+ 321: 0003: END FUNCTION
+ 322: 0003: 
+ 323: 0003: !Put a 10 byte CBASIC real into a string at offset
+ 324: 0003: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 325: 0003:     STRING S$
+ 326: 0003:     INTEGER*2 P%
+ 327: 0003:     REAL R
+ 328: 0003:     INTEGER*1 PUTR10
+ 329: 0003: END FUNCTION
+ 330: 0003: 
+ 331: 0003: !Peek a two byte integer from a memory address
+ 332: 0003: FUNCTION PEEKN2 (A%) EXTERNAL
+ 333: 0003:     INTEGER*4 A%
+ 334: 0003:     INTEGER*2 PEEKN2
+ 335: 0003: END FUNCTION
+ 336: 0003: 
+ 337: 0003: !Peek a four byte integer from a memory address
+ 338: 0003: FUNCTION PEEKN4 (A%) EXTERNAL
+ 339: 0003:     INTEGER*4 A%
+ 340: 0003:     INTEGER*4 PEEKN4
+ 341: 0003: END FUNCTION
+ 342: 0003: 
+ 343: 0003: !Peek a 10 byte CBASIC real from a memory address
+ 344: 0003: FUNCTION PEEKR10 (A%) EXTERNAL
+ 345: 0003:     INTEGER*4 A%
+ 346: 0003:     REAL PEEKR10
+ 347: 0003: END FUNCTION
+ 348: 0003: 
+ 349: 0003: !Poke a two byte integer to a memory address
+ 350: 0003: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 351: 0003:     INTEGER*4 A%
+ 352: 0003:     INTEGER*2 N%
+ 353: 0003:     INTEGER*1 POKEN2
+ 354: 0003: END FUNCTION
+ 355: 0003: 
+ 356: 0003: !Poke a four byte integer to a memory address
+ 357: 0003: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 358: 0003:     INTEGER*4 A%
+ 359: 0003:     INTEGER*4 N%
+ 360: 0003:     INTEGER*1 POKEN4
+ 361: 0003: END FUNCTION
+ 362: 0003: 
+ 363: 0003: !Poke a 10 byte CBASIC real to a memory address
+ 364: 0003: FUNCTION POKER10 (A%, R) EXTERNAL
+ 365: 0003:     INTEGER*4 A%
+ 366: 0003:     REAL R
+ 367: 0003:     INTEGER*1 POKER10
+ 368: 0003: END FUNCTION
+ 369: 0003: 
+ 370: 0003: %INCLUDE PSBF20E.J86        ! Session number utility
+ 371: 0003: REM\
+ 372: 0003: \*******************************************************************************
+ 373: 0003: \*******************************************************************************
+ 374: 0003: \***
+ 375: 0003: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 376: 0003: \***
+ 377: 0003: \***                  REFERENCE     : PSBF20E.J86
+ 378: 0003: \***
+ 379: 0003: \***     VERSION C            Janet Smith                13th May 1992
+ 380: 0003: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 381: 0003: \***     128 files.
+ 382: 0003: \***
+ 383: 0003: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 384: 0003: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 385: 0003: \***     as a variable.  This new variable contains the function's return
+ 386: 0003: \***     code.
+ 387: 0003: \***
+ 388: 0003: \*******************************************************************************
+ 389: 0003: \*******************************************************************************
+ 390: 0003: 
+ 391: 0003:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 392: 0003:                               PASSED.INTEGER%,                         \
+ 393: 0003:                               PASSED.STRING$)                          \
+ 394: 0003:    EXTERNAL
+ 395: 0003: 
+ 396: 0003:    STRING    FUNCTION.FLAG$,                                           \
+ 397: 0003:              PASSED.STRING$
+ 398: 0003:    ! 3 variables removed from here                                     ! CAW
+ 399: 0003: 
+ 400: 0003: 
+ 401: 0003:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 402: 0003:              PASSED.INTEGER%				               ! CJAS
+ 403: 0003: 
+ 404: 0003:    END FUNCTION
+ 405: 0003: 
+ 406: 0003: %INCLUDE PSBF30E.J86
+ 407: 0003: \*****************************************************************************
+ 408: 0003: \*****************************************************************************
+ 409: 0003: \***
+ 410: 0003: \***                 EXTERNAL FUNCTION DEFINITION PSBF30
+ 411: 0003: \***
+ 412: 0003: \*****************************************************************************
+ 413: 0003: \*****************************************************************************
+ 414: 0003: 
+ 415: 0003: \*****************************************************************************
+ 416: 0003: \*****************************************************************************
+ 417: 0003: \***
+ 418: 0003: \***   Version 96A              Mark Walker                31st May 1995
+ 419: 0003: \***   Original version.
+ 420: 0003: \***
+ 421: 0003: \***   Version B                Andrew Wedgeworth          17th March 1997
+ 422: 0003: \***   Added READONLY$ variable.  This parameter may be used to specify 
+ 423: 0003: \***   whether the file is to be opened with the READONLY option.
+ 424: 0003: \***
+ 425: 0003: \*****************************************************************************
+ 426: 0003: \*****************************************************************************
+ 427: 0003:  
+ 428: 0003:        FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \ 
+ 429: 0003:                                    REPORT.NUM%,                        \  
+ 430: 0003:                                    READONLY$) EXTERNAL
+ 431: 0003: 
+ 432: 0003:        STRING FILE.NAME$,READONLY$
+ 433: 0003:        INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+ 434: 0003: 
+ 435: 0003:        END FUNCTION
+ 436: 0003: 
+ 437: 0003: %INCLUDE PSBF39E.J86        ! Display Manager                           !BSM
+ 438: 0003: !******************************************************************************
+ 439: 0003: !******************************************************************************
+ 440: 0003: !***
+ 441: 0003: !***            PROGRAM         :       PSBF39E.J86
+ 442: 0003: !***
+ 443: 0003: !***            DESCRIPTION     :       DISPLAY MANAGER INTERFACE
+ 444: 0003: !***
+ 445: 0003: !***            AUTHOR          :       Stuart William McConnachie
+ 446: 0003: !***            DATE WRITTEN    :       September 2000
+ 447: 0003: !***
+ 448: 0003: !***        Provides a much needed and easier to use interface to
+ 449: 0003: !***        IBM Display Manager.
+ 450: 0003: !***
+ 451: 0003: !***        Saves the user having to set up, highlight, tab between and
+ 452: 0003: !***        validate fields.  Also handles the help screens and conversion
+ 453: 0003: !***        of date fields to external/internal format.
+ 454: 0003: !***
+ 455: 0003: !******************************************************************************
+ 456: 0003: !******************************************************************************
+ 457: 0003: 
+ 458: 0003: !******************************************************************************
+ 459: 0003: !   Initialises the display manager functions.
+ 460: 0003: !   You should call this from your program initialisation for screen programs.
+ 461: 0003: !   Note that the name of the display manager file is determined from the
+ 462: 0003: !   global variable MODULE.NUMBER$.  For example PSB1200 uses PSBD12.dat
+ 463: 0003: !   where the PSB and 12 have been derived from MODULE.NUMBER$.
+ 464: 0003: 
+ 465: 0003:     FUNCTION DM.INIT EXTERNAL
+ 466: 0003:         INTEGER*1   DM.INIT
+ 467: 0003:     END FUNCTION
+ 468: 0003: 
+ 469: 0003: !******************************************************************************
+ 470: 0003: !   Quits the display manager program and frees resources.
+ 471: 0003: !   You should call this from your program termination.
+ 472: 0003: 
+ 473: 0003:     FUNCTION DM.QUIT EXTERNAL
+ 474: 0003:         INTEGER*1   DM.QUIT
+ 475: 0003:     END FUNCTION
+ 476: 0003: 
+ 477: 0003: !******************************************************************************
+ 478: 0003: !   Initialises a particular screen from the current display manager file
+ 479: 0003: !   for display.  You supply the screen number, optional title message and
+ 480: 0003: !   the first and last help screens associated with the display.
+ 481: 0003: !   Once you have SHOWN a screen, you can use the remaining functions in
+ 482: 0003: !   this library to set field values, and actually retrieve input from the
+ 483: 0003: !   screen.  Note that showing a screen just displays it on the screen,
+ 484: 0003: !   you need to call PROCESS.SCREEN to actually get any user input.
+ 485: 0003: 
+ 486: 0003:     FUNCTION DM.SHOW.SCREEN (SCREEN%, TITLE$, FIRST.HELP%, LAST.HELP%) EXTERNAL
+ 487: 0003:         INTEGER*1   DM.SHOW.SCREEN
+ 488: 0003:         INTEGER*2   SCREEN%
+ 489: 0003:         STRING      TITLE$
+ 490: 0003:         INTEGER*2   FIRST.HELP%
+ 491: 0003:         INTEGER*2   LAST.HELP%
+ 492: 0003:     END FUNCTION
+ 493: 0003: 
+ 494: 0003: !******************************************************************************
+ 495: 0003: !   Sets a function key message to visible.  Optionally sets the text on that
+ 496: 0003: !   key to the message string passed, if it is not null.
+ 497: 0003: !   Note you must have shown a screen first, and that the function key fields
+ 498: 0003: !   need to be defined in your display file with field IDs 241-250.
+ 499: 0003: 
+ 500: 0003:     FUNCTION DM.SHOW.FN.KEY (KEY.NUM%, MESSAGE$) EXTERNAL
+ 501: 0003:         INTEGER*1   DM.SHOW.FN.KEY
+ 502: 0003:         INTEGER*2   KEY.NUM%
+ 503: 0003:         STRING      MESSAGE$
+ 504: 0003:     END FUNCTION
+ 505: 0003: 
+ 506: 0003: !******************************************************************************
+ 507: 0003: !   Sets a function key message to invisible.
+ 508: 0003: !   Note you must have shown a screen first, and that the function key fields
+ 509: 0003: !   need to be defined in your display file with field IDs 241-250.
+ 510: 0003: 
+ 511: 0003:     FUNCTION DM.HIDE.FN.KEY (KEY.NUM%) EXTERNAL
+ 512: 0003:         INTEGER*1   DM.HIDE.FN.KEY
+ 513: 0003:         INTEGER*2   KEY.NUM%
+ 514: 0003:     END FUNCTION
+ 515: 0003: 
+ 516: 0003: !******************************************************************************
+ 517: 0003: !   LEGACY: Do not use in new programs, use DM.FN.VISIBLE instead which takes
+ 518: 0003: !   an infix notation expression, as opposed to reverse polish
+ 519: 0003: !   This definition has been commented out accordingly.  If you are
+ 520: 0003: !   recompiling an application, change to useing the new function.
+ 521: 0003: !
+ 522: 0003: !   FUNCTION DM.FN.KEY.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+ 523: 0003: !       INTEGER*1   DM.FN.KEY.VISIBILITY
+ 524: 0003: !       INTEGER*2   KEY.NUM%
+ 525: 0003: !       STRING      EXPR$
+ 526: 0003: !   END FUNCTION
+ 527: 0003: 
+ 528: 0003: !******************************************************************************
+ 529: 0003: !   Sets a runtine expression to determine if a function key is visible.
+ 530: 0003: !   This is the new version of the above which takes an infix notation EXPR$.
+ 531: 0003: !   Note you must have shown a screen first, and that the function key fields
+ 532: 0003: !   need to be defined in your display file with field IDs 241-250.
+ 533: 0003: 
+ 534: 0003:     FUNCTION DM.FN.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+ 535: 0003:         INTEGER*1   DM.FN.VISIBILITY
+ 536: 0003:         INTEGER*2   KEY.NUM%
+ 537: 0003:         STRING      EXPR$
+ 538: 0003:     END FUNCTION
+ 539: 0003: 
+ 540: 0003: !******************************************************************************
+ 541: 0003: !   Specifies that a given field contains a date.
+ 542: 0003: !   This means that the date will be displayed on screen in the system date
+ 543: 0003: !   format (e.g. DD/MM/YY or MM/DD/YY, but will be returned and set by your
+ 544: 0003: !   application in YYMMDD format.
+ 545: 0003: !   It does NOT mean that the field will be validated as a date, you must do
+ 546: 0003: !   that explicitly using the VALID$ string.
+ 547: 0003: 
+ 548: 0003:     FUNCTION DM.DATE.FIELD (FIELD%) EXTERNAL
+ 549: 0003:         INTEGER*1   DM.DATE.FIELD
+ 550: 0003:         INTEGER*2   FIELD%
+ 551: 0003:     END FUNCTION
+ 552: 0003: 
+ 553: 0003: !******************************************************************************
+ 554: 0003: !   Specifies that a given field will contain a time.
+ 555: 0003: !   This means that the time will be displayed on screen using the system time
+ 556: 0003: !   format.  e.g. HH:MM
+ 557: 0003: 
+ 558: 0003:     FUNCTION DM.TIME.FIELD (FIELD%) EXTERNAL                                !CSWM
+ 559: 0003:         INTEGER*1   DM.TIME.FIELD                                           !CSWM
+ 560: 0003:         INTEGER*2   FIELD%                                                  !CSWM
+ 561: 0003:     END FUNCTION                                                            !CSWM
+ 562: 0003: 
+ 563: 0003: !******************************************************************************
+ 564: 0003: !   Specifies that a given input field will be read only.
+ 565: 0003: !   This allows you to select an item from a list by highlighting it.
+ 566: 0003: 
+ 567: 0003:     FUNCTION DM.RO.FIELD (FIELD%) EXTERNAL                                  !ESWM
+ 568: 0003:         INTEGER*1   DM.RO.FIELD                                             !ESWM
+ 569: 0003:         INTEGER*2   FIELD%                                                  !ESWM
+ 570: 0003:     END FUNCTION                                                            !ESWM
+ 571: 0003: 
+ 572: 0003: !******************************************************************************
+ 573: 0003: !   Specifies that a given input field will be read write.
+ 574: 0003: !   Undoes the effect of DM.RO.FIELD.
+ 575: 0003: 
+ 576: 0003:     FUNCTION DM.RW.FIELD (FIELD%) EXTERNAL                                  !ESWM
+ 577: 0003:         INTEGER*1   DM.RW.FIELD                                             !ESWM
+ 578: 0003:         INTEGER*2   FIELD%                                                  !ESWM
+ 579: 0003:     END FUNCTION                                                            !ESWM
+ 580: 0003: 
+ 581: 0003: !******************************************************************************
+ 582: 0003: !   LEGACY: Do not use in new programs, use DM.STATUS instead which takes
+ 583: 0003: !   an infix notation expression, as opposed to reverse polish.
+ 584: 0003: !   This definition has been commented out accordingly.  If you are
+ 585: 0003: !   recompiling an application, change to useing the new function.
+ 586: 0003: !
+ 587: 0003: !   FUNCTION DM.DISPLAY.MESSAGE (MESSAGE$) EXTERNAL                         !DSWM
+ 588: 0003: !       INTEGER*1   DM.DISPLAY.MESSAGE                                      !DSWM
+ 589: 0003: !       STRING      MESSAGE$                                                !DSWM
+ 590: 0003: !   END FUNCTION                                                            !DSWM
+ 591: 0003: 
+ 592: 0003: !******************************************************************************
+ 593: 0003: !   Displays a message in the status line of the display.  Does not wait for
+ 594: 0003: !   input.  Use this function for display messages such as B251 Processing...
+ 595: 0003: !   You must have field 1 defined in your display manager file.
+ 596: 0003: !   This is the new version of the above which takes an infix notation MESSAGE$.
+ 597: 0003: 
+ 598: 0003:     FUNCTION DM.STATUS (MESSAGE$) EXTERNAL                                  !DSWM
+ 599: 0003:         INTEGER*1   DM.STATUS                                               !DSWM
+ 600: 0003:         STRING      MESSAGE$                                                !DSWM
+ 601: 0003:     END FUNCTION                                                            !DSWM
+ 602: 0003: 
+ 603: 0003: !******************************************************************************
+ 604: 0003: !   Waits for input in the invisible input field of the display.  Additionally
+ 605: 0003: !   displays a message prompting the user on the status line.
+ 606: 0003: !   You must have fields 1 and 240 defined in your display manager file.
+ 607: 0003: !   The message supplied should be in Reverse Polish form.
+ 608: 0003: !   The function returns the key value that ended the input.
+ 609: 0003: 
+ 610: 0003:     FUNCTION DM.INVISIBLE.INPUT (MESSAGE$) EXTERNAL
+ 611: 0003:         STRING      MESSAGE$
+ 612: 0003:         INTEGER*2   DM.INVISIBLE.INPUT
+ 613: 0003:     END FUNCTION
+ 614: 0003: 
+ 615: 0003: !******************************************************************************
+ 616: 0003: !   Gets the contents of the invisible field from the display.  This will
+ 617: 0003: !   allow you to get the Y or N answer that the user typed, for example.
+ 618: 0003: 
+ 619: 0003:     FUNCTION DM.INVISIBLE.FIELD EXTERNAL
+ 620: 0003:         STRING      DM.INVISIBLE.FIELD
+ 621: 0003:     END FUNCTION
+ 622: 0003: 
+ 623: 0003: !******************************************************************************
+ 624: 0003: !   Returns or sets the current field used for input on the current display.
+ 625: 0003: !   If NEW.FIELD% is zero, the function simply returns the current field.
+ 626: 0003: !   If NEW.FIELD% is non zero, the function sets the current field.
+ 627: 0003: 
+ 628: 0003:     FUNCTION DM.CURRENT.FIELD (NEW.FIELD%) EXTERNAL
+ 629: 0003:         INTEGER*2   DM.CURRENT.FIELD
+ 630: 0003:         INTEGER*2   NEW.FIELD%
+ 631: 0003:     END FUNCTION
+ 632: 0003: 
+ 633: 0003: !******************************************************************************
+ 634: 0003: !   Sets a key number as being a validation key.  When this key is used the
+ 635: 0003: !   function will handle the key in the same way as the ENTER key.  i.e. all
+ 636: 0003: !   the visible fields on in input form are check for validity, and the key
+ 637: 0003: !   press is only returned to the user if the form entries are valid.
+ 638: 0003: !   Use this function to add the PGUP.KEY% and PGDN.KEY% keys, for example.
+ 639: 0003: 
+ 640: 0003:     FUNCTION DM.VALIDATE.KEY (KEY%) EXTERNAL                                !BSWM
+ 641: 0003:         INTEGER*1   DM.VALIDATE.KEY                                         !BSWM
+ 642: 0003:         INTEGER*2   KEY%                                                    !BSWM
+ 643: 0003:     END FUNCTION                                                            !BSWM
+ 644: 0003: 
+ 645: 0003: !******************************************************************************
+ 646: 0003: !   Returns or sets the flag which says if the screen contents have been
+ 647: 0003: !   changed or not.  Use this function when you have multiple pages to a
+ 648: 0003: !   form, but want the user to be prompted to save any changes on exit.
+ 649: 0003: !   When called with FLAG% set 0 or -1, the function updates the current
+ 650: 0003: !   displays setting.  When called with any other value, the function simply
+ 651: 0003: !   returns the current setting and does not update it.
+ 652: 0003: 
+ 653: 0003:     FUNCTION DM.CHANGED.FLAG (FLAG%) EXTERNAL                               !BSWM
+ 654: 0003:         INTEGER*1   FLAG%                                                   !BSWM
+ 655: 0003:         INTEGER*1   DM.CHANGED.FLAG                                         !BSWM
+ 656: 0003:     END FUNCTION                                                            !BSWM
+ 657: 0003: 
+ 658: 0003: !******************************************************************************
+ 659: 0003: !   Sets the field tab order.  The tab order can be either:
+ 660: 0003: !   0 - The TAB order is defined by the fields position on the display,
+ 661: 0003: !       left to right then top to bottom of the display.
+ 662: 0003: !   1 - The TAB order is defined by the number order of the fields.  This is
+ 663: 0003: !       a new option which allows greater control over the field TAB order.
+ 664: 0003: !   -1  Returns the current setting without changing it.
+ 665: 0003: !   The default tab order is 0.  Once set, the TAB order is a global setting
+ 666: 0003: !   for the current and all future screens.
+ 667: 0003: 
+ 668: 0003:     FUNCTION DM.TAB.ORDER (ORDER%) EXTERNAL                                 !DSWM
+ 669: 0003:         INTEGER*1   ORDER%                                                  !DSWM
+ 670: 0003:         INTEGER*1   DM.TAB.ORDER                                            !DSWM
+ 671: 0003:     END FUNCTION                                                            !DSWM
+ 672: 0003: 
+ 673: 0003: !******************************************************************************
+ 674: 0003: !   This function actually processes user input on the currently shown form.
+ 675: 0003: !   The function returns when any unrecognised key terminates input in a
+ 676: 0003: !   field.  The keys which will do this are determined by the properties of
+ 677: 0003: !   the Display Manager fields on your form.  The function internally handles
+ 678: 0003: !   most of the form navigation keys (e.g. Tab, Back Tab, Home End) the
+ 679: 0003: !   rest are up to the user application.
+ 680: 0003: 
+ 681: 0003:     FUNCTION DM.PROCESS.SCREEN (FIRST.FIELD%, LAST.FIELD%, CONFIRM) EXTERNAL
+ 682: 0003:         INTEGER*2   DM.PROCESS.SCREEN
+ 683: 0003:         INTEGER*2   FIRST.FIELD%
+ 684: 0003:         INTEGER*2   LAST.FIELD%
+ 685: 0003:         INTEGER*1   CONFIRM
+ 686: 0003:     END FUNCTION
+ 687: 0003: 
+ 688: 0003: !******************************************************************************
+ 689: 0003: !   Associates a field on the current display with a given compile time
+ 690: 0003: !   variable.  This allows the varibale to be used in your program code
+ 691: 0003: !   AND be updated by the display manager fields in PROCESS.SCREEN.
+ 692: 0003: !
+ 693: 0003: !   NOTE: PLEASE BE VERY CAREFUL WITH THE THIRD PARAMETER TO THIS SUB
+ 694: 0003: !   Always use an absolute variable for VARIABLE$:
+ 695: 0003: !       CALL DM.NAME (2, "MY.VAR$", MY.VAR$)
+ 696: 0003: !   NEVER use a calcualted value. These forms are all ILLEGAL:
+ 697: 0003: !       CALL DM.NAME (2, "MY.VAR$", "1234")
+ 698: 0003: !       CALL DM.NAME (2, "MY.VAR$", STR$(MY.VAR%))
+ 699: 0003: !   Also, if you MUST pass in an array element, for example:
+ 700: 0003: !       CALL DM.NAME (2, "MY.VAR$", ARRAY.ELEMENT$(I%))
+ 701: 0003: !   then you must make sure you do not reDIM the array until you have finished
+ 702: 0003: !   displaying and processing the screen.
+ 703: 0003: 
+ 704: 0003:     SUB DM.NAME (FIELD%, NAME$, VARIABLE$) EXTERNAL                         !DSWM
+ 705: 0003:         INTEGER*2 FIELD%                                                    !DSWM
+ 706: 0003:         STRING NAME$                                                        !DSWM
+ 707: 0003:         STRING VARIABLE$                                                    !DSWM
+ 708: 0003:     END SUB                                                                 !DSWM
+ 709: 0003: 
+ 710: 0003: !******************************************************************************
+ 711: 0003: !   Returns the index of a field on the current screen, given its name.
+ 712: 0003: 
+ 713: 0003:     FUNCTION DM.INDEX (FIELD$) EXTERNAL                                     !DSWM
+ 714: 0003:         STRING FIELD$                                                       !DSWM
+ 715: 0003:         INTEGER*2 DM.INDEX                                                  !DSWM
+ 716: 0003:     END FUNCTION                                                            !DSWM
+ 717: 0003: 
+ 718: 0003: !******************************************************************************
+ 719: 0003: !   Sets the validation expression for a field on the display.  Exactly the
+ 720: 0003: !   same as setting the global VALID$ array yourself, except it is done
+ 721: 0003: !   via the fields name as assoicated via DM.NAME.FIELD and the expression
+ 722: 0003: !   is in standard infix notation.
+ 723: 0003: 
+ 724: 0003:     FUNCTION DM.VALID (FIELD$, VALID$) EXTERNAL                             !DSWM
+ 725: 0003:         STRING FIELD$                                                       !DSWM
+ 726: 0003:         STRING VALID$                                                       !DSWM
+ 727: 0003:         INTEGER*2 DM.VALID                                                  !DSWM
+ 728: 0003:     END FUNCTION                                                            !DSWM
+ 729: 0003: 
+ 730: 0003: !******************************************************************************
+ 731: 0003: !   Sets the message expression for a field on the display.  Exactly the
+ 732: 0003: !   same as setting the global MESSAGE$ array yourself, except it is done
+ 733: 0003: !   via the fields name as assoicated via DM.NAME.FIELD and the expression
+ 734: 0003: !   is in standard infix notation.
+ 735: 0003: 
+ 736: 0003:     FUNCTION DM.MESSAGE (FIELD$, MESSAGE$) EXTERNAL                         !DSWM
+ 737: 0003:         STRING FIELD$                                                       !DSWM
+ 738: 0003:         STRING MESSAGE$                                                     !DSWM
+ 739: 0003:         INTEGER*2 DM.MESSAGE                                                !DSWM
+ 740: 0003:     END FUNCTION                                                            !DSWM
+ 741: 0003: 
+ 742: 0003: !******************************************************************************
+ 743: 0003: !   Sets the field attributes for a field on the display. Exactly the
+ 744: 0003: !   same as using the SETF command yourself except that it is done by
+ 745: 0003: !   using the fields name as associated via the DM.NAME.FIELD.
+ 746: 0003: 
+ 747: 0003: SUB DM.FLD.ATT (FIELD$, VALUE$) EXTERNAL                                    !FNWB
+ 748: 0003:     STRING      FIELD$                                                      !FNWB
+ 749: 0003:     STRING      VALUE$                                                      !FNWB
+ 750: 0003: END SUB                                                                     !FNWB
+ 751: 0003: 
+ 752: 0003: !******************************************************************************
+ 753: 0003: !   Sets an input field to act as an output only field on the display. This
+ 754: 0003: !   allows setting input fields that contain headings etc. to be skipped by
+ 755: 0003: !   the cursor movement keys.
+ 756: 0003: 
+ 757: 0003: FUNCTION DM.OO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+ 758: 0003:     INTEGER*2   DM.OO.FIELD                                                 !FNWB
+ 759: 0003:     STRING      FIELD$                                                      !FNWB
+ 760: 0003: END FUNCTION                                                                !FNWB
+ 761: 0003: 
+ 762: 0003: !******************************************************************************
+ 763: 0003: !   Sets an input field back to an i/o field
+ 764: 0003: 
+ 765: 0003: FUNCTION DM.IO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+ 766: 0003:     INTEGER*2   DM.IO.FIELD                                                 !FNWB
+ 767: 0003:     STRING      FIELD$                                                      !FNWB
+ 768: 0003: END FUNCTION                                                                !FNWB
+ 769: 0003: 
+ 770: 0003: !******************************************************************************
+ 771: 0003: !   Sets the visibility expression for a field on the display.  Exactly the
+ 772: 0003: !   same as setting the global VISIBLE$ array yourself, except it is done
+ 773: 0003: !   via the fields name as assoicated via DM.NAME.FIELD and the expression
+ 774: 0003: !   is in standard infix notation.
+ 775: 0003: 
+ 776: 0003:     FUNCTION DM.VISIBLE (FIELD$, VISIBLE$) EXTERNAL                         !DSWM
+ 777: 0003:         STRING FIELD$                                                       !DSWM
+ 778: 0003:         STRING VISIBLE$                                                     !DSWM
+ 779: 0003:         INTEGER*2 DM.VISIBLE                                                !DSWM
+ 780: 0003:     END FUNCTION                                                            !DSWM
+ 781: 0003: 
+ 782: 0003: !******************************************************************************
+ 783: 0003: !   Sets an error message in field 1 of the display and moves the input
+ 784: 0003: !   focus to the offending line of the display.  Should be called from user
+ 785: 0003: !   validation code.  Equivalent of the following separate calls:
+ 786: 0003: !       CALL DM.CURRENT.FIELD%(DM.INDEX(FIELD$))
+ 787: 0003: !       FIELD$(1) = POLISH$(MESSAGE$)
+ 788: 0003: !   Can also be called with a null field name, in which case the cursor
+ 789: 0003: !   remains in the current input field, but the error is displayed.
+ 790: 0003: 
+ 791: 0003:     FUNCTION DM.FOCUS (FIELD$, MESSAGE$) EXTERNAL                           !DSWM
+ 792: 0003:         STRING FIELD$                                                       !DSWM
+ 793: 0003:         STRING MESSAGE$                                                     !DSWM
+ 794: 0003:         INTEGER*2 DM.FOCUS                                                  !DSWM
+ 795: 0003:     END FUNCTION                                                            !DSWM
+ 796: 0003: 
+ 797: 0003: !******************************************************************************
+ 798: 0003: 
+ 799: 0003: 
+ 800: 0003: 
+ 801: 0003: \***********************************************************************
+ 802: 0003: \*
+ 803: 0003: \* FUNC.PARSE.FIELD
+ 804: 0003: \*
+ 805: 0003: \**********************************************************************
+ 806: 0003: FUNCTION FUNC.PARSE.FIELD$
+ 807: 0027: 
+ 808: 0027:     STRING FUNC.PARSE.FIELD$
+ 809: 0027:     INTEGER*4 OFFSET%
+ 810: 0027: 
+ 811: 0027:     FUNC.PARSE.FIELD$ = "0"
+ 812: 003d:     OFFSET% = MATCH(";", FREAD.RECORD$, 1)
+ 813: 0064: 
+ 814: 0064:     IF OFFSET% <> 0 THEN BEGIN
+ 815: 007f:         FUNC.PARSE.FIELD$ = LEFT$(FREAD.RECORD$,OFFSET%-1)
+ 816: 00ae:         FREAD.RECORD$ = RIGHT$(FREAD.RECORD$,                          \
+ 817: 00ec:                                LEN(FREAD.RECORD$)-OFFSET%)
+ 818: 00ec:     ENDIF
+ 819: 00f4: 
+ 820: 00f4: END FUNCTION
+ 821: 010d: 
+ 822: 010d: \***********************************************************************!BSM
+ 823: 010d: \*                                                                      !BSM
+ 824: 010d: \* TRUNCATE.FIELD$                                                      !BSM
+ 825: 010d: \*                                                                      !BSM
+ 826: 010d: \***********************************************************************!BSM
+ 827: 010d:                                                                         !BSM
+ 828: 010d: FUNCTION TRUNCATE.FIELD$(DM.FIELD$)                                     !BSM
+ 829: 0136:     STRING TRUNCATE.FIELD$,DM.FIELD$                                    !BSM
+ 830: 0136:     TRUNCATE.FIELD$ = DM.FIELD$                                         !BSM
+ 831: 014e:     DM.OFFSET% = MATCH(" ",DM.FIELD$,1)                                 !BSM
+ 832: 016a:     IF DM.OFFSET% > 0 THEN BEGIN                                        !BSM
+ 833: 0179:         TRUNCATE.FIELD$ = LEFT$(DM.FIELD$,DM.OFFSET% - 1)               !BSM
+ 834: 019d:     ENDIF                                                               !BSM
+ 835: 01a5: END FUNCTION                                                            !BSM
+ 836: 01c3:                                                                         !BSM
+ 837: 01c3: \***********************************************************************
+ 838: 01c3: \*
+ 839: 01c3: \* FIELD.SPLIT
+ 840: 01c3: \*
+ 841: 01c3: \**********************************************************************
+ 842: 01c3: FUNCTION FUNC.FIELD.SPLIT
+ 843: 01e7: 
+ 844: 01e7:     FIELD.OFFSET% = 1
+ 845: 01f5: 
+ 846: 01f5:     FOR LOOP% = 1 TO FIELD.NOS%
+ 847: 020d: 
+ 848: 020d:         IF (LEFT$(FIELD.TYPE.ARRAY$(LOOP%),1) = "P") OR (LEFT$(FIELD.TYPE.ARRAY$(LOOP%),1) = "C") THEN BEGIN
+ 849: 02ab:             FIELD.LEN$ = RIGHT$(FIELD.TYPE.ARRAY$(LOOP%), LEN(FIELD.TYPE.ARRAY$(LOOP%))-1)
+ 850: 02fd: 
+ 851: 02fd:             FIELD.VALUE$ = MID$(RECORD$,FIELD.OFFSET%, VAL(FIELD.LEN$))
+ 852: 032f: 
+ 853: 032f:             IF LEFT$(FIELD.TYPE.ARRAY$(LOOP%),1) = "P" THEN BEGIN
+ 854: 0373:                 FIELD.VALUE$ = UNPACK$(FIELD.VALUE$)
+ 855: 0391:             ENDIF
+ 856: 0399: 
+ 857: 0399:             FIELD.OFFSET% = FIELD.OFFSET% + VAL(FIELD.LEN$)
+ 858: 03d5: 
+ 859: 03d5:         ENDIF ELSE IF FIELD.TYPE.ARRAY$(LOOP%) = "I1" THEN BEGIN
+ 860: 0402: 
+ 861: 0402:             FIELD.OFFSET% = FIELD.OFFSET% -1
+ 862: 040e:             FIELD.VALUE$ = STR$(GETN1(RECORD$, FIELD.OFFSET%))
+ 863: 043b:             FIELD.OFFSET% = FIELD.OFFSET% + 2
+ 864: 044b: 
+ 865: 044b:         ENDIF ELSE IF FIELD.TYPE.ARRAY$(LOOP%) = "I2" THEN BEGIN
+ 866: 0478: 
+ 867: 0478:             FIELD.OFFSET% = FIELD.OFFSET% -1
+ 868: 0484:             FIELD.VALUE$ = STR$(GETN2 (RECORD$, FIELD.OFFSET%))
+ 869: 04b1:             FIELD.OFFSET% = FIELD.OFFSET% + 3
+ 870: 04c0: 
+ 871: 04c0:         ENDIF ELSE IF FIELD.TYPE.ARRAY$(LOOP%) = "I4" THEN BEGIN
+ 872: 04ed: 
+ 873: 04ed:             FIELD.OFFSET% = FIELD.OFFSET% -1
+ 874: 04f9:             FIELD.VALUE$ = STR$(GETN4 (RECORD$, FIELD.OFFSET%))
+ 875: 0527:             FIELD.OFFSET% = FIELD.OFFSET% + 5
+ 876: 0534:         ENDIF
+ 877: 053c: 
+ 878: 053c:         IF LOOP% = 1 THEN BEGIN
+ 879: 0557:             FINAL.FIELD.VALUE$ = FIELD.VALUE$
+ 880: 0572:         ENDIF ELSE BEGIN
+ 881: 057a:             FINAL.FIELD.VALUE$ = FINAL.FIELD.VALUE$ + "," + FIELD.VALUE$
+ 882: 05a2:         ENDIF
+ 883: 05aa: 
+ 884: 05aa:     NEXT LOOP%
+ 885: 05d7: 
+ 886: 05d7:     FINAL.FIELD.VALUE$ = FINAL.FIELD.VALUE$ + CRLF$
+ 887: 05fb:     TEMP.FORM$ = "C" + STR$(LEN(FINAL.FIELD.VALUE$))
+ 888: 062e:     WRITE FORM TEMP.FORM$ ;# OUTPUT.FILE.SESS.NUM%; FINAL.FIELD.VALUE$
+ 889: 0656: 
+ 890: 0656: END FUNCTION
+ 891: 066a: 
+ 892: 066a: \**********************************************************************
+ 893: 066a: \*
+ 894: 066a: \* PROCESS.KEYED.RECORD$
+ 895: 066a: \*
+ 896: 066a: \**********************************************************************
+ 897: 066a: 
+ 898: 066a: FUNCTION PROCESS.KEYED.RECORD$(RECORD1$) PUBLIC
+ 899: 0693: 
+ 900: 0693:     STRING PROCESS.KEYED.RECORD$, RECORD1$
+ 901: 0693: 
+ 902: 0693:     RECORD$ = RECORD1$
+ 903: 06aa:     CALL FUNC.FIELD.SPLIT
+ 904: 06c4:     PROCESS.KEYED.RECORD$ = RECORD1$
+ 905: 06dc: 
+ 906: 06dc: END FUNCTION
+ 907: 06fa: 
+ 908: 06fa: \**********************************************************************
+ 909: 06fa: \**********************************************************************
+ 910: 06fa: \*                                                                    *
+ 911: 06fa: \*          S T A R T   O F   M A I N L I N E   C O D E               *
+ 912: 06fa: \*                                                                    *
+ 913: 06fa: \**********************************************************************
+ 914: 06fa: \**********************************************************************
+ 915: 06fa: 
+ 916: 06fa: ON ERROR GOTO ERROR.DETECTED
+ 917: 0729: 
+ 918: 0729:     GOSUB INITIALISATION
+ 919: 073b:     GOSUB MAIN.PROCESSING
+ 920: 074d:     GOSUB TERMINATION
+ 921: 075f: 
+ 922: 075f: 
+ 923: 075f: ! Stopping Program
+ 924: 075f: !------------------
+ 925: 075f: STOP.PROGRAM:
+ 926: 076f: STOP
+ 927: 077c: 
+ 928: 077c: \**********************************************************************
+ 929: 077c: \*
+ 930: 077c: \* INITIALISATION
+ 931: 077c: \* This sub-program initialises program variables,
+ 932: 077c: \* sets file open flags and allocate session numbers.
+ 933: 077c: \*
+ 934: 077c: \**********************************************************************
+ 935: 077c: INITIALISATION:
+ 936: 078c: 
+ 937: 078c:     !INPUT.FILE.NAME$ = COMMAND$                                        !BSM
+ 938: 078c:     MODULE.NUMBER$ = "FRE01"                   !Current module          !BSM
+ 939: 07a3: 
+ 940: 07a3:    !! Getting the file name from the user                               !BSM
+ 941: 07a3:    !!------------------------------------                               !BSM
+ 942: 07a3:    ! IF INPUT.FILE.NAME$ = "" THEN BEGIN                                !BSM
+ 943: 07a3:    !     GOSUB FREAD.HELP                                               !BSM
+ 944: 07a3:    ! ENDIF
+ 945: 07a3: 
+ 946: 07a3:     ! Initialising file variables
+ 947: 07a3:     !------------------------------------
+ 948: 07a3:     FALSE = 0
+ 949: 07b0:     TRUE  = -1
+ 950: 07bd:     CRLF$ = CHR$(13) + CHR$(10)
+ 951: 07ea: 
+ 952: 07ea:     ! Initialising Report number and name for FREAD.TXT and OUTPUT.CSV
+ 953: 07ea:     !---------------------------------------------------
+ 954: 07ea:     FREAD.FILE.NAME$        = "D:/ADX_UDT1/FREAD.TXT"
+ 955: 07ff:     FREAD.REPORT.NUM%       = 450           ! Temp Report Number
+ 956: 080d: 
+ 957: 080d:     OUTPUT.FILE.NAME$       = "D:/ADX_UDT1/OUTPUT.CSV"
+ 958: 0822:     OUTPUT.FILE.REPORT.NUM% = 451           ! Temp Report Number
+ 959: 0830: 
+ 960: 0830:     ! Initialising File Open Flag and EOF Flag
+ 961: 0830:     !-----------------------------------------
+ 962: 0830:     EOF                     = FALSE
+ 963: 083e:     FREAD.OPEN.FLAG         = FALSE
+ 964: 084c:     OUTPUT.FILE.OPEN.FLAG   = FALSE
+ 965: 085a: 
+ 966: 085a:     FIELD.STRING$ = ""                                                  !BSM
+ 967: 086f: 
+ 968: 086f:     DIM FIELD.TYPE.ARRAY$ (1000)
+ 969: 0899: 
+ 970: 0899:     ! Initialising Session Number Allocate/De-allocate Flag
+ 971: 0899:     !-------------------------------------------------------
+ 972: 0899:     FREAD.SESS.NUM.FLAG     = FALSE
+ 973: 08a7:     OUTPUT.SESS.NUM.FLAG    = FALSE
+ 974: 08b5: 
+ 975: 08b5:     ! Allocating session number
+ 976: 08b5:     !--------------------------
+ 977: 08b5:     FUNCTION.FLAG$ = "O"                    ! Open
+ 978: 08ca:     CALL SESS.NUM.UTILITY            \
+ 979: 08ee:              (FUNCTION.FLAG$,        \
+ 980: 08ee:               FREAD.REPORT.NUM%,     \
+ 981: 08ee:               FREAD.FILE.NAME$)
+ 982: 08ee:     FREAD.SESS.NUM%         = F20.INTEGER.FILE.NO%
+ 983: 0900:     FREAD.SESS.NUM.FLAG     = TRUE
+ 984: 090e: 
+ 985: 090e:     FUNCTION.FLAG$ = "O"                    ! Open
+ 986: 0923:     CALL SESS.NUM.UTILITY            \
+ 987: 0947:              (FUNCTION.FLAG$,        \
+ 988: 0947:               OUTPUT.FILE.REPORT.NUM%,    \
+ 989: 0947:               OUTPUT.FILE.NAME$)
+ 990: 0947:     OUTPUT.FILE.SESS.NUM%   = F20.INTEGER.FILE.NO%
+ 991: 0959:     OUTPUT.SESS.NUM.FLAG    = TRUE
+ 992: 0967:     CALL DM.INIT                                                        !BSM
+ 993: 0974: 
+ 994: 0974: RETURN
+ 995: 0984: 
+ 996: 0984: \**********************************************************************
+ 997: 0984: \*
+ 998: 0984: \* FREAD.HELP
+ 999: 0984: \* This sub-program displays the help screen for the program
+1000: 0984: \*
+1001: 0984: \**********************************************************************
+1002: 0984: !Commented out the code as it is no longer used                         !BSM
+1003: 0984: !FREAD.HELP:                                                            !BSM
+1004: 0984: !                                                                       !BSM
+1005: 0984: ! PRINT                                                                 !BSM
+1006: 0984: ! PRINT "**************************************************************"!BSM
+1007: 0984: ! PRINT "*                                                            *"!BSM
+1008: 0984: ! PRINT "*            FREAD UTILITY v 0.1                             *"!BSM
+1009: 0984: ! PRINT "*                                                            *"!BSM
+1010: 0984: ! PRINT "* This utility will help to read Sequential, Direct and      *"!BSM
+1011: 0984: ! PRINT "* Keyed Files                                                *"!BSM
+1012: 0984: ! PRINT "*                                                            *"!BSM
+1013: 0984: ! PRINT "* For reading a file, add the file and field details to the  *"!BSM
+1014: 0984: ! PRINT "* input file FREAD.TXT in the format                         *"!BSM
+1015: 0984: ! PRINT "* <filename>:<filetype>:<recl>:<no of fields>:               *"!BSM
+1016: 0984: ! PRINT "* <fieldname>,<fieldtype>:........                           *"!BSM
+1017: 0984: ! PRINT "*                                                            *"!BSM
+1018: 0984: ! PRINT "* FREAD will process the files based on the information      *"!BSM
+1019: 0984: ! PRINT "* from FREAD.TXT and writes the records to OUTPUT.CSV file   *"!BSM
+1020: 0984: ! PRINT "*                                                            *"!BSM
+1021: 0984: ! PRINT "* If the file and record details are not correct, errors     *"!BSM
+1022: 0984: ! PRINT "* will be thrown which is not handled fully in this version  *"!BSM
+1023: 0984: ! PRINT "*                                                            *"!BSM
+1024: 0984: ! PRINT "**************************************************************"!BSM
+1025: 0984: ! STOP                                                                  !BSM
+1026: 0984: !                                                                       !BSM
+1027: 0984: !RETURN                                                                 !BSM
+1028: 0984: 
+1029: 0984: \**********************************************************************
+1030: 0984: \*
+1031: 0984: \* MAIN.PROCESSING
+1032: 0984: \* This sub-program gets the details of the files from FREAD.TXT
+1033: 0984: \* and displays it on the screen
+1034: 0984: \*
+1035: 0984: \**********************************************************************
+1036: 0984: MAIN.PROCESSING:
+1037: 0994: 
+1038: 0994:     !! Open FREAD.TXT file                                              !BSM
+1039: 0994:     !!--------------------                                              !BSM
+1040: 0994:     !FILE.OPERATION$     = "O" ! Open                                   !BSM
+1041: 0994:     !CURRENT.REPORT.NUM% = FREAD.REPORT.NUM%                            !BSM
+1042: 0994:     !                                                                   !BSM
+1043: 0994:     !PRINT "Opening configuration file - FREAD"                         !BSM
+1044: 0994:     !IF END # FREAD.SESS.NUM% THEN FILE.ERROR                           !BSM
+1045: 0994:     !OPEN FREAD.FILE.NAME$ AS FREAD.SESS.NUM% NOWRITE NODEL             !BSM
+1046: 0994:     !FREAD.OPEN.FLAG = TRUE                                             !BSM
+1047: 0994:     !                                                                   !BSM
+1048: 0994:     !! Creating OUTPUT.CSV file                                         !BSM
+1049: 0994:     !!--------------------                                              !BSM
+1050: 0994:     !FILE.OPERATION$     = "C" ! Create                                 !BSM
+1051: 0994:     !CURRENT.REPORT.NUM% = OUTPUT.FILE.REPORT.NUM%                      !BSM
+1052: 0994:     !                                                                   !BSM
+1053: 0994:     !PRINT "Creating output file - OUTPUT.CSV"                          !BSM
+1054: 0994:     !IF END # OUTPUT.FILE.SESS.NUM% THEN FILE.ERROR                     !BSM
+1055: 0994:     !CREATE OUTPUT.FILE.NAME$ AS OUTPUT.FILE.SESS.NUM%                  !BSM
+1056: 0994:     !OUTPUT.FILE.OPEN.FLAG     = TRUE                                   !BSM
+1057: 0994:     !                                                                   !BSM
+1058: 0994:     !! Reading FREAD.TXT to find the record corresponding to            !BSM
+1059: 0994:     !! file name                                                        !BSM
+1060: 0994:     !!-------------------------------------------------------           !BSM
+1061: 0994:     !PRINT "Reading configuration file - FREAD"                         !BSM
+1062: 0994:     !                                                                   !BSM
+1063: 0994:     !WHILE EOF = FALSE                                                  !BSM
+1064: 0994:     !                                                                   !BSM
+1065: 0994:     !    FILE.OPERATION$     = "R" ! Open                               !BSM
+1066: 0994:     !    CURRENT.REPORT.NUM% = FREAD.REPORT.NUM%                        !BSM
+1067: 0994:     !                                                                   !BSM
+1068: 0994:     !    READ.FREAD.FILE.NAME      = FALSE                              !BSM
+1069: 0994:     !    IF END # FREAD.SESS.NUM% THEN READ.FREAD.FILE.NAME.ERR         !BSM
+1070: 0994:     !    READ #FREAD.SESS.NUM%; LINE FREAD.RECORD$                      !BSM
+1071: 0994:     !    READ.FREAD.FILE.NAME      = TRUE                               !BSM
+1072: 0994:     !                                                                   !BSM
+1073: 0994:     !    FILE.NAME$ = FUNC.PARSE.FIELD$                                 !BSM
+1074: 0994:     !    IF FILE.NAME$ = "0" THEN BEGIN                                 !BSM
+1075: 0994:     !        PRINT "Error in reading file name from FREAD.TXT"          !BSM
+1076: 0994:     !        PRINT "Checking next record from FREAD.TXT"                !BSM
+1077: 0994:     !    ENDIF                                                          !BSM
+1078: 0994:     !                                                                   !BSM
+1079: 0994:     !    IF FILE.NAME$ = INPUT.FILE.NAME$ THEN BEGIN                    !BSM
+1080: 0994:     !        GOSUB INIT.NEW.FILE                                        !BSM
+1081: 0994:     !        GOSUB PROCESS.FILE                                         !BSM
+1082: 0994:     !        FREAD.RECORD.PRESENT = TRUE                                !BSM
+1083: 0994:     !        EOF = TRUE                                                 !BSM
+1084: 0994:     !    ENDIF                                                          !BSM
+1085: 0994:     !                                                                   !BSM
+1086: 0994: !READ.FREAD.FILE.NAME.ERR:                                              !BSM
+1087: 0994:     !                                                                   !BSM
+1088: 0994:     !    IF READ.FREAD.FILE.NAME      = FALSE THEN BEGIN                !BSM
+1089: 0994:     !        EOF = TRUE                                                 !BSM
+1090: 0994:     !    ENDIF                                                          !BSM
+1091: 0994:     !                                                                   !BSM
+1092: 0994:     !WEND                                                               !BSM
+1093: 0994:     !                                                                   !BSM
+1094: 0994:     !IF FREAD.RECORD.PRESENT = FALSE THEN BEGIN                         !BSM
+1095: 0994:     !    PRINT "File details are not present in FREAD.TXT"              !BSM
+1096: 0994:     !ENDIF                                                              !BSM
+1097: 0994:     !PRINT "Opening configuration file - FREAD"                         !BSM
+1098: 0994: 
+1099: 0994:     IF NOT ?EXIST(FREAD.FILE.NAME$) THEN BEGIN                          !BSM
+1100: 09b0:         FILE.OPERATION$     = "C"                 !Create               !BSM
+1101: 09c5:         CURRENT.REPORT.NUM% = FREAD.REPORT.NUM%                         !BSM
+1102: 09d3:         IF END # FREAD.SESS.NUM% THEN FILE.ERROR                        !BSM
+1103: 09ec:         CREATE FREAD.FILE.NAME$ AS FREAD.SESS.NUM%                      !BSM
+1104: 0a0d:         CLOSE FREAD.SESS.NUM%                                           !BSM
+1105: 0a1e:     ENDIF                                                               !BSM
+1106: 0a26:                                                                         !BSM
+1107: 0a26:     GOSUB DISPLAY.MAIN.SCREEN                                           !BSM
+1108: 0a38:                                                                         !BSM
+1109: 0a38: RETURN
+1110: 0a48: 
+1111: 0a48: \**********************************************************************
+1112: 0a48: \*
+1113: 0a48: \* INIT.NEW.FILE
+1114: 0a48: \*
+1115: 0a48: \**********************************************************************
+1116: 0a48: INIT.NEW.FILE:
+1117: 0a58: 
+1118: 0a58:     ! Initialising Report number for file to be read
+1119: 0a58:     !---------------------------------------------------
+1120: 0a58:     FILE.REPORT.NUM%   = 452           ! Temp Report Number
+1121: 0a66: 
+1122: 0a66:     ! Initialising File Open Flag
+1123: 0a66:     !-----------------------------------------
+1124: 0a66:     FILE.OPEN.FLAG     = FALSE
+1125: 0a74: 
+1126: 0a74:     ! Initialising Session Number Allocate/De-allocate Flag
+1127: 0a74:     !-------------------------------------------------------
+1128: 0a74:     FILE.SESS.NUM.FLAG = FALSE
+1129: 0a82: 
+1130: 0a82:     ! Allocating session number
+1131: 0a82:     !--------------------------
+1132: 0a82:     FUNCTION.FLAG$ = "O"                    ! Open
+1133: 0a97:     CALL SESS.NUM.UTILITY        \
+1134: 0abb:          (FUNCTION.FLAG$,        \
+1135: 0abb:           FILE.REPORT.NUM%,      \
+1136: 0abb:           FILE.NAME$)
+1137: 0abb:     FILE.SESS.NUM%      = F20.INTEGER.FILE.NO%
+1138: 0acd:     FILE.SESS.NUM.FLAG  = TRUE
+1139: 0adb: 
+1140: 0adb: RETURN
+1141: 0aeb: 
+1142: 0aeb: \**********************************************************************
+1143: 0aeb: \*
+1144: 0aeb: \* PROCESS.FILE
+1145: 0aeb: \*
+1146: 0aeb: \**********************************************************************
+1147: 0aeb: PROCESS.FILE:
+1148: 0afb: 
+1149: 0afb:     FILE.TYPE$ = FUNC.PARSE.FIELD$
+1150: 0b10:     FILE.TYPE$ = UCASE$(FILE.TYPE$)                                     !BSM
+1151: 0b2e:     IF (FILE.TYPE$ <> "S" AND FILE.TYPE$ <> "K" AND FILE.TYPE$ <> "D")\
+1152: 0ba2:        THEN BEGIN
+1153: 0ba2:         !PRINT "Error in reading file type"                             !BSM
+1154: 0ba2:         WHILE RET.KEY% <> F3.KEY% AND RET.KEY% <>ESC.KEY%               !BSM
+1155: 0bac:             CALL DM.HIDE.FN.KEY(2)                                      !BSM
+1156: 0bbd:             CALL DM.HIDE.FN.KEY(4)                                      !BSM
+1157: 0bce:             CALL DM.HIDE.FN.KEY(5)                                      !BSM
+1158: 0bdf:             RET.KEY% = DM.INVISIBLE.INPUT("'"+ERROR$+"'")               !BSM
+1159: 0c0d:         WEND                                                            !BSM
+1160: 0c3e:         RETURN
+1161: 0c4e:     ENDIF
+1162: 0c56: 
+1163: 0c56:     IF FILE.TYPE$ = "S" THEN BEGIN
+1164: 0c71:         GOSUB PROCESS.SEQUENTIAL.FILE
+1165: 0c86:     ENDIF ELSE IF (FILE.TYPE$ = "K") OR (FILE.TYPE$ = "D") THEN BEGIN
+1166: 0cd5: 
+1167: 0cd5:         FILE.RECL$ = FUNC.PARSE.FIELD$
+1168: 0cea:         IF FILE.RECL$ = "0" THEN BEGIN
+1169: 0d05:            !PRINT "Error in reading record length"                      !BSM
+1170: 0d05:             RETURN
+1171: 0d15:         ENDIF
+1172: 0d1d: 
+1173: 0d1d:         FIELD.NOS$ = FUNC.PARSE.FIELD$
+1174: 0d32:         IF FIELD.NOS$ = "0" THEN BEGIN
+1175: 0d4d:            !PRINT "Error in reading field numbers"                      !BSM
+1176: 0d4d:             RETURN
+1177: 0d5d:         ENDIF
+1178: 0d65:         FIELD.NOS% = VAL(FIELD.NOS$)
+1179: 0d87: 
+1180: 0d87:         IF FILE.TYPE$ = "K" THEN BEGIN
+1181: 0da5:             GOSUB FIELD.NAME.SPLIT
+1182: 0db7:             !PRINT "Processing the keyed file " + FILE.NAME$
+1183: 0db7:             CALL PROCESS.KEYED.FILE(FILE.NAME$, FILE.REPORT.NUM%, "N")
+1184: 0dd7:             WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F3.KEY% AND   \!BSM
+1185: 0de1:                                              RET.KEY% <> ESC.KEY%       !BSM
+1186: 0de1:                 RET.KEY% = DM.INVISIBLE.INPUT("'READING COMPLETED." +  \!BSM
+1187: 0e07:                                            "PRESS ENTER TO CONTINUE..") !BSM
+1188: 0e07:             WEND                                                        !BSM
+1189: 0e48:             CALL DM.STATUS("''")                                        !BSM
+1190: 0e5e: 
+1191: 0e5e:         ENDIF ELSE IF FILE.TYPE$ = "D" THEN BEGIN
+1192: 0e79:             GOSUB FIELD.NAME.SPLIT
+1193: 0e8b:             GOSUB PROCESS.DIRECT.FILE
+1194: 0e9d:         ENDIF
+1195: 0ea5: 
+1196: 0ea5:     ENDIF
+1197: 0ead: 
+1198: 0ead: RETURN
+1199: 0ebd: 
+1200: 0ebd: \**********************************************************************
+1201: 0ebd: \*
+1202: 0ebd: \* PROCESS.SEQUENTIAL.FILE
+1203: 0ebd: \*
+1204: 0ebd: \**********************************************************************
+1205: 0ebd: PROCESS.SEQUENTIAL.FILE:
+1206: 0ecd: 
+1207: 0ecd:     !PRINT "Opening the sequential file " + FILE.NAME$                  !BSM
+1208: 0ecd: 
+1209: 0ecd:     FILE.OPERATION$         = "O" ! Open
+1210: 0ee2:     CURRENT.REPORT.NUM%     = FILE.REPORT.NUM%
+1211: 0ef0: 
+1212: 0ef0:     IF END # FILE.SESS.NUM% THEN FILE.ERROR
+1213: 0f09:     OPEN FILE.NAME$ AS FILE.SESS.NUM%
+1214: 0f2a:     FILE.OPEN.FLAG          = TRUE
+1215: 0f38: 
+1216: 0f38:     !PRINT "Reading started.."                                          !BSM
+1217: 0f38: 
+1218: 0f38:     EOF = FALSE
+1219: 0f46:     WHILE EOF = FALSE
+1220: 0f51:         FILE.OPERATION$     = "R" ! Read
+1221: 0f66:         CURRENT.REPORT.NUM% = FILE.REPORT.NUM%
+1222: 0f74: 
+1223: 0f74:         READ.FILE.NAME      = FALSE
+1224: 0f82:         IF END # FILE.SESS.NUM% THEN READ.FILE.NAME.ERR
+1225: 0f9b:         READ # FILE.SESS.NUM%; RECORD$
+1226: 0fbc:         READ.FILE.NAME      = TRUE
+1227: 0fca: 
+1228: 0fca: READ.FILE.NAME.ERR:
+1229: 0fda: 
+1230: 0fda:         IF READ.FILE.NAME   = FALSE THEN BEGIN
+1231: 0fee:             EOF = TRUE
+1232: 0ffc:            ! PRINT "Reading completed.. "                               !BSM
+1233: 0ffc:            WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F3.KEY% \       !BSM
+1234: 1006:                                         AND RET.KEY% <> ESC.KEY%        !BSM
+1235: 1006:                 RET.KEY% = DM.INVISIBLE.INPUT("'READING COMPLETED." +  \!BSM
+1236: 102c:                                            "PRESS ENTER TO CONTINUE..") !BSM
+1237: 102c:            WEND                                                         !BSM
+1238: 106d:            CALL DM.STATUS("''")                                         !BSM
+1239: 1084:         ENDIF ELSE BEGIN
+1240: 108c:             RECORD$ = RECORD$ + CRLF$
+1241: 10b0:             TEMP.FORM$ = "C" + STR$(LEN(RECORD$))
+1242: 10e3:             WRITE FORM TEMP.FORM$ ;# OUTPUT.FILE.SESS.NUM%; RECORD$
+1243: 110b:         ENDIF
+1244: 1113:     WEND
+1245: 1127: 
+1246: 1127: RETURN
+1247: 1137: 
+1248: 1137: \**********************************************************************
+1249: 1137: \*
+1250: 1137: \* PROCESS.DIRECT.FILE
+1251: 1137: \*
+1252: 1137: \**********************************************************************
+1253: 1137: PROCESS.DIRECT.FILE:
+1254: 1147: 
+1255: 1147:    !PRINT "Opening the Direct file " + FILE.NAME$
+1256: 1147: 
+1257: 1147:     FILE.OPERATION$     = "O" ! Open
+1258: 115c:     CURRENT.REPORT.NUM% = FILE.REPORT.NUM%
+1259: 116a: 
+1260: 116a:     IF END # FILE.SESS.NUM% THEN FILE.ERROR
+1261: 1183:     OPEN FILE.NAME$ DIRECT RECL VAL(FILE.RECL$) AS FILE.SESS.NUM%
+1262: 11b2: 
+1263: 11b2:     RECORD.NOS% = SIZE(FILE.NAME$)/VAL(FILE.RECL$)
+1264: 11ff:     FORM$ = "C" + FILE.RECL$
+1265: 121f: 
+1266: 121f:     !PRINT "Reading started.."
+1267: 121f: 
+1268: 121f:     FOR COUNT% = 1 TO RECORD.NOS%
+1269: 1237: 
+1270: 1237:         FILE.OPERATION$     = "R" ! Read
+1271: 124c:         CURRENT.REPORT.NUM% = FILE.REPORT.NUM%
+1272: 125a: 
+1273: 125a:         IF END # FILE.SESS.NUM% THEN FILE.ERROR
+1274: 1273:         READ FORM FORM$; #FILE.SESS.NUM%,COUNT%; RECORD$
+1275: 12a9: 
+1276: 12a9:         CALL FUNC.FIELD.SPLIT
+1277: 12c3: 
+1278: 12c3:     NEXT COUNT%
+1279: 12f0: 
+1280: 12f0:     !PRINT "Reading completed.. "
+1281: 12f0:      WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F3.KEY%  \            !BSM
+1282: 12fa:                                   AND RET.KEY% <> ESC.KEY%              !BSM
+1283: 12fa:          RET.KEY% = DM.INVISIBLE.INPUT("'READING COMPLETED."       +   \!BSM
+1284: 1320:                                          "PRESS ENTER TO CONTINUE..")   !BSM
+1285: 1320:      WEND                                                               !BSM
+1286: 1361:      CALL DM.STATUS("''")                                               !BSM
+1287: 1375: 
+1288: 1375: RETURN
+1289: 1385: 
+1290: 1385: \**********************************************************************
+1291: 1385: \*
+1292: 1385: \* FIELD.NAME.SPLIT
+1293: 1385: \*
+1294: 1385: \**********************************************************************
+1295: 1385: FIELD.NAME.SPLIT:
+1296: 1395: 
+1297: 1395:     FIELD.NAME$ = ""
+1298: 13aa:     FIELD.TYPE$ = ""
+1299: 13bf: 
+1300: 13bf:     FOR LOOP% = 1 TO FIELD.NOS%
+1301: 13d7:         FLD$ = FUNC.PARSE.FIELD$
+1302: 13ec: 
+1303: 13ec:         TEMP.OFFSET% = MATCH(",", FLD$, 1)
+1304: 1413:         FIELD.NAME$  = LEFT$(FLD$, (TEMP.OFFSET%-1))
+1305: 1441:         FIELD.TYPE$  = RIGHT$(FLD$, LEN(FLD$) -TEMP.OFFSET%)
+1306: 147f: 
+1307: 147f:         IF LOOP% = 1 THEN BEGIN
+1308: 149a:             FINAL.FIELD.NAMES$ = FIELD.NAME$
+1309: 14b5:         ENDIF ELSE BEGIN
+1310: 14bd:             FINAL.FIELD.NAMES$ = FINAL.FIELD.NAMES$ + "," + FIELD.NAME$
+1311: 14e5:         ENDIF
+1312: 14ed: 
+1313: 14ed:         FIELD.TYPE.ARRAY$(LOOP%) = FIELD.TYPE$
+1314: 1517:     NEXT LOOP%
+1315: 1544: 
+1316: 1544:     FINAL.FIELD.NAMES$ = FINAL.FIELD.NAMES$ + CRLF$
+1317: 1568:     TEMP.FORM$ = "C" + STR$(LEN(FINAL.FIELD.NAMES$))
+1318: 159b:     WRITE FORM TEMP.FORM$ ;# OUTPUT.FILE.SESS.NUM%; FINAL.FIELD.NAMES$
+1319: 15c3: 
+1320: 15c3: RETURN
+1321: 15d3: 
+1322: 15d3: \**********************************************************************
+1323: 15d3: \*
+1324: 15d3: \* TERMINATION
+1325: 15d3: \*
+1326: 15d3: \**********************************************************************
+1327: 15d3: 
+1328: 15d3: TERMINATION:
+1329: 15e3: 
+1330: 15e3:    !PRINT "Closing files"                                               !BSM
+1331: 15e3: 
+1332: 15e3:     IF FILE.OPEN.FLAG  = TRUE THEN BEGIN
+1333: 15f4:         CLOSE FILE.SESS.NUM%
+1334: 1605:     ENDIF
+1335: 160d: 
+1336: 160d:     IF FREAD.OPEN.FLAG = TRUE THEN BEGIN
+1337: 161e:         CLOSE FREAD.SESS.NUM%
+1338: 162f:     ENDIF
+1339: 1637: 
+1340: 1637:     IF OUTPUT.FILE.OPEN.FLAG = TRUE THEN BEGIN
+1341: 1648:         CLOSE OUTPUT.FILE.SESS.NUM%
+1342: 1659:     ENDIF
+1343: 1661: 
+1344: 1661:     IF FILE.SESS.NUM.FLAG  = TRUE THEN BEGIN
+1345: 1672:         FUNCTION.FLAG$ = "C"                        ! Close
+1346: 1687:         CALL SESS.NUM.UTILITY (FUNCTION.FLAG$,FILE.SESS.NUM%,"")
+1347: 16a7:     ENDIF
+1348: 16af: 
+1349: 16af:     IF FREAD.SESS.NUM.FLAG  = TRUE THEN BEGIN
+1350: 16c0:         FUNCTION.FLAG$ = "C"                        ! Close
+1351: 16d5:         CALL SESS.NUM.UTILITY (FUNCTION.FLAG$,FREAD.SESS.NUM%,"")
+1352: 16f5:     ENDIF
+1353: 16fd: 
+1354: 16fd:     IF OUTPUT.SESS.NUM.FLAG  = TRUE THEN BEGIN
+1355: 170e:         FUNCTION.FLAG$ = "C"                        ! Close
+1356: 1723:         CALL SESS.NUM.UTILITY (FUNCTION.FLAG$,OUTPUT.FILE.SESS.NUM%,"")
+1357: 1743:     ENDIF
+1358: 174b: 
+1359: 174b:    !PRINT "Program completed successfully"                              !BSM
+1360: 174b: 
+1361: 174b: RETURN
+1362: 175b: 
+1363: 175b: \**********************************************************************
+1364: 175b: \*
+1365: 175b: \* Sub-routine : FILE.ERROR:
+1366: 175b: \*
+1367: 175b: \**********************************************************************
+1368: 175b: FILE.ERROR:
+1369: 176b: 
+1370: 176b:     ERROR$ = ""
+1371: 1780: 
+1372: 1780:     IF FILE.OPERATION$ = "O"  THEN BEGIN
+1373: 179b:         ERROR$ = "Error in opening "
+1374: 17b3:     ENDIF ELSE IF FILE.OPERATION$ = "C"  THEN BEGIN
+1375: 17ce:         ERROR$ = "Error in creating "
+1376: 17e5:     ENDIF ELSE IF FILE.OPERATION$ = "R"  THEN BEGIN
+1377: 1800:         ERROR$ = "Error in reading "
+1378: 1817:     ENDIF ELSE IF FILE.OPERATION$ = "W"  THEN BEGIN
+1379: 1832:         ERROR$ = "Error in writing "
+1380: 1847:     ENDIF
+1381: 184f: 
+1382: 184f:     IF CURRENT.REPORT.NUM% = FREAD.REPORT.NUM% THEN BEGIN
+1383: 1860:         ERROR$ = ERROR$ + FREAD.FILE.NAME$
+1384: 1886:     ENDIF ELSE IF OUTPUT.FILE.REPORT.NUM% THEN BEGIN
+1385: 1896:         ERROR$ = ERROR$ + OUTPUT.FILE.NAME$
+1386: 18bc:     ENDIF ELSE IF CURRENT.REPORT.NUM% = FILE.REPORT.NUM% THEN BEGIN
+1387: 18cd:         ERROR$ = ERROR$ + FILE.NAME$
+1388: 18f1:     ENDIF
+1389: 18f9: 
+1390: 18f9:     IF OUTPUT.FILE.OPEN.FLAG THEN BEGIN
+1391: 1908:         DELETE OUTPUT.FILE.SESS.NUM%
+1392: 1919:         OUTPUT.FILE.OPEN.FLAG = FALSE
+1393: 1927:     ENDIF
+1394: 192f: 
+1395: 192f:     WHILE RET.KEY% <> F3.KEY% AND RET.KEY% <>ESC.KEY%
+1396: 1939:         CALL DM.HIDE.FN.KEY(2)
+1397: 194a:         CALL DM.HIDE.FN.KEY(4)
+1398: 195b:         CALL DM.HIDE.FN.KEY(5)
+1399: 196c:         RET.KEY% = DM.INVISIBLE.INPUT("'"+ERROR$+"'")
+1400: 199a:     WEND
+1401: 19cb:    !GOSUB STOP.PROGRAM                                                  !BSM
+1402: 19cb: 
+1403: 19cb: RETURN
+1404: 19db: 
+1405: 19db: \***********************************************************************
+1406: 19db: \*READ.CONFIGURATION.FILE
+1407: 19db: \*
+1408: 19db: \***********************************************************************
+1409: 19db: READ.CONFIGURATION.FILE:
+1410: 19eb: 
+1411: 19eb:     ! Open FREAD.TXT file
+1412: 19eb:     !--------------------
+1413: 19eb:     IF FREAD.OPEN.FLAG THEN BEGIN                                       !BSM
+1414: 19fa:         CLOSE FREAD.SESS.NUM%                                           !BSM
+1415: 1a0b:         FREAD.OPEN.FLAG = FALSE                                         !BSM
+1416: 1a19:     ENDIF                                                               !BSM
+1417: 1a21: 
+1418: 1a21:     FILE.OPERATION$     = "O" ! Open
+1419: 1a36:     CURRENT.REPORT.NUM% = FREAD.REPORT.NUM%
+1420: 1a44: 
+1421: 1a44:     !PRINT "Opening configuration file - FREAD"                         !BSM
+1422: 1a44: 
+1423: 1a44:     IF END # FREAD.SESS.NUM% THEN FILE.ERROR
+1424: 1a5d:     OPEN FREAD.FILE.NAME$ AS FREAD.SESS.NUM%
+1425: 1a7e:     FREAD.OPEN.FLAG = TRUE
+1426: 1a8c:     FREAD.RECORD.PRESENT = FALSE                                        !BSM
+1427: 1a9a:     EOF = FALSE                                                         !BSM
+1428: 1aa8: 
+1429: 1aa8:     WHILE EOF = FALSE
+1430: 1ab3: 
+1431: 1ab3:         FILE.OPERATION$     = "R" ! Open
+1432: 1ac8:         CURRENT.REPORT.NUM% = FREAD.REPORT.NUM%
+1433: 1ad6: 
+1434: 1ad6:         READ.FREAD.FILE.NAME      = FALSE
+1435: 1ae4:         IF END # FREAD.SESS.NUM% THEN READ.FREAD.FILE.NAME.ERR
+1436: 1afd:         READ #FREAD.SESS.NUM%; LINE FREAD.RECORD$
+1437: 1b19:         READ.FREAD.FILE.NAME      = TRUE
+1438: 1b27: 
+1439: 1b27:         FILE.NAME$ = FUNC.PARSE.FIELD$
+1440: 1b3c:         !IF FILE.NAME$ = "0" THEN BEGIN                                 !BSM
+1441: 1b3c:         !    PRINT "Error in reading file name from FREAD.TXT"          !BSM
+1442: 1b3c:         !    PRINT "Checking next record from FREAD.TXT"                !BSM
+1443: 1b3c:         !ENDIF                                                          !BSM
+1444: 1b3c: 
+1445: 1b3c:         IF FILE.NAME$ = UCASE$(DM.INPUT.FILE$) THEN BEGIN               !BSM
+1446: 1b63:             FREAD.RECORD.PRESENT = TRUE
+1447: 1b71:             EOF = TRUE
+1448: 1b7f:         ENDIF                                                           !BSM
+1449: 1b87: 
+1450: 1b87: READ.FREAD.FILE.NAME.ERR:
+1451: 1b97: 
+1452: 1b97:         IF READ.FREAD.FILE.NAME = FALSE THEN BEGIN
+1453: 1ba8:             EOF = TRUE
+1454: 1bb6:         ENDIF
+1455: 1bbe: 
+1456: 1bbe:     WEND
+1457: 1bd2: 
+1458: 1bd2: RETURN
+1459: 1be2: 
+1460: 1be2: \***********************************************************************!BSM
+1461: 1be2: \* DISPLAY.MAIN.SCREEN:                                                 !BSM
+1462: 1be2: \*                                                                      !BSM
+1463: 1be2: \***********************************************************************!BSM
+1464: 1be2: DISPLAY.MAIN.SCREEN:                                                    !BSM
+1465: 1bf2:                                                                         !BSM
+1466: 1bf2:     CALL DM.SHOW.SCREEN(1, "", 1, 1)                                    !BSM
+1467: 1c0c:                                                                         !BSM
+1468: 1c0c:     CALL DM.NAME( 2, "INPUT.FILE$"   , DM.INPUT.FILE$)                  !BSM
+1469: 1c49:     CALL DM.NAME( 4, "FILES.TYPE$"    ,DM.FILE.TYPE$)                   !BSM
+1470: 1c86:     CALL DM.NAME( 7, "RECORD.LENGTH$", DM.RECORD.LENGTH$)               !BSM
+1471: 1cc3:     CALL DM.NAME( 9, "NO.OF.FIELDS$" , DM.NO.OF.FIELDS$)                !BSM
+1472: 1d00:     CALL DM.NAME(11, "FIELD.NAME$"   , DM.FIELD.NAME$)                  !BSM
+1473: 1d3d:     CALL DM.NAME(13, "FIELD.TYPE$"   , DM.FIELD.TYPE$)                  !BSM
+1474: 1d7a:                                                                         !BSM
+1475: 1d7a:     WHILE TRUE                                                          !BSM
+1476: 1d85:                                                                         !BSM
+1477: 1d85:         FIELD.STRING$ = ""                                              !BSM
+1478: 1d9a:         CALL DM.VISIBLE("2","TRUE")                                     !BSM
+1479: 1db2:         CALL DM.SHOW.FN.KEY(3,"")                                       !BSM
+1480: 1dc8:         RET.KEY% = DM.PROCESS.SCREEN(2,14,FALSE)                        !BSM
+1481: 1de4:         IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN         !BSM
+1482: 1e12:             GOSUB ESCAPE.PRESSED                                        !BSM
+1483: 1e27:         ENDIF ELSE IF RET.KEY% = ENTER.KEY% THEN BEGIN                  !BSM
+1484: 1e3f:             DM.INPUT.FILE$ = TRUNCATE.FIELD$(DM.INPUT.FILE$)            !BSM
+1485: 1e5c:             FILE.LENGTH% = LEN(DM.INPUT.FILE$)                          !BSM
+1486: 1e76:             SLASH.POSITION% = MATCH("\",DM.INPUT.FILE$,1)               !BSM
+1487: 1e94:             IF SLASH.POSITION% = 0 THEN BEGIN                           !BSM
+1488: 1ea3:                 SLASH.POSITION% = MATCH("/",DM.INPUT.FILE$,1)           !BSM
+1489: 1ec1:             ENDIF                                                       !BSM
+1490: 1ec9:                                                                         !BSM
+1491: 1ec9:             WHILE FILE.LENGTH% = 0 OR SLASH.POSITION% = 0               !BSM
+1492: 1ed4:                 IF FILE.LENGTH% = 0 THEN BEGIN                          !BSM
+1493: 1ee3:                     CALL DM.FOCUS("", "MESSAGE (221, 'ENTER A VALID FILE NAME')")!BSM
+1494: 1efd:                 ENDIF ELSE IF SLASH.POSITION% = 0 THEN BEGIN            !BSM
+1495: 1f0c:                     CALL DM.FOCUS("", "MESSAGE (221, 'ENTER FULLY QUALIFIED FILE NAME')")!BSM
+1496: 1f24:                     DM.INPUT.FILE$ = STRING$(33," ")                    !BSM
+1497: 1f40:                     INPUT.FILE$ = DM.INPUT.FILE$                        !BSM
+1498: 1f59:                 ENDIF                                                   !BSM
+1499: 1f61:                 RET.KEY% = DM.PROCESS.SCREEN(2,2,FALSE)                 !BSM
+1500: 1f7d:                 IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN !BSM
+1501: 1fab:                     GOSUB ESCAPE.PRESSED                                !BSM
+1502: 1fbd:                 ENDIF                                                   !BSM
+1503: 1fc5:                 DM.INPUT.FILE$ = TRUNCATE.FIELD$(DM.INPUT.FILE$)        !BSM
+1504: 1fe2:                 FILE.LENGTH% = LEN(DM.INPUT.FILE$)                      !BSM
+1505: 1ffc:                 IF DM.INPUT.FILE$ = "" THEN BEGIN                       !BSM
+1506: 2017:                     FILE.LENGTH% = 0                                    !BSM
+1507: 2025:                 ENDIF                                                   !BSM
+1508: 202d:                 SLASH.POSITION% = MATCH("\",DM.INPUT.FILE$,1)           !BSM
+1509: 204b:                 IF SLASH.POSITION% = 0 THEN BEGIN                       !BSM
+1510: 205a:                 SLASH.POSITION% = MATCH("/",DM.INPUT.FILE$,1)           !BSM
+1511: 2078:                 ENDIF                                                   !BSM
+1512: 2080:             WEND                                                        !BSM
+1513: 20a8:                                                                         !BSM
+1514: 20a8:             FILE.EXIST.FLAG = ?EXIST(DM.INPUT.FILE$)                    !BSM
+1515: 20c3:                                                                         !BSM
+1516: 20c3:             IF FILE.EXIST.FLAG = FALSE THEN BEGIN                       !BSM
+1517: 20d7:                 CALL DM.SHOW.FN.KEY(2,"")                               !BSM
+1518: 20ed:                 RET.KEY% = -1                                           !BSM
+1519: 20fb:                 WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F2.KEY%   \!BSM
+1520: 2105:                       AND RET.KEY% <> F3.KEY% AND RET.KEY% <> ESC.KEY%  !BSM
+1521: 2105:                     RET.KEY% = DM.INVISIBLE.INPUT("'FILE DOES NOT EXIST!'")!BSM
+1522: 211c:                 WEND                                                    !BSM
+1523: 2170:                 CALL DM.STATUS("''")                                    !BSM
+1524: 2187:             ENDIF ELSE BEGIN                                            !BSM
+1525: 218f:                 GOSUB READ.CONFIGURATION.FILE                           !BSM
+1526: 21a1:                 CALL DM.SHOW.FN.KEY(2,"")                               !BSM
+1527: 21b7:                 IF FREAD.RECORD.PRESENT THEN BEGIN                      !BSM
+1528: 21c9:                     CALL DM.SHOW.FN.KEY(5,"")                           !BSM
+1529: 21df:                     RET.KEY% = DM.INVISIBLE.INPUT("'PRESS F5 TO READ FILE'")!BSM
+1530: 21f6:                                                                         !BSM
+1531: 21f6:                     IF RET.KEY% = F5.KEY% THEN BEGIN                    !BSM
+1532: 220b:                         GOSUB CREATE.OUTPUT.FILE                        !BSM
+1533: 221d:                         GOSUB INIT.NEW.FILE                             !BSM
+1534: 222f:                         GOSUB PROCESS.FILE                              !BSM
+1535: 2244:                    ENDIF ELSE IF RET.KEY% = ESC.KEY% OR                \!BSM
+1536: 2272:                                           RET.KEY% = F3.KEY%  THEN BEGIN!BSM
+1537: 2272:                        GOSUB ESCAPE.PRESSED                             !BSM
+1538: 2287:                    ENDIF ELSE BEGIN                                     !BSM
+1539: 228f:                        WHILE RET.KEY% <> F2.KEY% AND RET.KEY% = ESC.KEY%\!BSM
+1540: 2299:                                                   AND RET.KEY% = F3.KEY%!BSM
+1541: 2299:                            RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED'")!BSM
+1542: 22b0:                            IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY%\!BSM
+1543: 22de:                                                               THEN BEGIN!BSM
+1544: 22de:                                GOSUB ESCAPE.PRESSED                     !BSM
+1545: 22f0:                            ENDIF                                        !BSM
+1546: 22f8:                         WEND                                            !BSM
+1547: 233c:                         CALL DM.STATUS("''")                            !BSM
+1548: 2350:                    ENDIF                                                !BSM
+1549: 235b:                ENDIF ELSE BEGIN                                         !BSM
+1550: 2363:                    FIELD.STRING$ = DM.INPUT.FILE$ + ";"                 !BSM
+1551: 2383:                    CALL DM.VISIBLE("3","TRUE")                          !BSM
+1552: 239b:                    CALL DM.VISIBLE("4","TRUE")                          !BSM
+1553: 23b3:                    CALL DM.VISIBLE("5","TRUE")                          !BSM
+1554: 23cb:                    RET.KEY% = DM.PROCESS.SCREEN (3,5,FALSE)             !BSM
+1555: 23e7:                    IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY%        \!BSM
+1556: 2415:                                                              THEN BEGIN !BSM
+1557: 2415:                        GOSUB ESCAPE.PRESSED                             !BSM
+1558: 242a:                    ENDIF ELSE IF RET.KEY% = ENTER.KEY% THEN BEGIN       !BSM
+1559: 2442:                        FILE.TYPE$ = DM.FILE.TYPE$                       !BSM
+1560: 245b:                        INVALID.TYPE = TRUE                              !BSM
+1561: 2469:                        WHILE INVALID.TYPE                               !BSM
+1562: 2474:                            IF DM.FILE.TYPE$ <> "D" AND                 \!BSM
+1563: 24e8:                               DM.FILE.TYPE$ <> "K" AND                 \!BSM
+1564: 24e8:                               DM.FILE.TYPE$ <> "S" THEN BEGIN           !BSM
+1565: 24e8:                               CALL DM.FOCUS("", "MESSAGE (221, 'YOU MUST ONLY TYPE S,D OR K')")!BSM
+1566: 2500:                               DM.FILE.TYPE$ = ""                        !BSM
+1567: 2515:                               FILES.TYPE$ = DM.FILE.TYPE$               !BSM
+1568: 252e:                               RET.KEY% = DM.PROCESS.SCREEN(3,5,FALSE)   !BSM
+1569: 254a:                               IF RET.KEY% = ESC.KEY% OR                \!BSM
+1570: 2578:                                            RET.KEY% = F3.KEY% THEN BEGIN!BSM
+1571: 2578:                                   GOSUB ESCAPE.PRESSED                  !BSM
+1572: 258a:                               ENDIF                                     !BSM
+1573: 2594:                            ENDIF ELSE BEGIN                             !BSM
+1574: 259c:                              INVALID.TYPE = FALSE                       !BSM
+1575: 25aa:                            ENDIF                                        !BSM
+1576: 25b2:                        WEND                                             !BSM
+1577: 25c4:                                                                         !BSM
+1578: 25c4:                        IF DM.FILE.TYPE$ = "D" OR DM.FILE.TYPE$ = "K"   \!BSM
+1579: 2613:                                                               THEN BEGIN!BSM
+1580: 2613:                            FIELD.STRING$ = FIELD.STRING$ +             \!BSM
+1581: 263b:                                                     DM.FILE.TYPE$ + ";" !BSM
+1582: 263b:                            CALL DM.VISIBLE("6","TRUE")                  !BSM
+1583: 2653:                            CALL DM.VISIBLE("7","TRUE")                  !BSM
+1584: 266b:                            CALL DM.VISIBLE("8","TRUE")                  !BSM
+1585: 2683:                            CALL DM.VISIBLE("9","TRUE")                  !BSM
+1586: 269b:                            CALL DM.VISIBLE("10","TRUE")                 !BSM
+1587: 26b3:                            CALL DM.VISIBLE("11","TRUE")                 !BSM
+1588: 26cb:                            CALL DM.VISIBLE("12","TRUE")                 !BSM
+1589: 26e3:                            CALL DM.VISIBLE("13","TRUE")                 !BSM
+1590: 26fb:                            CALL DM.VISIBLE("14","TRUE")                 !BSM
+1591: 2713:                            CALL DM.HIDE.FN.KEY(2)                       !BSM
+1592: 2724:                                                                         !BSM
+1593: 2724:                            START.FIELD% = 6                             !BSM
+1594: 2732:                            WHILE START.FIELD% < 14                      !BSM
+1595: 273d:                                                                         !BSM
+1596: 273d:                                RET.KEY% = DM.PROCESS.SCREEN(START.FIELD%,14,FALSE)     !BSM
+1597: 275b:                                                                                        !BSM
+1598: 275b:                                IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN !BSM
+1599: 2789:                                    GOSUB ESCAPE.PRESSED                                !BSM
+1600: 279e:                                ENDIF ELSE IF RET.KEY% = ENTER.KEY% THEN BEGIN          !BSM
+1601: 27b6:                                    IF START.FIELD% = 6 OR START.FIELD% = 8 THEN BEGIN  !BSM
+1602: 27d7:                                        GOSUB VALIDATE.FIELDS                           !BSM
+1603: 27e9:                                    ENDIF                                               !BSM
+1604: 27f1:                                    IF START.FIELD% = 12 THEN BEGIN                     !BSM
+1605: 2803:                                        FIELD.STRING$ = FIELD.STRING$                \  !BSM
+1606: 2855:                                            + TRUNCATE.FIELD$(DM.RECORD.LENGTH$)+ ";"\  !BSM
+1607: 2855:                                            + TRUNCATE.FIELD$(DM.NO.OF.FIELDS$) + ";"   !BSM
+1608: 2855:                                        FIELD.COUNT% = VAL(DM.NO.OF.FIELDS$)            !BSM
+1609: 286f:                                        COUNTER% = 1                                    !BSM
+1610: 287d:                                        WHILE COUNTER% < FIELD.COUNT%                   !BSM
+1611: 2888:                                            COUNTER% = COUNTER% + 1                     !BSM
+1612: 2894:                                            FIELD.STRING$ = FIELD.STRING$              \!BSM
+1613: 28e6:                                                + TRUNCATE.FIELD$(DM.FIELD.NAME$) + ","\!BSM
+1614: 28e6:                                                + TRUNCATE.FIELD$(DM.FIELD.TYPE$) + ";" !BSM
+1615: 28e6:                                            CALL DM.FOCUS("", "MESSAGE (221, 'ENTER NEXT FIELD')" )               !BSM
+1616: 28fe:                                            DM.FIELD.NAME$ = STRING$(24," ")                                      !BSM
+1617: 291a:                                            FIELD.NAME$ = DM.FIELD.NAME$                                          !BSM
+1618: 2933:                                            DM.FIELD.TYPE$ = STRING$(7," ")                                       !BSM
+1619: 294f:                                            FIELD.TYPE$ = DM.FIELD.TYPE$                                          !BSM
+1620: 2968:                                            RET.KEY% = DM.PROCESS.SCREEN(10,11,FALSE)                             !BSM
+1621: 2984:                                            IF RET.KEY% = ENTER.KEY% THEN BEGIN                                   !BSM
+1622: 299c:                                                                                                                  !BSM
+1623: 299c:                                                RET.KEY% = DM.PROCESS.SCREEN(12,14,FALSE)                         !BSM
+1624: 29b8:                                                IF RET.KEY% = ESC.KEY% OR                \                        !BSM
+1625: 29e6:                                                          RET.KEY% = F3.KEY% THEN BEGIN                           !BSM
+1626: 29e6:                                                    GOSUB ESCAPE.PRESSED                                          !BSM
+1627: 29fb:                                                ENDIF ELSE BEGIN                                                  !BSM
+1628: 2a03:                                                    WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F3.KEY% AND  \   !BSM
+1629: 2a0d:                                                                                       RET.KEY% <> ESC.KEY%       !BSM
+1630: 2a0d:                                                        RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED'")    !BSM
+1631: 2a24:                                                        IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN   !BSM
+1632: 2a52:                                                            GOSUB ESCAPE.PRESSED                                  !BSM
+1633: 2a64:                                                        ENDIF                                                     !BSM
+1634: 2a6c:                                                    WEND                                                          !BSM
+1635: 2ab0:                                                    CALL DM.STATUS("''")                                          !BSM
+1636: 2ac4:                                                ENDIF                                                             !BSM
+1637: 2acf:                                            ENDIF ELSE IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN    !BSM
+1638: 2afd:                                                 GOSUB ESCAPE.PRESSED                                             !BSM
+1639: 2b12:                                            ENDIF ELSE BEGIN                                                      !BSM
+1640: 2b1a:                                                WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F3.KEY% AND      \   !BSM
+1641: 2b24:                                                                                           RET.KEY% <> ESC.KEY%   !BSM
+1642: 2b24:                                                   RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED'")         !BSM
+1643: 2b3b:                                                   IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN        !BSM
+1644: 2b69:                                                       GOSUB ESCAPE.PRESSED                                       !BSM
+1645: 2b7b:                                                   ENDIF                                                          !BSM
+1646: 2b83:                                                WEND                                                              !BSM
+1647: 2bc7:                                                CALL DM.STATUS("''")                                              !BSM
+1648: 2bdb:                                           ENDIF                                                                  !BSM
+1649: 2be3:                                                                                                                  !BSM
+1650: 2be3:                                        WEND                                                                      !BSM
+1651: 2bf7:                                        FIELD.STRING$ = FIELD.STRING$ + \                                         !BSM
+1652: 2c49:                                                        TRUNCATE.FIELD$(DM.FIELD.NAME$) + "," + \                 !BSM
+1653: 2c49:                                                        TRUNCATE.FIELD$(DM.FIELD.TYPE$) + ";"                     !BSM
+1654: 2c49:                                    ENDIF                                                                         !BSM
+1655: 2c51:                                    START.FIELD% = START.FIELD% + 2                                               !BSM
+1656: 2c61:                                 ENDIF ELSE BEGIN                                                                 !BSM
+1657: 2c69:                                      WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F3.KEY% AND             \      !BSM
+1658: 2c73:                                                                                        RET.KEY% <> ESC.KEY%      !BSM
+1659: 2c73:                                         RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED'")                   !BSM
+1660: 2c8a:                                         IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN                  !BSM
+1661: 2cb8:                                             GOSUB ESCAPE.PRESSED                                                 !BSM
+1662: 2cca:                                         ENDIF                                                                    !BSM
+1663: 2cd2:                                      WEND                                                                        !BSM
+1664: 2d16:                                      CALL DM.STATUS("''")                                                        !BSM
+1665: 2d2a:                                ENDIF                                                                             !BSM
+1666: 2d32:                            WEND                                                                                  !BSM
+1667: 2d44:                            CALL DM.SHOW.FN.KEY(2,"")                                                             !BSM
+1668: 2d5a:                            CALL DM.SHOW.FN.KEY(3,"")                                                             !BSM
+1669: 2d70:                            CALL DM.SHOW.FN.KEY(4,"")                                                             !BSM
+1670: 2d86:                            CALL DM.SHOW.FN.KEY(5,"")                                                             !BSM
+1671: 2d9c:                            RET.KEY% = DM.INVISIBLE.INPUT("'PRESS F4 TO SAVE OR F5 TO READ FILE'")                !BSM
+1672: 2db3:                            IF RET.KEY% = F4.KEY% OR RET.KEY% = F5.KEY% THEN BEGIN                                !BSM
+1673: 2de4:                                FIELD.STRING$ = FIELD.STRING$ + CRLF$                                             !BSM
+1674: 2e08:                                GOSUB SAVE.FILE.DETAILS                                                           !BSM
+1675: 2e1a:                                FREAD.RECORD$ = FIELD.STRING$                                                     !BSM
+1676: 2e33:                                IF RET.KEY% = F5.KEY% THEN BEGIN                                                  !BSM
+1677: 2e48:                                    GOSUB CREATE.OUTPUT.FILE                                                      !BSM
+1678: 2e5a:                                    FILE.NAME$ = FUNC.PARSE.FIELD$                                                !BSM
+1679: 2e6f:                                    GOSUB INIT.NEW.FILE                                                           !BSM
+1680: 2e81:                                    GOSUB PROCESS.FILE                                                            !BSM
+1681: 2e96:                                ENDIF ELSE BEGIN                                                                  !BSM
+1682: 2e9e:                                    WHILE RET.KEY% <> ENTER.KEY% AND   \                                          !BSM
+1683: 2ea8:                                          RET.KEY% <> F3.KEY%    AND   \                                          !BSM
+1684: 2ea8:                                          RET.KEY% <> ESC.KEY%                                                    !BSM
+1685: 2ea8:                                        RET.KEY% = DM.INVISIBLE.INPUT("'FILE DETAILS SAVED.PRESS ENTER TO CONTINUE..'")!BSM
+1686: 2ebf:                                    WEND                                                                          !BSM
+1687: 2f00:                                    CALL DM.STATUS("''")                                                          !BSM
+1688: 2f14:                                ENDIF                                                                             !BSM
+1689: 2f1f:                            ENDIF ELSE IF RET.KEY% = F2.KEY% THEN BEGIN                                           !BSM
+1690: 2f34:                                FIELD.STRING$ = ""                                                                !BSM
+1691: 2f49:                                CALL DM.STATUS("''")                                                              !BSM
+1692: 2f60:                            ENDIF ELSE IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN                    !BSM
+1693: 2f8e:                                GOSUB ESCAPE.PRESSED                                                              !BSM
+1694: 2fa3:                            ENDIF ELSE BEGIN                                                                      !BSM
+1695: 2fab:                                 WHILE RET.KEY% <> F2.KEY% AND RET.KEY% <> F3.KEY% AND RET.KEY% <> ESC.KEY%       !BSM
+1696: 2fb5:                                     RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED.'")                      !BSM
+1697: 2fcc:                                 WEND                                                                             !BSM
+1698: 300d:                                 IF RET.KEY% = F2.KEY% THEN BEGIN                                                 !BSM
+1699: 3022:                                     FIELD.STRING$ = ""                                                           !BSM
+1700: 3037:                                 ENDIF                                                                            !BSM
+1701: 303f:                                 CALL DM.STATUS("''")                                                             !BSM
+1702: 3053:                            ENDIF                                                                                 !BSM
+1703: 305e:                                                                                                                  !BSM
+1704: 305e:                        ENDIF ELSE IF DM.FILE.TYPE$ = "S" THEN BEGIN                                              !BSM
+1705: 307c:                            CALL DM.SHOW.FN.KEY(2,"")                                                             !BSM
+1706: 3092:                            CALL DM.SHOW.FN.KEY(5,"")                                                             !BSM
+1707: 30a8:                            RET.KEY% = DM.INVISIBLE.INPUT("'PRESS F4 TO SAVE OR F5 TO READ FILE'")                !BSM
+1708: 30bf:                            IF RET.KEY% = F4.KEY% OR RET.KEY% = F5.KEY% THEN BEGIN                                !BSM
+1709: 30f0:                                FIELD.STRING$ = FIELD.STRING$ + DM.FILE.TYPE$ + ";"                               !BSM
+1710: 3118:                                FIELD.STRING$ = FIELD.STRING$ + CRLF$                                             !BSM
+1711: 313c:                                GOSUB SAVE.FILE.DETAILS                                                           !BSM
+1712: 314e:                                FREAD.RECORD$ = FIELD.STRING$                                                     !BSM
+1713: 3167:                                IF RET.KEY% = F5.KEY% THEN BEGIN                                                  !BSM
+1714: 317c:                                    GOSUB CREATE.OUTPUT.FILE                                                      !BSM
+1715: 318e:                                    FILE.NAME$ = FUNC.PARSE.FIELD$                                                !BSM
+1716: 31a3:                                    GOSUB INIT.NEW.FILE                                                           !BSM
+1717: 31b5:                                    GOSUB PROCESS.FILE                                                            !BSM
+1718: 31ca:                                 ENDIF ELSE BEGIN                                                                 !BSM
+1719: 31d2:                                     WHILE RET.KEY% <> ENTER.KEY% AND RET.KEY% <> F3.KEY% AND \                   !BSM
+1720: 31dc:                                                                                         RET.KEY% <> ESC.KEY%     !BSM
+1721: 31dc:                                         RET.KEY% = DM.INVISIBLE.INPUT("'FILE DETAILS SAVED.PRESS ENTER TO CONTINUE..'")!BSM
+1722: 31f3:                                     WEND                                                                         !BSM
+1723: 3234:                                     CALL DM.STATUS("''")                                                         !BSM
+1724: 3248:                                ENDIF                                                                             !BSM
+1725: 3253:                            ENDIF ELSE IF RET.KEY% = F2.KEY% THEN BEGIN                                           !BSM
+1726: 3268:                                FIELD.STRING$ = ""                                                                !BSM
+1727: 327d:                                CALL DM.STATUS("''")                                                              !BSM
+1728: 3294:                            ENDIF ELSE IF RET.KEY% = ESC.KEY% AND RET.KEY% = F3.KEY% THEN BEGIN                   !BSM
+1729: 32c2:                                GOSUB ESCAPE.PRESSED                                                              !BSM
+1730: 32d7:                            ENDIF ELSE BEGIN                                                                      !BSM
+1731: 32df:                                 WHILE RET.KEY% <> F2.KEY% AND RET.KEY% <> F3.KEY% AND RET.KEY% <> ESC.KEY%       !BSM
+1732: 32e9:                                     RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED.'")                      !BSM
+1733: 3300:                                 WEND                                                                             !BSM
+1734: 3341:                                 IF RET.KEY% = F2.KEY% THEN BEGIN                                                 !BSM
+1735: 3356:                                    FIELD.STRING$ = ""                                                            !BSM
+1736: 336b:                                 ENDIF                                                                            !BSM
+1737: 3373:                                 CALL DM.STATUS("''")                                                             !BSM
+1738: 3387:                            ENDIF                                                                                 !BSM
+1739: 338f:                        ENDIF                                                                                     !BSM
+1740: 339a:                    ENDIF ELSE BEGIN                                                                              !BSM
+1741: 33a2:                         WHILE RET.KEY% <> ESC.KEY% AND RET.KEY% <> F3.KEY% AND RET.KEY% <> F2.KEY%               !BSM
+1742: 33ac:                             RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED'")                               !BSM
+1743: 33c3:                         WEND                                                                                     !BSM
+1744: 3404:                         CALL DM.STATUS("''")                                                                     !BSM
+1745: 3418:                    ENDIF                                                                                         !BSM
+1746: 3420:                 ENDIF                                                                                            !BSM
+1747: 3428:             ENDIF                                                                                                !BSM
+1748: 3433:         ENDIF ELSE BEGIN                                                                                         !BSM
+1749: 343b:             CALL DM.SHOW.FN.KEY(2,"")                                                                            !BSM
+1750: 3451:             WHILE RET.KEY% <> F2.KEY% AND RET.KEY% <> F3.KEY% AND RET.KEY% <> F2.KEY%                            !BSM
+1751: 345b:                 RET.KEY% = DM.INVISIBLE.INPUT("'INVALID KEY PRESSED'")                                           !BSM
+1752: 3472:             WEND                                                                                                 !BSM
+1753: 34b3:             CALL DM.STATUS("''")                                                                                 !BSM
+1754: 34c7:         ENDIF                                                                                                    !BSM
+1755: 34cf:         IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN                                                  !BSM
+1756: 34fd:             GOSUB ESCAPE.PRESSED                                                                                 !BSM
+1757: 3511:         ENDIF ELSE BEGIN                                                                                         !BSM
+1758: 3519:             GOSUB RESET.SCREEN                                                                                   !BSM
+1759: 352b:         ENDIF                                                                                                    !BSM
+1760: 3533:     WEND                                                                                                         !BSM
+1761: 3545:     GOSUB ESCAPE.PRESSED                                                                                         !BSM
+1762: 3557:                                                                                                                  !BSM
+1763: 3557: RETURN                                                                                                           !BSM
+1764: 3567: 
+1765: 3567: \***********************************************************************!BSM
+1766: 3567: \*                                                                      !BSM
+1767: 3567: \* CREATE.OUTPUT.FILE                                                   !BSM
+1768: 3567: \*                                                                      !BSM
+1769: 3567: \***********************************************************************!BSM
+1770: 3567: CREATE.OUTPUT.FILE:                                                     !BSM
+1771: 3577:      FILE.OPERATION$     = "C" ! Create                                 !BSM
+1772: 358c:      CURRENT.REPORT.NUM% = OUTPUT.FILE.REPORT.NUM%                      !BSM
+1773: 359a:      IF OUTPUT.FILE.OPEN.FLAG = TRUE THEN BEGIN                         !BSM
+1774: 35ab:          DELETE OUTPUT.FILE.SESS.NUM%                                   !BSM
+1775: 35bc:          OUTPUT.FILE.OPEN.FLAG = FALSE                                  !BSM
+1776: 35ca:      ENDIF                                                              !BSM
+1777: 35d2:      IF END # OUTPUT.FILE.SESS.NUM% THEN FILE.ERROR                     !BSM
+1778: 35eb:      CREATE OUTPUT.FILE.NAME$ AS OUTPUT.FILE.SESS.NUM%                  !BSM
+1779: 360c:      OUTPUT.FILE.OPEN.FLAG     = TRUE                                   !BSM
+1780: 361a: RETURN                                                                  !BSM
+1781: 362a: 
+1782: 362a: \***********************************************************************!BSM
+1783: 362a: \*                                                                      !BSM
+1784: 362a: \* SAVE.FILE.DETAILS                                                    !BSM
+1785: 362a: \*                                                                      !BSM
+1786: 362a: \***********************************************************************!BSM
+1787: 362a: SAVE.FILE.DETAILS:                                                      !BSM
+1788: 363a:     IF FREAD.OPEN.FLAG THEN BEGIN                                       !BSM
+1789: 3649:         CLOSE FREAD.SESS.NUM%                                           !BSM
+1790: 365a:         FREAD.OPEN.FLAG = FALSE                                         !BSM
+1791: 3668:     ENDIF                                                               !BSM
+1792: 3670:     IF END # FREAD.SESS.NUM% THEN FILE.ERROR                            !BSM
+1793: 3689:     OPEN FREAD.FILE.NAME$ AS FREAD.SESS.NUM% APPEND                     !BSM
+1794: 36aa:     FREAD.OPEN.FLAG = TRUE                                              !BSM
+1795: 36b8:     WRITE.FORM$ = "C"+STR$(LEN(FIELD.STRING$))                          !BSM
+1796: 36eb:     IF END # FREAD.SESS.NUM% THEN FILE.ERROR                            !BSM
+1797: 3704:     WRITE FORM WRITE.FORM$ ;#FREAD.SESS.NUM%; FIELD.STRING$             !BSM
+1798: 372c:                                                                         !BSM
+1799: 372c: RETURN                                                                  !BSM
+1800: 373c: 
+1801: 373c: \***********************************************************************!BSM
+1802: 373c: \*                                                                      !BSM
+1803: 373c: \* VALIDATE.FIELDS                                                      !BSM
+1804: 373c: \*                                                                      !BSM
+1805: 373c: \***********************************************************************!BSM
+1806: 373c: VALIDATE.FIELDS:                                                        !BSM
+1807: 374c:    INVALID = TRUE                                                       !BSM
+1808: 375a:     WHILE INVALID                                                       !BSM
+1809: 3765:         IF START.FIELD% = 6 THEN BEGIN                                  !BSM
+1810: 3777:            DM.RECORD.LENGTH$ = TRUNCATE.FIELD$(DM.RECORD.LENGTH$)       !BSM
+1811: 3794:            IF VAL(DM.RECORD.LENGTH$) = 0 THEN BEGIN                     !BSM
+1812: 37c9:                CALL DM.FOCUS("", "MESSAGE (221, 'RECORD LENGTH CAN NOT BE ZERO')")!BSM
+1813: 37e1:                DM.RECORD.LENGTH$ = STRING$(3," ")                       !BSM
+1814: 37fd:                RECORD.LENGTH$ = DM.RECORD.LENGTH$                       !BSM
+1815: 3816:                RET.KEY% = DM.PROCESS.SCREEN(8,8,FALSE)                  !BSM
+1816: 3832:                IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN  !BSM
+1817: 3860:                    GOSUB ESCAPE.PRESSED                                 !BSM
+1818: 3872:                ENDIF                                                    !BSM
+1819: 387c:            ENDIF ELSE BEGIN                                             !BSM
+1820: 3884:               INVALID = FALSE                                           !BSM
+1821: 3892:            ENDIF                                                        !BSM
+1822: 389d:         ENDIF ELSE IF START.FIELD% = 8 THEN BEGIN                       !BSM
+1823: 38af:             DM.NO.OF.FIELDS$ = TRUNCATE.FIELD$(DM.NO.OF.FIELDS$)        !BSM
+1824: 38cc:             IF VAL(DM.NO.OF.FIELDS$) = 0 THEN BEGIN                     !BSM
+1825: 3901:                CALL DM.FOCUS("", "MESSAGE (221, 'THIS FIELD CAN NOT BE ZERO')")!BSM
+1826: 3919:                DM.NO.OF.FIELDS$ = STRING$(3," ")                        !BSM
+1827: 3935:                NO.OF.FIELDS$ = DM.NO.OF.FIELDS$                         !BSM
+1828: 394e:                RET.KEY% = DM.PROCESS.SCREEN(8,8,FALSE)                  !BSM
+1829: 396a:                IF RET.KEY% = ESC.KEY% OR RET.KEY% = F3.KEY% THEN BEGIN  !BSM
+1830: 3998:                    GOSUB ESCAPE.PRESSED                                 !BSM
+1831: 39aa:                ENDIF                                                    !BSM
+1832: 39b4:            ENDIF ELSE BEGIN                                             !BSM
+1833: 39bc:               INVALID = FALSE                                           !BSM
+1834: 39ca:            ENDIF                                                        !BSM
+1835: 39d2:         ENDIF                                                           !BSM
+1836: 39da:     WEND                                                                !BSM
+1837: 39ec:                                                                         !BSM
+1838: 39ec: RETURN                                                                  !BSM
+1839: 39fc: 
+1840: 39fc: \***********************************************************************!BSM
+1841: 39fc: \*                                                                      !BSM
+1842: 39fc: \* RESET.SCREEN                                                         !BSM
+1843: 39fc: \*                                                                      !BSM
+1844: 39fc: \***********************************************************************!BSM
+1845: 39fc: RESET.SCREEN:                                                           !BSM
+1846: 3a0c:                                                                         !BSM
+1847: 3a0c:     IF RET.KEY% = F3.KEY% THEN BEGIN                                    !BSM
+1848: 3a21:         GOSUB ESCAPE.PRESSED                                            !BSM
+1849: 3a33:     ENDIF                                                               !BSM
+1850: 3a3b:     CALL DM.HIDE.FN.KEY(2)                                              !BSM
+1851: 3a4c:     CALL DM.HIDE.FN.KEY(4)                                              !BSM
+1852: 3a5d:     CALL DM.HIDE.FN.KEY(5)                                              !BSM
+1853: 3a6e:     DM.INPUT.FILE$ = STRING$(33," ")                                    !BSM
+1854: 3a8a:     INPUT.FILE$ = DM.INPUT.FILE$                                        !BSM
+1855: 3aa3:     DM.FILE.TYPE$ = " "                                                 !BSM
+1856: 3ab8:     FILES.TYPE$ = DM.FILE.TYPE$                                         !BSM
+1857: 3ad1:     DM.RECORD.LENGTH$ = STRING$(3," ")                                  !BSM
+1858: 3aed:     RECORD.LENGTH$ = DM.RECORD.LENGTH$                                  !BSM
+1859: 3b06:     DM.NO.OF.FIELDS$ = STRING$(3," ")                                   !BSM
+1860: 3b22:     NO.OF.FIELDS$ = DM.NO.OF.FIELDS$                                    !BSM
+1861: 3b3b:     DM.FIELD.NAME$ = STRING$(22," ")                                    !BSM
+1862: 3b57:     FIELD.NAME$ = DM.FIELD.NAME$                                        !BSM
+1863: 3b70:     DM.FIELD.TYPE$ = STRING$(5," ")                                     !BSM
+1864: 3b8c:     FIELD.TYPE$ = DM.FIELD.TYPE$                                        !BSM
+1865: 3ba5:     CALL DM.VISIBLE("2","FALSE")                                        !BSM
+1866: 3bbd:     CALL DM.VISIBLE("3","FALSE")                                        !BSM
+1867: 3bd5:     CALL DM.VISIBLE("4","FALSE")                                        !BSM
+1868: 3bed:     CALL DM.VISIBLE("5","FALSE")                                        !BSM
+1869: 3c05:     CALL DM.VISIBLE("6","FALSE")                                        !BSM
+1870: 3c1d:     CALL DM.VISIBLE("7","FALSE")                                        !BSM
+1871: 3c35:     CALL DM.VISIBLE("8","FALSE")                                        !BSM
+1872: 3c4d:     CALL DM.VISIBLE("9","FALSE")                                        !BSM
+1873: 3c65:     CALL DM.VISIBLE("10","FALSE")                                       !BSM
+1874: 3c7d:     CALL DM.VISIBLE("11","FALSE")                                       !BSM
+1875: 3c95:     CALL DM.VISIBLE("12","FALSE")                                       !BSM
+1876: 3cad:     CALL DM.VISIBLE("13","FALSE")                                       !BSM
+1877: 3cc5:     CALL DM.VISIBLE("14","FALSE")                                       !BSM
+1878: 3cdd:                                                                         !BSM
+1879: 3cdd: RETURN                                                                  !BSM
+1880: 3ced: 
+1881: 3ced: \***********************************************************************!BSM
+1882: 3ced: \*                                                                      !BSM
+1883: 3ced: \* ESCAPE.PRESSED                                                       !BSM
+1884: 3ced: \*                                                                      !BSM
+1885: 3ced: \***********************************************************************!BSM
+1886: 3ced: ESCAPE.PRESSED:                                                         !BSM
+1887: 3cfd:         CLEARS                                                          !BSM
+1888: 3d0c:         GOSUB TERMINATION                                               !BSM
+1889: 3d1e:         GOSUB STOP.PROGRAM                                              !BSM
+1890: 3d30: RETURN                                                                  !BSM
+1891: 3d40: 
+1892: 3d40: \**********************************************************************
+1893: 3d40: \*
+1894: 3d40: \* Main error handling routine
+1895: 3d40: \*
+1896: 3d40: \**********************************************************************
+1897: 3d40: ERROR.DETECTED:
+1898: 3d50: 
+1899: 3d50:    !PRINT "ERR      = "; ERR                                            !BSM
+1900: 3d50:    !PRINT "ERRN     = "; ERRN                                           !BSM
+1901: 3d50:    !PRINT "ERRF%    = "; ERRF%                                          !BSM
+1902: 3d50:    !PRINT "ERRL     = "; ERRL                                           !BSM
+1903: 3d50:     CLEARS                                                              !BSM
+1904: 3d5f:     GOSUB STOP.PROGRAM                                                  !BSM
+1905: 3d76: 
+1906: 3d76: END
+1907: 3d76: 
+1908: 3d76: End of Compilation

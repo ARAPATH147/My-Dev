@@ -1,0 +1,188 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                   FILE HANDLING FUNCTION SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  DIRECT
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  LDTAFFUN.J86
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***                               LDT AUDIT FILE MOVEMENT FILE
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***      VERSION A          Michael J. Kelsall         30th September 1993
+  16: 0000: \***
+  17: 0000: \***      VERSION B          Michael J. Kelsall         23rd March 1994
+  18: 0000: \***      Change to report link duration in seconds as opposed to minutes,
+  19: 0000: \***      thus requiring the link duration to be stored as a 4 byte integer
+  20: 0000: \***      
+  21: 0000: \*****************************************************************************
+  22: 0000: \*****************************************************************************
+  23: 0000: 
+  24: 0000:    INTEGER*2 GLOBAL                  \
+  25: 0000:       CURRENT.REPORT.NUM%
+  26: 0000: 
+  27: 0000:    STRING GLOBAL                     \
+  28: 0000:       CURRENT.CODE$,                 \
+  29: 0000:       FILE.OPERATION$
+  30: 0000: 
+  31: 0000:    %INCLUDE LDTAFDEC.J86
+  32: 0000: 
+  33: 0000: \*****************************************************************************
+  34: 0000: \*****************************************************************************
+  35: 0000: \***
+  36: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  37: 0000: \***
+  38: 0000: \***                   FILE TYPE:  DIRECT
+  39: 0000: \***
+  40: 0000: \***                   REFERENCE:  LDTAFDEC.J86
+  41: 0000: \***
+  42: 0000: \***	             DESCRIPTION:  LDT / PDT SUPPORT LINK AUDIT FILE
+  43: 0000: \***
+  44: 0000: \***
+  45: 0000: \***      VERSION A         Michael J. Kelsall       30th September 1993
+  46: 0000: \***
+  47: 0000: \***      VERSION B         Michael J. Kelsall       25th March 1994
+  48: 0000: \***      Conversion of LDTAF link duration from minutes to seconds, requiring
+  49: 0000: \***      4 byte integer to hold times >09:06:07 (= 32767 seconds)
+  50: 0000: \***      
+  51: 0000: \*****************************************************************************
+  52: 0000: \*****************************************************************************
+  53: 0000: 
+  54: 0000:   STRING GLOBAL                 \
+  55: 0000:     LDTAF.FILE.NAME$,		\
+  56: 0000:     LDTAF.START.DATE$,		\ 3 byte UPD  (YYMMDD)
+  57: 0000:     LDTAF.START.TIME$		! 3 byte UPD  (HHMMSS)
+  58: 0000:     
+  59: 0000: 
+  60: 0000:   INTEGER*1 GLOBAL              \
+  61: 0000:     LDTAF.LINK.TYPE%		!  1 - CSR file    (CSRWF size / num of UNITS)
+  62: 0000: 				!  2 - PCHECK      (CHKBF size / null)
+  63: 0000: 				!  3 - LDT PROG    (LDTPF size / null)
+  64: 0000: 				!  4 - DIRECTS     (DRSMQ size / DIRWF size)
+  65: 0000: 				!  5 - UOD         (UODTF size / null)
+  66: 0000: 				!  6 - EPSOM req   (PDTWF size / null)
+  67: 0000: 				!  7 - EPSOM lists (num of lists / null)
+  68: 0000: 				!  8 - RETURNS UOD (CCTMP size / CCBUF size)
+  69: 0000: 				!  9 - RETURNS req (CCWKF size / null)
+  70: 0000: 				!  MSB ---> 0 = Port A , 1 = Port B. 
+  71: 0000: 
+  72: 0000:   INTEGER*2 GLOBAL              \
+  73: 0000:     LDTAF.SESS.NUM%,            \
+  74: 0000:     LDTAF.REPORT.NUM%,		\
+  75: 0000:     LDTAF.RECL%
+  76: 0000:     				
+  77: 0000: 
+  78: 0000:   INTEGER*4 GLOBAL              \
+  79: 0000:     LDTAF.DATA.VOLUME.1%,	\
+  80: 0000:     LDTAF.DATA.VOLUME.2%,	\
+  81: 0000:     LDTAF.DURATION%    		! BMJK
+  82: 0000: 
+  83: 0000: 
+  84: 0000: 
+  85: 0000:    FUNCTION LDTAF.SET PUBLIC
+  86: 0014:  
+  87: 0014:       INTEGER*2 LDTAF.SET
+  88: 0014:       LDTAF.SET = 1
+  89: 0019: 
+  90: 0019:          LDTAF.REPORT.NUM%        = 328
+  91: 0022:          LDTAF.FILE.NAME$         = "LDTAF"
+  92: 0031:          LDTAF.RECL%              = 18
+  93: 003a:         
+  94: 003a:       LDTAF.SET = 0
+  95: 003f:     
+  96: 003f:    END FUNCTION
+  97: 004e: 
+  98: 004e: 
+  99: 004e: 
+ 100: 004e:    FUNCTION READ.LDTAF PUBLIC
+ 101: 0062: 
+ 102: 0062:     INTEGER*2 READ.LDTAF
+ 103: 0062:     STRING    FORMAT$
+ 104: 0062: 
+ 105: 0062:     READ.LDTAF = 1
+ 106: 0067: 
+ 107: 0067:      IF END #LDTAF.SESS.NUM% THEN READ.LDTAF.ERROR
+ 108: 007b:      READ FORM "C3,C2,I4,I1,2I4"; # LDTAF.SESS.NUM%;                    \
+ 109: 00d4:            LDTAF.START.DATE$,                                           \
+ 110: 00d4:            LDTAF.START.TIME$,                                           \
+ 111: 00d4:            LDTAF.DURATION%,                                             \
+ 112: 00d4:            LDTAF.LINK.TYPE%,                                            \
+ 113: 00d4:            LDTAF.DATA.VOLUME.1%,                                        \
+ 114: 00d4:            LDTAF.DATA.VOLUME.2%
+ 115: 00d4: 
+ 116: 00d4:    READ.LDTAF = 0
+ 117: 00d9:    EXIT FUNCTION
+ 118: 00db: 
+ 119: 00db:    READ.LDTAF.ERROR:
+ 120: 00db: 
+ 121: 00db:      CURRENT.REPORT.NUM% = LDTAF.REPORT.NUM%
+ 122: 00e9:      FILE.OPERATION$ = "R"
+ 123: 00f8:      CURRENT.CODE$ = ""
+ 124: 0107:      EXIT FUNCTION
+ 125: 0109: 
+ 126: 0109:   END FUNCTION
+ 127: 0118: 
+ 128: 0118: 
+ 129: 0118: 
+ 130: 0118:   FUNCTION WRITE.LDTAF PUBLIC
+ 131: 012c: 
+ 132: 012c:      INTEGER*2 WRITE.LDTAF
+ 133: 012c:      STRING    FORMAT$
+ 134: 012c: 
+ 135: 012c:      WRITE.LDTAF = 1
+ 136: 0131: 
+ 137: 0131:         IF END #LDTAF.SESS.NUM% THEN WRITE.LDTAF.ERROR
+ 138: 0145:         WRITE FORM "C3,C2,I4,I1,2I4"; #LDTAF.SESS.NUM%;                 \
+ 139: 01b5:            LDTAF.START.DATE$,                                           \
+ 140: 01b5:            LDTAF.START.TIME$,                                           \
+ 141: 01b5:            LDTAF.DURATION%,                                             \
+ 142: 01b5:            LDTAF.LINK.TYPE%,                                            \
+ 143: 01b5:            LDTAF.DATA.VOLUME.1%,                                        \
+ 144: 01b5:            LDTAF.DATA.VOLUME.2%
+ 145: 01b5: 
+ 146: 01b5:      WRITE.LDTAF = 0
+ 147: 01ba:      EXIT FUNCTION
+ 148: 01bc: 
+ 149: 01bc:      WRITE.LDTAF.ERROR:
+ 150: 01bc: 
+ 151: 01bc:         CURRENT.REPORT.NUM% = LDTAF.REPORT.NUM%
+ 152: 01ca:         FILE.OPERATION$ = "W"
+ 153: 01d9:         CURRENT.CODE$ = ""
+ 154: 01e8:         EXIT FUNCTION
+ 155: 01ea: 
+ 156: 01ea:   END FUNCTION
+ 157: 01f9: 
+ 158: 01f9: 
+ 159: 01f9: 
+ 160: 01f9:   FUNCTION WRITE.HOLD.LDTAF PUBLIC
+ 161: 020d: 
+ 162: 020d:      INTEGER*2 WRITE.HOLD.LDTAF
+ 163: 020d:      STRING    FORMAT$
+ 164: 020d: 
+ 165: 020d:      WRITE.HOLD.LDTAF = 1
+ 166: 0212: 
+ 167: 0212:         IF END #LDTAF.SESS.NUM% THEN WRITE.HOLD.LDTAF.ERROR
+ 168: 0226:         WRITE FORM "C3,C2,I4,I1,2I4"; HOLD #LDTAF.SESS.NUM%;            \
+ 169: 0296:            LDTAF.START.DATE$,                                           \
+ 170: 0296:            LDTAF.START.TIME$,                                           \
+ 171: 0296:            LDTAF.DURATION%,                                             \
+ 172: 0296:            LDTAF.LINK.TYPE%,                                            \
+ 173: 0296:            LDTAF.DATA.VOLUME.1%,                                        \
+ 174: 0296:            LDTAF.DATA.VOLUME.2%
+ 175: 0296: 
+ 176: 0296:      WRITE.HOLD.LDTAF = 0
+ 177: 029b:      EXIT FUNCTION
+ 178: 029d: 
+ 179: 029d:      WRITE.HOLD.LDTAF.ERROR:
+ 180: 029d: 
+ 181: 029d:         CURRENT.REPORT.NUM% = LDTAF.REPORT.NUM%
+ 182: 02ab:         FILE.OPERATION$ = "W"
+ 183: 02ba:         CURRENT.CODE$ = ""
+ 184: 02c9:         EXIT FUNCTION
+ 185: 02cb: 
+ 186: 02cb:   END FUNCTION
+ 187: 02da: 
+ 188: 02da: End of Compilation

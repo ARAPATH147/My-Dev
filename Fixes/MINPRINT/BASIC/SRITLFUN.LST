@@ -1,0 +1,302 @@
+   1: 0000: \********************************************************************
+   2: 0000: \***      Space and Range Planogram Live Item database (SRITL)
+   3: 0000: \***      Version A           Neil Bennett          07.07.2006
+   4: 0000: \***
+   5: 0000: \....................................................................
+   6: 0000: 
+   7: 0000:   INTEGER*2 GLOBAL                   \
+   8: 0000:       CURRENT.REPORT.NUM%
+   9: 0000: 
+  10: 0000:   STRING GLOBAL                      \
+  11: 0000:       CURRENT.CODE$,                 \
+  12: 0000:       FILE.OPERATION$
+  13: 0000: 
+  14: 0000:   STRING                             \
+  15: 0000:       SRITL.ARRAY$
+  16: 0000: 
+  17: 0000:   %INCLUDE SRITLDEC.J86
+  18: 0000: \********************************************************************
+  19: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRITL FILE
+  20: 0000: \***      REFERENCE : SRITLDEC.J86
+  21: 0000: \***      Version A           Neil Bennett            5th June 2006
+  22: 0000: \***
+  23: 0000: \********************************************************************
+  24: 0000: 
+  25: 0000:   INTEGER*1 GLOBAL        \
+  26: 0000:     SRITL.RECORD.CHAIN%,  \ Chain Sequence
+  27: 0000:     SRITL.MODULE.COUNT%,  \ Family hierarchy key level
+  28: 0000:     SRITL.MODULE.SEQ%(1), \ Module sequence
+  29: 0000:     SRITL.REPEAT.CNT%(1)  ! Repeat count
+  30: 0000: 
+  31: 0000:   INTEGER*2 GLOBAL        \
+  32: 0000:     SRITL.CORE.COUNT%,    \ Sum of repeat count for core items
+  33: 0000:     SRITL.MAX.MOD.KEYS%,  \ Maximum number of modules
+  34: 0000:     SRITL.NON.CORE.CNT%,  \ Sum of repeat count for non core items
+  35: 0000:     SRITL.SESS.NUM%,      \
+  36: 0000:     SRITL.REPORT.NUM%,    \
+  37: 0000:     SRITL.RECL%           !
+  38: 0000: 
+  39: 0000:   INTEGER*4 GLOBAL        \
+  40: 0000:     SRITL.POGDB%(1)       ! Unique POG Database key
+  41: 0000: 
+  42: 0000:   STRING GLOBAL           \
+  43: 0000:     SRITL.FILE.NAME$,     \ File name
+  44: 0000:     SRITL.COPY.NAME$,     \ File name
+  45: 0000:     SRITL.ITEM.CODE$,     \ Boots Item Code
+  46: 0000:     SRITL.CORE.FLAG$(1),  \ Core/Non Core flag Y/N
+  47: 0000:     SRITL.FILLER$         !
+  48: 0000: 
+  49: 0000: 
+  50: 0000: 
+  51: 0000: \--------------------------------------------------------------------
+  52: 0000: 
+  53: 0000:   %INCLUDE BTCMEM.J86
+  54: 0000: !********************************************************************
+  55: 0000: !***
+  56: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+  57: 0000: !***    AUTHOR:         Stuart William McConnachie
+  58: 0000: !***    DATE:           26th February 2006
+  59: 0000: !***
+  60: 0000: !********************************************************************
+  61: 0000: !***
+  62: 0000: !***    Controller CBASIC Memory Functions
+  63: 0000: !***
+  64: 0000: !********************************************************************
+  65: 0000: 
+  66: 0000: !Get a single byte integer from a string offset
+  67: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+  68: 0000:     STRING S$
+  69: 0000:     INTEGER*2 P%
+  70: 0000:     INTEGER*2 GETN1
+  71: 0000: END FUNCTION
+  72: 0000: 
+  73: 0000: !Get a two byte integer from a string offset
+  74: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+  75: 0000:     STRING S$
+  76: 0000:     INTEGER*2 P%
+  77: 0000:     INTEGER*2 GETN2
+  78: 0000: END FUNCTION
+  79: 0000: 
+  80: 0000: !Get a four byte integer from a string offset
+  81: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+  82: 0000:     STRING S$
+  83: 0000:     INTEGER*2 P%
+  84: 0000:     INTEGER*4 GETN4
+  85: 0000: END FUNCTION
+  86: 0000: 
+  87: 0000: !Get a 10 byte CBASIC real from a string offset
+  88: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+  89: 0000:     STRING S$
+  90: 0000:     INTEGER*2 P%
+  91: 0000:     REAL GETR10
+  92: 0000: END FUNCTION
+  93: 0000: 
+  94: 0000: !Put a single byte integer into a string at offset
+  95: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+  96: 0000:     STRING S$
+  97: 0000:     INTEGER*2 P%
+  98: 0000:     INTEGER*1 N%
+  99: 0000:     INTEGER*1 PUTN1
+ 100: 0000: END FUNCTION
+ 101: 0000: 
+ 102: 0000: !Put a two byte integer into a string at offset
+ 103: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 104: 0000:     STRING S$
+ 105: 0000:     INTEGER*2 P%
+ 106: 0000:     INTEGER*2 N%
+ 107: 0000:     INTEGER*1 PUTN2
+ 108: 0000: END FUNCTION
+ 109: 0000: 
+ 110: 0000: !Put a four byte integer into a string at offset
+ 111: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 112: 0000:     STRING S$
+ 113: 0000:     INTEGER*2 P%
+ 114: 0000:     INTEGER*4 N%
+ 115: 0000:     INTEGER*1 PUTN4
+ 116: 0000: END FUNCTION
+ 117: 0000: 
+ 118: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 119: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 120: 0000:     STRING S$
+ 121: 0000:     INTEGER*2 P%
+ 122: 0000:     REAL R
+ 123: 0000:     INTEGER*1 PUTR10
+ 124: 0000: END FUNCTION
+ 125: 0000: 
+ 126: 0000: !Peek a two byte integer from a memory address
+ 127: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 128: 0000:     INTEGER*4 A%
+ 129: 0000:     INTEGER*2 PEEKN2
+ 130: 0000: END FUNCTION
+ 131: 0000: 
+ 132: 0000: !Peek a four byte integer from a memory address
+ 133: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 134: 0000:     INTEGER*4 A%
+ 135: 0000:     INTEGER*4 PEEKN4
+ 136: 0000: END FUNCTION
+ 137: 0000: 
+ 138: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 139: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 140: 0000:     INTEGER*4 A%
+ 141: 0000:     REAL PEEKR10
+ 142: 0000: END FUNCTION
+ 143: 0000: 
+ 144: 0000: !Poke a two byte integer to a memory address
+ 145: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 146: 0000:     INTEGER*4 A%
+ 147: 0000:     INTEGER*2 N%
+ 148: 0000:     INTEGER*1 POKEN2
+ 149: 0000: END FUNCTION
+ 150: 0000: 
+ 151: 0000: !Poke a four byte integer to a memory address
+ 152: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 153: 0000:     INTEGER*4 A%
+ 154: 0000:     INTEGER*4 N%
+ 155: 0000:     INTEGER*1 POKEN4
+ 156: 0000: END FUNCTION
+ 157: 0000: 
+ 158: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 159: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 160: 0000:     INTEGER*4 A%
+ 161: 0000:     REAL R
+ 162: 0000:     INTEGER*1 POKER10
+ 163: 0000: END FUNCTION
+ 164: 0000: 
+ 165: 0000: 
+ 166: 0000: \--------------------------------------------------------------------
+ 167: 0000: 
+ 168: 0000:   FUNCTION BUILD.SRITL.KEY$
+ 169: 0014: 
+ 170: 0014:    STRING   BUILD.SRITL.KEY$
+ 171: 0014:    STRING   work$
+ 172: 0014: 
+ 173: 0014:    work$ = SRITL.ITEM.CODE$ + CHR$(SRITL.RECORD.CHAIN%)
+ 174: 0039: 
+ 175: 0039:    BUILD.SRITL.KEY$ = work$
+ 176: 004b:    work$ = ""
+ 177: 0058: 
+ 178: 0058:   END FUNCTION
+ 179: 0069: 
+ 180: 0069: \--------------------------------------------------------------------
+ 181: 0069: 
+ 182: 0069:   SUB SRITL.SPLIT.ARRAY
+ 183: 007d: 
+ 184: 007d:    INTEGER*2 i%
+ 185: 007d: 
+ 186: 007d:    FOR i% = 0 TO SRITL.MAX.MOD.KEYS% -1
+ 187: 0086: 
+ 188: 0086:       SRITL.POGDB%(i%)      = GETN4(SRITL.ARRAY$, i%*7 +0)
+ 189: 00bc:       SRITL.MODULE.SEQ%(i%) = GETN1(SRITL.ARRAY$, i%*7 +4)
+ 190: 00f0:       SRITL.REPEAT.CNT%(i%) = GETN1(SRITL.ARRAY$, i%*7 +5)
+ 191: 0124:       SRITL.CORE.FLAG$(i%)  = MID$ (SRITL.ARRAY$, i%*7 +7, 1)
+ 192: 0155: 
+ 193: 0155:    NEXT i%
+ 194: 016d: 
+ 195: 016d:   END SUB
+ 196: 0179: 
+ 197: 0179: \--------------------------------------------------------------------
+ 198: 0179: 
+ 199: 0179:   SUB SRITL.CONCAT.ARRAY
+ 200: 018d: 
+ 201: 018d:    INTEGER*2 i%
+ 202: 018d: 
+ 203: 018d:    SRITL.ARRAY$ = STRING$(7, CHR$(00))
+ 204: 01a4:    SRITL.ARRAY$ = STRING$(SRITL.MAX.MOD.KEYS%, SRITL.ARRAY$)
+ 205: 01c1: 
+ 206: 01c1:    FOR i% = 0 TO SRITL.MAX.MOD.KEYS% -1
+ 207: 01ca: 
+ 208: 01ca:       CALL PUTN4(SRITL.ARRAY$, i%*7 +0, SRITL.POGDB%(i%))
+ 209: 01fc:       CALL PUTN1(SRITL.ARRAY$, i%*7 +4, SRITL.MODULE.SEQ%(i%))
+ 210: 022c:       CALL PUTN1(SRITL.ARRAY$, i%*7 +5, SRITL.REPEAT.CNT%(i%))
+ 211: 025c:       CALL PUTN1(SRITL.ARRAY$, i%*7 +6, ASC(SRITL.CORE.FLAG$(i%)    \
+ 212: 02a4:                                                            + "?"))
+ 213: 02a4: 
+ 214: 02a4:    NEXT i%
+ 215: 02bc: 
+ 216: 02bc:   END SUB
+ 217: 02c8: 
+ 218: 02c8: \--------------------------------------------------------------------
+ 219: 02c8: 
+ 220: 02c8:   FUNCTION SRITL.SET PUBLIC
+ 221: 02dc: 
+ 222: 02dc:    SRITL.REPORT.NUM%   = 721
+ 223: 02e5:    SRITL.RECL%         = 127
+ 224: 02ee:    SRITL.FILE.NAME$    = "SRITML"
+ 225: 02fd:    SRITL.COPY.NAME$    = "ADXLXACN::D:\ADX_UDT3\SRITEML.BAK"
+ 226: 030c:    SRITL.MAX.MOD.KEYS% = 16
+ 227: 0315: 
+ 228: 0315:    DIM SRITL.POGDB%      (SRITL.MAX.MOD.KEYS%-1)
+ 229: 0343:    DIM SRITL.MODULE.SEQ% (SRITL.MAX.MOD.KEYS%-1)
+ 230: 0371:    DIM SRITL.REPEAT.CNT% (SRITL.MAX.MOD.KEYS%-1)
+ 231: 039f:    DIM SRITL.CORE.FLAG$  (SRITL.MAX.MOD.KEYS%-1)
+ 232: 03cd: 
+ 233: 03cd:   END FUNCTION
+ 234: 03d9: 
+ 235: 03d9: \--------------------------------------------------------------------
+ 236: 03d9: 
+ 237: 03d9:   FUNCTION READ.SRITL PUBLIC
+ 238: 03ed: 
+ 239: 03ed:    INTEGER*2 READ.SRITL
+ 240: 03ed:    STRING    key$
+ 241: 03ed: 
+ 242: 03ed:    READ.SRITL = 1
+ 243: 03f2: 
+ 244: 03f2:    IF END #SRITL.SESS.NUM% THEN READ.SRITL.ERROR
+ 245: 0406: 
+ 246: 0406:    key$ = BUILD.SRITL.KEY$
+ 247: 0413: 
+ 248: 0413:    READ FORM "T5,I1,I2,I2,C112,C6";                                 \
+ 249: 046c:           #SRITL.SESS.NUM% KEY key$;                                \
+ 250: 046c:              SRITL.MODULE.COUNT%,                                   \
+ 251: 046c:              SRITL.CORE.COUNT%,                                     \
+ 252: 046c:              SRITL.NON.CORE.CNT%,                                   \
+ 253: 046c:              SRITL.ARRAY$,                                          \
+ 254: 046c:              SRITL.FILLER$
+ 255: 046c: 
+ 256: 046c:    CALL SRITL.SPLIT.ARRAY
+ 257: 0470: 
+ 258: 0470:    READ.SRITL = 0
+ 259: 0475:    EXIT FUNCTION
+ 260: 0477: 
+ 261: 0477: READ.SRITL.ERROR:
+ 262: 0477: 
+ 263: 0477:    CURRENT.REPORT.NUM% = SRITL.REPORT.NUM%
+ 264: 0485:    FILE.OPERATION$ = "R"
+ 265: 0494:    CURRENT.CODE$ = key$
+ 266: 04a7: 
+ 267: 04a7:   END FUNCTION
+ 268: 04b6: 
+ 269: 04b6: \--------------------------------------------------------------------
+ 270: 04b6: 
+ 271: 04b6:   FUNCTION WRITE.SRITL PUBLIC
+ 272: 04ca: 
+ 273: 04ca:    INTEGER*2 WRITE.SRITL
+ 274: 04ca:    STRING    key$
+ 275: 04ca: 
+ 276: 04ca:    WRITE.SRITL = 1
+ 277: 04cf: 
+ 278: 04cf:    IF END #SRITL.SESS.NUM% THEN WRITE.SRITL.ERROR
+ 279: 04e3: 
+ 280: 04e3:    key$ = BUILD.SRITL.KEY$
+ 281: 04f0:    CALL SRITL.CONCAT.ARRAY
+ 282: 04f4: 
+ 283: 04f4:    WRITE FORM "C4,I1,I2,I2,C112,C6";                                \
+ 284: 0556:           #SRITL.SESS.NUM%;                                         \
+ 285: 0556:              key$,                                                  \
+ 286: 0556:              SRITL.MODULE.COUNT%,                                   \
+ 287: 0556:              SRITL.CORE.COUNT%,                                     \
+ 288: 0556:              SRITL.NON.CORE.CNT%,                                   \
+ 289: 0556:              SRITL.ARRAY$,                                          \
+ 290: 0556:              SRITL.FILLER$
+ 291: 0556: 
+ 292: 0556:    WRITE.SRITL = 0
+ 293: 055b:    EXIT FUNCTION
+ 294: 055d: 
+ 295: 055d: WRITE.SRITL.ERROR:
+ 296: 055d: 
+ 297: 055d:    CURRENT.REPORT.NUM% = SRITL.REPORT.NUM%
+ 298: 056b:    FILE.OPERATION$ = "W"
+ 299: 057a:    CURRENT.CODE$ = key$
+ 300: 058d: 
+ 301: 058d:   END FUNCTION
+ 302: 059c: End of Compilation

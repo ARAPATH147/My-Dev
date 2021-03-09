@@ -1,0 +1,166 @@
+   1: 0000: 
+   2: 0000: \***********************************************************************
+   3: 0000: \***********************************************************************
+   4: 0000: \***
+   5: 0000: \***       PARCEL STATUS UPDATE TRANSACTION QUEUE FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***               FILE TYPE    : Sequential
+   8: 0000: \***
+   9: 0000: \***               REFERENCE    : PSUTQFUN.BAS
+  10: 0000: \***
+  11: 0000: \***         VERSION A         Kiran Krishnan        27th July 2017
+  12: 0000: \***         PRJ2002- Order & Collect Parcel Management - Phase 2
+  13: 0000: \***         Initial version for User Story PMLA-377 
+  14: 0000: \***
+  15: 0000: \***         VERSION B         Kiran Krishnan        14th August 2017
+  16: 0000: \***         PMLA-397:- Added logical name to the file function
+  17: 0000: \***
+  18: 0000: \***         VERSION C         Kiran Krishnan        23rd August 2017
+  19: 0000: \***         PMLA 419:- Changes to read and write file functions to
+  20: 0000: \***         use READ MATRIX and WRITE MATRIX.
+  21: 0000: \***
+  22: 0000: \***         VERSION D        Kiran Krishnan        07th September 2017
+  23: 0000: \***         Minor changes to PSUTQ.TRANS.TYPE$ data processing  
+  24: 0000: \***
+  25: 0000: \***********************************************************************
+  26: 0000: \***********************************************************************
+  27: 0000:  
+  28: 0000:     INTEGER*2 GLOBAL                                                   \
+  29: 0000:         CURRENT.REPORT.NUM%
+  30: 0000:          
+  31: 0000:     STRING GLOBAL                                                      \
+  32: 0000:         CURRENT.CODE$,                                                 \
+  33: 0000:         FILE.OPERATION$
+  34: 0000:          
+  35: 0000: %INCLUDE PSUTQDEC.J86                                                   
+  36: 0000: \******************************************************************************
+  37: 0000: \******************************************************************************
+  38: 0000: \***
+  39: 0000: \***      FILE DECLARATION FOR PARCEL STATUS UPDATE TRANSACTION 
+  40: 0000: \***      QUEUE FILE
+  41: 0000: \***
+  42: 0000: \***               FILE TYPE    : Sequential
+  43: 0000: \***
+  44: 0000: \***               REFERENCE    : PSUTQDEC.J86
+  45: 0000: \***
+  46: 0000: \***         VERSION A         Kiran Krishnan        27th July 2017
+  47: 0000: \***         PRJ2002- Order & Collect Parcel Management - Phase 2
+  48: 0000: \***         Initial version for User Story PMLA-377 
+  49: 0000: \***
+  50: 0000: \******************************************************************************
+  51: 0000: \*******************************************************************************
+  52: 0000: \***
+  53: 0000: \***  The length of the records on this file vary depending on the record
+  54: 0000: \***  transaction type, but they all comprise combinations of the fields
+  55: 0000: \***  defined below.
+  56: 0000: \***
+  57: 0000: \***  Transaction type 5 - 
+  58: 0000: \***
+  59: 0000: \******************************************************************************
+  60: 0000: 
+  61: 0000:     STRING GLOBAL               \
+  62: 0000:       PSUTQ.FILE.NAME$,         \ PSUTQ File Name
+  63: 0000:       PSUTQ.RECORD$,            \ Used to store the whole PSUTQ record
+  64: 0000:       PSUTQ.RECORD.DELIMITER$,  \ 1 byte ASCII set to " (CHR$(34))
+  65: 0000:       PSUTQ.TRANS.TYPE$,        \ 1 byte UPD. 05 = Parcel return
+  66: 0000:       PSUTQ.FIELD.DELIMITER$    \ 1 byte ASCII set to ; (CHR$(59))
+  67: 0000:       
+  68: 0000:     INTEGER*1 GLOBAL           \
+  69: 0000:        PSUTQ.OPEN
+  70: 0000:                                                                           
+  71: 0000:     INTEGER*2 GLOBAL            \
+  72: 0000:        PSUTQ.REPORT.NUM%,       \
+  73: 0000:        PSUTQ.SESS.NUM%          
+  74: 0000:        
+  75: 0000:     
+  76: 0000:        
+  77: 0000: 
+  78: 0000:   
+  79: 0000: \***********************************************************************
+  80: 0000: \***
+  81: 0000: \***    PSUTQ.SET
+  82: 0000: \***
+  83: 0000: \***    Declare PSUTQ file constants
+  84: 0000: \***
+  85: 0000: \***********************************************************************
+  86: 0000: FUNCTION PSUTQ.SET PUBLIC
+  87: 0014: 
+  88: 0014:     PSUTQ.FILE.NAME$  = "PSUTQ"                                         ! BKK
+  89: 0023:     PSUTQ.REPORT.NUM% = 913
+  90: 002c: 
+  91: 002c: END FUNCTION
+  92: 0038: 
+  93: 0038: \***********************************************************************
+  94: 0038: \***
+  95: 0038: \***    READ.PSUTQ
+  96: 0038: \***
+  97: 0038: \***    Read PSUTQ file record
+  98: 0038: \***
+  99: 0038: \***********************************************************************
+ 100: 0038: FUNCTION READ.PSUTQ PUBLIC
+ 101: 004c:   
+ 102: 004c:     INTEGER*2 READ.PSUTQ   
+ 103: 004c:     STRING PSUTQIN.ARRAY.RECORD$(1)                                     ! CKK
+ 104: 004c:     
+ 105: 004c:     READ.PSUTQ = 1
+ 106: 0051:     
+ 107: 0051:     DIM PSUTQIN.ARRAY.RECORD$(1)                                        ! CKK
+ 108: 0072:     
+ 109: 0072:     IF END #PSUTQ.SESS.NUM% THEN READ.ERROR
+ 110: 0086: !   READ #PSUTQ.SESS.NUM%; LINE PSUTQ.RECORD$                           ! CKK 
+ 111: 0086:     READ MATRIX # PSUTQ.SESS.NUM%; PSUTQIN.ARRAY.RECORD$(1),1           ! CKK
+ 112: 00a3: 
+ 113: 00a3:     PSUTQ.RECORD$ = PSUTQIN.ARRAY.RECORD$(1)                            ! CKK                                       
+ 114: 00c2: !   PSUTQ.TRANS.TYPE$ = UNPACK$(LEFT$(PSUTQ.RECORD$,1))                 ! DKK
+ 115: 00c2:     PSUTQ.TRANS.TYPE$ = LEFT$(PSUTQ.RECORD$,2)                          ! DKK
+ 116: 00e1:     
+ 117: 00e1:     READ.PSUTQ = 0
+ 118: 00e6:     
+ 119: 00e6:     EXIT FUNCTION
+ 120: 00e8:     
+ 121: 00e8: READ.ERROR:
+ 122: 00e8:     
+ 123: 00e8:     FILE.OPERATION$     = "R"
+ 124: 00f7:     CURRENT.CODE$       = UNPACK$(MID$(PSUTQ.RECORD$,2,1))
+ 125: 011b:     CURRENT.REPORT.NUM% = PSUTQ.REPORT.NUM%
+ 126: 0129:                             
+ 127: 0129: END FUNCTION
+ 128: 0138: 
+ 129: 0138: \***********************************************************************
+ 130: 0138: \***
+ 131: 0138: \***    WRITE.PSUTQ
+ 132: 0138: \***
+ 133: 0138: \***    Write PSUTQ file record
+ 134: 0138: \***
+ 135: 0138: \***********************************************************************
+ 136: 0138: FUNCTION WRITE.PSUTQ PUBLIC
+ 137: 014c: 
+ 138: 014c:     INTEGER*2 WRITE.PSUTQ    
+ 139: 014c: !   STRING FORMAT$,                                                    \! CKK
+ 140: 014c: !          STRING.LENGTH$                                               ! CKK
+ 141: 014c:     STRING PSUTQOUT.ARRAY.RECORD$(1)                                    ! CKK
+ 142: 014c:             
+ 143: 014c:     WRITE.PSUTQ = 1
+ 144: 0151:     
+ 145: 0151:     DIM PSUTQOUT.ARRAY.RECORD$(1)                                       ! CKK
+ 146: 0172:     
+ 147: 0172:     PSUTQOUT.ARRAY.RECORD$(1) = PSUTQ.RECORD$                           ! CKK                                         
+ 148: 0191: !   STRING.LENGTH$ = STR$(LEN(PSUTQ.RECORD$))                           ! CKK 
+ 149: 0191: !   FORMAT$ = "C" + STRING.LENGTH$                                      ! CKK
+ 150: 0191:                                           
+ 151: 0191:     IF END #PSUTQ.SESS.NUM% THEN WRITE.ERROR                            
+ 152: 01a5: !   WRITE FORM FORMAT$; #PSUTQ.SESS.NUM%; PSUTQ.RECORD$                 ! CKK
+ 153: 01a5:     WRITE MATRIX # PSUTQ.SESS.NUM%; PSUTQOUT.ARRAY.RECORD$(1),1         ! CKK
+ 154: 01c2:                                                                                
+ 155: 01c2:     WRITE.PSUTQ = 0
+ 156: 01c7:     
+ 157: 01c7:     EXIT FUNCTION
+ 158: 01c9:     
+ 159: 01c9: WRITE.ERROR:
+ 160: 01c9:     
+ 161: 01c9:     FILE.OPERATION$     = "W"                                           
+ 162: 01d8:     CURRENT.CODE$       = PSUTQ.RECORD$
+ 163: 01ee:     CURRENT.REPORT.NUM% = PSUTQ.REPORT.NUM%
+ 164: 01fc: 
+ 165: 01fc: END FUNCTION
+ 166: 020b: End of Compilation

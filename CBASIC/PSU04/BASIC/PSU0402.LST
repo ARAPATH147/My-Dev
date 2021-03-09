@@ -1,0 +1,2485 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***********************************************************************
+   3: 0000: \***
+   4: 0000: \***    PROGRAM         :       PSU04
+   5: 0000: \***    DESCRIPTION     :       Event log viewer utility
+   6: 0000: \***    AUTHOR          :       Mark Walker
+   7: 0000: \***    DATE            :       26th September 2017
+   8: 0000: \***
+   9: 0000: \***********************************************************************
+  10: 0000: \***********************************************************************
+  11: 0000: \***
+  12: 0000: \***    Module 2 contains formatting of the contents of the detail
+  13: 0000: \***    screen for all application events with the exception of
+  14: 0000: \***    Sales Support and the till application.
+  15: 0000: \***
+  16: 0000: \***********************************************************************
+  17: 0000: \***********************************************************************
+  18: 0000: \***
+  19: 0000: \***    MODIFICATIONS
+  20: 0000: \***
+  21: 0000: \***    Version A.          Mark Walker                 26th Sep 2017
+  22: 0000: \***    Initial version.
+  23: 0000: \***
+  24: 0000: \***    Version B.          Mark Walker                 14th Nov 2017
+  25: 0000: \***    - Updated further details for various application events.
+  26: 0000: \***    - Corrected existing comment for event 90, to indicate when
+  27: 0000: \***      PSB20 has completed.
+  28: 0000: \***
+  29: 0000: \***    Version C.          Mark Walker                 21st Nov 2017
+  30: 0000: \***    Log an application event for all file open and update
+  31: 0000: \***    references using the UTILS application.
+  32: 0000: \***
+  33: 0000: \***    Version D.          Mark Walker                  6th Dec 2017
+  34: 0000: \***    Removed redundant ERRNH module reference.
+  35: 0000: \***
+  36: 0000: \***    Version E.          Mark Walker                 19th Mar 2018
+  37: 0000: \***    Added support for reporting application events logged by
+  38: 0000: \***    text file editor applications.
+  39: 0000: \***
+  40: 0000: \***********************************************************************
+  41: 0000: \***********************************************************************
+  42: 0000: 
+  43: 0000: \***********************************************************************
+  44: 0000: \***
+  45: 0000: \***    Global variable declarations
+  46: 0000: \***
+  47: 0000: \***********************************************************************
+  48: 0000: 
+  49: 0000: %INCLUDE PSU04G.J86
+  50: 0000: \***********************************************************************
+  51: 0000: \***********************************************************************
+  52: 0000: \***
+  53: 0000: \***    GLOBAL VARIABLE DEFINITIONS FOR PSU04
+  54: 0000: \***
+  55: 0000: \***********************************************************************
+  56: 0000: \***********************************************************************
+  57: 0000: \***
+  58: 0000: \***    MODIFICATIONS
+  59: 0000: \***
+  60: 0000: \***    Version A.          Mark Walker                 26th Sep 2017
+  61: 0000: \***    Initial version.
+  62: 0000: \***
+  63: 0000: \***    Version B.          Mark Walker                  2nd Nov 2017
+  64: 0000: \***    Added support for the source selection list.
+  65: 0000: \***
+  66: 0000: \***    Version C.          Mark Walker                  6th Nov 2017
+  67: 0000: \***    Updated handling of bucket and source text descriptions.
+  68: 0000: \***
+  69: 0000: \***    Version D.          Mark Walker                 21st Nov 2017
+  70: 0000: \***    Added support for the UTILS session screen.
+  71: 0000: \***
+  72: 0000: \***    Version E.          Mark Walker                  6th Dec 2017
+  73: 0000: \***    Moved some local variables to globals to support moving
+  74: 0000: \***    some functions from the main screen handling module to
+  75: 0000: \***    an external subprogram.
+  76: 0000: \***
+  77: 0000: \***    Version F.          Mark Walker                 19th Mar 2017
+  78: 0000: \***    Added support for reporting application events logged by
+  79: 0000: \***    text file editor applications.
+  80: 0000: \***
+  81: 0000: \***********************************************************************
+  82: 0000: \***********************************************************************
+  83: 0000: 
+  84: 0000:     INTEGER*1 GLOBAL CURRENT.FIELD%                                     !EMW
+  85: 0000:     INTEGER*1 GLOBAL FALSE
+  86: 0000:     INTEGER*1 GLOBAL OPEN.EVAPP
+  87: 0000:     INTEGER*1 GLOBAL TRUE
+  88: 0000:     INTEGER*1 GLOBAL U0401.APPLICATION%
+  89: 0000:     INTEGER*1 GLOBAL U0401.APPLICATION.STATUS%
+  90: 0000:     INTEGER*1 GLOBAL U0401.BUCKET%
+  91: 0000:     INTEGER*1 GLOBAL U0401.BUCKET.STATUS%
+  92: 0000:     INTEGER*1 GLOBAL U0401.CONTROLLER.ID%
+  93: 0000:     INTEGER*1 GLOBAL U0401.CONTROLLER.ID.STATUS%
+  94: 0000:     INTEGER*1 GLOBAL U0401.EVENT%
+  95: 0000:     INTEGER*1 GLOBAL U0401.EVENT.STATUS%
+  96: 0000:     INTEGER*1 GLOBAL U0401.LOG.DESC%
+  97: 0000:     INTEGER*1 GLOBAL U0401.LOG.NUMBER%
+  98: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.GROUP%
+  99: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.GROUP.STATUS%
+ 100: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.NUMBER%
+ 101: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.NUMBER.STATUS%
+ 102: 0000:     INTEGER*1 GLOBAL U0401.SEVERITY%
+ 103: 0000:     INTEGER*1 GLOBAL U0401.SEVERITY.STATUS%
+ 104: 0000:     INTEGER*1 GLOBAL U0401.SOURCE%
+ 105: 0000:     INTEGER*1 GLOBAL U0401.SOURCE.STATUS%
+ 106: 0000:     INTEGER*1 GLOBAL U0401.TERMINAL%
+ 107: 0000:     INTEGER*1 GLOBAL U0401.TERMINAL.STATUS%
+ 108: 0000:     INTEGER*1 GLOBAL U0402.PAGE%
+ 109: 0000:     INTEGER*1 GLOBAL U0405.PAGE%
+ 110: 0000:     INTEGER*1 GLOBAL U0406.PAGE%
+ 111: 0000:     INTEGER*1 GLOBAL U0411.PAGE%                                        !BMW
+ 112: 0000:     INTEGER*1 GLOBAL U0412.PAGE%                                        !DMW
+ 113: 0000:     INTEGER*1 GLOBAL VALID.INPUT
+ 114: 0000:     INTEGER*1 GLOBAL VALID.KEY
+ 115: 0000: 
+ 116: 0000:     INTEGER*2 GLOBAL APPLICATIONS.PER.PAGE%
+ 117: 0000:     INTEGER*2 GLOBAL COMMAND.TIME.RANGE%
+ 118: 0000:     INTEGER*2 GLOBAL COMMANDS.PER.PAGE%
+ 119: 0000:     INTEGER*2 GLOBAL CURRENT.INDEX%                                     !EMW
+ 120: 0000:     INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+ 121: 0000:     INTEGER*2 GLOBAL EVENT.BUCKET%
+ 122: 0000:     INTEGER*2 GLOBAL EVENT.COUNT%
+ 123: 0000:     INTEGER*2 GLOBAL EVENT.DAY%
+ 124: 0000:     INTEGER*2 GLOBAL EVENT.FORMAT%
+ 125: 0000:     INTEGER*2 GLOBAL EVENT.HOUR%
+ 126: 0000:     INTEGER*2 GLOBAL EVENT.MESSAGE.NUMBER%
+ 127: 0000:     INTEGER*2 GLOBAL EVENT.MIN%
+ 128: 0000:     INTEGER*2 GLOBAL EVENT.MONTH%
+ 129: 0000:     INTEGER*2 GLOBAL EVENT.NODE.ID%
+ 130: 0000:     INTEGER*2 GLOBAL EVENT.NUMBER%
+ 131: 0000:     INTEGER*2 GLOBAL EVENT.SEVERITY%
+ 132: 0000:     INTEGER*2 GLOBAL EVENT.SOURCE%
+ 133: 0000:     INTEGER*2 GLOBAL EVENT.TERMINAL%
+ 134: 0000:     INTEGER*2 GLOBAL EVENT.YEAR%
+ 135: 0000:     INTEGER*2 GLOBAL FILES.PER.PAGE%
+ 136: 0000:     INTEGER*2 GLOBAL LINE.LENGTH%
+ 137: 0000:     INTEGER*2 GLOBAL MAX.FILE.RECORDS%
+ 138: 0000:     INTEGER*2 GLOBAL MAX.SOURCE.RECORDS%                                !BMW
+ 139: 0000:     INTEGER*2 GLOBAL NULL.MAPPING%                                      !BMW
+ 140: 0000:     INTEGER*2 GLOBAL RESULTS.COUNT%                                     !EMW
+ 141: 0000:     INTEGER*2 GLOBAL RESULTS.INDEX%                                     !EMW
+ 142: 0000:     INTEGER*2 GLOBAL RESULTS.LAST.PAGE%                                 !EMW
+ 143: 0000:     INTEGER*2 GLOBAL RESULTS.PAGE%                                      !EMW
+ 144: 0000:     INTEGER*2 GLOBAL RESULTS.PER.PAGE%
+ 145: 0000:     INTEGER*2 GLOBAL RESULTS.THIS.PAGE%                                 !EMW
+ 146: 0000:     INTEGER*2 GLOBAL RESULTS.TOTAL.PAGES%                               !EMW
+ 147: 0000:     INTEGER*2 GLOBAL SOURCES.PER.PAGE%                                  !BMW
+ 148: 0000:     INTEGER*2 GLOBAL ULOG.REPORT.NUM%                                   !DMW
+ 149: 0000:     INTEGER*2 GLOBAL ULOG.SESS.NUM%                                     !DMW
+ 150: 0000: 
+ 151: 0000:     INTEGER*4 GLOBAL EVENT.DATE%
+ 152: 0000:     INTEGER*4 GLOBAL EVENT.TIME%
+ 153: 0000: 
+ 154: 0000:     STRING GLOBAL ALL.APPLICATIONS.TEXT$
+ 155: 0000:     STRING GLOBAL ALL.BUCKETS.TEXT$
+ 156: 0000:     STRING GLOBAL ALL.CONTROLLERS.TEXT$
+ 157: 0000:     STRING GLOBAL ALL.EVENTS.TEXT$
+ 158: 0000:     STRING GLOBAL ALL.MESSAGE.GROUPS.TEXT$
+ 159: 0000:     STRING GLOBAL ALL.MESSAGE.NUMBERS.TEXT$
+ 160: 0000:     STRING GLOBAL ALL.SEVERITYS.TEXT$
+ 161: 0000:     STRING GLOBAL ALL.SOURCES.TEXT$
+ 162: 0000:     STRING GLOBAL ALL.TERMINALS.TEXT$
+ 163: 0000:     STRING GLOBAL BATCH.SCREEN.FLAG$
+ 164: 0000:     STRING GLOBAL BUCKET.TEXT$(1)
+ 165: 0000:     STRING GLOBAL CHAIN.TO.PROG$
+ 166: 0000:     STRING GLOBAL COMMENT$
+ 167: 0000:     STRING GLOBAL CONTROLLER.ID$
+ 168: 0000:     STRING GLOBAL CURRENT.CODE$
+ 169: 0000:     STRING GLOBAL DOW$(1)
+ 170: 0000:     STRING GLOBAL EDITOR.NAME$                                          !FMW
+ 171: 0000:     STRING GLOBAL EDITOR.PATHNAME$                                      !FMW
+ 172: 0000:     STRING GLOBAL EDITOR.PROGRAM$                                       !FMW
+ 173: 0000:     STRING GLOBAL EDITOR.TYPE$                                          !FMW
+ 174: 0000:     STRING GLOBAL EE$(1)
+ 175: 0000:     STRING GLOBAL EVENT.DOW$
+ 176: 0000:     STRING GLOBAL EVENT.MESSAGE.GROUP$
+ 177: 0000:     STRING GLOBAL EVENT.UNIQUE.DATA$
+ 178: 0000:     STRING GLOBAL FILE.OPERATION$
+ 179: 0000:     STRING GLOBAL HIGHWORD.DESCRIPTION$(1)
+ 180: 0000:     STRING GLOBAL HIGHWORD.ERRORCODE$(1)
+ 181: 0000:     STRING GLOBAL LA$(1)
+ 182: 0000:     STRING GLOBAL LE$(1)
+ 183: 0000:     STRING GLOBAL LJ$(1)
+ 184: 0000:     STRING GLOBAL LOG.DESC$
+ 185: 0000:     STRING GLOBAL LOG.NUMBER$
+ 186: 0000:     STRING GLOBAL LOWWORD.DESCRIPTION$(1)
+ 187: 0000:     STRING GLOBAL LOWWORD.ERRORCODE$(1)
+ 188: 0000:     STRING GLOBAL LW$(1)
+ 189: 0000:     STRING GLOBAL MESSAGE.TEXT$
+ 190: 0000:     STRING GLOBAL MODULE.NUMBER$
+ 191: 0000:     STRING GLOBAL NO.APPLICATIONS.TEXT$
+ 192: 0000:     STRING GLOBAL NO.BUCKETS.TEXT$
+ 193: 0000:     STRING GLOBAL NO.SEVERITYS.TEXT$
+ 194: 0000:     STRING GLOBAL NO.SOURCES.TEXT$                                      !BMW
+ 195: 0000:     STRING GLOBAL NONPRINTABLE.CHARS$
+ 196: 0000:     STRING GLOBAL NONPRINTABLE.MAP$
+ 197: 0000:     STRING GLOBAL NULL.FILENAME$
+ 198: 0000:     STRING GLOBAL NULL.PROGRAM$
+ 199: 0000:     STRING GLOBAL PID$
+ 200: 0000:     STRING GLOBAL PRINTABLE.CHARS$
+ 201: 0000:     STRING GLOBAL PROGRAM$
+ 202: 0000:     STRING GLOBAL R$(1)
+ 203: 0000:     STRING GLOBAL RETURN.CODE$
+ 204: 0000:     STRING GLOBAL RETURN.ERR$
+ 205: 0000:     STRING GLOBAL SE$(1)
+ 206: 0000:     STRING GLOBAL SELECTED.APPLICATIONS.TEXT$
+ 207: 0000:     STRING GLOBAL SELECTED.BUCKETS.TEXT$
+ 208: 0000:     STRING GLOBAL SELECTED.SEVERITYS.TEXT$
+ 209: 0000:     STRING GLOBAL SELECTED.SOURCES.TEXT$                                !BMW
+ 210: 0000:     STRING GLOBAL SEVERITY.TEXT$(1)
+ 211: 0000:     STRING GLOBAL SINGLE.APPLICATION.TEXT$
+ 212: 0000:     STRING GLOBAL SINGLE.BUCKET.TEXT$
+ 213: 0000:     STRING GLOBAL SINGLE.CONTROLLER.TEXT$
+ 214: 0000:     STRING GLOBAL SINGLE.EVENT.TEXT$
+ 215: 0000:     STRING GLOBAL SINGLE.MESSAGE.GROUP.TEXT$
+ 216: 0000:     STRING GLOBAL SINGLE.MESSAGE.NUMBER.TEXT$
+ 217: 0000:     STRING GLOBAL SINGLE.SEVERITY.TEXT$
+ 218: 0000:     STRING GLOBAL SINGLE.SOURCE.TEXT$
+ 219: 0000:     STRING GLOBAL SINGLE.TERMINAL.TEXT$
+ 220: 0000:     STRING GLOBAL SUMMARY.RECORD$(1)                                    !EMW
+ 221: 0000:     STRING GLOBAL SOURCE.TEXT$(1)                                       !CMW
+ 222: 0000:     STRING GLOBAL SS$(1)
+ 223: 0000:     STRING GLOBAL SW$(1)
+ 224: 0000:     STRING GLOBAL TILL.NUMBER$
+ 225: 0000:     STRING GLOBAL TS$(1)
+ 226: 0000:     STRING GLOBAL ULOG.FILE.NAME$                                       !DMW
+ 227: 0000:     STRING GLOBAL ULOG.RECORD$(1)                                       !EMW
+ 228: 0000: 
+ 229: 0000: 
+ 230: 0000: \***********************************************************************
+ 231: 0000: \***
+ 232: 0000: \***    Local variable declarations
+ 233: 0000: \***
+ 234: 0000: \***********************************************************************
+ 235: 0000: 
+ 236: 0000:     INTEGER*2 I%
+ 237: 0000:     INTEGER*2 INDEX%
+ 238: 0000:     INTEGER*2 M%
+ 239: 0000:     INTEGER*2 REPORT.NUM%
+ 240: 0000: 
+ 241: 0000:     STRING ACTUAL$
+ 242: 0000:     STRING BAR.CODE$                                                    !BMW
+ 243: 0000:     STRING CODE$
+ 244: 0000:     STRING CODE.TEXT$
+ 245: 0000:     STRING EXPECTED$
+ 246: 0000:     STRING EXPECTED.TEXT$
+ 247: 0000:     STRING FIELD$
+ 248: 0000:     STRING FILENAME$
+ 249: 0000:     STRING FLAG$
+ 250: 0000:     STRING FLAG.TEXT$
+ 251: 0000:     STRING FUNCTION$
+ 252: 0000:     STRING IMFOK.FLAG$
+ 253: 0000:     STRING ITEM.CODE$
+ 254: 0000:     STRING KEY$
+ 255: 0000:     STRING KEY.TEXT$
+ 256: 0000:     STRING LINE.NUMBER$
+ 257: 0000:     STRING LINE.TEXT$
+ 258: 0000:     STRING NEW.VALUE$                                                   !BMW
+ 259: 0000:     STRING OLD.VALUE$                                                   !BMW
+ 260: 0000:     STRING PHASE$
+ 261: 0000:     STRING PROGRAM.CHILD$
+ 262: 0000:     STRING PROGRAM.DATE$
+ 263: 0000:     STRING PROGRAM.NUMBER$
+ 264: 0000:     STRING PROGRAM.TIME$
+ 265: 0000:     STRING REPORT.TEXT$
+ 266: 0000:     STRING SCREEN$
+ 267: 0000:     STRING TABLE$
+ 268: 0000: 
+ 269: 0000: \***********************************************************************
+ 270: 0000: \***
+ 271: 0000: \***    Function definitions
+ 272: 0000: \***
+ 273: 0000: \***********************************************************************
+ 274: 0000: 
+ 275: 0000: %INCLUDE BTCMEM.J86
+ 276: 0000: !********************************************************************
+ 277: 0000: !***
+ 278: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+ 279: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 280: 0000: !***    DATE:           26th February 2006
+ 281: 0000: !***
+ 282: 0000: !********************************************************************
+ 283: 0000: !***
+ 284: 0000: !***    Controller CBASIC Memory Functions
+ 285: 0000: !***
+ 286: 0000: !********************************************************************
+ 287: 0000: 
+ 288: 0000: !Get a single byte integer from a string offset
+ 289: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 290: 0000:     STRING S$
+ 291: 0000:     INTEGER*2 P%
+ 292: 0000:     INTEGER*2 GETN1
+ 293: 0000: END FUNCTION
+ 294: 0000: 
+ 295: 0000: !Get a two byte integer from a string offset
+ 296: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 297: 0000:     STRING S$
+ 298: 0000:     INTEGER*2 P%
+ 299: 0000:     INTEGER*2 GETN2
+ 300: 0000: END FUNCTION
+ 301: 0000: 
+ 302: 0000: !Get a four byte integer from a string offset
+ 303: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 304: 0000:     STRING S$
+ 305: 0000:     INTEGER*2 P%
+ 306: 0000:     INTEGER*4 GETN4
+ 307: 0000: END FUNCTION
+ 308: 0000: 
+ 309: 0000: !Get a 10 byte CBASIC real from a string offset
+ 310: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 311: 0000:     STRING S$
+ 312: 0000:     INTEGER*2 P%
+ 313: 0000:     REAL GETR10
+ 314: 0000: END FUNCTION
+ 315: 0000: 
+ 316: 0000: !Put a single byte integer into a string at offset
+ 317: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 318: 0000:     STRING S$
+ 319: 0000:     INTEGER*2 P%
+ 320: 0000:     INTEGER*1 N%
+ 321: 0000:     INTEGER*1 PUTN1
+ 322: 0000: END FUNCTION
+ 323: 0000: 
+ 324: 0000: !Put a two byte integer into a string at offset
+ 325: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 326: 0000:     STRING S$
+ 327: 0000:     INTEGER*2 P%
+ 328: 0000:     INTEGER*2 N%
+ 329: 0000:     INTEGER*1 PUTN2
+ 330: 0000: END FUNCTION
+ 331: 0000: 
+ 332: 0000: !Put a four byte integer into a string at offset
+ 333: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 334: 0000:     STRING S$
+ 335: 0000:     INTEGER*2 P%
+ 336: 0000:     INTEGER*4 N%
+ 337: 0000:     INTEGER*1 PUTN4
+ 338: 0000: END FUNCTION
+ 339: 0000: 
+ 340: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 341: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 342: 0000:     STRING S$
+ 343: 0000:     INTEGER*2 P%
+ 344: 0000:     REAL R
+ 345: 0000:     INTEGER*1 PUTR10
+ 346: 0000: END FUNCTION
+ 347: 0000: 
+ 348: 0000: !Peek a two byte integer from a memory address
+ 349: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 350: 0000:     INTEGER*4 A%
+ 351: 0000:     INTEGER*2 PEEKN2
+ 352: 0000: END FUNCTION
+ 353: 0000: 
+ 354: 0000: !Peek a four byte integer from a memory address
+ 355: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 356: 0000:     INTEGER*4 A%
+ 357: 0000:     INTEGER*4 PEEKN4
+ 358: 0000: END FUNCTION
+ 359: 0000: 
+ 360: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 361: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 362: 0000:     INTEGER*4 A%
+ 363: 0000:     REAL PEEKR10
+ 364: 0000: END FUNCTION
+ 365: 0000: 
+ 366: 0000: !Poke a two byte integer to a memory address
+ 367: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 368: 0000:     INTEGER*4 A%
+ 369: 0000:     INTEGER*2 N%
+ 370: 0000:     INTEGER*1 POKEN2
+ 371: 0000: END FUNCTION
+ 372: 0000: 
+ 373: 0000: !Poke a four byte integer to a memory address
+ 374: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 375: 0000:     INTEGER*4 A%
+ 376: 0000:     INTEGER*4 N%
+ 377: 0000:     INTEGER*1 POKEN4
+ 378: 0000: END FUNCTION
+ 379: 0000: 
+ 380: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 381: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 382: 0000:     INTEGER*4 A%
+ 383: 0000:     REAL R
+ 384: 0000:     INTEGER*1 POKER10
+ 385: 0000: END FUNCTION
+ 386: 0000: 
+ 387: 0000: %INCLUDE STREXT.J86
+ 388: 0000: \*******************************************************************************
+ 389: 0000: \*******************************************************************************
+ 390: 0000: \***
+ 391: 0000: \***    REFERENCE   :   STREXT
+ 392: 0000: \***
+ 393: 0000: \*******************************************************************************
+ 394: 0000: \***
+ 395: 0000: \***    OVERVIEW:
+ 396: 0000: \***
+ 397: 0000: \***    This module contains common external function and subprogram
+ 398: 0000: \***    definitions used for string processing.
+ 399: 0000: \***
+ 400: 0000: \***    CONTENTS:
+ 401: 0000: \***
+ 402: 0000: \***    RTRIM$ - Removes the specified trailing character from a string
+ 403: 0000: \***    LTRIM$ - Removes the specified leading character from a string
+ 404: 0000: \***    TRIM$  - Removes the specified leading and trailing character
+ 405: 0000: \***             from a string
+ 406: 0000: \***
+ 407: 0000: \*******************************************************************************
+ 408: 0000: \***
+ 409: 0000: \***    MODIFICATIONS:
+ 410: 0000: \***
+ 411: 0000: \***    Version A.              Mark Walker                     24th Jul 2015
+ 412: 0000: \***    Initial version.
+ 413: 0000: \***
+ 414: 0000: \***    Version B.              Mark Walker                     24th Nov 2016
+ 415: 0000: \***    Added TRIM$ function.
+ 416: 0000: \***
+ 417: 0000: \*******************************************************************************
+ 418: 0000: \*******************************************************************************
+ 419: 0000: 
+ 420: 0000: FUNCTION RTRIM$(SOURCE$,TRIM.CHAR$) EXTERNAL
+ 421: 0000:     STRING    TRIM.CHAR$
+ 422: 0000:     STRING    SOURCE$
+ 423: 0000:     STRING    RTRIM$
+ 424: 0000: END FUNCTION
+ 425: 0000: 
+ 426: 0000: FUNCTION LTRIM$(SOURCE$,TRIM.CHAR$) EXTERNAL
+ 427: 0000:     STRING    TRIM.CHAR$
+ 428: 0000:     STRING    SOURCE$
+ 429: 0000:     STRING    LTRIM$
+ 430: 0000: END FUNCTION
+ 431: 0000: 
+ 432: 0000: FUNCTION TRIM$(SOURCE$,TRIM.CHAR$) EXTERNAL                             !BMW
+ 433: 0000:     STRING    TRIM.CHAR$                                                !BMW
+ 434: 0000:     STRING    SOURCE$                                                   !BMW
+ 435: 0000:     STRING    TRIM$                                                     !BMW
+ 436: 0000: END FUNCTION                                                            !BMW
+ 437: 0000: 
+ 438: 0000: %INCLUDE BASROUT.J86    ! OSSHELL function
+ 439: 0000: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+ 440: 0000: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+ 441: 0000: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+ 442: 0000: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+ 443: 0000: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+ 444: 0000: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+ 445: 0000: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+ 446: 0000: !   the BASROUT.OBJ routines.  These routines were written
+ 447: 0000: !  using Metaware C and are intended to provide functions which
+ 448: 0000: !         are either not available in 4680 CBASIC or which can be more
+ 449: 0000: !               efficiently handled by the C language.  Their usage is
+ 450: 0000: !  offered on an "AT YOUR OWN RISK" basis.
+ 451: 0000: !
+ 452: 0000: !               The insert/extract routines usefulness may not be immediately
+ 453: 0000: !               apparent.  Their intention is that they be used in conjunction
+ 454: 0000: !               with a read/write form command.  They can more efficiently
+ 455: 0000: !               parse a string into many different variables than can the
+ 456: 0000: !               read form statement.  So instead of a long list of data var's
+ 457: 0000: !               it may be more efficient to just read/write one long string
+ 458: 0000: !               and then use the insert/extract routines to parse out the
+ 459: 0000: !   data.
+ 460: 0000: 
+ 461: 0000: ! ******************* SUB PROCESS FUNCTIONS *********************************
+ 462: 0000: 
+ 463: 0000: function osshell(cmd.line$) external   ! routine to start
+ 464: 0000:        ! another program.
+ 465: 0000:            integer*4    osshell    ! Upon completion of
+ 466: 0000:            string       cmd.line$   ! program, control is
+ 467: 0000:        ! returned to calling
+ 468: 0000: end function      ! program.
+ 469: 0000: !
+ 470: 0000: ! NOTES:  Program must be a 286 type file.  This does not exclude
+ 471: 0000: !         the capability to execute a batch file however.  Simply pass the
+ 472: 0000: !         following:
+ 473: 0000: !              c:\adx_spgm\command.286 batfile
+ 474: 0000: !         where batfile is the name of the batch file to be executed.
+ 475: 0000: !
+ 476: 0000: ! IMPORTANT: When using osshell to execute a batch file as described above,
+ 477: 0000: !            the final command in the batch file must be "exit".  If not,
+ 478: 0000: !       control is never given back to the calling program.
+ 479: 0000: 
+ 480: 0000: ! ************************ MEMORY RELATED FUNCTIONS ************************
+ 481: 0000: 
+ 482: 0000: function memfree(choice) external   ! routine to que the
+ 483: 0000:        ! status of the
+ 484: 0000:  integer*4 memfree    ! machine's memory:
+ 485: 0000:  integer*2 choice    ! Options:
+ 486: 0000:        !    1 - free
+ 487: 0000: end function      !    2 - total
+ 488: 0000:        !    3 - system
+ 489: 0000: 
+ 490: 0000: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+ 491: 0000: 
+ 492: 0000: function timedate(choice) external   ! routine to que the
+ 493: 0000:        ! OS's timedate table
+ 494: 0000:  integer*4 timedate   ! Choices:
+ 495: 0000:  integer*2 choice    !    1 - millisec's
+ 496: 0000:        !        since midnight
+ 497: 0000: end function      !    2 - minutes from
+ 498: 0000:        !  UCT (timezone)
+ 499: 0000:        !    3 - day of week
+ 500: 0000:        !   0-Sunday
+ 501: 0000:        !  6-Saturday
+ 502: 0000: 
+ 503: 0000: function settime(msecs) external   ! routine to set the
+ 504: 0000:        ! time on the controller
+ 505: 0000:  integer*4  settime    ! msecs is the desired
+ 506: 0000:  integer*4 msecs    ! number of milliseconds
+ 507: 0000:        ! since midnight
+ 508: 0000: end function      ! Returns negative on
+ 509: 0000:        ! error
+ 510: 0000: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+ 511: 0000: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+ 512: 0000: ! At 1 AM the controller broadcasts the new time to all terminals.
+ 513: 0000: ! Insure this is taken into consideration when using this routine.
+ 514: 0000: 
+ 515: 0000: !******************** DISK FILE RELATED FUNCTIONS *************************
+ 516: 0000: 
+ 517: 0000: function truncate(name,length) external   ! routine to truncate
+ 518: 0000:        ! the specified file
+ 519: 0000:  integer*4 truncate   ! to a given length.
+ 520: 0000:  string  name
+ 521: 0000:  integer*4 length
+ 522: 0000: 
+ 523: 0000: end function
+ 524: 0000: 
+ 525: 0000: !******************** STRING VALUE RELATED FUNCTIONS **********************
+ 526: 0000: 
+ 527: 0000: function isalpha(bstrn) external   ! routine to identify
+ 528: 0000:        ! if the specified
+ 529: 0000:  integer*1 isalpha    ! string contains all
+ 530: 0000:  string  bstrn    ! alphabetic char's
+ 531: 0000:        ! Returns:
+ 532: 0000: end function      !     0 - all alpha
+ 533: 0000:        !     X - byte of 1st
+ 534: 0000:        !         non-alpha
+ 535: 0000:        !   char
+ 536: 0000: 
+ 537: 0000: function isdigit(bstrn) external   ! routine to identify
+ 538: 0000:        ! if the specified
+ 539: 0000:  integer*1 isdigit    ! string contains all
+ 540: 0000:  string  bstrn    ! numeric char's
+ 541: 0000:        ! Returns:
+ 542: 0000: end function      !     0 - all numeric
+ 543: 0000:        !     X - byte of 1st
+ 544: 0000:        !         non-numeric
+ 545: 0000:        !   char
+ 546: 0000: 
+ 547: 0000: function islower(bstrn) external   ! routine to identify
+ 548: 0000:        ! if the specified
+ 549: 0000:  integer*1 islower    ! string contains all
+ 550: 0000:  string  bstrn    ! lower case char's
+ 551: 0000:        ! Returns:
+ 552: 0000: end function      !     0 - all lowercase
+ 553: 0000:        !     X - byte of 1st
+ 554: 0000:        !         non-lowercase
+ 555: 0000:        !   char
+ 556: 0000: 
+ 557: 0000: function isupper(bstrn) external   ! routine to identify
+ 558: 0000:        ! if the specified
+ 559: 0000:  integer*1 isupper    ! string contains all
+ 560: 0000:  string  bstrn    ! upper case char's
+ 561: 0000:        ! Returns:
+ 562: 0000: end function      !     0 - all uppercase
+ 563: 0000:        !     X - byte of 1st
+ 564: 0000:        !         non-uppercase
+ 565: 0000:        !   char
+ 566: 0000: 
+ 567: 0000: function toalpha(bstrn) external   ! routine to convert
+ 568: 0000:        ! non-alpha or non-num
+ 569: 0000:    integer*2 toalpha    ! char's to spaces
+ 570: 0000:  string  bstrn    ! Returns:
+ 571: 0000: end function      !   x - no. of char's
+ 572: 0000:        !       changed
+ 573: 0000: 
+ 574: 0000: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+ 575: 0000: 
+ 576: 0000: function idlecount(choice) external   ! routine to either
+ 577: 0000:        ! set to zero or queue
+ 578: 0000:  integer*4 idlecount   ! the value of the
+ 579: 0000:  integer*1 choice    ! processor's idlecount
+ 580: 0000:        ! Choice:
+ 581: 0000: end function      !     0 - set to zero
+ 582: 0000: !       !     1 - get value
+ 583: 0000: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+ 584: 0000: ! TO WORK - This level is not available unless  !     X - idlecount
+ 585: 0000: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+ 586: 0000: ! is highly unrecommended.
+ 587: 0000: 
+ 588: 0000: function logical(actname,logname,choice) external ! routine to set a
+ 589: 0000:        ! a logical name.
+ 590: 0000:  integer*4 logical    ! parms are self
+ 591: 0000:         string  logname    ! explanatory except
+ 592: 0000:  string  actname    ! for choice:
+ 593: 0000:  integer*1 choice    !   0 - set process
+ 594: 0000:        !   1 - set system
+ 595: 0000: end function      !   2 - get process
+ 596: 0000:        !   3 - get system
+ 597: 0000: 
+ 598: 0000: ! NOTE:  Only the setting of a system level of logical name requires
+ 599: 0000: ! user/group zero level of authorization.  Any application may query any
+ 600: 0000: ! logical name.  Setting of a system logical name is only applicable until
+ 601: 0000: ! the system is IPL'd.  A process logical name is only active when that
+ 602: 0000: ! process is active.
+ 603: 0000: 
+ 604: 0000: !******************** STRING PARSING FUNCTIONS *****************************
+ 605: 0000: 
+ 606: 0000: function inserts(whole,part,offset) external  ! routine to insert a
+ 607: 0000:        ! string (part) into
+ 608: 0000:  integer*2 INSERTS    ! another string (whole)
+ 609: 0000:  string  whole    ! starting at specified
+ 610: 0000:  string  part    ! character (offset)
+ 611: 0000:  integer*2 offset
+ 612: 0000: 
+ 613: 0000: end function
+ 614: 0000: 
+ 615: 0000: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+ 616: 0000:        ! a 4-byte integer into
+ 617: 0000:  integer*1 cinsert4   ! a string starting at
+ 618: 0000:  integer*4 integer4   ! byte specified by
+ 619: 0000:  string  bstring    ! offset (1-based)
+ 620: 0000:  integer*2 offset    ! Returns:
+ 621: 0000:        !     0 - Success
+ 622: 0000: end function      !    -1 - String overrun
+ 623: 0000: 
+ 624: 0000: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+ 625: 0000:        ! a 2-byte integer into
+ 626: 0000:  integer*1 cinsert2   ! a string starting at
+ 627: 0000:  integer*2 integer2   ! byte specified by
+ 628: 0000:  string  bstring    ! offset (1-based)
+ 629: 0000:  integer*2 offset    ! Returns:
+ 630: 0000:        !     0 - Success
+ 631: 0000: end function      !    -1 - String overrun
+ 632: 0000: 
+ 633: 0000: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+ 634: 0000:        ! a 1-byte integer into
+ 635: 0000:  integer*1 cinsert1   ! a string starting at
+ 636: 0000:  integer*1 integer1   ! byte specified by
+ 637: 0000:  string  bstring    ! offset (1-based)
+ 638: 0000:  integer*2 offset    ! Returns:
+ 639: 0000:        !     0 - Success
+ 640: 0000: end function      !    -1 - String overrun
+ 641: 0000: 
+ 642: 0000: function extracts(whole,part,offset) external  ! routine to extract a
+ 643: 0000:        ! string (part) from
+ 644: 0000:  integer*2 EXTRACTS   ! another string (whole)
+ 645: 0000:  string  whole    ! starting at specified
+ 646: 0000:  string  part    ! character (offset)
+ 647: 0000:  integer*2 offset
+ 648: 0000: 
+ 649: 0000: end function
+ 650: 0000: 
+ 651: 0000: function cextract4(bstring,offset) external  ! routine to extract
+ 652: 0000:        ! a 4-byte integer from
+ 653: 0000:  integer*4 cextract4   ! a string starting at
+ 654: 0000:                        ! byte specified by
+ 655: 0000:  string  bstring    ! offset (1-based)
+ 656: 0000:  integer*2 offset    ! Returns:
+ 657: 0000:        !     X - 4 byte integer
+ 658: 0000: end function      !    -1 - String overrun
+ 659: 0000: 
+ 660: 0000: function cextract2(bstring,offset) external  ! routine to extract
+ 661: 0000:        ! a 2-byte integer from
+ 662: 0000:  integer*2 cextract2   ! a string starting at
+ 663: 0000:                        ! byte specified by
+ 664: 0000:  string  bstring    ! offset (1-based)
+ 665: 0000:  integer*2 offset    ! Returns:
+ 666: 0000:        !     X - 2 byte integer
+ 667: 0000: end function      !    -1 - String overrun
+ 668: 0000: 
+ 669: 0000: function cextract1(bstring,offset) external  ! routine to extract
+ 670: 0000:        ! a 1-byte integer from
+ 671: 0000:  integer*1 cextract1   ! a string starting at
+ 672: 0000:                        ! byte specified by
+ 673: 0000:  string  bstring    ! offset (1-based)
+ 674: 0000:  integer*2 offset    ! Returns:
+ 675: 0000:        !     X - 1 byte integer
+ 676: 0000: end function      !    -1 - String overrun
+ 677: 0000: 
+ 678: 0000: 
+ 679: 0000: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+ 680: 0000:        ! file names and sizes
+ 681: 0000:        ! Return values:
+ 682: 0000:        !    -1  no matches
+ 683: 0000:        !        found on first
+ 684: 0000:        !        call
+ 685: 0000:        !    0   no matches
+ 686: 0000:        !        found on sub-
+ 687: 0000:        !        sequent calls
+ 688: 0000:        !    Pos Success
+ 689: 0000:        !    Neg OS Rtn Code
+ 690: 0000: ! Usage Note:  If searching for all occurences of a particular file name,
+ 691: 0000: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+ 692: 0000: ! to srchdir.  If any matches are found, a positive value will be returned.
+ 693: 0000: ! To see if any more matches exist, just issue another call to srchdir without
+ 694: 0000: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+ 695: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 696: 0000: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+ 697: 0000: ! of this data is defined below.
+ 698: 0000: 
+ 699: 0000:  integer*4 srchdir
+ 700: 0000: 
+ 701: 0000:  string  file.name$   ! file name to start
+ 702: 0000:        ! search (18 bytes max)
+ 703: 0000:        ! Wild cards and logical
+ 704: 0000:        ! names supported.
+ 705: 0000: 
+ 706: 0000:  string  dtbl.buffer$   ! must be initialized
+ 707: 0000:        ! to 48 bytes.  Contains
+ 708: 0000:        ! all of directory info
+ 709: 0000:        ! Initialize to nulls
+ 710: 0000:        ! each time a new file
+ 711: 0000:        ! name is used.
+ 712: 0000: 
+ 713: 0000: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+ 714: 0000: !
+ 715: 0000: ! Offs  Type                    Description Notes
+ 716: 0000: !  0 integer*4  key  use extract4 to access
+ 717: 0000: !  4  string (18 bytes) file name
+ 718: 0000: ! 22 integer*2  attributes use extract2 to access
+ 719: 0000: !      0x01 - Read Only
+ 720: 0000: !      0x02 - Hidden
+ 721: 0000: !      0x04 - System
+ 722: 0000: !      0x08 - Volume Label
+ 723: 0000: !      0x10 - Subdirectory
+ 724: 0000: !      0x20 - Archive (Files)
+ 725: 0000: !      0x40 - Security enabled
+ 726: 0000: !      0x80 - Reserved
+ 727: 0000: !      0x0000 - Local
+ 728: 0000: !      0x4000 - Mirrored/Update
+ 729: 0000: !      0xC000 - Mirrored/Close
+ 730: 0000: !
+ 731: 0000: !      0x6000 - Compound/Update
+ 732: 0000: !      0xE000 - Compound/Close
+ 733: 0000: ! 24 integer*2  record size use extract2 to access
+ 734: 0000: ! 26 integer*1  User ID of Owner
+ 735: 0000: ! 27 integer*1  Group ID of Owner
+ 736: 0000: ! 28 integer*2  File Security
+ 737: 0000: ! 30 string (6 bytes) Reserved
+ 738: 0000: ! 36 integer*4  File Size use extract4 to access
+ 739: 0000: ! 40 integer*2  Year  use extract2 to access
+ 740: 0000: ! 42 integer*1  Month
+ 741: 0000: ! 43 integer*1  Day
+ 742: 0000: ! 44 integer*1  Hour
+ 743: 0000: ! 45 integer*1  Minute
+ 744: 0000: ! 46 integer*1  Second
+ 745: 0000: ! 47 integer*1  Reserved
+ 746: 0000: 
+ 747: 0000: end function
+ 748: 0000: 
+ 749: 0000: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+ 750: 0000:        ! process names and
+ 751: 0000:        ! status.  Handy to
+ 752: 0000:        ! determine if a
+ 753: 0000:        ! program is currently
+ 754: 0000:        ! running.
+ 755: 0000:        ! Return values:
+ 756: 0000:        !    -1  no matches
+ 757: 0000:        !        found on first
+ 758: 0000:        !        call
+ 759: 0000:        !    0   no matches
+ 760: 0000:        !        found on sub-
+ 761: 0000:        !        sequent calls
+ 762: 0000:        !    Pos Success
+ 763: 0000:        !    Neg Failure
+ 764: 0000:        !        OS Rtn Code
+ 765: 0000:        ! 80000001h - Insuff
+ 766: 0000:         !        ptbl buffer
+ 767: 0000:        !        Length
+ 768: 0000: ! Usage Note:  If searching for all occurences of a particular process name,
+ 769: 0000: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+ 770: 0000: ! to srchproc.  If any matches are found, a positive value will be returned.
+ 771: 0000: ! To see if any more matches exist, just issue another call to srchproc without
+ 772: 0000: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+ 773: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 774: 0000: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+ 775: 0000: ! of this data is defined as follows:
+ 776: 0000: !
+ 777: 0000: !       --------------------------------------------------------
+ 778: 0000: !   0   |                         PID                          |
+ 779: 0000: !       --------------------------------------------------------
+ 780: 0000: !   4   |           FID             |   CID        |   VCID    |
+ 781: 0000: !       --------------------------------------------------------
+ 782: 0000: !   8   |                         NAME                         |
+ 783: 0000: !       --------------------------------------------------------
+ 784: 0000: !  12   |                         NAME cont'd                  |
+ 785: 0000: !       --------------------------------------------------------
+ 786: 0000: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+ 787: 0000: !       --------------------------------------------------------
+ 788: 0000: !  20   |                         MAXMEM                       |
+ 789: 0000: !       --------------------------------------------------------
+ 790: 0000: !  24   |       FLAGS               |   USER        |  GROUP   |
+ 791: 0000: !       --------------------------------------------------------
+ 792: 0000: !  28   |                         PARENT                       |
+ 793: 0000: !       --------------------------------------------------------
+ 794: 0000: !  32   |                         EVENTS                       |
+ 795: 0000: !       --------------------------------------------------------
+ 796: 0000: !  36   |                         CODE                         |
+ 797: 0000: !       --------------------------------------------------------
+ 798: 0000: !  40   |                         CSIZE                        |
+ 799: 0000: !       --------------------------------------------------------
+ 800: 0000: !  44   |                         DATA                         |
+ 801: 0000: !       --------------------------------------------------------
+ 802: 0000: !  48   |                         DSIZE                        |
+ 803: 0000: !       --------------------------------------------------------
+ 804: 0000: !  52   |                         HEAP                         |
+ 805: 0000: !       --------------------------------------------------------
+ 806: 0000: !  56   |                         HSIZE                        |
+ 807: 0000: !       --------------------------------------------------------
+ 808: 0000: !
+ 809: 0000: !       PID   Process ID
+ 810: 0000: !       FID  Process's Family ID
+ 811: 0000: !       CID   Physical Console Device Number
+ 812: 0000: !       VCID  Process's Virtual Console Number
+ 813: 0000: !       NAME  Process Name (Application Running)
+ 814: 0000: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+ 815: 0000: ! PRIOR    Priority
+ 816: 0000: !       MAXMEM  Maximum Memory Allowed
+ 817: 0000: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+ 818: 0000: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+ 819: 0000: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+ 820: 0000: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+ 821: 0000: ! USER  User Number
+ 822: 0000: ! GROUP  Group Number
+ 823: 0000: !       PARENT   Parent Process ID
+ 824: 0000: !       EVENTS   Bit Map of events that have completed but not retrieved
+ 825: 0000: !       CODE  Start of code area in user space
+ 826: 0000: ! CSIZE  Size in bytes of code area
+ 827: 0000: !       DATA  Start of data area in user space
+ 828: 0000: ! DSIZE  Size in bytes of data area
+ 829: 0000: !       HEAP  Start of heap area in user space
+ 830: 0000: ! HSIZE  Size in bytes of heap area
+ 831: 0000: !
+ 832: 0000:  integer*4 srchproc
+ 833: 0000: 
+ 834: 0000:  string  proc.name$   ! process name to start
+ 835: 0000:        ! search (10 bytes max)
+ 836: 0000:        ! Wild cards and logical
+ 837: 0000:        ! names supported.
+ 838: 0000: 
+ 839: 0000:  string  ptbl.buffer$   ! must be initialized
+ 840: 0000:        ! to 60 bytes.  Contains
+ 841: 0000:        ! all of process info
+ 842: 0000:        ! Initialize to nulls
+ 843: 0000:        ! each time a new
+ 844: 0000:        ! process name is used.
+ 845: 0000: 
+ 846: 0000: end function
+ 847: 0000: 
+ 848: 0000: function cconstat(timeout) external       ! function similar
+ 849: 0000:                                               ! to BASIC constat%
+ 850: 0000:  integer*2 cconstat   ! waits for either a
+ 851: 0000:  integer*4 timeout    ! key being hit or
+ 852: 0000:        ! the timer expiring
+ 853: 0000:        ! before returning
+ 854: 0000:        ! returns:
+ 855: 0000:        !   -1 error
+ 856: 0000:        !    0 timer expired
+ 857: 0000:        !    x scan code of
+ 858: 0000:        !      key hit
+ 859: 0000: end function
+ 860: 0000: 
+ 861: 0000: function disksize(disk.name$) external   ! function to find
+ 862: 0000:        ! the total size of
+ 863: 0000:  integer*4 disksize   ! the specified disk
+ 864: 0000:  string  disk.name$   ! name (e.g. "h0:")
+ 865: 0000:        ! if return value is
+ 866: 0000:        ! negative, error
+ 867: 0000: end function      ! was received
+ 868: 0000: 
+ 869: 0000: 
+ 870: 0000: %INCLUDE BTCSTR.J86     ! String functions
+ 871: 0000: !********************************************************************
+ 872: 0000: !***
+ 873: 0000: !***    INCLUDED CODE:  BTCSTR.J86
+ 874: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 875: 0000: !***    DATE:           26th February 2006
+ 876: 0000: !***
+ 877: 0000: !********************************************************************
+ 878: 0000: !***
+ 879: 0000: !***    Controller CBASIC String Functions
+ 880: 0000: !***
+ 881: 0000: !********************************************************************
+ 882: 0000: 
+ 883: 0000: !Swaps to CBASIC strings
+ 884: 0000: SUB SWAPSTR (S1$, S2$) EXTERNAL
+ 885: 0000:     STRING S1$, S2$
+ 886: 0000: END SUB
+ 887: 0000: 
+ 888: 0000: !Left trim a string of spaces
+ 889: 0000: SUB LTRIM (S$) EXTERNAL
+ 890: 0000:     STRING S$
+ 891: 0000: END SUB
+ 892: 0000: 
+ 893: 0000: !Right trim a string of spaces
+ 894: 0000: SUB RTRIM (S$) EXTERNAL
+ 895: 0000:     STRING S$
+ 896: 0000: END SUB
+ 897: 0000: 
+ 898: 0000: !Left and right trim a string of spaces
+ 899: 0000: SUB TRIM (S$) EXTERNAL
+ 900: 0000:     STRING S$
+ 901: 0000: END SUB
+ 902: 0000: 
+ 903: 0000: !Left trim a string of a given ASCII character
+ 904: 0000: SUB LTRIMC (S$, C%) EXTERNAL
+ 905: 0000:     STRING S$
+ 906: 0000:     INTEGER*1 C%
+ 907: 0000: END SUB
+ 908: 0000: 
+ 909: 0000: !Right trim a string of a given ASCII character
+ 910: 0000: SUB RTRIMC (S$, C%) EXTERNAL
+ 911: 0000:     STRING S$
+ 912: 0000:     INTEGER*1 C%
+ 913: 0000: END SUB
+ 914: 0000: 
+ 915: 0000: !Left and right trim a string of a given ASCII character
+ 916: 0000: SUB TRIMC (S$, C%) EXTERNAL
+ 917: 0000:     STRING S$
+ 918: 0000:     INTEGER*1 C%
+ 919: 0000: END SUB
+ 920: 0000: 
+ 921: 0000: !Insert one string into another
+ 922: 0000: FUNCTION SUBSTR(S1$, O1%, S2$, O2%, L2%) EXTERNAL
+ 923: 0000:     STRING    S1$, S2$
+ 924: 0000:     INTEGER*2 O1%, O2%, L2%
+ 925: 0000:     INTEGER*1 SUBSTR
+ 926: 0000: END FUNCTION
+ 927: 0000:     
+ 928: 0000: 
+ 929: 0000: FUNCTION ASC.TEXT$(A$) EXTERNAL
+ 930: 0000: STRING ASC.TEXT$,A$
+ 931: 0000: END FUNCTION
+ 932: 0000: 
+ 933: 0000: FUNCTION HEX.TEXT$(H$) EXTERNAL
+ 934: 0000: STRING HEX.TEXT$,H$
+ 935: 0000: END FUNCTION
+ 936: 0000: 
+ 937: 0000: FUNCTION SUBSTITUTE$(T$,P$,R$) EXTERNAL
+ 938: 0000: STRING SUBSTITUTE$,T$,P$,R$
+ 939: 0000: END FUNCTION
+ 940: 0000: 
+ 941: 0000: FUNCTION ?VAL(S$) EXTERNAL
+ 942: 0000:     INTEGER*4 ?VAL
+ 943: 0000:     STRING S$
+ 944: 0000: END FUNCTION
+ 945: 0000: 
+ 946: 0000: FUNCTION GET.FILENAME$(INDEX%,L%) EXTERNAL                              !CMW
+ 947: 0000:     STRING GET.FILENAME$,WORK$                                          !CMW
+ 948: 0000:     INTEGER*2 INDEX%,L%,M%                                              !CMW
+ 949: 0000: END FUNCTION                                                            !CMW
+ 950: 0000: 
+ 951: 0000: FUNCTION UNCOMPRESS$(S$) EXTERNAL                                       !EMW
+ 952: 0000:     STRING UNCOMPRESS$,S$                                               !EMW
+ 953: 0000: END FUNCTION                                                            !EMW
+ 954: 0000:                                                                         !EMW
+ 955: 0000: \***********************************************************************!BMW
+ 956: 0000: \***                                                                    !BMW
+ 957: 0000: \***    FORMAT.DECIMAL                                                  !BMW
+ 958: 0000: \***                                                                    !BMW
+ 959: 0000: \***    Format a decimal numeric field to N decimal places.             !BMW
+ 960: 0000: \***                                                                    !BMW
+ 961: 0000: \***********************************************************************!BMW
+ 962: 0000: FUNCTION FORMAT.DECIMAL$(P$,N%)                                         !BMW
+ 963: 0029:                                                                         !BMW
+ 964: 0029:     STRING FORMAT.DECIMAL$                                              !BMW
+ 965: 0029:     INTEGER*1 N%                                                        !BMW
+ 966: 0029:     STRING P$                                                           !BMW
+ 967: 0029:                                                                         !BMW
+ 968: 0029:     FORMAT.DECIMAL$ = ""                                                !BMW
+ 969: 003f:                                                                         !BMW
+ 970: 003f:     IF LEN(P$) = 0 THEN EXIT FUNCTION                                   !BMW
+ 971: 005b:                                                                         !BMW
+ 972: 005b:     P$ = STR$(VAL(P$))                                                  !BMW
+ 973: 0082:                                                                         !BMW
+ 974: 0082:     IF LEN(P$) < (N% + 1) THEN BEGIN                                    !BMW
+ 975: 00a4:         P$ = RIGHT$(STRING$(N% + 1,"0") + P$,N% + 1)                    !BMW
+ 976: 00f5:     ENDIF                                                               !BMW
+ 977: 00fd:                                                                         !BMW
+ 978: 00fd:     FORMAT.DECIMAL$ = LEFT$(P$,LEN(P$) - N%) +                      \   !BMW
+ 979: 0151:                       "." +                                         \   !BMW
+ 980: 0151:                       RIGHT$(P$,N%)                                     !BMW
+ 981: 0151:                                                                         !BMW
+ 982: 0151: END FUNCTION                                                            !BMW
+ 983: 016f: 
+ 984: 016f: SUB PSU0406 EXTERNAL
+ 985: 016f: END SUB
+ 986: 016f: 
+ 987: 016f: \***********************************************************************
+ 988: 016f: \***
+ 989: 016f: \***    GET.REPORT.NUM%
+ 990: 016f: \***
+ 991: 016f: \***    Extract 2-byte integer file report number from specified
+ 992: 016f: \***    index within the event unique data string.
+ 993: 016f: \***
+ 994: 016f: \***********************************************************************
+ 995: 016f: FUNCTION GET.REPORT.NUM%(INDEX%)
+ 996: 0193:     INTEGER*2 GET.REPORT.NUM%
+ 997: 0193:     STRING FILE.NUMBER$
+ 998: 0193:     INTEGER*2 INDEX%
+ 999: 0193: 
+1000: 0193:     FILE.NUMBER$ = MID$(EVENT.UNIQUE.DATA$,INDEX% + 1,1) +  \
+1001: 01de:                    MID$(EVENT.UNIQUE.DATA$,INDEX%,1)
+1002: 01de:     GET.REPORT.NUM% = GETN2(FILE.NUMBER$,0)
+1003: 01fb: 
+1004: 01fb: END FUNCTION
+1005: 0212: 
+1006: 0212: \***********************************************************************
+1007: 0212: \***********************************************************************
+1008: 0212: \***
+1009: 0212: \***    MAIN SUBPROGRAM PSU0402
+1010: 0212: \***
+1011: 0212: \***********************************************************************
+1012: 0212: \***********************************************************************
+1013: 0212: SUB PSU0402 PUBLIC
+1014: 0236: 
+1015: 0236:     COMMENT$ = "No additional comment available."
+1016: 024d: 
+1017: 024d:     PROGRAM$ = RTRIM$(PROGRAM$," ")
+1018: 0274: 
+1019: 0274:     RETURN.CODE$ = ""
+1020: 028b:     RETURN.ERR$ = ""
+1021: 02a2: 
+1022: 02a2:     ! IF TIF is full event                                              !EMW
+1023: 02a2:     IF EVENT.MESSAGE.NUMBER% = 0 OR \
+1024: 02e0:        (EVENT.NUMBER% = 46 AND EVENT.MESSAGE.NUMBER% = 300) THEN BEGIN
+1025: 02e0: !!!!!!!!MESSAGE.TEXT$ = "No message text found"                         !EMW
+1026: 02e0:         ! Reset existing message text                                   !EMW
+1027: 02e0:         MESSAGE.TEXT$ = ""                                              !EMW
+1028: 02fa:     ENDIF ELSE IF EVENT.MESSAGE.GROUP$ = "A" THEN BEGIN
+1029: 0318:         MESSAGE.TEXT$ = LA$(EVENT.MESSAGE.NUMBER%)
+1030: 0349:     ENDIF ELSE IF EVENT.MESSAGE.GROUP$ = "J" THEN BEGIN
+1031: 0367:         MESSAGE.TEXT$ = LJ$(EVENT.MESSAGE.NUMBER%)
+1032: 0396:     ENDIF
+1033: 039e: 
+1034: 039e:     ! IF message text not specified                                     !EMW
+1035: 039e:     IF LEN(MESSAGE.TEXT$) = 0 THEN BEGIN                                !EMW
+1036: 03bc:         MESSAGE.TEXT$ = "No message text found"                         !EMW
+1037: 03d3:     ENDIF                                                               !EMW
+1038: 03db:                                                                         !EMW
+1039: 03db:     IF EVENT.NUMBER% = 1 THEN BEGIN
+1040: 03f0: !-------------------------------------------------------------------------------
+1041: 03f0: !  1          General On Error              ERRN              X(4)  Integer
+1042: 03f0: !                                           ERRF%             X     Integer
+1043: 03f0: !                                           ERR               XX    ASCII
+1044: 03f0: !                                           ERRL              XXX   UPD
+1045: 03f0: !             OR
+1046: 03f0: !             BGMON program error                             X(10) ASCII
+1047: 03f0: !-------------------------------------------------------------------------------
+1048: 03f0:         ! BGMON abuses the format
+1049: 03f0:         IF PROGRAM$ = "BGMON" THEN BEGIN
+1050: 0411:             ! Use generic comment
+1051: 0411:         ENDIF ELSE BEGIN
+1052: 0419:         
+1053: 0419:             CODE$ = MID$(EVENT.UNIQUE.DATA$,6,2)
+1054: 043e: 
+1055: 043e:             RETURN.CODE$ =                                          \
+1056: 046f:                 HEX.TEXT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,4)))
+1057: 046f: 
+1058: 046f:             IF LEFT$(EVENT.UNIQUE.DATA$,4) =                        \
+1059: 04ae:                    STRING$(4,CHR$(0)) THEN BEGIN
+1060: 04ae:                 CODE.TEXT$ = "No error information was logged."
+1061: 04c3:                 REPORT.TEXT$ = ""
+1062: 04d8:                 LINE.TEXT$ = ""
+1063: 04f0:             ENDIF ELSE BEGIN
+1064: 04f8: 
+1065: 04f8:                 CODE.TEXT$ = "Error code is " +                     \
+1066: 052f:                              CODE$ + " ." +                         \
+1067: 052f:                              "Error number is " +                   \
+1068: 052f:                              RETURN.CODE$ + ". "
+1069: 052f: 
+1070: 052f:                 REPORT.NUM% =                                       \
+1071: 056d:                     ASC(MID$(EVENT.UNIQUE.DATA$,5,1) + "?")
+1072: 056d:                 LINE.NUMBER$ =                                      \
+1073: 05a6:                     STR$(?VAL(UNPACK$(                              \
+1074: 05a6:                         RIGHT$(EVENT.UNIQUE.DATA$,3))))
+1075: 05a6: 
+1076: 05a6:                 GOSUB GET.REPORT.TEXT
+1077: 05b8:                 GOSUB GET.LINE.TEXT
+1078: 05ca: 
+1079: 05ca:             ENDIF
+1080: 05d2: 
+1081: 05d2:             COMMENT$ = "A general error has occurred " +            \
+1082: 0617:                        "in program " + PROGRAM$ + ". " +            \
+1083: 0617:                        CODE.TEXT$ + REPORT.TEXT$ + LINE.TEXT$
+1084: 0617:             
+1085: 0617:         ENDIF
+1086: 0622: 
+1087: 0622:     ENDIF ELSE IF EVENT.NUMBER% = 2 THEN BEGIN
+1088: 0637: !-------------------------------------------------------------------------------
+1089: 0637: !  2          D.M. file error               DM function       99    ASCII
+1090: 0637: !                                           File Name         X(6)  ASCII
+1091: 0637: !                                           Screen number     XX    Integer
+1092: 0637: !-------------------------------------------------------------------------------
+1093: 0637:         FUNCTION$ = LEFT$(EVENT.UNIQUE.DATA$,2)
+1094: 065c:         FILENAME$ = MID$(EVENT.UNIQUE.DATA$,3,6)
+1095: 0681:         SCREEN$   = MID$(EVENT.UNIQUE.DATA$,10,1) +                  \
+1096: 06c8:                     MID$(EVENT.UNIQUE.DATA$,9,1)
+1097: 06c8:         SCREEN$   = STR$(GETN2(SCREEN$,0))
+1098: 06f3: 
+1099: 06f3:         COMMENT$ = "A Display Manager file error has occurred in " + \
+1100: 0753:                    "program " + PROGRAM$ + ". " +                    \
+1101: 0753:                    "Display Manager function number is " +           \
+1102: 0753:                    FUNCTION$ + ", " +                                \
+1103: 0753:                    "filename is " + FILENAME$ + ", " +               \
+1104: 0753:                    "screen number is " + SCREEN$ + "."
+1105: 0753: 
+1106: 0753:     ENDIF ELSE IF EVENT.NUMBER% = 3 THEN BEGIN
+1107: 0768: !-------------------------------------------------------------------------------
+1108: 0768: !  3          D.M. other error              DM function       99    ASCII
+1109: 0768: !                                           Field number      999   ASCII
+1110: 0768: !-------------------------------------------------------------------------------
+1111: 0768:         FUNCTION$ = LEFT$(EVENT.UNIQUE.DATA$,2)
+1112: 078d:         FIELD$    = MID$(EVENT.UNIQUE.DATA$,3,3)
+1113: 07b2: 
+1114: 07b2:         COMMENT$ = "A Display Manager error has occurred in " +     \
+1115: 0802:                    "program " + PROGRAM$ + ". " +                   \
+1116: 0802:                    "Display Manager function number is " +          \
+1117: 0802:                    FUNCTION$ + ", " +                               \
+1118: 0802:                    "field number is " + FIELD$ + "."
+1119: 0802: 
+1120: 0802:     ENDIF ELSE IF EVENT.NUMBER% = 4 THEN BEGIN
+1121: 0814: !-------------------------------------------------------------------------------
+1122: 0814: !  4          Public Function               Message No        XX    Integer
+1123: 0814: !             parameter error               Length of parm    X     Integer
+1124: 0814: !                                           Value of parm     X(7)  ASCII
+1125: 0814: !-------------------------------------------------------------------------------
+1126: 0814:         COMMENT$ = "Public function parameter error."
+1127: 082e: 
+1128: 082e:     ENDIF ELSE IF EVENT.NUMBER% = 5 THEN BEGIN
+1129: 0840: !-------------------------------------------------------------------------------
+1130: 0840: !  5          Count discrepancies           File No           XX    ASCII
+1131: 0840: !             See also event 92             Count found       XX    Integer
+1132: 0840: !                                           Count expected    XX    Integer
+1133: 0840: !                                           Boots code        X(4)  UPD
+1134: 0840: !-------------------------------------------------------------------------------
+1135: 0840:         COMMENT$ = "Count discrepancies found."
+1136: 085a: 
+1137: 085a:     ENDIF ELSE IF EVENT.NUMBER% = 6 THEN BEGIN
+1138: 086f: !-------------------------------------------------------------------------------
+1139: 086f: !  6          IF END errors                 O/R/W/D/C         X     ASCII
+1140: 086f: !             Open/Read/Write               File No           X     Integer
+1141: 086f: !             Delete/Create                 Key value         X(8)  UPD
+1142: 086f: !-------------------------------------------------------------------------------
+1143: 086f:         FLAG$ = LEFT$(EVENT.UNIQUE.DATA$,1)
+1144: 0894: 
+1145: 0894:         REPORT.NUM% = ASC(MID$(EVENT.UNIQUE.DATA$,2,1) + "?")
+1146: 08d2: 
+1147: 08d2:         GOSUB GET.REPORT.TEXT
+1148: 08e4: 
+1149: 08e4:         IF FLAG$ = "O" THEN BEGIN
+1150: 08ff:             FLAG.TEXT$ = "An open file error"
+1151: 0917:         ENDIF ELSE IF FLAG$ = "R" THEN BEGIN
+1152: 0932:             FLAG.TEXT$ = "A read file error"
+1153: 094a:         ENDIF ELSE IF FLAG$ = "W" THEN BEGIN
+1154: 0965:             FLAG.TEXT$ = "A write file error"
+1155: 097d:         ENDIF ELSE IF FLAG$ = "D" THEN BEGIN
+1156: 0998:             FLAG.TEXT$ = "A delete file error"
+1157: 09af:         ENDIF ELSE IF FLAG$ = "C" THEN BEGIN
+1158: 09ca:             FLAG.TEXT$ = "A create file error"
+1159: 09e1:         ENDIF ELSE IF FLAG$ = "S" THEN BEGIN
+1160: 09fc:             FLAG.TEXT$ = "A file size error"
+1161: 0a11:         ENDIF
+1162: 0a19: 
+1163: 0a19:         IF FLAG$ = "S" THEN BEGIN
+1164: 0a37: 
+1165: 0a37:             KEY$ = RIGHT$(EVENT.UNIQUE.DATA$,7)
+1166: 0a5a:             IF KEY$ = "MISSING" THEN BEGIN
+1167: 0a75:                 KEY.TEXT$ = "File is missing."
+1168: 0a8c:             ENDIF ELSE BEGIN
+1169: 0a94:                 KEY.TEXT$ = "File has a zero size."
+1170: 0aa9:             ENDIF
+1171: 0ab4: 
+1172: 0ab4:         ENDIF ELSE BEGIN
+1173: 0abc: 
+1174: 0abc:             KEY$ = RIGHT$(EVENT.UNIQUE.DATA$,7)
+1175: 0adf: 
+1176: 0adf:             IF NOT (KEY$ = STRING$(7,CHR$(0)) OR                    \
+1177: 0b42:                     KEY$ = STRING$(7,CHR$(32))) THEN BEGIN
+1178: 0b42:                 KEY.TEXT$ = "Record key was " +                     \
+1179: 0b8d:                     "[" + HEX.TEXT$(UNPACK$(KEY$)) + "]."
+1180: 0b8d:             ENDIF ELSE BEGIN
+1181: 0b95:                 IF FLAG$ = "R" OR                                   \
+1182: 0c06:                    FLAG$ = "W" OR                                   \
+1183: 0c06:                    FLAG$ = "D" THEN BEGIN
+1184: 0c06:                     KEY.TEXT$ = "No record key has been logged."
+1185: 0c1d:                 ENDIF ELSE BEGIN
+1186: 0c25:                     KEY.TEXT$ = ""
+1187: 0c3a:                 ENDIF
+1188: 0c42:             ENDIF
+1189: 0c4a: 
+1190: 0c4a:         ENDIF
+1191: 0c52: 
+1192: 0c52:         COMMENT$ = FLAG.TEXT$ + " has occurred in program " + \
+1193: 0c96:             PROGRAM$ + ". " + REPORT.TEXT$ + KEY.TEXT$
+1194: 0c96: 
+1195: 0c96:     ENDIF ELSE IF EVENT.NUMBER% = 7 THEN BEGIN
+1196: 0cab: !-------------------------------------------------------------------------------
+1197: 0cab: !  7          Local Price Changes           Boots code        X(4)  UPD
+1198: 0cab: !                                           New local price   9(6)  ASCII
+1199: 0cab: !-------------------------------------------------------------------------------
+1200: 0cab:         ITEM.CODE$ = ASC.TEXT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,4)))
+1201: 0cda:         NEW.VALUE$ = STR$(?VAL(RIGHT$(EVENT.UNIQUE.DATA$,6)))
+1202: 0d0e: 
+1203: 0d0e:         COMMENT$ = "Local price added for " +                       \
+1204: 0d5d:                    "item code " + ITEM.CODE$ + ". " +               \   !BMW
+1205: 0d5d:                    "Local price is " +                              \   !BMW
+1206: 0d5d:                    FORMAT.DECIMAL$(NEW.VALUE$,2) + "."                  !BMW
+1207: 0d5d: 
+1208: 0d5d:     ENDIF ELSE IF EVENT.NUMBER% = 8 THEN BEGIN
+1209: 0d71: !-------------------------------------------------------------------------------
+1210: 0d71: !  8          IRF/IUF current               Boots code        X(4)  UPD
+1211: 0d71: !                                           Price at store    X(4)  UPD
+1212: 0d71: !-------------------------------------------------------------------------------
+1213: 0d71:     ENDIF ELSE IF EVENT.NUMBER% = 9 THEN BEGIN
+1214: 0d83: !-------------------------------------------------------------------------------
+1215: 0d83: !  9          JOBSOK log                    PSB21 flag        X(1)  ASCII
+1216: 0d83: !                                           PSB22 flag        X(1)  ASCII
+1217: 0d83: !                                           PSB23 flag        X(1)  ASCII
+1218: 0d83: !                                           PSB24 flag        X(1)  ASCII
+1219: 0d83: !                                           PSB25 flag        X(1)  ASCII
+1220: 0d83: !                                           PSB27 flag        X(1)  ASCII
+1221: 0d83: !                                           PSB28 flag        X(1)  ASCII
+1222: 0d83: !                                           Status Flag       X(1)  ASCII
+1223: 0d83: !-------------------------------------------------------------------------------
+1224: 0d83:         COMMENT$ = "JOBOK log = " + LEFT$(EVENT.UNIQUE.DATA$,8)
+1225: 0db1: 
+1226: 0db1:     ENDIF
+1227: 0db9: 
+1228: 0db9:     IF EVENT.NUMBER% = 10 THEN BEGIN
+1229: 0dcb: !-------------------------------------------------------------------------------
+1230: 0dcb: ! 10          IMFOK log                     IMFOK data        X(10) ASCII
+1231: 0dcb: !-------------------------------------------------------------------------------
+1232: 0dcb:         COMMENT$ = "IMFOK log = " + LEFT$(EVENT.UNIQUE.DATA$,5)
+1233: 0dfc: 
+1234: 0dfc: ENDIF ELSE IF EVENT.NUMBER% = 11 THEN BEGIN
+1235: 0e0e: !-------------------------------------------------------------------------------
+1236: 0e0e: ! 11          Incorrect date on             Date              X(6)  ASCII
+1237: 0e0e: !             a report file                 File No           XX    ASCII
+1238: 0e0e: !-------------------------------------------------------------------------------
+1239: 0e0e:         COMMENT$ = "Incorrect date on report file."
+1240: 0e28: 
+1241: 0e28:     ENDIF ELSE IF EVENT.NUMBER% = 12 THEN BEGIN
+1242: 0e3d:         ! Redundant
+1243: 0e3d:     ENDIF ELSE IF EVENT.NUMBER% = 13 THEN BEGIN
+1244: 0e52: !-------------------------------------------------------------------------------
+1245: 0e52: ! 13          Unexpected record             Boots code        X(7)  ASCII
+1246: 0e52: !             sequence (IUF)                Expected rec type X     ASCII
+1247: 0e52: !                                           Found rec type    X     ASCII
+1248: 0e52: !-------------------------------------------------------------------------------
+1249: 0e52:         ITEM.CODE$ = ASC.TEXT$(LEFT$(EVENT.UNIQUE.DATA$,7))             !BMW
+1250: 0e7c:         EXPECTED$  = ASC.TEXT$(MID$(EVENT.UNIQUE.DATA$,8,1))            !BMW
+1251: 0ea6:         ACTUAL$    = ASC.TEXT$(MID$(EVENT.UNIQUE.DATA$,9,1))            !BMW
+1252: 0ed0: 
+1253: 0ed0:         COMMENT$ = "Program " + PROGRAM$ +                          \
+1254: 0f30:                    " has found an unexpected record sequence " +    \
+1255: 0f30:                    "on the IUF. " +                                 \
+1256: 0f30:                    "Item code is " + ITEM.CODE$ + ", " +            \
+1257: 0f30:                    "expected record type is " + EXPECTED$ + ", " +  \
+1258: 0f30:                    "actual record type is " + ACTUAL$ + "."
+1259: 0f30: 
+1260: 0f30:     ENDIF ELSE IF EVENT.NUMBER% = 14 THEN BEGIN
+1261: 0f42: !-------------------------------------------------------------------------------
+1262: 0f42: ! 14          Failure in file RENAME        File name         X(10) ASCII
+1263: 0f42: !-------------------------------------------------------------------------------
+1264: 0f42:         FILENAME$ = RTRIM$(ASC.TEXT$(EVENT.UNIQUE.DATA$)," ")
+1265: 0f77: 
+1266: 0f77:         COMMENT$ = "Program " + PROGRAM$ +                          \
+1267: 0faf:             " has failed to rename file " + FILENAME$ + "."
+1268: 0faf: 
+1269: 0faf:     ENDIF ELSE IF EVENT.NUMBER% = 15 THEN BEGIN
+1270: 0fc4: !-------------------------------------------------------------------------------
+1271: 0fc4: ! 15          Incorrect store number        Expected store No X(4)  ASCII
+1272: 0fc4: !                                           Found store No    X(4)  ASCII
+1273: 0fc4: !
+1274: 0fc4: !                                                    OR
+1275: 0fc4: !
+1276: 0fc4: !                                           "0"               X(1)  ASCII
+1277: 0fc4: !                                           Expected store No X(4)  ASCII
+1278: 0fc4: !                                           "0"               X(1)  ASCII
+1279: 0fc4: !                                           Found store No    X(4)  ASCII
+1280: 0fc4: !-------------------------------------------------------------------------------
+1281: 0fc4:         EXPECTED$ = ""
+1282: 0fd9: 
+1283: 0fd9:         IF PROGRAM$ = "PSB59" OR                                    \
+1284: 107b:            PROGRAM$ = "PSC10" OR                                    \
+1285: 107b:            PROGRAM$ = "PSC14" OR                                    \
+1286: 107b:            PROGRAM$ = "PSS36" THEN BEGIN
+1287: 107b: 
+1288: 107b:             EXPECTED$ = ASC.TEXT$(MID$(EVENT.UNIQUE.DATA$,2,4))         !BMW
+1289: 10a5:             ACTUAL$   = ASC.TEXT$(MID$(EVENT.UNIQUE.DATA$,7,4))         !BMW
+1290: 10d1: 
+1291: 10d1:         ENDIF ELSE BEGIN
+1292: 10d9: 
+1293: 10d9:             EXPECTED$ = ASC.TEXT$(MID$(EVENT.UNIQUE.DATA$,1,4))         !BMW
+1294: 1103:             ACTUAL$   = ASC.TEXT$(MID$(EVENT.UNIQUE.DATA$,5,4))         !BMW
+1295: 112d: 
+1296: 112d:         ENDIF
+1297: 1135: 
+1298: 1135:         IF LEN(EXPECTED$) > 0 THEN BEGIN
+1299: 1150:             EXPECTED.TEXT$ = "Expected store number " +             \
+1300: 1182:                              EXPECTED$ +                            \
+1301: 1182:                              ", found store number " +              \
+1302: 1182:                              ACTUAL$ + "."
+1303: 1182:         ENDIF ELSE BEGIN
+1304: 118a:             EXPECTED.TEXT$ = ""
+1305: 119f:         ENDIF
+1306: 11a7: 
+1307: 11a7:         COMMENT$ = "Program " + PROGRAM$ + " has found " +          \
+1308: 11df:                    "an unexpected store number. " + EXPECTED.TEXT$
+1309: 11df: 
+1310: 11df:     ENDIF ELSE IF EVENT.NUMBER% = 16 THEN BEGIN
+1311: 11f4:         ! Redundant
+1312: 11f4:     ENDIF ELSE IF EVENT.NUMBER% = 17 THEN BEGIN
+1313: 1209: !-------------------------------------------------------------------------------
+1314: 1209: ! 17          Unexpected record type        File No           XX    ASCII
+1315: 1209: !             (any other file)              Expected rec type X     ASCII
+1316: 1209: !                                           Found rec type    X     ASCII
+1317: 1209: !
+1318: 1209: !             OR                            File No           XX    INT
+1319: 1209: !                                           Expected rec type XXX   ASCII
+1320: 1209: !                                           Actual rec type   XXX   ASCII
+1321: 1209: !                                           (Using trailing spaces)
+1322: 1209: !-------------------------------------------------------------------------------
+1323: 1209:         IF PROGRAM$ = "SRP10" THEN BEGIN
+1324: 1227:             REPORT.NUM% = ?VAL(LEFT$(EVENT.UNIQUE.DATA$,3))
+1325: 1256:         ENDIF ELSE IF PROGRAM$ = "PSS35" THEN BEGIN
+1326: 1274:             REPORT.NUM% = ?VAL(MID$(EVENT.UNIQUE.DATA$,2,1))
+1327: 12a3:         ENDIF ELSE IF PROGRAM$ = "PSB21" THEN BEGIN
+1328: 12c1:             REPORT.NUM% = ?VAL(LEFT$(EVENT.UNIQUE.DATA$,2))
+1329: 12ef:         ENDIF ELSE IF PROGRAM$ = "PSD44" THEN BEGIN
+1330: 130d:             REPORT.NUM% = GET.REPORT.NUM%(1)
+1331: 1322:         ENDIF ELSE BEGIN
+1332: 132a:             REPORT.NUM% = 0
+1333: 1338:         ENDIF
+1334: 1340: 
+1335: 1340:         GOSUB GET.REPORT.TEXT
+1336: 1352: 
+1337: 1352:         COMMENT$ = "Program " + PROGRAM$ + " has found " +          \
+1338: 1389:                    "an unexpected record type. " + REPORT.TEXT$
+1339: 1389: 
+1340: 1389:     ENDIF ELSE IF EVENT.NUMBER% = 18 THEN BEGIN
+1341: 139b: !-------------------------------------------------------------------------------
+1342: 139b: ! 18          Failure in program chain      Chained from prog X(5)  ASCII
+1343: 139b: !                                           Chained to prog   X(5)  ASCII
+1344: 139b: !-------------------------------------------------------------------------------
+1345: 139b:         COMMENT$ = "Failure in program chain."
+1346: 13b4: 
+1347: 13b4:     ENDIF ELSE IF EVENT.NUMBER% = 19 THEN BEGIN
+1348: 13c6: !-------------------------------------------------------------------------------
+1349: 13c6: ! 19          CONV.TO.STRING failed         Event logged      XX    ASCII
+1350: 13c6: !-------------------------------------------------------------------------------
+1351: 13c6:         COMMENT$ = "Function CONV.TO.STRING failed."
+1352: 13dd: 
+1353: 13dd:     ENDIF
+1354: 13e5: 
+1355: 13e5:     IF EVENT.NUMBER% = 20 THEN BEGIN
+1356: 13f7: !-------------------------------------------------------------------------------
+1357: 13f7: ! 20          D.M. NEXTF error              DM function       99    ASCII
+1358: 13f7: !                                           Parameter value   XXX   ASCII
+1359: 13f7: !-------------------------------------------------------------------------------
+1360: 13f7:         COMMENT$ = "Display manager NEXTF function error."
+1361: 1411: 
+1362: 1411: ENDIF ELSE IF EVENT.NUMBER% = 21 THEN BEGIN
+1363: 1426: !-------------------------------------------------------------------------------
+1364: 1426: ! 21          Incorrect BCF serial No       BCF serial No     X(5)  ASCII
+1365: 1426: !                                           IUF serial No     X(5)  ASCII
+1366: 1426: !-------------------------------------------------------------------------------
+1367: 1426:         OLD.VALUE$ = ASC.TEXT$(LEFT$(EVENT.UNIQUE.DATA$,5))             !BMW
+1368: 1450:         NEW.VALUE$ = ASC.TEXT$(RIGHT$(EVENT.UNIQUE.DATA$,5))            !BMW
+1369: 1478:         
+1370: 1478:         COMMENT$ = "Incorrect BCF serial number. " +                \   !BMW
+1371: 14b5:                    "BCF serial number is " + OLD.VALUE$ + " and " + \   !BMW
+1372: 14b5:                    "IUF serial number is " + NEW.VALUE$ + "."           !BMW
+1373: 14b5: 
+1374: 14b5:     ENDIF ELSE IF EVENT.NUMBER% = 22 THEN BEGIN
+1375: 14c7: !-------------------------------------------------------------------------------
+1376: 14c7: ! 22          File exists already           File No           XX    ASCII
+1377: 14c7: !-------------------------------------------------------------------------------
+1378: 14c7:         COMMENT$ = "File already exists."
+1379: 14e1: 
+1380: 14e1:     ENDIF ELSE IF EVENT.NUMBER% = 23 THEN BEGIN
+1381: 14f3: !-------------------------------------------------------------------------------
+1382: 14f3: ! 23          ADXSERVE error                Return code       X(5)  ASCII
+1383: 14f3: !-------------------------------------------------------------------------------
+1384: 14f3:         COMMENT$ = "ADXSERVE call failed."
+1385: 150d: 
+1386: 150d:     ENDIF ELSE IF EVENT.NUMBER% = 24 THEN BEGIN
+1387: 151f: !-------------------------------------------------------------------------------
+1388: 151f: ! 24          ADXSERVE incorrect number     Number returned   9     ASCII
+1389: 151f: !             of lines per page
+1390: 151f: !-------------------------------------------------------------------------------
+1391: 151f:         COMMENT$ = "ADXSERVE incorrect number of lines per page."
+1392: 1539: 
+1393: 1539:     ENDIF ELSE IF EVENT.NUMBER% = 25 THEN BEGIN
+1394: 154b: !-------------------------------------------------------------------------------
+1395: 154b: ! 25          IRF bar code has price        Bar code on IRF   X(6)  UPD
+1396: 154b: !             type different from first     D  L IRF status   X     ASCII
+1397: 154b: !             (PSB23)                       PPFI status       X     ASCII
+1398: 154b: !-------------------------------------------------------------------------------
+1399: 154b:         BAR.CODE$ = ASC.TEXT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,6)))     !BMW
+1400: 157a:         
+1401: 157a:         COMMENT$ = "IRF bar code has price type " +                 \
+1402: 15ab:                    "different from the first bar code. " +          \   !BMW
+1403: 15ab:                    "Bar code is " + BAR.CODE$ + "."                     !BMW
+1404: 15ab: 
+1405: 15ab:     ENDIF ELSE IF EVENT.NUMBER% = 26 THEN BEGIN
+1406: 15bd: !-------------------------------------------------------------------------------
+1407: 15bd: ! 26          Table full (PSB23)            Table name        X(10) ASCII
+1408: 15bd: !-------------------------------------------------------------------------------
+1409: 15bd:         TABLE$ = RTRIM$(ASC.TEXT$(EVENT.UNIQUE.DATA$),".")
+1410: 15f2: 
+1411: 15f2:         COMMENT$ = "Table " + TABLE$ + " is full."
+1412: 161b: 
+1413: 161b:     ENDIF ELSE IF EVENT.NUMBER% = 27 THEN BEGIN
+1414: 162d: !-------------------------------------------------------------------------------
+1415: 162d: ! 27          Null bar code found on IUF    Boots code        X(7)  ASCII
+1416: 162d: !-------------------------------------------------------------------------------
+1417: 162d:         ITEM.CODE$ = ASC.TEXT$(LEFT$(EVENT.UNIQUE.DATA$,7))             !BMW
+1418: 1657:         
+1419: 1657:         COMMENT$ = "Null bar code found on IUF. " +                 \   !BMW
+1420: 1683:                    "Item code is " + ITEM.CODE$ + "."                   !BMW
+1421: 1683: 
+1422: 1683:     ENDIF ELSE IF EVENT.NUMBER% = 28 THEN BEGIN
+1423: 1695: !-------------------------------------------------------------------------------
+1424: 1695: ! 28          IDF first bar code null or    Boots code        X(7)  ASCII
+1425: 1695: !             not on IRF. IRF data not on
+1426: 1695: !             IUF will be lost.
+1427: 1695: !             (PSB21 mod 01 and PSS36)
+1428: 1695: !-------------------------------------------------------------------------------
+1429: 1695:         COMMENT$ = "IDF first bar code is NULL " +                  \
+1430: 16b9:                    "or not on the IRF. " +                          \
+1431: 16b9:                    "Data will be lost."
+1432: 16b9: 
+1433: 16b9:     ENDIF ELSE IF EVENT.NUMBER% = 29 THEN BEGIN
+1434: 16cb: !-------------------------------------------------------------------------------
+1435: 16cb: ! 29          IRF bar code has price type   Bar code on IRF   X(6)  UPD
+1436: 16cb: !             different from first          D  L first code   X     ASCII
+1437: 16cb: !             (PSB05)                       D  L this code    X     ASCII
+1438: 16cb: !-------------------------------------------------------------------------------
+1439: 16cb:         COMMENT$ = "IRF bar code has price type " +                 \
+1440: 16e9:                    "different from the first bar code."
+1441: 16e9: 
+1442: 16e9:     ENDIF
+1443: 16f1: 
+1444: 16f1:     IF EVENT.NUMBER% = 30 THEN BEGIN
+1445: 1703: !-------------------------------------------------------------------------------
+1446: 1703: ! 30          No bar codes on the IUF       Boots code        X(7)  ASCII
+1447: 1703: !-------------------------------------------------------------------------------
+1448: 1703:         COMMENT$ = "No bar codes on the IUF."
+1449: 171d: 
+1450: 171d:     ENDIF ELSE IF EVENT.NUMBER% = 31 THEN BEGIN
+1451: 1732: !-------------------------------------------------------------------------------
+1452: 1732: ! 31          IF END error on IEF           O/R/W/D           X     ASCII
+1453: 1732: !             Open/Read/Write/Delete        Key value         X(9)  UPD
+1454: 1732: !-------------------------------------------------------------------------------
+1455: 1732:         FLAG$ = LEFT$(EVENT.UNIQUE.DATA$,1)
+1456: 1757: 
+1457: 1757:         IF FLAG$ = "O" THEN BEGIN
+1458: 1772:             FLAG.TEXT$ = "An open file error"
+1459: 178a:         ENDIF ELSE IF FLAG$ = "R" THEN BEGIN
+1460: 17a5:             FLAG.TEXT$ = "A read file error"
+1461: 17bc:         ENDIF ELSE IF FLAG$ = "W" THEN BEGIN
+1462: 17d7:             FLAG.TEXT$ = "A write file error"
+1463: 17ee:         ENDIF ELSE IF FLAG$ = "D" THEN BEGIN
+1464: 1809:             FLAG.TEXT$ = "A delete file error"
+1465: 181e:         ENDIF
+1466: 1826: 
+1467: 1826:         COMMENT$ = FLAG.TEXT$ + " occurred on the IEF file."
+1468: 184b: 
+1469: 184b:     ENDIF ELSE IF EVENT.NUMBER% = 32 THEN BEGIN
+1470: 185d: !-------------------------------------------------------------------------------
+1471: 185d: ! 32          Boots code has no IRF rec     Boots code        X(7)  ASCII
+1472: 185d: !-------------------------------------------------------------------------------
+1473: 185d:         ITEM.CODE$ = ASC.TEXT$(LEFT$(EVENT.UNIQUE.DATA$,7))
+1474: 1887: 
+1475: 1887:         COMMENT$ = " Item code " + ITEM.CODE$ + "has no IRF record."
+1476: 18b0: 
+1477: 18b0:     ENDIF ELSE IF EVENT.NUMBER% = 33 THEN BEGIN
+1478: 18c2: !-------------------------------------------------------------------------------
+1479: 18c2: ! 33          Mismatch on IRF Boots codes   Bar code on IRF   X(6)  UPD
+1480: 18c2: !-------------------------------------------------------------------------------
+1481: 18c2:         BAR.CODE$ = ASC.TEXT$(LEFT$(EVENT.UNIQUE.DATA$,6))
+1482: 18ec:         
+1483: 18ec:         COMMENT$ = "Mismatch on IRF Boots codes. " +                \   !BMW
+1484: 1919:                    "Bar code is " + BAR.CODE$ + "."                     !BMW
+1485: 1919: 
+1486: 1919:     ENDIF ELSE IF EVENT.NUMBER% = 34 THEN BEGIN
+1487: 192b: !-------------------------------------------------------------------------------
+1488: 192b: ! 34          Mismatched store No - PDE     Cont. Store No    X(4)  ASCII
+1489: 192b: !             with controller               PDE Store No      X(4)  ASCII
+1490: 192b: !-------------------------------------------------------------------------------
+1491: 192b:         COMMENT$ = "Mismatched store number " +                     \
+1492: 194c:                    "between PDE and controller."
+1493: 194c: 
+1494: 194c:     ENDIF ELSE IF EVENT.NUMBER% = 35 THEN BEGIN
+1495: 195e: !-------------------------------------------------------------------------------
+1496: 195e: ! 35          Unexpected value on PDELINK   Expected rec type X     Integer
+1497: 195e: !             record                        Record length     X(2)  Integer
+1498: 195e: !                                           Found record      X(7)  ASCII
+1499: 195e: !-------------------------------------------------------------------------------
+1500: 195e:         COMMENT$ = "Unexpected value on PDELINK record."
+1501: 1978: 
+1502: 1978:     ENDIF ELSE IF EVENT.NUMBER% = 36 THEN BEGIN
+1503: 198d:         ! Redundant
+1504: 198d:     ENDIF ELSE IF EVENT.NUMBER% = 37 THEN BEGIN
+1505: 199f: !-------------------------------------------------------------------------------
+1506: 199f: ! 37          Uncounted list item not       File No           X     Integer
+1507: 199f: !             on file                       Boots code        X(7)  ASCII
+1508: 199f: !-------------------------------------------------------------------------------
+1509: 199f:         COMMENT$ = "Uncounted list item not on file."
+1510: 19b8: 
+1511: 19b8:     ENDIF ELSE IF EVENT.NUMBER% = 38 THEN BEGIN
+1512: 19ca: !-------------------------------------------------------------------------------
+1513: 19ca: ! 38          Unexpected Link status        Function (R/W)    X     ASCII
+1514: 19ca: !                                           Expected status   X(4)  Integer
+1515: 19ca: !                                           Found status      X(4)  Integer
+1516: 19ca: !-------------------------------------------------------------------------------
+1517: 19ca:         COMMENT$ = "Unexpected link status."
+1518: 19e3: 
+1519: 19e3:     ENDIF ELSE IF EVENT.NUMBER% = 39 THEN BEGIN
+1520: 19f5: !-------------------------------------------------------------------------------
+1521: 19f5: ! 39          Time out on Link              Function (R/W)    X     ASCII
+1522: 19f5: !                                           Time waited       X(4)  UPD
+1523: 19f5: !-------------------------------------------------------------------------------
+1524: 19f5:         COMMENT$ = "Time out on link."
+1525: 1a0c: 
+1526: 1a0c:     ENDIF
+1527: 1a14: 
+1528: 1a14:     IF EVENT.NUMBER% = 40 THEN BEGIN
+1529: 1a29: !-------------------------------------------------------------------------------
+1530: 1a29: ! 40          Discrepancy between data      Boots code        X(6)  ASCII
+1531: 1a29: !             for items with same Boots     Pricing type      X     ASCII
+1532: 1a29: !             code (PSB25)                  (L = local
+1533: 1a29: !                                            D = deal
+1534: 1a29: !                                            B = both
+1535: 1a29: !                                            E = error)
+1536: 1a29: !-------------------------------------------------------------------------------
+1537: 1a29:     ENDIF ELSE IF EVENT.NUMBER% = 41 THEN BEGIN
+1538: 1a3b: !-------------------------------------------------------------------------------
+1539: 1a3b: ! 41          Null Boots code on IRF        Bar code          X(10) UPD
+1540: 1a3b: !-------------------------------------------------------------------------------
+1541: 1a3b:         BAR.CODE$ = ASC.TEXT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,10)))    !BMW
+1542: 1a6a:         
+1543: 1a6a:         COMMENT$ = "Null Boots code on the IRF. " +                 \   !BMW
+1544: 1a97:                    "Bar code is " + BAR.CODE$ + "."                     !BMW
+1545: 1a97: 
+1546: 1a97:     ENDIF ELSE IF EVENT.NUMBER% = 42 THEN BEGIN
+1547: 1aa9: !-------------------------------------------------------------------------------
+1548: 1aa9: ! 42          ADXSTART error                Return code       X(4)  Integer
+1549: 1aa9: !-------------------------------------------------------------------------------
+1550: 1aa9:         COMMENT$ = "ADXSTART function error."
+1551: 1ac3: 
+1552: 1ac3:     ENDIF ELSE IF EVENT.NUMBER% = 43 THEN BEGIN
+1553: 1ad5: !-------------------------------------------------------------------------------
+1554: 1ad5: ! 43          IRF bar code has price type   Bar code          X(6)  UPD
+1555: 1ad5: !             different from first (PSB23)  D L IRF status    X     ASCII
+1556: 1ad5: !                                           1st b/code status X     ASCII
+1557: 1ad5: !-------------------------------------------------------------------------------
+1558: 1ad5:         COMMENT$ = "IRF bar code has a price type " +               \
+1559: 1af6:                    "different from the first bar code."
+1560: 1af6: 
+1561: 1af6:     ENDIF ELSE IF EVENT.NUMBER% = 44 THEN BEGIN
+1562: 1b08: !-------------------------------------------------------------------------------
+1563: 1b08: ! 44          Incorrect till number (TSF)   Till No           XX    UPD
+1564: 1b08: !-------------------------------------------------------------------------------
+1565: 1b08:         COMMENT$ = "Incorrect till number on the TSF."
+1566: 1b22: 
+1567: 1b22:     ENDIF ELSE IF EVENT.NUMBER% = 45 THEN BEGIN
+1568: 1b37:         ! Redundant
+1569: 1b37:     ENDIF ELSE IF EVENT.NUMBER% = 46 THEN BEGIN
+1570: 1b4c: !-------------------------------------------------------------------------------
+1571: 1b4c: ! 46          Unable to allocate session
+1572: 1b4c: !             No because 64 are currently
+1573: 1b4c: !             allocated
+1574: 1b4c: !                                OR
+1575: 1b4c: !             TOF file full                 File No           XX    Integer
+1576: 1b4c: !                                           Barcode           X(8)  ASCII
+1577: 1b4c: !-------------------------------------------------------------------------------
+1578: 1b4c:         IF EVENT.MESSAGE.GROUP$ = "A" AND \
+1579: 1b8c:            EVENT.MESSAGE.NUMBER% = 300 THEN BEGIN
+1580: 1b8c:             REPORT.NUM% = ?VAL(LEFT$(EVENT.UNIQUE.DATA$,2))
+1581: 1bb8:             ITEM.CODE$ = RIGHT$(EVENT.UNIQUE.DATA$,8)
+1582: 1bdb:             COMMENT$ = "Terminal item file is full. "
+1583: 1bf2: 
+1584: 1bf2:             GOSUB GET.REPORT.TEXT
+1585: 1c04: 
+1586: 1c04:             IF ITEM.CODE$ <> "" THEN BEGIN
+1587: 1c1f:                 KEY.TEXT$ = "Attempted to add barcode " +           \
+1588: 1c49:                             "ending with " +                        \
+1589: 1c49:                             ITEM.CODE$ + ". "
+1590: 1c49:             ENDIF ELSE BEGIN
+1591: 1c51:                 KEY.TEXT$ = ""
+1592: 1c66:             ENDIF
+1593: 1c70: 
+1594: 1c70:         ENDIF ELSE BEGIN
+1595: 1c78:             COMMENT$ = "Unable to allocate session number " +       \
+1596: 1c96:                        "because 64 are currently allocated. "
+1597: 1c96:         ENDIF
+1598: 1c9e: 
+1599: 1c9e:         COMMENT$ = COMMENT$ + REPORT.TEXT$ + KEY.TEXT$
+1600: 1cd2: 
+1601: 1cd2:     ENDIF ELSE IF EVENT.NUMBER% = 47 THEN BEGIN
+1602: 1ce4: !-------------------------------------------------------------------------------
+1603: 1ce4: ! 47          Attempt to start background
+1604: 1ce4: !             task from command mode
+1605: 1ce4: !-------------------------------------------------------------------------------
+1606: 1ce4:         COMMENT$ = "Attempt to start background task " +            \
+1607: 1d04:                    "from command mode."
+1608: 1d04: 
+1609: 1d04:     ENDIF ELSE IF EVENT.NUMBER% = 48 THEN BEGIN
+1610: 1d16: !-------------------------------------------------------------------------------
+1611: 1d16: ! 48          Table overflow in PSBF20
+1612: 1d16: !-------------------------------------------------------------------------------
+1613: 1d16:         COMMENT$ = "Table overflow in PSBF20."
+1614: 1d2f: 
+1615: 1d2f:     ENDIF ELSE IF EVENT.NUMBER% = 49 THEN BEGIN
+1616: 1d41: !-------------------------------------------------------------------------------
+1617: 1d41: ! 49          File access conflict          File No           X     HEX
+1618: 1d41: !                                           Time waited (sec) X(4)  UPD
+1619: 1d41: !                                           Date (MMDD)       X(4)  ASCII
+1620: 1d41: !-------------------------------------------------------------------------------
+1621: 1d41:         COMMENT$ = "File access conflict."
+1622: 1d58: 
+1623: 1d58:     ENDIF
+1624: 1d60: 
+1625: 1d60:     IF EVENT.NUMBER% = 52 THEN BEGIN
+1626: 1d72: !-------------------------------------------------------------------------------
+1627: 1d72: ! 52          Invoice in Stock System more  Folio series id   X     ASCII
+1628: 1d72: !             than 14 days old (PSS33)      Folio month       X     UPD
+1629: 1d72: !                                           Folio No          XX    UPD
+1630: 1d72: !                                           Store suffix      X     ASCII
+1631: 1d72: !                           OR
+1632: 1d72: !             Time out on Pipe              Pipe name         X(8)  ASCII
+1633: 1d72: !-------------------------------------------------------------------------------
+1634: 1d72:         IF PROGRAM$ = "PSS33" THEN BEGIN
+1635: 1d90:             COMMENT$ = "Invoice found more than 14 days old."
+1636: 1da9:         ENDIF ELSE BEGIN
+1637: 1db1:             COMMENT$ = "Time out on pipe."
+1638: 1dc8:         ENDIF
+1639: 1dd3: 
+1640: 1dd3:     ENDIF ELSE IF EVENT.NUMBER% = 53 THEN BEGIN
+1641: 1de8:         ! Redundant
+1642: 1de8:     ENDIF ELSE IF EVENT.NUMBER% = 54 THEN BEGIN
+1643: 1dfd:         ! Redundant
+1644: 1dfd:     ENDIF ELSE IF EVENT.NUMBER% = 55 THEN BEGIN
+1645: 1e12:         ! Redundant
+1646: 1e12:     ENDIF ELSE IF EVENT.NUMBER% = 56 THEN BEGIN
+1647: 1e24: !-------------------------------------------------------------------------------
+1648: 1e24: ! 56          Invalid controller node       Node found        XX    Integer
+1649: 1e24: !-------------------------------------------------------------------------------
+1650: 1e24:         COMMENT$ = "Invalid controller node."
+1651: 1e3e: 
+1652: 1e3e:     ENDIF ELSE IF EVENT.NUMBER% = 57 THEN BEGIN
+1653: 1e53: !-------------------------------------------------------------------------------
+1654: 1e53: ! 57          ADXCOPYF error                Return code       XX    Integer
+1655: 1e53: !                                           File name         X(8)  ASCII
+1656: 1e53: !-------------------------------------------------------------------------------
+1657: 1e53:         FILENAME$ = RTRIM$(ASC.TEXT$(EVENT.UNIQUE.DATA$)," ")
+1658: 1e88: 
+1659: 1e88:         ! PSB20 does NOT follow the event format properly...
+1660: 1e88:         IF PROGRAM$ = "PSB20" THEN BEGIN
+1661: 1ea6:             FILENAME$ = MID$(FILENAME$,2,LEN(FILENAME$))
+1662: 1ed7:         ENDIF ELSE BEGIN
+1663: 1edf:             FILENAME$ = MID$(FILENAME$,3,LEN(FILENAME$))
+1664: 1f0e:         ENDIF
+1665: 1f16: 
+1666: 1f16:         ! Remove trailing full stops
+1667: 1f16:         FILENAME$ = RTRIM$(FILENAME$,".")
+1668: 1f38: 
+1669: 1f38:         COMMENT$ = "Copy file error on " + FILENAME$ + "."
+1670: 1f60: 
+1671: 1f60:     ENDIF ELSE IF EVENT.NUMBER% = 58 THEN BEGIN
+1672: 1f72: !-------------------------------------------------------------------------------
+1673: 1f72: ! 58          STKMQ pointer past EOF        Pointer           X(4)  Integer
+1674: 1f72: !             (PSS35) - resetting to 0
+1675: 1f72: !-------------------------------------------------------------------------------
+1676: 1f72:         COMMENT$ = "STKMQ pointer past end of file - resetting to zero."
+1677: 1f8b:     ENDIF ELSE IF EVENT.NUMBER% = 59 THEN BEGIN
+1678: 1f9d:         ! Redundant
+1679: 1f9d:     ENDIF
+1680: 1fa5: 
+1681: 1fa5:     IF EVENT.NUMBER% = 60 THEN BEGIN
+1682: 1fba:         ! Redundant
+1683: 1fba:     ENDIF ELSE IF EVENT.NUMBER% = 61 THEN BEGIN
+1684: 1fcf:         ! Redundant
+1685: 1fcf:     ENDIF ELSE IF EVENT.NUMBER% = 62 THEN BEGIN
+1686: 1fe1: !-------------------------------------------------------------------------------
+1687: 1fe1: ! 62          Recieved invalid or out of    Recieved state    X     ASCII
+1688: 1fe1: !             sequence PDT data             Expected state(s) X(3)  ASCII
+1689: 1fe1: !                                           PDT terminal No   X(6)  ASCII
+1690: 1fe1: !-------------------------------------------------------------------------------
+1691: 1fe1:         COMMENT$ = "Received invalid or out of sequence PDT data."
+1692: 1ffb: 
+1693: 1ffb:     ENDIF ELSE IF EVENT.NUMBER% = 63 THEN BEGIN
+1694: 2010:         ! Redundant
+1695: 2010:     ENDIF ELSE IF EVENT.NUMBER% = 64 THEN BEGIN
+1696: 2022: !-------------------------------------------------------------------------------
+1697: 2022: ! 64          Record not found on PIITM     List No           X(4)  ASCII
+1698: 2022: !             (PSS35) type 14 txn           Item No           X(4)  UPD
+1699: 2022: !-------------------------------------------------------------------------------
+1700: 2022:         COMMENT$ = "Record not found on the PIITM file."
+1701: 203c: 
+1702: 203c:     ENDIF ELSE IF EVENT.NUMBER% = 65 THEN BEGIN
+1703: 204e: !-------------------------------------------------------------------------------
+1704: 204e: ! 65          Zero batch number on CEPF
+1705: 204e: !-------------------------------------------------------------------------------
+1706: 204e:            COMMENT$ = "Zero batch number on the CEPF file."
+1707: 2068: 
+1708: 2068:     ENDIF ELSE IF EVENT.NUMBER% = 66 THEN BEGIN
+1709: 207a: !-------------------------------------------------------------------------------
+1710: 207a: ! 66          PDT work file status event    Terminal ID       X(6)  ASCII
+1711: 207a: !                                           Status            X     ASCII
+1712: 207a: !                                           (S = started,
+1713: 207a: !                                           (F = finished)
+1714: 207a: !-------------------------------------------------------------------------------
+1715: 207a:         COMMENT$ = "PDT work file status event."
+1716: 2093: 
+1717: 2093:     ENDIF ELSE IF EVENT.NUMBER% = 67 THEN BEGIN
+1718: 20a5: !-------------------------------------------------------------------------------
+1719: 20a5: ! 67          CETRF invalid action type     File No           X     Integer
+1720: 20a5: !                                           Expected action   X     ASCII
+1721: 20a5: !                                           Found action type X     ASCII
+1722: 20a5: !-------------------------------------------------------------------------------
+1723: 20a5:         COMMENT$ = "Invalid action type on the CETRF file."
+1724: 20be: 
+1725: 20be:     ENDIF ELSE IF EVENT.NUMBER% = 68 THEN BEGIN
+1726: 20d0: !-------------------------------------------------------------------------------
+1727: 20d0: ! 68          No trailer on CETRF           File No           X     Integer
+1728: 20d0: !                                           Expected rec      X     ASCII
+1729: 20d0: !-------------------------------------------------------------------------------
+1730: 20d0:         COMMENT$ = "No trailer record on the CETRF file."
+1731: 20e9: 
+1732: 20e9:     ENDIF ELSE IF EVENT.NUMBER% = 69 THEN BEGIN
+1733: 20fb:         ! Redundant
+1734: 20fb:     ENDIF
+1735: 2103: 
+1736: 2103:     IF EVENT.NUMBER% = 70 THEN BEGIN
+1737: 2115: !-------------------------------------------------------------------------------
+1738: 2115: ! 70          Invalid data within string    File No           X     Integer
+1739: 2115: !                                           Expected data     X     ASCII
+1740: 2115: !                                           (N = numeric int)
+1741: 2115: !                                           Key value         X(8)  ASCII
+1742: 2115: !-------------------------------------------------------------------------------
+1743: 2115:         COMMENT$ = "Invalid data within string."
+1744: 212f: 
+1745: 212f:     ENDIF ELSE IF EVENT.NUMBER% = 71 THEN BEGIN
+1746: 2144:         !Redundant
+1747: 2144: ENDIF ELSE IF EVENT.NUMBER% = 72 THEN BEGIN
+1748: 2159:         !Redundant
+1749: 2159:     ENDIF ELSE IF EVENT.NUMBER% = 73 THEN BEGIN
+1750: 216b: !-------------------------------------------------------------------------------
+1751: 216b: ! 73          PDT link must run on b'ground
+1752: 216b: !-------------------------------------------------------------------------------
+1753: 216b:         COMMENT$ = "PDT error. PDT link must be run " +             \
+1754: 218c:                    "as a background application."
+1755: 218c: 
+1756: 218c:     ENDIF ELSE IF EVENT.NUMBER% = 74 THEN BEGIN
+1757: 219e: !-------------------------------------------------------------------------------
+1758: 219e: ! 74          PDT port (passed as parm)     Invalid port      X     ASCII
+1759: 219e: !             is invalid
+1760: 219e: !-------------------------------------------------------------------------------
+1761: 219e:         COMMENT$ = "PDT port in invalid."
+1762: 21b8: 
+1763: 21b8:     ENDIF ELSE IF EVENT.NUMBER% = 75 THEN BEGIN
+1764: 21ca: !-------------------------------------------------------------------------------
+1765: 21ca: ! 75          Port errors (will appear      Text "PORT : "    X(7)  ASCII
+1766: 21ca: !             with all errors logged by     Monoitored port   X     ASCII
+1767: 21ca: !             PDT link once monitored port
+1768: 21ca: !             has been established)
+1769: 21ca: !-------------------------------------------------------------------------------
+1770: 21ca:         COMMENT$ = "PDT error. Monitored port is " +                \
+1771: 21fa:                    MID$(EVENT.UNIQUE.DATA$,8,1)
+1772: 21fa: 
+1773: 21fa:     ENDIF ELSE IF EVENT.NUMBER% = 76 THEN BEGIN
+1774: 220e:         !Redundant
+1775: 220e:     ENDIF ELSE IF EVENT.NUMBER% = 77 THEN BEGIN
+1776: 2220: !-------------------------------------------------------------------------------
+1777: 2220: ! 77          ADXFILES error                File session No   X     Integer
+1778: 2220: !                                           Return code       X(4)  Integer
+1779: 2220: !-------------------------------------------------------------------------------
+1780: 2220:         COMMENT$ = "ADXFILES function error."
+1781: 2239: 
+1782: 2239:     ENDIF ELSE IF EVENT.NUMBER% = 78 THEN BEGIN
+1783: 224d:         !Redundant
+1784: 224d:     ENDIF ELSE IF EVENT.NUMBER% = 79 THEN BEGIN
+1785: 225f:         !Redundant
+1786: 225f:     ENDIF
+1787: 2267: 
+1788: 2267:     IF EVENT.NUMBER% = 80 THEN BEGIN
+1789: 227c:         !Redundant
+1790: 227c:     ENDIF ELSE IF EVENT.NUMBER% = 81 THEN BEGIN
+1791: 228e: !-------------------------------------------------------------------------------
+1792: 228e: ! 81          Overlapping RPD's on IUF      Item code         X(4)  UPD
+1793: 228e: !             (PSB21)                       IUF date          X(3)  UPD
+1794: 228e: !                                           IUF RPD No        X(3)  UPD
+1795: 228e: !-------------------------------------------------------------------------------
+1796: 228e:         ITEM.CODE$ = ASC.TEXT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,4)))    !BMW
+1797: 22bd:         
+1798: 22bd:         COMMENT$ = "Overlapping RPDs found on the IUF file. " +     \   !BMW
+1799: 22ea:                    "Item code is " + ITEM.CODE$ + "."                   !BMW
+1800: 22ea: 
+1801: 22ea:     ENDIF ELSE IF EVENT.NUMBER% = 82 THEN BEGIN
+1802: 22ff:         !Redundant
+1803: 22ff:     ENDIF ELSE IF EVENT.NUMBER% = 83 THEN BEGIN
+1804: 2311: !-------------------------------------------------------------------------------
+1805: 2311: ! 83          CSR overnight suite status    PSC11 status      X     ASCII
+1806: 2311: !             flags                         PSC12 status      X     ASCII
+1807: 2311: !                                           PSC13 status      X     ASCII
+1808: 2311: !                                           Delivery No       X(3)  UPD
+1809: 2311: !                                           Delivery date     X(3)  UPD
+1810: 2311: !                                           CSR status        X     ASCII
+1811: 2311: !                                           (P = pending, Y = active)
+1812: 2311: !-------------------------------------------------------------------------------
+1813: 2311:         COMMENT$ = "CSR overnight suite status flags."
+1814: 232b: 
+1815: 232b:     ENDIF ELSE IF EVENT.NUMBER% = 84 THEN BEGIN
+1816: 233d: !-------------------------------------------------------------------------------
+1817: 233d: ! 84          Error occured in module 'n'   Module number     X(10) ASCII
+1818: 233d: !-------------------------------------------------------------------------------
+1819: 233d:         COMMENT$ = "Error occurred in PSB21 module " +              \
+1820: 236e:                    MID$(EVENT.UNIQUE.DATA$,4,1)
+1821: 236e: 
+1822: 236e:     ENDIF ELSE IF EVENT.NUMBER% = 85 THEN BEGIN
+1823: 2383:         ! Redundant
+1824: 2383:     ENDIF ELSE IF EVENT.NUMBER% = 86 THEN BEGIN
+1825: 2395: !-------------------------------------------------------------------------------
+1826: 2395: ! 86          Order to be added but 99      Supplier No       X(3)  UPD
+1827: 2395: !             pages already exist on        Order No          XX    ASCII
+1828: 2395: !             DIRORD                        Order suffix      X     ASCII
+1829: 2395: !                                           BC letter         X     ASCII
+1830: 2395: !-------------------------------------------------------------------------------
+1831: 2395:         COMMENT$ = "Order to be added but 99 pages " +              \
+1832: 23b5:                    "already exist on the DIRORD file."
+1833: 23b5: 
+1834: 23b5:     ENDIF ELSE IF EVENT.NUMBER% = 87 THEN BEGIN
+1835: 23c9:         ! Redundant
+1836: 23c9:     ENDIF ELSE IF EVENT.NUMBER% = 88 THEN BEGIN
+1837: 23dd:         ! Redundant
+1838: 23dd:     ENDIF ELSE IF EVENT.NUMBER% = 89 THEN BEGIN
+1839: 23ef: !-------------------------------------------------------------------------------
+1840: 23ef: ! 89          Non-zero return code from     function name     X(10) ASCII
+1841: 23ef: !             an external function.
+1842: 23ef: !-------------------------------------------------------------------------------
+1843: 23ef:         COMMENT$ = "Non-zero return code from an external function."
+1844: 2406:     ENDIF
+1845: 240e: 
+1846: 240e:     IF EVENT.NUMBER% = 90 THEN BEGIN
+1847: 2423: !-------------------------------------------------------------------------------
+1848: 2423: ! 90          Records start of program      Program No (only) 9     UPD
+1849: 2423: !                                           Date (MMDD)       XX    UPD
+1850: 2423: !                                           Time (HHMMSS)     X(3)  UPD
+1851: 2423: !-------------------------------------------------------------------------------
+1852: 2423:         PROGRAM.NUMBER$ = UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,1))
+1853: 244d:         PROGRAM.DATE$   = UNPACK$(MID$(EVENT.UNIQUE.DATA$,2,2))
+1854: 2477:         PROGRAM.TIME$   = UNPACK$(MID$(EVENT.UNIQUE.DATA$,4,3))
+1855: 24a1: 
+1856: 24a1:         PROGRAM.DATE$ = RIGHT$(PROGRAM.DATE$,2) + "/" +             \
+1857: 24e4:                         LEFT$(PROGRAM.DATE$,2)
+1858: 24e4:         PROGRAM.TIME$ = LEFT$(PROGRAM.TIME$,2) + ":" +              \
+1859: 2547:                         MID$(PROGRAM.TIME$,3,2) + ":" +             \
+1860: 2547:                         RIGHT$(PROGRAM.TIME$,2)
+1861: 2547: 
+1862: 2547:         
+1863: 2547:         ! IF program is PSD44 or PSD87                                  !BMW
+1864: 2547:         IF PROGRAM.NUMBER$ = "44" OR                                \
+1865: 2593:            PROGRAM.NUMBER$ = "87" THEN BEGIN
+1866: 2593:             PROGRAM.CHILD$ = "PSD" + PROGRAM.NUMBER$
+1867: 25b5:         ENDIF ELSE BEGIN
+1868: 25bd:             PROGRAM.CHILD$ = "PSB" + PROGRAM.NUMBER$
+1869: 25dd:         ENDIF
+1870: 25e5: 
+1871: 25e5:         ! IF program is PSB20
+1872: 25e5:         IF PROGRAM.NUMBER$ = "20" THEN BEGIN                            !BMW
+1873: 2600:             COMMENT$ = "Controlling program " + PROGRAM$ + " " +    \   !BMW
+1874: 264b:                        "completed " +                               \   !BMW
+1875: 264b:                        "on " + PROGRAM.DATE$ + " at " +             \   !BMW
+1876: 264b:                        PROGRAM.TIME$ + "."                              !BMW
+1877: 264b:         ENDIF ELSE BEGIN                                                !BMW
+1878: 2653:             COMMENT$ = "Controlling program " + PROGRAM$ + " " +    \
+1879: 26a8:                        "started program " + PROGRAM.CHILD$ + " " +  \
+1880: 26a8:                        "on " + PROGRAM.DATE$ + " at " +             \
+1881: 26a8:                        PROGRAM.TIME$ + "."
+1882: 26a8:         ENDIF                                                           !BMW
+1883: 26b3: 
+1884: 26b3:     ENDIF ELSE IF EVENT.NUMBER% = 91 THEN BEGIN
+1885: 26c5: !-------------------------------------------------------------------------------
+1886: 26c5: ! 91          Discrepancy between number    Supplier number   X(3)  UPD
+1887: 26c5: !             of orders expected and number Order number      X(2)  UPD
+1888: 26c5: !             of orders received.           Order suffix      X(1)  ASCII
+1889: 26c5: !                                           Orders Expected   X(2)  UPD
+1890: 26c5: !                                           Orders Received   X(2)  UPD
+1891: 26c5: !-------------------------------------------------------------------------------
+1892: 26c5:         COMMENT$ = "Discrepancy between number of orders " +        \
+1893: 26e6:                    "expected and number of orders received."
+1894: 26e6: 
+1895: 26e6:     ENDIF ELSE IF EVENT.NUMBER% = 92 THEN BEGIN
+1896: 26fb: !-------------------------------------------------------------------------------
+1897: 26fb: ! 92          Discrepancy between           File No           I(2)  Integer
+1898: 26fb: !             expected file size            Expected size     X(4)  UPD
+1899: 26fb: !             and actual file size          Actual size       X(4)  UPD
+1900: 26fb: !             Expected size may be given
+1901: 26fb: !             as multiple of record length
+1902: 26fb: !             (Eg; 80* indicates multiple
+1903: 26fb: !             of 80 bytes expected as size)
+1904: 26fb: !                         OR
+1905: 26fb: !             Discrepancy between actual    File No           I(2) Integer
+1906: 26fb: !             record count, and expected    Expected count    X(4) UPD
+1907: 26fb: !             record count.                 Actual count      X(4) UPD
+1908: 26fb: !-------------------------------------------------------------------------------
+1909: 26fb:         IF PROGRAM$ = "PSB30" THEN BEGIN
+1910: 2719:             IMFOK.FLAG$ = LEFT$(EVENT.UNIQUE.DATA$,1)
+1911: 273e:             COMMENT$ = "Program " + PROGRAM$ +                      \
+1912: 2776:                        " has completed IMFOK FLAG " +               \
+1913: 2776:                        IMFOK.FLAG$ + " processing."
+1914: 2776:         ENDIF ELSE BEGIN
+1915: 277e:             REPORT.NUM% = GET.REPORT.NUM%(1)
+1916: 2791:             EXPECTED$ = MID$(EVENT.UNIQUE.DATA$,3,4)
+1917: 27b6:             ACTUAL$   = MID$(EVENT.UNIQUE.DATA$,7,4)
+1918: 27db:             IF PROGRAM$ = "SUP04" OR                                \
+1919: 2830:                PROGRAM$ = "SUP05" THEN BEGIN
+1920: 2830:                 COMMENT$ = "Program " + PROGRAM$ + " has found " +  \
+1921: 28bb:                            "a discrepancy between expected size " + \
+1922: 28bb:                            "and actual size for file " +            \
+1923: 28bb:                            STR$(REPORT.NUM%) + " (" +               \
+1924: 28bb:                            R$(REPORT.NUM%) + "). " +                \
+1925: 28bb:                            "Expected size is " + EXPECTED$ + ", " + \
+1926: 28bb:                            "Actual size is " + ACTUAL$ + "."
+1927: 28bb:             ENDIF ELSE BEGIN
+1928: 28c3:                 COMMENT$ = "Program " + PROGRAM$ + " has found " +  \
+1929: 294f:                            "a discrepancy between expected " +      \
+1930: 294f:                            "record count and actual record " +      \
+1931: 294f:                            "count on file " +                       \
+1932: 294f:                            STR$(REPORT.NUM%) + " (" +               \
+1933: 294f:                            R$(REPORT.NUM%) + "). " +                \
+1934: 294f:                            "Expected count is " +                   \
+1935: 294f:                            EXPECTED$ + ", " +                       \
+1936: 294f:                            "Actual count is " +                     \
+1937: 294f:                            ACTUAL$ + "."
+1938: 294f:             ENDIF
+1939: 2957:         ENDIF
+1940: 2961: 
+1941: 2961:     ENDIF ELSE IF EVENT.NUMBER% = 93 THEN BEGIN
+1942: 2973: !-------------------------------------------------------------------------------
+1943: 2973: ! 93          File Date Time Stamp          Logical file name X(5) ASCII
+1944: 2973: !             Eg; Written after creation    Date DDMMYY       X(3) UPD
+1945: 2973: !                 prior to MF retrieval     Time HHMM         X(2) UPD
+1946: 2973: !-------------------------------------------------------------------------------
+1947: 2973:         COMMENT$ = "File date/timestamp logged."
+1948: 298c: 
+1949: 298c:     ENDIF ELSE IF EVENT.NUMBER% = 94 THEN BEGIN
+1950: 29a0:         !Redundant
+1951: 29a0:     ENDIF ELSE IF EVENT.NUMBER% = 99 THEN BEGIN
+1952: 29b2: !-------------------------------------------------------------------------------
+1953: 29b2: ! 99          Recording a successful run    "RR Success"      X(10) ASCII
+1954: 29b2: !             of SUP05 (Range Realignment)
+1955: 29b2: !-------------------------------------------------------------------------------
+1956: 29b2:         COMMENT$ = "Range realignment completed successfully."
+1957: 29c9:     ENDIF
+1958: 29d1: 
+1959: 29d1:     IF EVENT.NUMBER% = 101 THEN BEGIN
+1960: 29e6: !-------------------------------------------------------------------------------
+1961: 29e6: !101          General On Error              ERRN              X(4)  Integer
+1962: 29e6: !                                           ERRF%             XX    HEX
+1963: 29e6: !                                           Module No         X     UPD
+1964: 29e6: !                                           ERRL              XXX   UPD
+1965: 29e6: !-------------------------------------------------------------------------------
+1966: 29e6:         RETURN.CODE$ =                                              \
+1967: 2a17:             HEX.TEXT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,4)))
+1968: 2a17: 
+1969: 2a17:         IF LEFT$(EVENT.UNIQUE.DATA$,4) =                            \
+1970: 2a56:                STRING$(4,CHR$(0)) THEN BEGIN
+1971: 2a56:             CODE.TEXT$ = "No error information was logged."
+1972: 2a6b:             REPORT.TEXT$ = ""
+1973: 2a80:             LINE.TEXT$ = ""
+1974: 2a98:         ENDIF ELSE BEGIN
+1975: 2aa0: 
+1976: 2aa0:             CODE.TEXT$ = "Error number is " + RETURN.CODE$ + ". "
+1977: 2ac7: 
+1978: 2ac7:             REPORT.NUM%  = GET.REPORT.NUM%(5)
+1979: 2ada:             LINE.NUMBER$ = \
+1980: 2b13:                 STR$(?VAL(UNPACK$(RIGHT$(EVENT.UNIQUE.DATA$,3))))
+1981: 2b13: 
+1982: 2b13:             GOSUB GET.REPORT.TEXT
+1983: 2b25:             GOSUB GET.LINE.TEXT
+1984: 2b37: 
+1985: 2b37:         ENDIF
+1986: 2b3f: 
+1987: 2b3f:         COMMENT$ = "A general error has occurred in program " +     \
+1988: 2b83:                    PROGRAM$ + ". " +                                \
+1989: 2b83:                    CODE.TEXT$ +                                     \
+1990: 2b83:                    REPORT.TEXT$ +                                   \
+1991: 2b83:                    LINE.TEXT$
+1992: 2b83: 
+1993: 2b83:     ENDIF ELSE IF EVENT.NUMBER% = 106 THEN BEGIN
+1994: 2b98: !-------------------------------------------------------------------------------
+1995: 2b98: !106         IF END errors                  O/R/W/D/C         X     ASCII
+1996: 2b98: !            Open/Read/Write/Delete/Create  File Number       XX    HEX
+1997: 2b98: !                                           Current code      X(7)  UPD
+1998: 2b98: !                                  OR
+1999: 2b98: !            SIZE errors                    S                 X     ASCII
+2000: 2b98: !            File missing or                File number       XX    HEX
+2001: 2b98: !            having zero bytes              MISSING / ZERO    X(7)  ASCII
+2002: 2b98: !-------------------------------------------------------------------------------
+2003: 2b98:         FLAG$       = LEFT$(EVENT.UNIQUE.DATA$,1)
+2004: 2bbd:         REPORT.NUM% = GET.REPORT.NUM%(2)
+2005: 2bd0: 
+2006: 2bd0:         GOSUB GET.REPORT.TEXT
+2007: 2be2: 
+2008: 2be2:         IF FLAG$ = "O" THEN BEGIN
+2009: 2bfd:             FLAG.TEXT$ = "An open file error"
+2010: 2c15:         ENDIF ELSE IF FLAG$ = "R" THEN BEGIN
+2011: 2c30:             FLAG.TEXT$ = "A read file error"
+2012: 2c48:         ENDIF ELSE IF FLAG$ = "W" THEN BEGIN
+2013: 2c63:             FLAG.TEXT$ = "A write file error"
+2014: 2c7b:         ENDIF ELSE IF FLAG$ = "D" THEN BEGIN
+2015: 2c96:             FLAG.TEXT$ = "A delete file error"
+2016: 2cad:         ENDIF ELSE IF FLAG$ = "C" THEN BEGIN
+2017: 2cc8:             FLAG.TEXT$ = "A create file error"
+2018: 2cdf:         ENDIF ELSE IF FLAG$ = "S" THEN BEGIN
+2019: 2cfa:             FLAG.TEXT$ = "A file size error"
+2020: 2d0f:         ENDIF
+2021: 2d17: 
+2022: 2d17:         IF FLAG$ = "S" THEN BEGIN
+2023: 2d35: 
+2024: 2d35:             KEY$ = RIGHT$(EVENT.UNIQUE.DATA$,7)
+2025: 2d58:             IF KEY$ = "MISSING" THEN BEGIN
+2026: 2d73:                 KEY.TEXT$ = "File is missing."
+2027: 2d8a:             ENDIF ELSE BEGIN
+2028: 2d92:                 KEY.TEXT$ = "File has a zero size."
+2029: 2da7:             ENDIF
+2030: 2db2: 
+2031: 2db2:         ENDIF ELSE BEGIN
+2032: 2dba: 
+2033: 2dba:             KEY$ = RIGHT$(EVENT.UNIQUE.DATA$,7)
+2034: 2ddd: 
+2035: 2ddd:             IF NOT (KEY$ = STRING$(7,CHR$(0)) OR                    \
+2036: 2e40:                     KEY$ = STRING$(7,CHR$(32))) THEN BEGIN
+2037: 2e40:                 KEY.TEXT$ = "Record key was " +                     \
+2038: 2e8b:                             "[" + HEX.TEXT$(UNPACK$(KEY$)) + "]."
+2039: 2e8b:             ENDIF ELSE BEGIN
+2040: 2e93:                 IF FLAG$ = "R" OR                                   \
+2041: 2f04:                    FLAG$ = "W" OR                                   \
+2042: 2f04:                    FLAG$ = "D" THEN BEGIN
+2043: 2f04:                     KEY.TEXT$ = "No record key has been logged."
+2044: 2f1b:                 ENDIF ELSE BEGIN
+2045: 2f23:                     KEY.TEXT$ = ""
+2046: 2f38:                 ENDIF
+2047: 2f40:             ENDIF
+2048: 2f48: 
+2049: 2f48:         ENDIF
+2050: 2f50: 
+2051: 2f50:         COMMENT$ = FLAG.TEXT$ + " has occurred in program " +       \
+2052: 2f91:             PROGRAM$ + ". " + REPORT.TEXT$ + KEY.TEXT$
+2053: 2f91: 
+2054: 2f91:     ENDIF
+2055: 2f99: 
+2056: 2f99:     IF EVENT.NUMBER% = 117 THEN BEGIN
+2057: 2fab: !-------------------------------------------------------------------------------
+2058: 2fab: !117          Unexpected record type        File no.          XXX   ASCII
+2059: 2fab: !             found.                        Expected record
+2060: 2fab: !                                           type              X     ASCII
+2061: 2fab: !                                           Actual record
+2062: 2fab: !                                           type              X     ASCII
+2063: 2fab: !             (Based on event 17 but allows
+2064: 2fab: !             for higher file numbers)
+2065: 2fab: !-------------------------------------------------------------------------------
+2066: 2fab:         COMMENT$ = "Unexpected record type found."
+2067: 2fc5: 
+2068: 2fc5:     ENDIF ELSE IF EVENT.NUMBER% = 126 THEN BEGIN
+2069: 2fd7: !-------------------------------------------------------------------------------
+2070: 2fd7: !126          Table overflow (not in PSB23)  Table name       X(10) ASCII
+2071: 2fd7: !-------------------------------------------------------------------------------
+2072: 2fd7:         COMMENT$ = "Table overflow."
+2073: 2ff1: 
+2074: 2ff1:     ENDIF ELSE IF EVENT.NUMBER% = 127 THEN BEGIN
+2075: 3003: !-------------------------------------------------------------------------------
+2076: 3003: !127          Corrupted record found        R/W/D             X     ASCII
+2077: 3003: !                                           File Number       XX    HEX
+2078: 3003: !                                           Current code      X(7)  UPD
+2079: 3003: !-------------------------------------------------------------------------------
+2080: 3003:         COMMENT$ = "Corrupted record found."
+2081: 301d: 
+2082: 301d:     ENDIF ELSE IF EVENT.NUMBER% = 176 THEN BEGIN
+2083: 3030: !-------------------------------------------------------------------------------
+2084: 3030: !176          CIP Outbound file             Expected          X(4)  ASCII
+2085: 3030: !                                           Found             X(4)  ASCII
+2086: 3030: !-------------------------------------------------------------------------------
+2087: 3030:         COMMENT$ = "CIP Outbound file."
+2088: 304a: 
+2089: 304a:     ENDIF ELSE IF EVENT.NUMBER% = 177 THEN BEGIN
+2090: 3060: !-------------------------------------------------------------------------------
+2091: 3060: !177          Delta file error              File Number       XX    HEX
+2092: 3060: !             Duplicate/Old                 D/O               X     ASCII
+2093: 3060: !             OR                                                        
+2094: 3060: !             UTILS file access             File name         X(10) ASCII
+2095: 3060: !-------------------------------------------------------------------------------
+2096: 3060:         IF EVENT.MESSAGE.GROUP$ = "A" THEN BEGIN                        !CMW
+2097: 3081:                                                                         !CMW
+2098: 3081:             IF PROGRAM$ = "UTILS" THEN BEGIN                            !EMW
+2099: 309f:                 FILENAME$ = GET.FILENAME$(1,8)                          !CMW
+2100: 30bb:             ENDIF ELSE BEGIN                                            !EMW
+2101: 30c3:                 FILENAME$ = UNCOMPRESS$(EVENT.UNIQUE.DATA$)             !EMW
+2102: 30e4:             ENDIF                                                       !EMW
+2103: 30ec:                                                                         !CMW
+2104: 30ec: !!!!!!!!!!!!IF EVENT.MESSAGE.NUMBER% = 990 THEN BEGIN                   !EMW
+2105: 30ec: !!!!!!!!!!!!!!!!FLAG.TEXT$ = "open"                                     !EMW
+2106: 30ec: !!!!!!!!!!!!ENDIF ELSE BEGIN                                            !EMW
+2107: 30ec: !!!!!!!!!!!!!!!!FLAG.TEXT$ = "update"                                   !EMW
+2108: 30ec: !!!!!!!!!!!!ENDIF                                                       !EMW
+2109: 30ec:             IF EVENT.MESSAGE.NUMBER% = 990 OR           \ Utils         !EMW
+2110: 313c:                EVENT.MESSAGE.NUMBER% = 800 OR           \ DREDIX        !EMW
+2111: 313c:                EVENT.MESSAGE.NUMBER% = 803 OR           \ VEDIT         !EMW
+2112: 313c:                EVENT.MESSAGE.NUMBER% = 806 THEN BEGIN   ! XE            !EMW
+2113: 313c:                 FLAG.TEXT$ = "open"                                     !EMW
+2114: 3154:             ENDIF ELSE \                                                !EMW
+2115: 315c:             IF EVENT.MESSAGE.NUMBER% = 991 OR           \ Utils         !EMW
+2116: 31ac:                EVENT.MESSAGE.NUMBER% = 801 OR           \ DREDIX        !EMW
+2117: 31ac:                EVENT.MESSAGE.NUMBER% = 804 OR           \ VEDIT         !EMW
+2118: 31ac:                EVENT.MESSAGE.NUMBER% = 807 THEN BEGIN   ! XE            !EMW
+2119: 31ac:                 FLAG.TEXT$ = "update"                                   !EMW
+2120: 31c4:             ENDIF ELSE \                                                !EMW
+2121: 31cc:             IF EVENT.MESSAGE.NUMBER% = 802 OR           \ DREDIX        !EMW
+2122: 320a:                EVENT.MESSAGE.NUMBER% = 805 OR           \ VEDIT         !EMW
+2123: 320a:                EVENT.MESSAGE.NUMBER% = 808 THEN BEGIN   ! XE            !EMW
+2124: 320a:                 FLAG.TEXT$ = "create"                                   !EMW
+2125: 3221:             ENDIF ELSE BEGIN                                            !EMW
+2126: 3229:                 FLAG.TEXT$ = "access"                                   !EMW
+2127: 323e:             ENDIF                                                       !EMW
+2128: 3246:                                                                         !CMW
+2129: 3246: \!!!!!!!!!!!COMMENT$ = "The UTILS application has been used " +     \   !EMW
+2130: 3246: \!!!!!!!!!!!!!!!!!!!!!!"to " + FLAG.TEXT$ +                         \   !EMW
+2131: 3246:             COMMENT$ = "The " + PROGRAM$ + " application has " +    \   !EMW
+2132: 328e:                        "been used to " + FLAG.TEXT$ +               \   !EMW
+2133: 328e:                        " the " + FILENAME$ + " file."                   !CMW
+2134: 328e:                                                                         !CMW
+2135: 328e:         ENDIF ELSE BEGIN                                                !CMW
+2136: 3296:         
+2137: 3296:             FLAG$        = MID$(EVENT.UNIQUE.DATA$,3,1)
+2138: 32bb:             REPORT.NUM%  = GET.REPORT.NUM%(1)
+2139: 32ce: 
+2140: 32ce:             GOSUB GET.REPORT.TEXT
+2141: 32e0: 
+2142: 32e0:             IF FLAG$ = "O" THEN BEGIN
+2143: 32fb:                 FLAG.TEXT$ = "An old delta file error"
+2144: 3312:             ENDIF ELSE IF FLAG$ = "D" THEN BEGIN
+2145: 332d:                 FLAG.TEXT$ = "A duplicate delete file error"
+2146: 3342:             ENDIF
+2147: 334a: 
+2148: 334a:             COMMENT$ = FLAG.TEXT$ + " has occurred in program " +   \
+2149: 3383:                 PROGRAM$ + ". " + REPORT.TEXT$
+2150: 3383:             
+2151: 3383:         ENDIF                                                           !CMW
+2152: 338e: 
+2153: 338e:     ENDIF ELSE IF EVENT.NUMBER% = 189 THEN BEGIN
+2154: 33a4: !-------------------------------------------------------------------------------
+2155: 33a4: !189          PSB14 COPy, COMpression or    COP/COM/DEC       X(3)  ASCII
+2156: 33a4: !             DECompression failed :        Record n          X(7)  UPD
+2157: 33a4: !             See record n in COMPF
+2158: 33a4: !-------------------------------------------------------------------------------
+2159: 33a4:         FLAG$ = LEFT$(EVENT.UNIQUE.DATA$,3)
+2160: 33c9: 
+2161: 33c9:         IF FLAG$ = "COP" THEN BEGIN
+2162: 33e4:             FLAG.TEXT$ = "copy"
+2163: 33fb:         ENDIF ELSE IF FLAG$ = "COM" THEN BEGIN
+2164: 3416:             FLAG.TEXT$ = "compression"
+2165: 342d:         ENDIF ELSE IF FLAG$ = "DEC" THEN BEGIN
+2166: 3448:             FLAG.TEXT$ = "decompression"
+2167: 345d:         ENDIF
+2168: 3465: 
+2169: 3465:         COMMENT$ = "PSB14 " + FLAG.TEXT$ + " failed."
+2170: 348e: 
+2171: 348e:     ENDIF ELSE IF EVENT.NUMBER% = 190 THEN BEGIN
+2172: 34a4: !-------------------------------------------------------------------------------
+2173: 34a4: !190          Program failed while          Program Name      X(8)  ASCII
+2174: 34a4: !             processing phase n.           Current Phase     X(2)  ASCII
+2175: 34a4: !-------------------------------------------------------------------------------
+2176: 34a4:         FILENAME$ = ASC.TEXT$(LEFT$(EVENT.UNIQUE.DATA$,8))
+2177: 34ce:         PHASE$    = RIGHT$(EVENT.UNIQUE.DATA$,2)
+2178: 34f1: 
+2179: 34f1:         COMMENT$ = "Program " + FILENAME$ +                         \
+2180: 3526:                    " failed during phase " + PHASE$ + "."
+2181: 3526: 
+2182: 3526:     ENDIF ELSE IF EVENT.NUMBER% = 191 THEN BEGIN
+2183: 353c: !-------------------------------------------------------------------------------
+2184: 353c: !191          Item Discount rate has        Item Code         X(4)  UPD
+2185: 353c: !             changed to new value.         Old rate          X(2)  UPD
+2186: 353c: !                                           New rate          X(2)  UPD
+2187: 353c: !-------------------------------------------------------------------------------
+2188: 353c:         ITEM.CODE$ = RIGHT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,4)),7)     !BMW
+2189: 3583:         OLD.VALUE$ = STR$(?VAL(UNPACK$(MID$(EVENT.UNIQUE.DATA$,5,2))))  !BMW
+2190: 35be:         
+2191: 35be:         NEW.VALUE$ = UNPACK$(MID$(EVENT.UNIQUE.DATA$,7,2))              !BMW
+2192: 35e8:         ! ----------------------------------------------------------    !BMW
+2193: 35e8:         ! NOTE: PSB13 has a bug which incorrectly logs the new          !BMW
+2194: 35e8:         !       discount rate value. The below change is a crude        !BMW
+2195: 35e8:         !       workaround for this issue.                              !BMW
+2196: 35e8:         ! ----------------------------------------------------------    !BMW
+2197: 35e8:         IF UNPACK$(MID$(EVENT.UNIQUE.DATA$,7,2)) = "001>" THEN BEGIN    !BMW
+2198: 362d:             NEW.VALUE$ = "125"                                          !BMW
+2199: 3645:         ENDIF ELSE \                                                    !BMW
+2200: 364d:         IF UNPACK$(MID$(EVENT.UNIQUE.DATA$,7,2)) = "002>" THEN BEGIN    !BMW
+2201: 3692:             NEW.VALUE$ = "225"                                          !BMW
+2202: 36a9:         ENDIF ELSE BEGIN                                                !BMW
+2203: 36b1:             NEW.VALUE$ = STR$(?VAL(NEW.VALUE$))                         !BMW
+2204: 36db:         ENDIF                                                           !BMW
+2205: 36e3:         ! ----------------------------------------------------------    !BMW
+2206: 36e3: 
+2207: 36e3:         OLD.VALUE$ = FORMAT.DECIMAL$(OLD.VALUE$,1)                      !BMW
+2208: 3704:         NEW.VALUE$ = FORMAT.DECIMAL$(NEW.VALUE$,1)                      !BMW
+2209: 3725:         
+2210: 3725:         COMMENT$ = "Item discount rate " +                          \
+2211: 3776:                    "has changed to a new value. " +                 \   !BMW
+2212: 3776:                    "Item code is " + ITEM.CODE$ + ". " +            \   !BMW
+2213: 3776:                    "Value changed from '" + OLD.VALUE$ + "%' " +    \   !BMW
+2214: 3776:                    "to '" + NEW.VALUE$ + "%'."                          !BMW
+2215: 3776:                    
+2216: 3776:     ENDIF ELSE IF EVENT.NUMBER% = 192 THEN BEGIN
+2217: 378c: !-------------------------------------------------------------------------------
+2218: 378c: !192          Item loyalty status has       Item Code         X(4)  UPD
+2219: 378c: !             changed to new value.         Old status        X(1)
+2220: 378c: !                                           Filler            X(1)  ASCII
+2221: 378c: !                                           New status        X(1)
+2222: 378c: !                                           Filler            X(3)  ASCII
+2223: 378c: !-------------------------------------------------------------------------------
+2224: 378c:         ITEM.CODE$ = RIGHT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,4)),7)     !BMW
+2225: 37d3:         OLD.VALUE$ = MID$(EVENT.UNIQUE.DATA$,5,1)                       !BMW
+2226: 37f8:         NEW.VALUE$ = MID$(EVENT.UNIQUE.DATA$,7,1)                       !BMW
+2227: 381d:         
+2228: 381d:         COMMENT$ = "'Included in Loyalty' flag " +                  \
+2229: 386a:                    "has changed to a new value. " +                 \   !BMW
+2230: 386a:                    "Item code is " + ITEM.CODE$ + ". " +            \   !BMW
+2231: 386a:                    "Value changed from '" + OLD.VALUE$ + \              !BMW
+2232: 386a:                    "' to '" + NEW.VALUE$ + "'."                         !BMW
+2233: 386a: 
+2234: 386a:     ENDIF ELSE IF EVENT.NUMBER% = 196 THEN BEGIN
+2235: 387d: !-------------------------------------------------------------------------------
+2236: 387d: !196          PSBGHOST, general internal    Error message     X(10) ASCII
+2237: 387d: !             error message.  See PSBGHOST
+2238: 387d: !             documentation.
+2239: 387d: !-------------------------------------------------------------------------------
+2240: 387d:         COMMENT$ = "PSBGHOST internal error is " + \
+2241: 38aa:                    ASC.TEXT$(EVENT.UNIQUE.DATA$)
+2242: 38aa: 
+2243: 38aa:     ENDIF ELSE IF EVENT.NUMBER% = 197 THEN BEGIN
+2244: 38bd: !-------------------------------------------------------------------------------
+2245: 38bd: !197          Non zero RC% from a sub-      Sub-program name  X(4)  ASCII
+2246: 38bd: !             program in GHOSTFUN.          Filler            X(1)  ASCII
+2247: 38bd: !                                           RC%               X(2)  INT
+2248: 38bd: !-------------------------------------------------------------------------------
+2249: 38bd:         COMMENT$ = "PSBGHOST non-zero return code in function."
+2250: 38d7: 
+2251: 38d7:     ENDIF ELSE IF EVENT.NUMBER% = 198 THEN BEGIN
+2252: 38ed: !-------------------------------------------------------------------------------
+2253: 38ed: !198          Status of 'Included in        Item code         X(4)  UPD
+2254: 38ed: !             redemption' flag has          Prev flag value   X(1) 'Y'or'N'
+2255: 38ed: !             changed to new value.         New flag value    X(1) 'Y'or'N'
+2256: 38ed: !-------------------------------------------------------------------------------
+2257: 38ed:         
+2258: 38ed:         ITEM.CODE$ = RIGHT$(UNPACK$(LEFT$(EVENT.UNIQUE.DATA$,4)),7)     !BMW
+2259: 3934:         OLD.VALUE$ = MID$(EVENT.UNIQUE.DATA$,5,1)                       !BMW
+2260: 3959:         NEW.VALUE$ = MID$(EVENT.UNIQUE.DATA$,6,1)                       !BMW
+2261: 397e:         
+2262: 397e:         COMMENT$ = "'Excluded from Redemption' flag " +             \
+2263: 39ca:                    "has changed to a new value. " +                 \   !BMW
+2264: 39ca:                    "Item code is " + ITEM.CODE$ + ". " +            \   !BMW
+2265: 39ca:                    "Value changed from '" + OLD.VALUE$ + \              !BMW
+2266: 39ca:                    "' to '" + NEW.VALUE$ + "'."                         !BMW
+2267: 39ca: 
+2268: 39ca:     ENDIF ELSE IF EVENT.NUMBER% = 199 THEN BEGIN
+2269: 39dd:         !Redundant
+2270: 39dd:     ENDIF
+2271: 39e5: 
+2272: 39e5:     IF EVENT.NUMBER% = 209 THEN BEGIN
+2273: 39f8: !-------------------------------------------------------------------------------
+2274: 39f8: !209          Problem reading or writing    R/W               X     ASCII
+2275: 39f8: !             the deal data to the DINF     File number       XX    ASCII
+2276: 39f8: !             or ITMDL file.                Item code         X(3)  UPD
+2277: 39f8: !                                           Deal number       X(3)  UPD
+2278: 39f8: !                                           Filler            X
+2279: 39f8: !-------------------------------------------------------------------------------
+2280: 39f8:         COMMENT$ = "Problem reading or writing deal data " +        \
+2281: 3a19:                    "to the ITMDL or DEAL files."
+2282: 3a19: 
+2283: 3a19:     ENDIF ELSE IF EVENT.NUMBER% = 210 THEN BEGIN
+2284: 3a2c: !-------------------------------------------------------------------------------
+2285: 3a2c: !210          Initial load flag             DIDIR flag        X     ASCII
+2286: 3a2c: !             does not match on DIDIR       DEALDIR flag      X     ASCII
+2287: 3a2c: !             and DEALDIR file.             DIDIR S/N         X(4)  ASCII
+2288: 3a2c: !                                           DEALDIR S/N       X(4)  ASCII
+2289: 3a2c: !-------------------------------------------------------------------------------
+2290: 3a2c:         COMMENT$ = "Initial load flag does not match " +            \
+2291: 3a4d:                    "on the DIDIR and DEALDIR files."
+2292: 3a4d: 
+2293: 3a4d:     ENDIF ELSE IF EVENT.NUMBER% = 214 THEN BEGIN
+2294: 3a63:         ! Redundant
+2295: 3a63:     ENDIF ELSE IF EVENT.NUMBER% = 215 THEN BEGIN
+2296: 3a76: !-------------------------------------------------------------------------------
+2297: 3a76: !215          SSC32 detected a missing      Parent UOD num    X(5)  UPD
+2298: 3a76: !             child on a booked-in UOD.     Child UOD num     X(5)  UPD
+2299: 3a76: !             The child was not added.
+2300: 3a76: !-------------------------------------------------------------------------------
+2301: 3a76:         COMMENT$ = "SSC32 detected a missing child on " +           \
+2302: 3a97:                    "a booked in UOD. The child was not added."
+2303: 3a97: 
+2304: 3a97:     ENDIF ELSE IF EVENT.NUMBER% = 216 THEN BEGIN
+2305: 3aaa: !-------------------------------------------------------------------------------
+2306: 3aaa: !216          SSC32 didn't add a UOD since  UOD num           X(5)  UPD
+2307: 3aaa: !             it was on the banked file as  Filler            X(5)
+2308: 3aaa: !             a rejected misdirect.
+2309: 3aaa: !-------------------------------------------------------------------------------
+2310: 3aaa:         COMMENT$ = "SSC32 didn't add a UOD since it was " +         \
+2311: 3acb:                    "on the banked file as a rejected misdirect."
+2312: 3acb: 
+2313: 3acb:     ENDIF ELSE IF EVENT.NUMBER% = 217 THEN BEGIN
+2314: 3ade: !-------------------------------------------------------------------------------
+2315: 3ade: !217          SSC07 status change request   DIRECT active     X(1)  ASCII
+2316: 3ade: !             completed successfully.       ASN active        X(1)  ASCII
+2317: 3ade: !                                           POS UOD active    X(1)  ASCII
+2318: 3ade: !                                           OVERNIGHT active  X(1)  ASCII
+2319: 3ade: !                                           SCAN active       X(1)  ASCII
+2320: 3ade: !                                           BATCH size        X(3)  UPD
+2321: 3ade: !-------------------------------------------------------------------------------
+2322: 3ade:         COMMENT$ = "Status change request " +                       \
+2323: 3aff:                    "completed successfully."
+2324: 3aff: 
+2325: 3aff:     ENDIF ELSE IF EVENT.NUMBER% = 218 THEN BEGIN
+2326: 3b12: !-------------------------------------------------------------------------------
+2327: 3b12: !218          SSC07. Data on the RFSCF      DIRECT field      X(1)  ASCII
+2328: 3b12: !             file does not match the       ASN field         X(1)  ASCII
+2329: 3b12: !             SOFTS file.                   POS UOD field     X(1)  ASCII
+2330: 3b12: !                                           OVERNIGHT field   X(1)  ASCII
+2331: 3b12: !                                           SCAN field        X(1)  ASCII
+2332: 3b12: !                                           BATCH field       X(1)  ASCII
+2333: 3b12: !-------------------------------------------------------------------------------
+2334: 3b12:         COMMENT$ = "Data on the RFSCF file does " +                 \
+2335: 3b33:                    "not match the SOFTS file."
+2336: 3b33: 
+2337: 3b33:     ENDIF ELSE IF EVENT.NUMBER% = 220 THEN BEGIN
+2338: 3b46: !-------------------------------------------------------------------------------
+2339: 3b46: !220          Positive UOD file access      O/R/W/D/C         X     ASCII
+2340: 3b46: !             issue with UODOT or UODIN.    File Number       XX    HEX
+2341: 3b46: !             Check files exist. Check if   UOD licence plate X(7)  UPD
+2342: 3b46: !             pgms are long running on
+2343: 3b46: !             b/grnd screen PSS32,SSC32,
+2344: 3b46: !             SSC01,SSC03,SSC04, SSC06.
+2345: 3b46: !             If long running, cancel pgm
+2346: 3b46: !             & restart Stock Spprt. Check
+2347: 3b46: !             booked in status for UOD
+2348: 3b46: !             listed & TSF for the items
+2349: 3b46: !             in UOD as may be unprocessed
+2350: 3b46: !             or partially processed.
+2351: 3b46: !-------------------------------------------------------------------------------
+2352: 3b46:         COMMENT$ = "Positive UOD file access problem " +            \
+2353: 3b67:                    "with the UODOT or UODIN files."
+2354: 3b67: 
+2355: 3b67:     ENDIF ELSE IF EVENT.NUMBER% = 221 THEN BEGIN
+2356: 3b7a: !-------------------------------------------------------------------------------
+2357: 3b7a: !221          SSC32 detected a record       Order num         X(5)  UPD
+2358: 3b7a: !             full on the BDCO file.        Consignment       X(4)  UPD
+2359: 3b7a: !             The carton was not added.
+2360: 3b7a: !-------------------------------------------------------------------------------
+2361: 3b7a:         COMMENT$ = "SSC32 detected a record full " +                \
+2362: 3b9b:                    "on the BDCO file. The carton was not added."
+2363: 3b9b: 
+2364: 3b9b:     ENDIF ELSE IF EVENT.NUMBER% = 222 THEN BEGIN
+2365: 3bae: !-------------------------------------------------------------------------------
+2366: 3bae: !222          PSBF48 DEC API function       Function called    C2    ASCII
+2367: 3bae: !                                           Detail of error    X8    Variable
+2368: 3bae: !          EITHER
+2369: 3bae: !                   2  ASC "IN" for DECAPI.INIT
+2370: 3bae: !                   2  INT  Return code
+2371: 3bae: !                   6       Null until defined
+2372: 3bae: !          OR
+2373: 3bae: !                   2  ASC "CL" for DECAPI.CLOSE
+2374: 3bae: !                   2  INT  Return code
+2375: 3bae: !                   6       Null until defined
+2376: 3bae: !          OR
+2377: 3bae: !                   2  ASC "SE" for DECAPI.SEND(MESSAGEID$,PAYLOAD$,COMMIT)
+2378: 3bae: !                   2  INT  Return code
+2379: 3bae: !                   3  ASC  Message ID (Eg, ARC, AAS, AUT, CTF, CIL)
+2380: 3bae: !                   1  ASC  Commit flag
+2381: 3bae: !                   2  UPD  Optional number of additional event 222 following.
+2382: 3bae: !                           Each such event holds 10 bytes program specific data
+2383: 3bae: !                           Eg, Info relating to the lost payload
+2384: 3bae: !          OR
+2385: 3bae: !                   2  ASC "CM" for DECAPI.COMMAND$(CMD$,DATA$)
+2386: 3bae: !                   2  INT  Return code
+2387: 3bae: !                   6       Null until defined
+2388: 3bae: !          OR
+2389: 3bae: !                   2  ASC "EV" for DECAPI.EVENT(MESSAGEID$, DATA$, REASONCODE%)
+2390: 3bae: !                   2  INT  Return code
+2391: 3bae: !                   6       Null until defined
+2392: 3bae: !          OR
+2393: 3bae: !                   2  ASC "RC" for DECAPI.RECV
+2394: 3bae: !                   8       Null until defined
+2395: 3bae: !          OR
+2396: 3bae: !                   2  ASC "RT" for DECAPI.RECV.RESPONSE.TIME
+2397: 3bae: !                   8       Null until defined
+2398: 3bae: !          OR
+2399: 3bae: !                   2  ASC "PR" Program specific
+2400: 3bae: !                   8       Defined for program calling DEC API
+2401: 3bae: !-------------------------------------------------------------------------------
+2402: 3bae:         COMMENT$ = "DEC API error."
+2403: 3bc8: 
+2404: 3bc8:     ENDIF ELSE IF EVENT.NUMBER% = 223 THEN BEGIN
+2405: 3bdb: !-------------------------------------------------------------------------------
+2406: 3bdb: !223          XBACKUP Error. Write Verify
+2407: 3bdb: !             not disabled.
+2408: 3bdb: !-------------------------------------------------------------------------------
+2409: 3bdb:         COMMENT$ = "XBACKUP Error. Write verify not disabled."
+2410: 3bf5: 
+2411: 3bf5:     ENDIF ELSE IF EVENT.NUMBER% = 254 THEN BEGIN
+2412: 3c0b: !-------------------------------------------------------------------------------
+2413: 3c0b: !254          Error in PSBF49 function      ERR               XX    ASCII
+2414: 3c0b: !             call FUNC.PROC.DELIM.STR%     ERRL              XXX   UPD
+2415: 3c0b: !                                           File Number       XX    HEX
+2416: 3c0b: !-------------------------------------------------------------------------------
+2417: 3c0b:         CODE$ = MID$(EVENT.UNIQUE.DATA$,6,2)
+2418: 3c30: 
+2419: 3c30:         CODE.TEXT$ = "Error code is " + CODE$ + ". "
+2420: 3c54: 
+2421: 3c54:         LINE.NUMBER$ = STR$(?VAL(UNPACK$(MID$(EVENT.UNIQUE.DATA$,3,3))))
+2422: 3c8f:         REPORT.NUM%  = GET.REPORT.NUM%(6)
+2423: 3ca2: 
+2424: 3ca2:         GOSUB GET.REPORT.TEXT
+2425: 3cb4:         GOSUB GET.LINE.TEXT
+2426: 3cc6: 
+2427: 3cc6:         COMMENT$ = "PSBF49 function error. " +                      \
+2428: 3cf8:             CODE.TEXT$ + LINE.TEXT$ + REPORT.TEXT$
+2429: 3cf8: 
+2430: 3cf8:     ENDIF
+2431: 3d00: 
+2432: 3d00:     ! Filename                                                          !CMW
+2433: 3d00:     MESSAGE.TEXT$ = SUBSTITUTE$(MESSAGE.TEXT$,"^FILENAME",FILENAME$)    !CMW
+2434: 3d2f: 
+2435: 3d2f:     ! IF multiple repeated event log entries
+2436: 3d2f:     IF EVENT.COUNT% > 1 THEN BEGIN
+2437: 3d41: 
+2438: 3d41:         COMMENT$ = COMMENT$ +                                       \
+2439: 3d84:                    " This event is repeated " +                     \
+2440: 3d84:                    STR$(EVENT.COUNT%) + " times."
+2441: 3d84: 
+2442: 3d84:     ENDIF
+2443: 3d8c: 
+2444: 3d8c:     ! Display event log details
+2445: 3d8c:     CALL PSU0406
+2446: 3d99: 
+2447: 3d99:     EXIT SUB
+2448: 3da4: 
+2449: 3da4: \***********************************************************************
+2450: 3da4: \***
+2451: 3da4: \***    GET.REPORT.TEXT
+2452: 3da4: \***
+2453: 3da4: \***********************************************************************
+2454: 3da4: GET.REPORT.TEXT:
+2455: 3db4: 
+2456: 3db4:     ! IF report number populated
+2457: 3db4:     IF REPORT.NUM% <> 0 THEN BEGIN
+2458: 3dc3:         REPORT.TEXT$ = "File report number is " +                   \
+2459: 3e14:                        STR$(REPORT.NUM%) +                          \
+2460: 3e14:                        " (" + R$(REPORT.NUM%) + "). "
+2461: 3e14:     ENDIF ELSE BEGIN
+2462: 3e1c:         REPORT.TEXT$ = "No file report number was logged. "
+2463: 3e31:     ENDIF
+2464: 3e39: 
+2465: 3e39:     RETURN
+2466: 3e49: 
+2467: 3e49: \***********************************************************************
+2468: 3e49: \***
+2469: 3e49: \***    GET.LINE.TEXT
+2470: 3e49: \***
+2471: 3e49: \***********************************************************************
+2472: 3e49: GET.LINE.TEXT:
+2473: 3e59: 
+2474: 3e59:     ! IF line number populated
+2475: 3e59:     IF LINE.NUMBER$ <> "0" THEN BEGIN
+2476: 3e74:         LINE.TEXT$ = "Line number is " + LINE.NUMBER$ + "."
+2477: 3e9a:     ENDIF ELSE BEGIN
+2478: 3ea2:         LINE.TEXT$ = "No line number was logged."
+2479: 3eb7:     ENDIF
+2480: 3ebf: 
+2481: 3ebf:     RETURN
+2482: 3ecf: 
+2483: 3ecf: END SUB
+2484: 3ee3: 
+2485: 3ee3: End of Compilation

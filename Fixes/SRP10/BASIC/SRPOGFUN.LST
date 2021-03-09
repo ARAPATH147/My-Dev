@@ -1,0 +1,305 @@
+   1: 0000: \********************************************************************
+   2: 0000: \***      Space and Range Planogram database (SRPOG)
+   3: 0000: \***      Version A           Neil Bennett          05.06.2006
+   4: 0000: \***
+   5: 0000: \....................................................................
+   6: 0000: 
+   7: 0000:   INTEGER*2 GLOBAL                   \
+   8: 0000:       CURRENT.REPORT.NUM%
+   9: 0000: 
+  10: 0000:   STRING GLOBAL                      \
+  11: 0000:       CURRENT.CODE$,                 \
+  12: 0000:       FILE.OPERATION$
+  13: 0000: 
+  14: 0000:   %INCLUDE SRPOGDEC.J86
+  15: 0000: \********************************************************************
+  16: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRPOG FILE
+  17: 0000: \***      REFERENCE : SRPOGDEC.J86
+  18: 0000: \***      Version A           Neil Bennett            5th June 2006
+  19: 0000: \***
+  20: 0000: \********************************************************************
+  21: 0000: 
+  22: 0000:   INTEGER*1 GLOBAL        \
+  23: 0000:     SRPOG.MODULE.COUNT%,  \ Number of modules comprising POG
+  24: 0000:     SRPOG.KEY.LEVEL%,     \ Family hierarchy key level
+  25: 0000:     SRPOG.LIVE.RPT.CNT%,  \ Computed Live repeat count (Unset -1)
+  26: 0000:     SRPOG.PEND.RPT.CNT%   ! Computed pending repeat count (Unset -1)
+  27: 0000: 
+  28: 0000:   INTEGER*2 GLOBAL        \
+  29: 0000:     SRPOG.SESS.NUM%,      \
+  30: 0000:     SRPOG.REPORT.NUM%,    \
+  31: 0000:     SRPOG.RECL%           !
+  32: 0000: 
+  33: 0000:   INTEGER*4 GLOBAL        \
+  34: 0000:     SRPOG.POGDB%,         \ Unique POG Database key
+  35: 0000:     SRPOG.CAT.DBKEY%,     \ Family hierarchy key
+  36: 0000:     SRPOG.CAT1.ID%,       \ hierarchy key
+  37: 0000:     SRPOG.CAT2.ID%,       \ hierarchy key
+  38: 0000:     SRPOG.CAT3.ID%,       \ hierarchy key
+  39: 0000:     SRPOG.POGID%          ! POG Identifier
+  40: 0000: 
+  41: 0000:   STRING GLOBAL           \
+  42: 0000:     SRPOG.FILE.NAME$,     \ File name
+  43: 0000:     SRPOG.COPY.NAME$,     \ File name
+  44: 0000:     SRPOG.ACT.DATE$,      \ Activation Date YYYY MM DD
+  45: 0000:     SRPOG.DEACT.DATE$,    \ Deactivation Date YYYY MM DD
+  46: 0000:     SRPOG.DESCRIPTION$,   \ Truncated POG description (30)
+  47: 0000:     SRPOG.PLANNER.FAMILY$,\ Truncated Planner Family description (30)
+  48: 0000:     SRPOG.DATE.RPT.CNT$,  \ Date repeat count is valid YYYY MM DD
+  49: 0000:     SRPOG.FILLER$         !
+  50: 0000: 
+  51: 0000: 
+  52: 0000: 
+  53: 0000: \--------------------------------------------------------------------
+  54: 0000: 
+  55: 0000:   %INCLUDE BTCMEM.J86
+  56: 0000: !********************************************************************
+  57: 0000: !***
+  58: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+  59: 0000: !***    AUTHOR:         Stuart William McConnachie
+  60: 0000: !***    DATE:           26th February 2006
+  61: 0000: !***
+  62: 0000: !********************************************************************
+  63: 0000: !***
+  64: 0000: !***    Controller CBASIC Memory Functions
+  65: 0000: !***
+  66: 0000: !********************************************************************
+  67: 0000: 
+  68: 0000: !Get a single byte integer from a string offset
+  69: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+  70: 0000:     STRING S$
+  71: 0000:     INTEGER*2 P%
+  72: 0000:     INTEGER*2 GETN1
+  73: 0000: END FUNCTION
+  74: 0000: 
+  75: 0000: !Get a two byte integer from a string offset
+  76: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+  77: 0000:     STRING S$
+  78: 0000:     INTEGER*2 P%
+  79: 0000:     INTEGER*2 GETN2
+  80: 0000: END FUNCTION
+  81: 0000: 
+  82: 0000: !Get a four byte integer from a string offset
+  83: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+  84: 0000:     STRING S$
+  85: 0000:     INTEGER*2 P%
+  86: 0000:     INTEGER*4 GETN4
+  87: 0000: END FUNCTION
+  88: 0000: 
+  89: 0000: !Get a 10 byte CBASIC real from a string offset
+  90: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+  91: 0000:     STRING S$
+  92: 0000:     INTEGER*2 P%
+  93: 0000:     REAL GETR10
+  94: 0000: END FUNCTION
+  95: 0000: 
+  96: 0000: !Put a single byte integer into a string at offset
+  97: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+  98: 0000:     STRING S$
+  99: 0000:     INTEGER*2 P%
+ 100: 0000:     INTEGER*1 N%
+ 101: 0000:     INTEGER*1 PUTN1
+ 102: 0000: END FUNCTION
+ 103: 0000: 
+ 104: 0000: !Put a two byte integer into a string at offset
+ 105: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 106: 0000:     STRING S$
+ 107: 0000:     INTEGER*2 P%
+ 108: 0000:     INTEGER*2 N%
+ 109: 0000:     INTEGER*1 PUTN2
+ 110: 0000: END FUNCTION
+ 111: 0000: 
+ 112: 0000: !Put a four byte integer into a string at offset
+ 113: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 114: 0000:     STRING S$
+ 115: 0000:     INTEGER*2 P%
+ 116: 0000:     INTEGER*4 N%
+ 117: 0000:     INTEGER*1 PUTN4
+ 118: 0000: END FUNCTION
+ 119: 0000: 
+ 120: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 121: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 122: 0000:     STRING S$
+ 123: 0000:     INTEGER*2 P%
+ 124: 0000:     REAL R
+ 125: 0000:     INTEGER*1 PUTR10
+ 126: 0000: END FUNCTION
+ 127: 0000: 
+ 128: 0000: !Peek a two byte integer from a memory address
+ 129: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 130: 0000:     INTEGER*4 A%
+ 131: 0000:     INTEGER*2 PEEKN2
+ 132: 0000: END FUNCTION
+ 133: 0000: 
+ 134: 0000: !Peek a four byte integer from a memory address
+ 135: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 136: 0000:     INTEGER*4 A%
+ 137: 0000:     INTEGER*4 PEEKN4
+ 138: 0000: END FUNCTION
+ 139: 0000: 
+ 140: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 141: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 142: 0000:     INTEGER*4 A%
+ 143: 0000:     REAL PEEKR10
+ 144: 0000: END FUNCTION
+ 145: 0000: 
+ 146: 0000: !Poke a two byte integer to a memory address
+ 147: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 148: 0000:     INTEGER*4 A%
+ 149: 0000:     INTEGER*2 N%
+ 150: 0000:     INTEGER*1 POKEN2
+ 151: 0000: END FUNCTION
+ 152: 0000: 
+ 153: 0000: !Poke a four byte integer to a memory address
+ 154: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 155: 0000:     INTEGER*4 A%
+ 156: 0000:     INTEGER*4 N%
+ 157: 0000:     INTEGER*1 POKEN4
+ 158: 0000: END FUNCTION
+ 159: 0000: 
+ 160: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 161: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 162: 0000:     INTEGER*4 A%
+ 163: 0000:     REAL R
+ 164: 0000:     INTEGER*1 POKER10
+ 165: 0000: END FUNCTION
+ 166: 0000: 
+ 167: 0000: 
+ 168: 0000: \--------------------------------------------------------------------
+ 169: 0000: 
+ 170: 0000:   FUNCTION BUILD.SRPOG.KEY$
+ 171: 0014: 
+ 172: 0014:    STRING     BUILD.SRPOG.KEY$
+ 173: 0014:    STRING     work$
+ 174: 0014: 
+ 175: 0014:    work$ = STRING$(4,CHR$(0))
+ 176: 002b: 
+ 177: 002b:    CALL PUTN4(work$, 0, SRPOG.POGDB%)
+ 178: 0048: 
+ 179: 0048:    BUILD.SRPOG.KEY$ = work$
+ 180: 005a:    work$ = ""
+ 181: 0067: 
+ 182: 0067:   END FUNCTION
+ 183: 0078: 
+ 184: 0078: \--------------------------------------------------------------------
+ 185: 0078: 
+ 186: 0078:   FUNCTION SRPOG.SET PUBLIC
+ 187: 008c: 
+ 188: 008c:    SRPOG.REPORT.NUM%   = 719
+ 189: 0095:    SRPOG.RECL%         = 101
+ 190: 009e:    SRPOG.FILE.NAME$    = "SRPOG"
+ 191: 00ad:    SRPOG.COPY.NAME$    = "ADXLXACN::D:\ADX_UDT3\SRPOG.BAK"
+ 192: 00bc: 
+ 193: 00bc:   END FUNCTION
+ 194: 00c8: 
+ 195: 00c8: \--------------------------------------------------------------------
+ 196: 00c8: 
+ 197: 00c8:   FUNCTION READ.SRPOG PUBLIC
+ 198: 00dc: 
+ 199: 00dc:    INTEGER*2 READ.SRPOG
+ 200: 00dc:    STRING    key$
+ 201: 00dc: 
+ 202: 00dc:    READ.SRPOG = 1
+ 203: 00e1: 
+ 204: 00e1:    key$ = BUILD.SRPOG.KEY$
+ 205: 00ee: 
+ 206: 00ee:    IF END #SRPOG.SESS.NUM% THEN READ.SRPOG.ERROR
+ 207: 0102: 
+ 208: 0102:    READ FORM "T5,I4,C4,C4,C30,C30,I1,I4,I1,I1,C4,I1,I4,I4,I4,C1";   \
+ 209: 01cb:           #SRPOG.SESS.NUM% KEY key$;                                \
+ 210: 01cb:              SRPOG.POGID%,                                          \
+ 211: 01cb:              SRPOG.ACT.DATE$,                                       \
+ 212: 01cb:              SRPOG.DEACT.DATE$,                                     \
+ 213: 01cb:              SRPOG.DESCRIPTION$,                                    \
+ 214: 01cb:              SRPOG.PLANNER.FAMILY$,                                 \
+ 215: 01cb:              SRPOG.MODULE.COUNT%,                                   \
+ 216: 01cb:              SRPOG.CAT.DBKEY%,                                      \
+ 217: 01cb:              SRPOG.KEY.LEVEL%,                                      \
+ 218: 01cb:              SRPOG.LIVE.RPT.CNT%,                                   \
+ 219: 01cb:              SRPOG.DATE.RPT.CNT$,                                   \
+ 220: 01cb:              SRPOG.PEND.RPT.CNT%,                                   \
+ 221: 01cb:              SRPOG.CAT1.ID%,                                        \
+ 222: 01cb:              SRPOG.CAT2.ID%,                                        \
+ 223: 01cb:              SRPOG.CAT3.ID%,                                        \
+ 224: 01cb:              SRPOG.FILLER$
+ 225: 01cb: 
+ 226: 01cb:    READ.SRPOG = 0
+ 227: 01d0:    EXIT FUNCTION
+ 228: 01d2: 
+ 229: 01d2: READ.SRPOG.ERROR:
+ 230: 01d2: 
+ 231: 01d2:    CURRENT.REPORT.NUM% = SRPOG.REPORT.NUM%
+ 232: 01e0:    FILE.OPERATION$ = "R"
+ 233: 01ef:    CURRENT.CODE$ = key$
+ 234: 0202: 
+ 235: 0202:   END FUNCTION
+ 236: 0211: 
+ 237: 0211: \--------------------------------------------------------------------
+ 238: 0211: 
+ 239: 0211:   FUNCTION WRITE.SRPOG PUBLIC
+ 240: 0225: 
+ 241: 0225:    INTEGER*2 WRITE.SRPOG
+ 242: 0225:    STRING    key$
+ 243: 0225: 
+ 244: 0225:    WRITE.SRPOG = 1
+ 245: 022a: 
+ 246: 022a:    key$ = BUILD.SRPOG.KEY$
+ 247: 0237: 
+ 248: 0237:    IF END #SRPOG.SESS.NUM% THEN WRITE.SRPOG.ERROR
+ 249: 024b: 
+ 250: 024b:    WRITE FORM "C4,I4,C4,C4,C30,C30,I1,I4,I1,I1,C4,I1,I4,I4,I4,C1";  \
+ 251: 0352:            #SRPOG.SESS.NUM%;                                        \
+ 252: 0352:              key$,                                                  \
+ 253: 0352:              SRPOG.POGID%,                                          \
+ 254: 0352:              SRPOG.ACT.DATE$,                                       \
+ 255: 0352:              SRPOG.DEACT.DATE$,                                     \
+ 256: 0352:              SRPOG.DESCRIPTION$,                                    \
+ 257: 0352:              SRPOG.PLANNER.FAMILY$,                                 \
+ 258: 0352:              SRPOG.MODULE.COUNT%,                                   \
+ 259: 0352:              SRPOG.CAT.DBKEY%,                                      \
+ 260: 0352:              SRPOG.KEY.LEVEL%,                                      \
+ 261: 0352:              SRPOG.LIVE.RPT.CNT%,                                   \
+ 262: 0352:              SRPOG.DATE.RPT.CNT$,                                   \
+ 263: 0352:              SRPOG.PEND.RPT.CNT%,                                   \
+ 264: 0352:              SRPOG.CAT1.ID%,                                        \
+ 265: 0352:              SRPOG.CAT2.ID%,                                        \
+ 266: 0352:              SRPOG.CAT3.ID%,                                        \
+ 267: 0352:              SRPOG.FILLER$
+ 268: 0352: 
+ 269: 0352:    WRITE.SRPOG = 0
+ 270: 0357:    EXIT FUNCTION
+ 271: 0359: 
+ 272: 0359: WRITE.SRPOG.ERROR:
+ 273: 0359: 
+ 274: 0359:    CURRENT.REPORT.NUM% = SRPOG.REPORT.NUM%
+ 275: 0367:    FILE.OPERATION$ = "W"
+ 276: 0376:    CURRENT.CODE$ = key$
+ 277: 0389: 
+ 278: 0389:   END FUNCTION
+ 279: 0398: 
+ 280: 0398: \--------------------------------------------------------------------
+ 281: 0398: 
+ 282: 0398:   FUNCTION DELREC.SRPOG PUBLIC
+ 283: 03ac: 
+ 284: 03ac:    INTEGER*2 DELREC.SRPOG
+ 285: 03ac:    STRING    key$
+ 286: 03ac: 
+ 287: 03ac:    DELREC.SRPOG = 1
+ 288: 03b1: 
+ 289: 03b1:    IF END #SRPOG.SESS.NUM% THEN DELREC.SRPOG.ERROR
+ 290: 03c5: 
+ 291: 03c5:    key$ = BUILD.SRPOG.KEY$
+ 292: 03d2: 
+ 293: 03d2:    DELREC SRPOG.SESS.NUM%; key$
+ 294: 03e6: 
+ 295: 03e6:    DELREC.SRPOG = 0
+ 296: 03eb:    EXIT FUNCTION
+ 297: 03ed: 
+ 298: 03ed: DELREC.SRPOG.ERROR:
+ 299: 03ed: 
+ 300: 03ed:    CURRENT.REPORT.NUM% = SRPOG.REPORT.NUM%
+ 301: 03fb:    FILE.OPERATION$ = "D"
+ 302: 040a:    CURRENT.CODE$ = key$
+ 303: 041d: 
+ 304: 041d:   END FUNCTION
+ 305: 042c: End of Compilation

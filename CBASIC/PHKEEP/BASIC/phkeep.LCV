@@ -1,0 +1,2966 @@
+\************************************************************************
+\***                                                                  
+\***    PHKEEP            Ranjith Gopalankutty          05/04/2017    
+\***                                                                  
+\***    There was a defect with program SRP10. It supposed to house   
+\***    keep the expired planner records from SRPOG,SRMOD,SRSXF       
+\***    and SRPDF files. SRPOG is the master planner file SRMOD       
+\***    is module,SRSXF is notch data and SRPDF is the planner        
+\***    descriptor file.  SRMOD,SRPDF and SRSXF files depends on      
+\***    the master planner file SRPOG to build the keys for them.     
+\***                                                                  
+\***    The defect was that, SRP10 program was housekeeping only      
+\***    records from SRPOG and leaving behind other 3 files.Over      
+\***    time. Records will be housekept from SRPOG and untouching     
+\***    other files. Records will get piled up and causing file       
+\***    full issues. This resulted in new planner update not          
+\***    able to add in to planner files.Defect has been found         
+\***    and fixed by AppsMgmt. change is live in all stores,but       
+\***    one issue found afterwards that program was not able to       
+\***    delete the historical expired  records from planner files.    
+\***                                                                  
+\***    This program will housekeep the data from 3 planner files     
+\***    SRMOD,SRSXF and SRPDF and will recreate the planner files     
+\***    fresh using only live records.                                
+\***                                                                  
+\***    Program can be executed via command prompt using NFM or       
+\***    in a package.                                                 
+\***                                                                  
+\***    A                RANJITH GOPALANKUTTY               12-07-2017
+\***    After the meeting with Inctactix it came to our notice that   
+\***    there is a big mis match between the number of planners in    
+\***    in inctactix and controller. The reason for that is in the    
+\***    difference between the housekeeping logic, inctactis never    
+\***    considers a planner (POGID) as deactive and set the maximum   
+\***    end date (2199 year)instead it creates new fragments(POGDB)   
+\***    planner(POGID)and creates end date for it, which is mostly    
+\***    2 weeks. but in SRPOG file we have end date only for POGID    
+\***    and not POGDB, so when housekeeping logic runs, its never     
+\***    able to delete the expired records, so amended the code that  
+\***    instead of SRPOG, application takes SRMAP as the master file  
+\***    and started towards deletion to all4 files SRPOG,SRMOD,SRSXF  
+\***    and SRPDF.                                                    
+\***                                                                  
+\***    B                RANJITH GOPALANKUTTY               23-11-2017
+\***    During AppsMgmt testing found that certain stores have more   
+\***    10000 records in SRMOD files and array would not handle it    
+\***    so increasing the array count from current 10000 to maximum   
+\***    Also relinked the code with 17D file functions.               
+\***                                                                  
+\***    C                RANJITH GOPALANKUTTY               26-04-2018
+\***    Moved all W:/ reference to C: due to the risk of losing the   
+\***    run status if a controller is getting restarted after the     
+\***    deploment                                                     
+\***                                                                  
+\***    D                RANJITH GOPALANKUTTY               31-07-2018
+\***    Few issues were found during the package test, on further     
+\***    checking found that comparison loop is going out of sync, so  
+\***    changed the logic to do a keyed read.                         
+\***    Also read operations has been made much faster and cleaner    
+\***********************************************************************
+\***
+\***    Function globals
+\***
+\***********************************************************************
+
+
+%INCLUDE BEMFDEC.J86  
+\******************************************************************************
+\***
+\***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+\***                                             - FILE REFERENCE PARAMETERS
+\***
+\***                         FILE TYPE : Direct
+\***
+\***                         REFERENCE : BEMFDEC
+\***
+\***	Version A               Mark Walker                  1st November 1993
+\***
+\******************************************************************************
+
+	STRING GLOBAL			BEMF.MESSAGE$,			\
+					BEMF.FILE.NAME$
+
+	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+					BEMF.REPORT.NUM%,		\
+					BEMF.SESS.NUM%
+
+	INTEGER*4 GLOBAL		BEMF.REC.NO%
+%INCLUDE BOOTSDEC.J86 
+\******************************************************************************
+\******************************************************************************
+\***
+\***
+\***
+\******************************************************************************
+
+
+%INCLUDE POGDEDEC.J86 
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE POGDE FILE
+\***      REFERENCE : POGOKDEC.J86
+\***      Version A           Neil Bennett            6th June 2006
+\***
+\********************************************************************
+
+  INTEGER*2 GLOBAL                \
+    POGDE.SESS.NUM%,              \
+    POGDE.REPORT.NUM%             !
+
+  STRING GLOBAL                   \
+    POGDE.COPY.NAME$,             \
+    POGDE.FILE.NAME$,             \
+    POGDE.RCD$                    !
+%INCLUDE POGOKDEC.J86 
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE POGOK FILE
+\***      REFERENCE : POGOKDEC.J86
+\***      Version A           Neil Bennett            6th June 2006
+\***
+\********************************************************************
+
+  INTEGER*1 GLOBAL                \
+    POGOK.PE10.RETCODE%,          \
+    POGOK.PE5.RETCODE%,           \
+    POGOK.PE6.RETCODE%,           \
+    POGOK.PE7.RETCODE%,           \
+    POGOK.PE4.RETCODE%,           \
+    POGOK.PE19.RETCODE%           !
+
+  INTEGER*2 GLOBAL                \
+    POGOK.DAYS.TO.RETAIN%,        \
+    POGOK.SESS.NUM%,              \
+    POGOK.REPORT.NUM%,            \
+    POGOK.RECL%                   !
+
+  INTEGER*4 GLOBAL                \
+    POGOK.SRD.REC.COUNT%,         \
+    POGOK.SRM.REC.COUNT%
+
+  STRING GLOBAL                   \
+    POGOK.FILE.NAME$,             \
+    POGOK.SRD.SER.NO$,            \
+    POGOK.SRM.SER.NO$,            \
+    POGOK.SRD.DATE$,              \
+    POGOK.SRM.DATE$,              \
+    POGOK.RELOAD$,                \
+    POGOK.PE10.RUNFLAG$,          \
+    POGOK.PE5.RUNFLAG$,           \
+    POGOK.PE6.RUNFLAG$,           \
+    POGOK.PE7.RUNFLAG$,           \
+    POGOK.PE4.RUNFLAG$,           \
+    POGOK.FAILED.SRD.SER.NO$,     \
+    POGOK.FAILED.SRD.DATE$,       \
+    POGOK.FAILED.SRM.SER.NO$,     \
+    POGOK.FAILED.SRM.DATE$,       \
+    POGOK.PE10.RUNDATE$,          \
+    POGOK.PE5.RUNDATE$,           \
+    POGOK.PE6.RUNDATE$,           \
+    POGOK.PE7.RUNDATE$,           \
+    POGOK.PE4.RUNDATE$,           \
+    POGOK.PE19.RUNFLAG$,          \
+    POGOK.PE19.RUNDATE$,          \
+    POGOK.FILLER$                 !
+%INCLUDE PSBF01G.J86  
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+\***
+\***                FUNCTION NUMBER    : PSBF01
+\***
+\***                REFERENCE          : PSBF01G.J86
+\***
+\***                DATE OF LAST AMENDMENT  - 27/2/86
+\***
+\***
+\*******************************************************************************
+
+      INTEGER GLOBAL  F01.RETURN.CODE%
+
+
+%INCLUDE PSBF20G.J86  
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+\***
+\***                       REFERENCE     : PSBF20G.J86
+\*** 
+\***     Version A              Bruce Scrive                   5th May 1988   
+\*** 
+\***     Version B              Robert Cowey                   7th May 1991
+\***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+\***     to two byte integer.
+\***
+\***     Version D              Andrew Wedgeworth             1st July 1992
+\***     F20.RETURN.CODE% removed as it is no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING    GLOBAL F20.FILE.NAME$,                                 \
+                       F20.STRING.FILE.NO$,                            \
+                       F20.TABLE.DIMENSIONED.FLAG$,                    \
+                       SESS.NUM.TABLE$(1)
+
+      INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+
+      ! 1 line deleted from here                                       ! DAW 
+
+%INCLUDE SRMODDEC.J86 
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRMOD FILE
+\***      REFERENCE : SRMODDEC.J86
+\***      Version A           Neil Bennett            5th June 2006
+\***
+\********************************************************************
+
+  INTEGER*1 GLOBAL             \
+    SRMOD.FACINGS%(1),         \
+    SRMOD.MODULE.SEQ%,         \
+    SRMOD.RECORD.CHAIN%,       \
+    SRMOD.SHELF.NUM%(1)
+
+  INTEGER*2 GLOBAL             \
+    SRMOD.ITEM.COUNT%,         \
+    SRMOD.MAX.ITEMS%,          \
+    SRMOD.MDQ%(1),             \
+    SRMOD.PSC%(1),             \
+    SRMOD.RECL%,               \
+    SRMOD.REPORT.NUM%,         \
+    SRMOD.SHELF.COUNT%,        \
+    SRMOD.SESS.NUM%
+
+  INTEGER*4 GLOBAL             \
+    SRMOD.POGDB%
+
+  STRING GLOBAL                \
+    SRMOD.ARRAY$,              \
+    SRMOD.COPY.NAME$,          \
+    SRMOD.DESCRIPTOR$,         \
+    SRMOD.FILE.NAME$,          \
+    SRMOD.ITEM.CODE$(1),       \
+    SRMOD.FILLER$
+%INCLUDE SRPDFDEC.J86 
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRPDF FILE
+\***      REFERENCE : SRPDFDEC.J86
+\***      Version A           Neil Bennett          7th August 2006
+\***
+\********************************************************************
+
+  INTEGER*2 GLOBAL        \
+    SRPDF.SESS.NUM%,      \
+    SRPDF.REPORT.NUM%,    \
+    SRPDF.RECL%           !
+
+  INTEGER*4 GLOBAL        \
+    SRPDF.POGDB%          ! Unique POG Database key
+
+  STRING GLOBAL           \
+    SRPDF.FILE.NAME$,     \ File name
+    SRPDF.SHRT.DESC$,     \ Medium descriptor (50)
+    SRPDF.FULL.DESC$,     \ Full descriptor (100)
+    SRPDF.FILLER$         !
+
+
+%INCLUDE SRPOGDEC.J86 
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRPOG FILE
+\***      REFERENCE : SRPOGDEC.J86
+\***      Version A           Neil Bennett            5th June 2006
+\***
+\********************************************************************
+
+  INTEGER*1 GLOBAL        \
+    SRPOG.MODULE.COUNT%,  \ Number of modules comprising POG
+    SRPOG.KEY.LEVEL%,     \ Family hierarchy key level
+    SRPOG.LIVE.RPT.CNT%,  \ Computed Live repeat count (Unset -1)
+    SRPOG.PEND.RPT.CNT%   ! Computed pending repeat count (Unset -1)
+
+  INTEGER*2 GLOBAL        \
+    SRPOG.SESS.NUM%,      \
+    SRPOG.REPORT.NUM%,    \
+    SRPOG.RECL%           !
+
+  INTEGER*4 GLOBAL        \
+    SRPOG.POGDB%,         \ Unique POG Database key
+    SRPOG.CAT.DBKEY%,     \ Family hierarchy key
+    SRPOG.CAT1.ID%,       \ hierarchy key
+    SRPOG.CAT2.ID%,       \ hierarchy key
+    SRPOG.CAT3.ID%,       \ hierarchy key
+    SRPOG.POGID%          ! POG Identifier
+
+  STRING GLOBAL           \
+    SRPOG.FILE.NAME$,     \ File name
+    SRPOG.COPY.NAME$,     \ File name
+    SRPOG.ACT.DATE$,      \ Activation Date YYYY MM DD
+    SRPOG.DEACT.DATE$,    \ Deactivation Date YYYY MM DD
+    SRPOG.DESCRIPTION$,   \ Truncated POG description (30)
+    SRPOG.PLANNER.FAMILY$,\ Truncated Planner Family description (30)
+    SRPOG.DATE.RPT.CNT$,  \ Date repeat count is valid YYYY MM DD
+    SRPOG.FILLER$         !
+
+
+%INCLUDE SRSXFDEC.J86 
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRSXF FILE
+\***      REFERENCE : SRSXFDEC.J86
+\***      Version A           Neil Bennett          7th August 2006
+\***
+\********************************************************************
+
+  INTEGER*1 GLOBAL        \
+    SRSXF.MODULE.SEQ%,    \
+    SRSXF.SHELF.NO%,      \
+    SRSXF.NOTCH.NO%       !
+
+  INTEGER*2 GLOBAL        \
+    SRSXF.SESS.NUM%,      \
+    SRSXF.REPORT.NUM%,    \
+    SRSXF.RECL%           !
+
+  INTEGER*4 GLOBAL        \
+    SRSXF.POGDB%,         \
+    SRSXF.SHELF.KEY%      !
+
+  STRING GLOBAL           \
+    SRSXF.FILE.NAME$,     \ File name
+    SRSXF.SHELF.DESC$,    \
+    SRSXF.FILLER$         !
+
+
+%INCLUDE SRMAPDEC.J86                                                   !ARG
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRMAP FILE
+\***      REFERENCE : SRMAPDEC.J86
+\***      Version A           Neil Bennett           14th June 2006
+\***
+\********************************************************************
+
+  INTEGER*1 GLOBAL             \
+    SRMAP.CHAIN.SEQ%,          \
+    SRMAP.REPEAT.CNT%          !
+
+  INTEGER*2 GLOBAL             \
+    SRMAP.SESS.NUM%,           \
+    SRMAP.REPORT.NUM%,         \
+    SRMAP.RECL%                !
+
+  INTEGER*4 GLOBAL             \
+    SRMAP.POGDB%               !
+
+  STRING GLOBAL                \
+    SRMAP.FILE.NAME$,          \
+    SRMAP.COPY.NAME$,          \
+    SRMAP.FRAG.SDATE$,         \
+    SRMAP.FRAG.EDATE$,         \
+    SRMAP.FILLER$              !
+
+
+
+\***********************************************************************
+\*
+\*    Global variable definitions
+\*
+\***********************************************************************
+
+STRING     GLOBAL        \
+     FILE.OPERATION$,    \
+     PINFO.TABLE$,       \
+     PASSED.STRING$,     \
+     SVC.PARAM$          
+
+INTEGER*4  GLOBAL        \
+   ADX.FUNCTION%,        \
+   ADX.PARAM%,           \
+   CURRENT.REPORT.NUM%,  \
+   EVENT.NO%,            \
+   PASSED.INTEGER%,      \
+   RC%,                  \
+   READKF.RC%,           \
+   TERMKF.RC%
+   
+\***********************************************************************
+\*
+\*    Local Variables
+\*
+\***********************************************************************
+
+STRING                    \
+     ADX.COMMAND$,        \
+     COMM.TAIL$,          \
+     CURRENT.CODE$,       \
+     FILE.NAME$,          \
+     FILE.RECORD$,        \
+     FLAG$,               \
+     FUNCTION.FLAG$,      \
+     OK.STRING$,          \
+     PATTERN$,            \
+     PROG.NAME$,          \
+     PHKEEP.OK.NAME$,     \
+     PHKEEP.LOG.NAME$,    \
+     RCD$,                \
+     SEC$,                \
+     SPACE$,              \
+     SRMAP.ARRAY$(1),     \
+     SRMOD.ARR$(1),       \
+     SRMAP.FLAG$,         \
+     SRMAP.STRING$,       \
+     SRMOD.DIR.NAME$,     \
+     SRMOD.NEW.FILE$,     \
+     SRPDF.ARRAY$(1),     \
+     SRPDF.DIR.NAME$,     \
+     SRPDF.KEY.NAME$,     \
+     SRMOD.KEY.NAME$,     \
+     SRPOG.ARRAY$(1),     \
+     SRPOG.DIR.NAME$,     \
+     SRPOG.FLAG$,         \
+     SRPOG.KEY.NAME$,     \
+     SRPOG.TEMP.NAME$,    \
+     SRSXF.FLAG$,         \
+     SRPOG.STRING$,       \
+     SRMOD.STRING$,       \
+     SRMOD.FLAG$,         \
+     SRSXF.STRING$,       \
+     SRSXF.DIR.NAME$,     \
+     SRSXF.KEY.NAME$,     \
+     SRPDF.STRING$,       \
+     SRPDF.FLAG$,         \
+     TEMP.FORM$,          \
+     VAR.STRING.1$,       \
+     VAR.STRING.2$
+                           
+INTEGER*4                 \
+     ADX.INTEGER%,        \
+     ARR.COUNT%,          \
+     I%,                  \
+     EOF%,                \
+     END.OF.FILE%,        \
+     ERROR.CNT%,          \
+     K%,                  \
+     FID%,                \
+     FILE.RECL%,          \
+     FOUND%,              \
+     FOUND1%,             \
+     J%,                  \
+     MESSAGE.NO%,         \
+     MODE%,               \
+     NOFILE.SRMOD.COUNT%, \
+     NOFILE.SRPDF.COUNT%, \
+     NOFILE.SRSXF.COUNT%, \
+     OFFSET%,             \
+     OPTIONS%,            \
+     P%,                  \
+     PHKEEP.OK.SESS%,     \
+     PHKEEP.SESS.NUM%,    \
+     POGDB%,              \
+     RPS%,                \
+     RC1%,                \
+     SRMAP%,              \
+     SRMOD%,              \
+     SRMOD.DIR.SESS%,     \
+     SRPDF%,              \
+     SRPOG%,              \
+     SRSXF%,              \
+     SRPOG.COUNT%,        \
+     SRPDF.DIR.SESS%,     \
+     SRPOG.DIR.SESS%,     \
+     SRMOD.COUNT%,        \
+     SRPDF.COUNT%,        \
+     SRSXF.COUNT%,        \
+     SRSXF.DIR.SESS%,     \
+     TEMP.ARR%(1),        \
+     TEMP.COUNT%  
+
+\***********************************************************************
+\*
+\*    Included code defining external Boots functions
+\*
+\***********************************************************************
+    
+%INCLUDE BEMFEXT.J86 
+\******************************************************************************
+\***
+\***        EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FILE
+\***                                                            
+\***                        REFERENCE : BEMFEXT
+\***
+\***    Version A               Mark Walker                   1st November 1993
+\***
+\***    Version B       Stuart William McConnachie          25th September 2000
+\***    READ.BEMF function has got lost!
+\***
+\******************************************************************************
+
+    FUNCTION BEMF.SET EXTERNAL
+    END FUNCTION
+    
+    FUNCTION READ.BEMF EXTERNAL
+    INTEGER*1 READ.BEMF
+    END FUNCTION
+    
+    
+%INCLUDE BASROUT.J86 
+\*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+\*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+\*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+\*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+\*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+\*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+!   the BASROUT.OBJ routines.  These routines were written
+!  using Metaware C and are intended to provide functions which
+!         are either not available in 4680 CBASIC or which can be more
+!               efficiently handled by the C language.  Their usage is
+!  offered on an "AT YOUR OWN RISK" basis.
+!
+!               The insert/extract routines usefulness may not be immediately
+!               apparent.  Their intention is that they be used in conjunction
+!               with a read/write form command.  They can more efficiently
+!               parse a string into many different variables than can the
+!               read form statement.  So instead of a long list of data var's
+!               it may be more efficient to just read/write one long string
+!               and then use the insert/extract routines to parse out the
+!   data.
+
+! ******************* SUB PROCESS FUNCTIONS *********************************
+
+function osshell(cmd.line$) external   ! routine to start
+       ! another program.
+           integer*4    osshell    ! Upon completion of
+           string       cmd.line$   ! program, control is
+       ! returned to calling
+end function      ! program.
+!
+! NOTES:  Program must be a 286 type file.  This does not exclude
+!         the capability to execute a batch file however.  Simply pass the
+!         following:
+!              c:\adx_spgm\command.286 batfile
+!         where batfile is the name of the batch file to be executed.
+!
+! IMPORTANT: When using osshell to execute a batch file as described above,
+!            the final command in the batch file must be "exit".  If not,
+!       control is never given back to the calling program.
+
+! ************************ MEMORY RELATED FUNCTIONS ************************
+
+function memfree(choice) external   ! routine to que the
+       ! status of the
+ integer*4 memfree    ! machine's memory:
+ integer*2 choice    ! Options:
+       !    1 - free
+end function      !    2 - total
+       !    3 - system
+
+! ********************** TIMEDATE RELATED FUNCTIONS ************************
+
+function timedate(choice) external   ! routine to que the
+       ! OS's timedate table
+ integer*4 timedate   ! Choices:
+ integer*2 choice    !    1 - millisec's
+       !        since midnight
+end function      !    2 - minutes from
+       !  UCT (timezone)
+       !    3 - day of week
+       !   0-Sunday
+       !  6-Saturday
+
+function settime(msecs) external   ! routine to set the
+       ! time on the controller
+ integer*4  settime    ! msecs is the desired
+ integer*4 msecs    ! number of milliseconds
+       ! since midnight
+end function      ! Returns negative on
+       ! error
+! NOTE:  This routine sets the time only on the controller.  The terminals'
+! time will not be updated until 1 AM or unless a terminal is STC'd.
+! At 1 AM the controller broadcasts the new time to all terminals.
+! Insure this is taken into consideration when using this routine.
+
+!******************** DISK FILE RELATED FUNCTIONS *************************
+
+function truncate(name,length) external   ! routine to truncate
+       ! the specified file
+ integer*4 truncate   ! to a given length.
+ string  name
+ integer*4 length
+
+end function
+
+!******************** STRING VALUE RELATED FUNCTIONS **********************
+
+function isalpha(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isalpha    ! string contains all
+ string  bstrn    ! alphabetic char's
+       ! Returns:
+end function      !     0 - all alpha
+       !     X - byte of 1st
+       !         non-alpha
+       !   char
+
+function isdigit(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isdigit    ! string contains all
+ string  bstrn    ! numeric char's
+       ! Returns:
+end function      !     0 - all numeric
+       !     X - byte of 1st
+       !         non-numeric
+       !   char
+
+function islower(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 islower    ! string contains all
+ string  bstrn    ! lower case char's
+       ! Returns:
+end function      !     0 - all lowercase
+       !     X - byte of 1st
+       !         non-lowercase
+       !   char
+
+function isupper(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isupper    ! string contains all
+ string  bstrn    ! upper case char's
+       ! Returns:
+end function      !     0 - all uppercase
+       !     X - byte of 1st
+       !         non-uppercase
+       !   char
+
+function toalpha(bstrn) external   ! routine to convert
+       ! non-alpha or non-num
+   integer*2 toalpha    ! char's to spaces
+ string  bstrn    ! Returns:
+end function      !   x - no. of char's
+       !       changed
+
+! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+
+function idlecount(choice) external   ! routine to either
+       ! set to zero or queue
+ integer*4 idlecount   ! the value of the
+ integer*1 choice    ! processor's idlecount
+       ! Choice:
+end function      !     0 - set to zero
+!       !     1 - get value
+! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+! TO WORK - This level is not available unless  !     X - idlecount
+! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+! is highly unrecommended.
+
+function logical(actname,logname,choice) external ! routine to set a
+       ! a logical name.
+ integer*4 logical    ! parms are self
+        string  logname    ! explanatory except
+ string  actname    ! for choice:
+ integer*1 choice    !   0 - set process
+       !   1 - set system
+end function      !   2 - get process
+       !   3 - get system
+
+! NOTE:  Only the setting of a system level of logical name requires
+! user/group zero level of authorization.  Any application may query any
+! logical name.  Setting of a system logical name is only applicable until
+! the system is IPL'd.  A process logical name is only active when that
+! process is active.
+
+!******************** STRING PARSING FUNCTIONS *****************************
+
+function inserts(whole,part,offset) external  ! routine to insert a
+       ! string (part) into
+ integer*2 INSERTS    ! another string (whole)
+ string  whole    ! starting at specified
+ string  part    ! character (offset)
+ integer*2 offset
+
+end function
+
+function cinsert4(integer4,bstring,offset) external   ! routine to insert
+       ! a 4-byte integer into
+ integer*1 cinsert4   ! a string starting at
+ integer*4 integer4   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function cinsert2(integer2,bstring,offset) external  ! routine to insert
+       ! a 2-byte integer into
+ integer*1 cinsert2   ! a string starting at
+ integer*2 integer2   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function cinsert1(bstring,integer1,offset) external  ! routine to insert
+       ! a 1-byte integer into
+ integer*1 cinsert1   ! a string starting at
+ integer*1 integer1   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function extracts(whole,part,offset) external  ! routine to extract a
+       ! string (part) from
+ integer*2 EXTRACTS   ! another string (whole)
+ string  whole    ! starting at specified
+ string  part    ! character (offset)
+ integer*2 offset
+
+end function
+
+function cextract4(bstring,offset) external  ! routine to extract
+       ! a 4-byte integer from
+ integer*4 cextract4   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 4 byte integer
+end function      !    -1 - String overrun
+
+function cextract2(bstring,offset) external  ! routine to extract
+       ! a 2-byte integer from
+ integer*2 cextract2   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 2 byte integer
+end function      !    -1 - String overrun
+
+function cextract1(bstring,offset) external  ! routine to extract
+       ! a 1-byte integer from
+ integer*1 cextract1   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 1 byte integer
+end function      !    -1 - String overrun
+
+
+function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+       ! file names and sizes
+       ! Return values:
+       !    -1  no matches
+       !        found on first
+       !        call
+       !    0   no matches
+       !        found on sub-
+       !        sequent calls
+       !    Pos Success
+       !    Neg OS Rtn Code
+! Usage Note:  If searching for all occurences of a particular file name,
+! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+! to srchdir.  If any matches are found, a positive value will be returned.
+! To see if any more matches exist, just issue another call to srchdir without
+! resetting the values of dtbl.buffer$.  If any are found, a positive value
+! will be returned.  This can be repeated until a Zero is returned.  All data
+! describing file will be returned in the dtbl.buffer$ after each call.  Format
+! of this data is defined below.
+
+ integer*4 srchdir
+
+ string  file.name$   ! file name to start
+       ! search (18 bytes max)
+       ! Wild cards and logical
+       ! names supported.
+
+ string  dtbl.buffer$   ! must be initialized
+       ! to 48 bytes.  Contains
+       ! all of directory info
+       ! Initialize to nulls
+       ! each time a new file
+       ! name is used.
+
+! NOTE:  Format of dtbl.buffer$ string is as follows:
+!
+! Offs  Type                    Description Notes
+!  0 integer*4  key  use extract4 to access
+!  4  string (18 bytes) file name
+! 22 integer*2  attributes use extract2 to access
+!      0x01 - Read Only
+!      0x02 - Hidden
+!      0x04 - System
+!      0x08 - Volume Label
+!      0x10 - Subdirectory
+!      0x20 - Archive (Files)
+!      0x40 - Security enabled
+!      0x80 - Reserved
+!      0x0000 - Local
+!      0x4000 - Mirrored/Update
+!      0xC000 - Mirrored/Close
+!
+!      0x6000 - Compound/Update
+!      0xE000 - Compound/Close
+! 24 integer*2  record size use extract2 to access
+! 26 integer*1  User ID of Owner
+! 27 integer*1  Group ID of Owner
+! 28 integer*2  File Security
+! 30 string (6 bytes) Reserved
+! 36 integer*4  File Size use extract4 to access
+! 40 integer*2  Year  use extract2 to access
+! 42 integer*1  Month
+! 43 integer*1  Day
+! 44 integer*1  Hour
+! 45 integer*1  Minute
+! 46 integer*1  Second
+! 47 integer*1  Reserved
+
+end function
+
+function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+       ! process names and
+       ! status.  Handy to
+       ! determine if a
+       ! program is currently
+       ! running.
+       ! Return values:
+       !    -1  no matches
+       !        found on first
+       !        call
+       !    0   no matches
+       !        found on sub-
+       !        sequent calls
+       !    Pos Success
+       !    Neg Failure
+       !        OS Rtn Code
+       ! 80000001h - Insuff
+        !        ptbl buffer
+       !        Length
+! Usage Note:  If searching for all occurences of a particular process name,
+! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+! to srchproc.  If any matches are found, a positive value will be returned.
+! To see if any more matches exist, just issue another call to srchproc without
+! resetting the values of ptbl.buffer$.  If any are found, a positive value
+! will be returned.  This can be repeated until a Zero is returned.  All data
+! describing file will be returned in the ptbl.buffer$ after each call.  Format
+! of this data is defined as follows:
+!
+!       --------------------------------------------------------
+!   0   |                         PID                          |
+!       --------------------------------------------------------
+!   4   |           FID             |   CID        |   VCID    |
+!       --------------------------------------------------------
+!   8   |                         NAME                         |
+!       --------------------------------------------------------
+!  12   |                         NAME cont'd                  |
+!       --------------------------------------------------------
+!  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+!       --------------------------------------------------------
+!  20   |                         MAXMEM                       |
+!       --------------------------------------------------------
+!  24   |       FLAGS               |   USER        |  GROUP   |
+!       --------------------------------------------------------
+!  28   |                         PARENT                       |
+!       --------------------------------------------------------
+!  32   |                         EVENTS                       |
+!       --------------------------------------------------------
+!  36   |                         CODE                         |
+!       --------------------------------------------------------
+!  40   |                         CSIZE                        |
+!       --------------------------------------------------------
+!  44   |                         DATA                         |
+!       --------------------------------------------------------
+!  48   |                         DSIZE                        |
+!       --------------------------------------------------------
+!  52   |                         HEAP                         |
+!       --------------------------------------------------------
+!  56   |                         HSIZE                        |
+!       --------------------------------------------------------
+!
+!       PID   Process ID
+!       FID  Process's Family ID
+!       CID   Physical Console Device Number
+!       VCID  Process's Virtual Console Number
+!       NAME  Process Name (Application Running)
+! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+! PRIOR    Priority
+!       MAXMEM  Maximum Memory Allowed
+!       FLAGS  Bit 0 (1-System Process, 0-User Process)
+!   Bit 1 (1-Locked in Memory, 0-Swappable)
+!   Bit 2 (1-Running in SWI context, 0-Running in main context)
+!   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+! USER  User Number
+! GROUP  Group Number
+!       PARENT   Parent Process ID
+!       EVENTS   Bit Map of events that have completed but not retrieved
+!       CODE  Start of code area in user space
+! CSIZE  Size in bytes of code area
+!       DATA  Start of data area in user space
+! DSIZE  Size in bytes of data area
+!       HEAP  Start of heap area in user space
+! HSIZE  Size in bytes of heap area
+!
+ integer*4 srchproc
+
+ string  proc.name$   ! process name to start
+       ! search (10 bytes max)
+       ! Wild cards and logical
+       ! names supported.
+
+ string  ptbl.buffer$   ! must be initialized
+       ! to 60 bytes.  Contains
+       ! all of process info
+       ! Initialize to nulls
+       ! each time a new
+       ! process name is used.
+
+end function
+
+function cconstat(timeout) external       ! function similar
+                                              ! to BASIC constat%
+ integer*2 cconstat   ! waits for either a
+ integer*4 timeout    ! key being hit or
+       ! the timer expiring
+       ! before returning
+       ! returns:
+       !   -1 error
+       !    0 timer expired
+       !    x scan code of
+       !      key hit
+end function
+
+function disksize(disk.name$) external   ! function to find
+       ! the total size of
+ integer*4 disksize   ! the specified disk
+ string  disk.name$   ! name (e.g. "h0:")
+       ! if return value is
+       ! negative, error
+end function      ! was received
+
+
+%INCLUDE BOOTSEXT.J86
+\******************************************************************************
+\******************************************************************************
+SUB LOG.ERROR(F.1$) EXTERNAL
+    STRING  F.1$
+END SUB
+
+\******************************************************************************
+\******************************************************************************
+FUNCTION FORCE.CASE$(DATA$,TYPE%) EXTERNAL
+    STRING      FORCE.CASE$
+    STRING      DATA$
+    INTEGER*2   TYPE%
+    STRING      IN$, OUT$
+    STRING      LWR$, UPR$
+END FUNCTION
+
+\******************************************************************************
+\******************************************************************************
+FUNCTION REMOVE.CHARACTER$(DATA$,F.CHR$) EXTERNAL
+    STRING      DATA$
+    STRING      F.CHR$
+    STRING      REMOVE.CHARACTER$
+    INTEGER*2   START%
+    INTEGER*2   END%
+    INTEGER*2   POS%
+    INTEGER*2   F.LEN%
+END FUNCTION
+
+\******************************************************************************
+\******************************************************************************
+FUNCTION REMOVE.SPACES$(DATA$) EXTERNAL
+    STRING      DATA$
+    STRING      REMOVE.SPACES$
+    INTEGER*2   START%
+    INTEGER*2   END%
+    INTEGER*2   POS%
+END FUNCTION
+
+\*******************************************************************************
+\***
+\***    FUNCTION     :    TIME.STAMP$
+\***    
+\***    Returns a string with formatted date and/or time detail
+\***                 Passed values are 1 = Date, 2 = Time
+\*******************************************************************************
+FUNCTION TIME.STAMP$(F.TYPE%) EXTERNAL
+    STRING      TIME.STAMP$
+    INTEGER*2   F.TYPE%
+    STRING      F.DT$
+    STRING      F.RET$
+END FUNCTION
+\*******************************************************************************
+
+
+\*******************************************************************************
+\*******************************************************************************
+FUNCTION PRINT.MSG$(MSG$,F%,L%) EXTERNAL
+STRING      PRINT.MSG$
+STRING      MSG$
+INTEGER*2   F%
+INTEGER*2   L%
+STRING      IN$
+STRING      F.FORM$
+END FUNCTION
+\*******************************************************************************
+
+\*******************************************************************************
+\***
+\***    SUBROUTINE     :    BACKGROUND.MSG(B.MSG$)
+\***    
+\***    Displays passed message to the background message.
+\*******************************************************************************
+SUB BACKGROUND.MSG(B.MSG$) EXTERNAL
+    STRING      B.MSG$
+    INTEGER*4   B.RET%
+END SUB
+\*******************************************************************************
+
+!*****************************************************************************!
+!***                                                                          !
+!*** SUBROUTINE :   NO.OPEN.FILE                                              !
+!***                    F.REPORT%       - Passed report number for logging    !
+!***                    F.OPEN.FLAG$    - Returned flag for not-opened        !
+!***                                                                          !
+!*** This subroutine logs an application 106 error with the passed report     !
+!*** number. It also sets a return variable to "N" to flag that the file is   !
+!*** not Open because of the failure.                                         !
+!***                                                                          !
+!*****************************************************************************!
+SUB NO.OPEN.FILE(F.REPORT%,F.OPEN.FLAG$) EXTERNAL                                      
+    INTEGER*2   F.REPORT%                                                         
+    STRING      F.OPEN.FLAG$                                                      
+    STRING      F.1$, F.2$
+    INTEGER*2   F.EVENT%
+END SUB                                                                       
+!*****************************************************************************!
+
+
+FUNCTION NUMBER.OF.DAYS%(START$,END$) EXTERNAL
+INTEGER*2   NUMBER.OF.DAYS%
+STRING      START$
+STRING      END$
+INTEGER*2   F.DAYS%
+INTEGER*4   S.DAYS%
+INTEGER*4   E.DAYS%
+END FUNCTION
+
+FUNCTION HEX.FORMAT$(F.DATA$) EXTERNAL
+STRING  HEX.FORMAT$
+STRING  F.DATA$
+STRING      F.RET$
+INTEGER*2   F.LEN%
+STRING      F.TMP$(2)
+STRING      F.FORM$
+STRING      F.ASCII$
+STRING      F.ASC$
+STRING      F.HEX$
+STRING      F.WORK$, F.W2$
+INTEGER*2   F.LOOP%, F.L2%
+END FUNCTION
+
+FUNCTION FORMAT.NUMBER$(F.NUM$,F.DEC%) EXTERNAL
+STRING      FORMAT.NUMBER$
+STRING      F.NUM$
+INTEGER*2   F.DEC%
+INTEGER*4   F.NUM%
+END FUNCTION
+
+\*******************************************************************************
+FUNCTION FORMAT.BOOTS.CODE$(F.CODE$) EXTERNAL
+STRING  FORMAT.BOOTS.CODE$
+STRING  F.CODE$
+END FUNCTION
+
+FUNCTION FORMAT.STRING$(F.STRING$,F.L%,F.P$,F.J%) EXTERNAL
+STRING    FORMAT.STRING$
+STRING    F.STRING$
+INTEGER*2 F.L%
+STRING    F.P$
+INTEGER*2 F.J%
+END FUNCTION
+
+SUB GET.BLOCK.SIZE(F.BLOCK.SIZE%,F.FILENAME$,F.SIZE%) EXTERNAL
+INTEGER*4   F.BLOCK.SIZE%
+STRING      F.FILENAME$
+INTEGER*4   F.SIZE%
+INTEGER*4   F.BLOCK%
+INTEGER*2   F.SECTOR%
+INTEGER*2   F.LOOP%
+STRING      F.BLOCK.LENGTH$
+END SUB
+%INCLUDE BTCMEM.J86  
+!********************************************************************
+!***
+!***    INCLUDED CODE:  BTCMEM.J86
+!***    AUTHOR:         Stuart William McConnachie
+!***    DATE:           26th February 2006
+!***
+!********************************************************************
+!***
+!***    Controller CBASIC Memory Functions
+!***
+!********************************************************************
+
+!Get a single byte integer from a string offset
+FUNCTION GETN1 (S$, P%) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    INTEGER*2 GETN1
+END FUNCTION
+
+!Get a two byte integer from a string offset
+FUNCTION GETN2 (S$, P%) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    INTEGER*2 GETN2
+END FUNCTION
+
+!Get a four byte integer from a string offset
+FUNCTION GETN4 (S$, P%) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    INTEGER*4 GETN4
+END FUNCTION
+
+!Get a 10 byte CBASIC real from a string offset
+FUNCTION GETR10 (S$, P%) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    REAL GETR10
+END FUNCTION
+
+!Put a single byte integer into a string at offset
+FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    INTEGER*1 N%
+    INTEGER*1 PUTN1
+END FUNCTION
+
+!Put a two byte integer into a string at offset
+FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    INTEGER*2 N%
+    INTEGER*1 PUTN2
+END FUNCTION
+
+!Put a four byte integer into a string at offset
+FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    INTEGER*4 N%
+    INTEGER*1 PUTN4
+END FUNCTION
+
+!Put a 10 byte CBASIC real into a string at offset
+FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+    STRING S$
+    INTEGER*2 P%
+    REAL R
+    INTEGER*1 PUTR10
+END FUNCTION
+
+!Peek a two byte integer from a memory address
+FUNCTION PEEKN2 (A%) EXTERNAL
+    INTEGER*4 A%
+    INTEGER*2 PEEKN2
+END FUNCTION
+
+!Peek a four byte integer from a memory address
+FUNCTION PEEKN4 (A%) EXTERNAL
+    INTEGER*4 A%
+    INTEGER*4 PEEKN4
+END FUNCTION
+
+!Peek a 10 byte CBASIC real from a memory address
+FUNCTION PEEKR10 (A%) EXTERNAL
+    INTEGER*4 A%
+    REAL PEEKR10
+END FUNCTION
+
+!Poke a two byte integer to a memory address
+FUNCTION POKEN2 (A%, N%) EXTERNAL
+    INTEGER*4 A%
+    INTEGER*2 N%
+    INTEGER*1 POKEN2
+END FUNCTION
+
+!Poke a four byte integer to a memory address
+FUNCTION POKEN4 (A%, N%) EXTERNAL
+    INTEGER*4 A%
+    INTEGER*4 N%
+    INTEGER*1 POKEN4
+END FUNCTION
+
+!Poke a 10 byte CBASIC real to a memory address
+FUNCTION POKER10 (A%, R) EXTERNAL
+    INTEGER*4 A%
+    REAL R
+    INTEGER*1 POKER10
+END FUNCTION
+
+%INCLUDE KFASMEXT.J86
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***   EXTERNAL FUNCTION DEFINITIONS FOR KEYED FILE ASSEMBLER FUNCTIONS
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    Version A.              Mark Walker                      5th Feb 1998
+\***    Initial version.
+\***
+\***    Version B.              Mark Walker                     30th Jan 2014
+\***    Added new WRITEKF routine.
+\***
+\***    Version C.              Mark Walker                     21st May 2014
+\***    Extended READKF interface to include a mode flag.
+\***
+\***    Version D.              Mark Walker                      9th Jan 2017
+\***    Added new RECLKF routine.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+\*******************************************************************************
+\***
+\***    FUNCTION        :       INITKF
+\***
+\******************************************************************************* 
+\***
+\***    Assembler function that initialises a keyed file for processing
+\***
+\******************************************************************************* 
+
+    FUNCTION INITKF(FILE.NAME$,OPTIONS%) EXTERNAL
+    INTEGER*2       OPTIONS%
+    INTEGER*4       INITKF
+    STRING          FILE.NAME$
+    END FUNCTION      
+
+\*******************************************************************************
+\***
+\***    FUNCTION        :       TERMKF
+\***
+\******************************************************************************* 
+\***
+\***    Assembler function that closes a file
+\***
+\******************************************************************************* 
+
+    FUNCTION TERMKF(FID%) EXTERNAL
+    INTEGER*4       TERMKF
+    INTEGER*4       FID%
+    END FUNCTION      
+
+\*******************************************************************************
+\***
+\***    FUNCTION        :       READKF
+\***
+\******************************************************************************* 
+\***
+\***    Assembler function that reads records from a keyed file that contain
+\***    a pattern string at a specified offset within the record
+\***
+\******************************************************************************* 
+
+    FUNCTION READKF(RECORD$,PATTERN$,OFFSET%,MODE%) EXTERNAL            !CMW
+    INTEGER*2       MODE%                                               !CMW
+    INTEGER*4       OFFSET%
+    INTEGER*4       READKF
+    STRING          RECORD$
+    STRING          PATTERN$
+    END FUNCTION       
+
+\***********************************************************************!BMW
+\***                                                                    !BMW
+\***    FUNCTION        :       WRITEKF                                 !BMW
+\***                                                                    !BMW
+\***********************************************************************!BMW
+\***                                                                    !BMW
+\***    Assembler function that updates records in a keyed file.        !BMW
+\***                                                                    !BMW
+\***********************************************************************!BMW
+                                                                        !BMW
+    FUNCTION WRITEKF(RECORD$) EXTERNAL                                  !BMW
+    INTEGER*4       WRITEKF                                             !BMW
+    STRING          RECORD$                                             !BMW
+    END FUNCTION                                                        !BMW
+
+\***********************************************************************!DMW
+\***                                                                    !DMW
+\***   FUNCTION        :       RECLKF                                   !DMW
+\***                                                                    !DMW
+\***********************************************************************!DMW
+\***                                                                    !DMW
+\***   Assembler function that returns record length of a keyed file.   !DMW
+\***                                                                    !DMW
+\***********************************************************************!DMW
+                                                                        !DMW
+    FUNCTION RECLKF(FILE.NAME$) EXTERNAL                                !DMW
+    INTEGER*2 RECLKF                                                    !DMW
+    STRING FILE.NAME$                                                   !DMW
+    END FUNCTION                                                        !DMW
+
+%INCLUDE POGDEEXT.J86
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE POGDE FILE
+\***      REFERENCE : POGDEEXT.J86
+\***      Version A           Neil Bennett            8th June 2006
+\***
+\********************************************************************
+
+       FUNCTION POGDE.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.POGDE EXTERNAL
+          INTEGER*2 READ.POGDE
+       END FUNCTION
+%INCLUDE POGOKEXT.J86
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE POGOK FILE
+\***      REFERENCE : POGOKEXT.J86
+\***      Version A           Neil Bennett            6th June 2006
+\***
+\********************************************************************
+
+       FUNCTION POGOK.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.POGOK EXTERNAL
+          INTEGER*2 READ.POGOK
+       END FUNCTION
+
+       FUNCTION READ.POGOK.LOCK EXTERNAL
+          INTEGER*2 READ.POGOK.LOCK
+       END FUNCTION
+
+       FUNCTION WRITE.POGOK EXTERNAL
+          INTEGER*2 WRITE.POGOK
+       END FUNCTION
+
+       FUNCTION WRITE.POGOK.UNLOCK EXTERNAL
+          INTEGER*2 WRITE.POGOK.UNLOCK
+       END FUNCTION
+
+       FUNCTION CREATE.POGOK EXTERNAL
+          INTEGER*2 CREATE.POGOK
+       END FUNCTION
+%INCLUDE PSBF01E.J86 
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+\***
+\***                      FUNCTION NUMBER   : PSBF01
+\***
+\***                    INCLUDE REFERENCE : PSBF01E.J86
+\*** 
+\***      Version B           Andrew Wedgeworth          1st July 1992
+\***      Three parameters which passed to the function have been removed.
+\***      APPLICATION.LOG has been added as a variable name (this holds the
+\***      return code).
+\***
+\*******************************************************************************
+
+
+   FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+                             VAR.STRING.1$,                                   \
+                             VAR.STRING.2$,                                   \
+                             EVENT.NO%)  EXTERNAL
+
+      INTEGER*1 EVENT.NO%
+
+      INTEGER*2 APPLICATION.LOG,                                       \ GAW
+                MESSAGE.NO%
+
+      STRING VAR.STRING.1$,                                            \
+             VAR.STRING.2$
+
+   END FUNCTION
+
+\*******************************************************************************
+%INCLUDE PSBF20E.J86 
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+\***
+\***                  REFERENCE     : PSBF20E.J86
+\***
+\***     VERSION C            Janet Smith                13th May 1992
+\***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+\***     128 files.
+\***
+\***     VERSION D.           Andrew Wedgeworth          1st July 1992
+\***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+\***     as a variable.  This new variable contains the function's return
+\***     code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+                              PASSED.INTEGER%,                         \
+                              PASSED.STRING$)                          \
+   EXTERNAL
+
+   STRING    FUNCTION.FLAG$,                                           \
+             PASSED.STRING$
+   ! 3 variables removed from here                                     ! CAW
+
+
+   INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+             PASSED.INTEGER%				               ! CJAS
+
+   END FUNCTION
+
+%INCLUDE PSBF24E.J86 
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+\***
+\***                      REFERENCE     : PSBF24E.J86
+\***
+\***    Version A                 Janet Smith                  13th May 1992
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+				    ERRFILE%,              \
+				    ERRL%,                 \
+				    ERR$)        EXTERNAL
+				    
+          STRING    ERR$
+
+          INTEGER*2 ERRFILE%,              \
+	            ERRL%,                 \
+		    STANDARD.ERROR.DETECTED
+		    
+          INTEGER*4 ERRN%
+	  		    
+   END FUNCTION
+
+
+%INCLUDE SRPEXT.J86  
+\********************************************************************
+\***      Space and Range Planner Common Functions  (SRPFUN)
+\***      Version A           Neil Bennett          24.08.2006
+\***
+\....................................................................
+\***
+\***    GET.CATID Construct a 4 byte integer Category ID from 3
+\***              hierarchical (I4) keys supplied.
+\***
+\********************************************************************
+
+   FUNCTION GET.CATID%(lev1%,lev2%,lev3%) EXTERNAL
+
+    INTEGER*4 GET.CATID%
+    INTEGER*4 lev1%, lev2%, lev3%
+
+   END FUNCTION
+
+\********************************************************************
+%INCLUDE SRPDFEXT.J86
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRPDF FILE
+\***      REFERENCE : SRPDFEXT.J86
+\***      Version A           Neil Bennett          7th August 2006
+\***
+\********************************************************************
+
+       FUNCTION SRPDF.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.SRPDF EXTERNAL
+          INTEGER*2 READ.SRPDF
+       END FUNCTION
+
+       FUNCTION WRITE.SRPDF EXTERNAL
+          INTEGER*2 WRITE.SRPDF
+       END FUNCTION
+
+       FUNCTION DELREC.SRPDF EXTERNAL
+          INTEGER*2 DELREC.SRPDF
+       END FUNCTION
+%INCLUDE SRPOGEXT.J86
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRPOG FILE
+\***      REFERENCE : SRPOGEXT.J86
+\***      Version A           Neil Bennett            5th June 2006
+\***
+\********************************************************************
+
+       FUNCTION SRPOG.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.SRPOG EXTERNAL
+          INTEGER*2 READ.SRPOG
+       END FUNCTION
+
+       FUNCTION WRITE.SRPOG EXTERNAL
+          INTEGER*2 WRITE.SRPOG
+       END FUNCTION
+
+       FUNCTION DELREC.SRPOG EXTERNAL
+          INTEGER*2 DELREC.SRPOG
+       END FUNCTION
+%INCLUDE SRMODEXT.J86
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRMOD FILE
+\***      REFERENCE : SRMODEXT.J86
+\***      Version A           Neil Bennett            5th June 2006
+\***
+\********************************************************************
+
+       FUNCTION SRMOD.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.SRMOD EXTERNAL
+          INTEGER*2 READ.SRMOD
+       END FUNCTION
+
+       FUNCTION WRITE.SRMOD EXTERNAL
+          INTEGER*2 WRITE.SRMOD
+       END FUNCTION
+
+       FUNCTION DELREC.SRMOD EXTERNAL
+          INTEGER*2 DELREC.SRMOD
+       END FUNCTION
+
+       SUB SRMOD.SPLIT.SHELF.ITEM EXTERNAL
+       END SUB
+%INCLUDE SRSXFEXT.J86
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRSXF FILE
+\***      REFERENCE : SRSXFEXT.J86
+\***      Version A           Neil Bennett          7th August 2006
+\***
+\********************************************************************
+
+       FUNCTION SRSXF.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.SRSXF EXTERNAL
+          INTEGER*2 READ.SRSXF
+       END FUNCTION
+
+       FUNCTION WRITE.SRSXF EXTERNAL
+          INTEGER*2 WRITE.SRSXF
+       END FUNCTION
+
+       FUNCTION DELREC.SRSXF EXTERNAL
+          INTEGER*2 DELREC.SRSXF
+       END FUNCTION
+%INCLUDE SRMAPEXT.J86                                                   !ARG
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRMAP FILE
+\***      REFERENCE : SRMAPEXT.J86
+\***      Version A           Neil Bennett           14th June 2006
+\***
+\********************************************************************
+
+       FUNCTION SRMAP.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.SRMAP EXTERNAL
+          INTEGER*2 READ.SRMAP
+       END FUNCTION
+
+       FUNCTION WRITE.SRMAP EXTERNAL
+          INTEGER*2 WRITE.SRMAP
+       END FUNCTION
+
+\***********************************************************************
+\*
+\*    INITIALISATION : This Sub-routine does all the initial processing
+\*                     before starting the main process
+\*
+\***********************************************************************
+
+FUNCTION FLEXOSSVC(COMMAND%, PARAM$) EXTERNAL                           
+                                                                        
+      STRING PARAM$                                                     
+      INTEGER*2 COMMAND%, FLEXOSSVC                                     
+                                                                        
+END FUNCTION                                                            
+
+\**********************************************************************
+\***
+\***    ADXSERVE
+\***    IBM routine to request Application Services.
+\***
+\**********************************************************************
+
+SUB ADXSERVE (RET, FUNC, PARM1, PARM2$) EXTERNAL
+
+    INTEGER*4  RET
+    INTEGER*2  FUNC,PARM1
+    STRING     PARM2$
+
+END SUB
+
+\**********************************************************************
+\***
+\***    ADXCOPYF
+\***    IBM routine to request Application Services.
+\***
+\**********************************************************************
+
+SUB ADXCOPYF (RETC,INFILE,OUTFILE,OPT0,OPT1) EXTERNAL
+
+    INTEGER*4 RETC
+    STRING    INFILE,OUTFILE
+    INTEGER*2 OPT0,OPT1
+
+END SUB 
+
+\***********************************************************************
+\*                                                                     *
+\*          S T A R T   O F   M A I N L I N E   C O D E                *
+\*                                                                     *
+\***********************************************************************
+\***********************************************************************
+
+ON ERROR GOTO ERROR.DETECTED
+
+    PRINT  TIME.STAMP$(2)  + "-Program started"         
+
+    GOSUB INITIALISATION
+
+    PRINT #PHKEEP.SESS.NUM% ; TIME.STAMP$(2)  + "-Program started" 
+    GOSUB MAIN.PROCESSING
+    GOSUB TERMINATION
+ 
+STOP.PROGRAM:
+    STOP
+
+\***********************************************************************
+\*
+\*    INITIALISATION : This Sub-routine does all the initial processing
+\*                     before starting the main process
+\*
+\***********************************************************************
+INITIALISATION:
+
+    GOSUB INITIAL.CHECKS          
+    GOSUB INITIALISE.VARIABLES    
+    GOSUB ALLOCATE.SESSION.NUMBERS
+    GOSUB OPEN.FILES              
+    GOSUB CREATE.FILES            
+
+RETURN
+
+\***********************************************************************
+\*
+\*    INITIALISE.VARIABLES :   
+\*                
+\*
+\***********************************************************************
+INITIALISE.VARIABLES:
+
+   CALL SRMAP.SET                                                       !ARG
+   CALL SRPOG.SET
+   CALL SRMOD.SET
+   CALL SRMAP.SET
+   CALL SRPDF.SET
+   CALL SRSXF.SET
+   
+   ERROR.CNT% = 0 
+  
+   ARR.COUNT% = 16000                                                  !BRG
+   
+   DIM SRMAP.ARRAY$(ARR.COUNT%)                                         !ARG
+   
+   DIM SRPOG.ARRAY$(ARR.COUNT%) 
+    
+   DIM SRMOD.ARR$(ARR.COUNT%)      
+
+   DIM SRPDF.ARRAY$(ARR.COUNT%)  
+   
+   DIM TEMP.ARR%(ARR.COUNT%)   
+     
+   FOUND% = 0
+   
+   PHKEEP.LOG.NAME$ = "ADXLXACN::C:/PHKEEP.LOG"
+   PHKEEP.SESS.NUM% = 456
+   
+   PHKEEP.OK.NAME$  = "ADXLXACN::C:/PHKEEP.ERR"
+   PHKEEP.OK.SESS%  = 457   
+   
+   SRPOG.DIR.NAME$  = "ADXLXACN::C:\SRPOG.DIR"
+   SRPOG.KEY.NAME$  = "ADXLXACN::C:\SRPOG.KEY"
+   SRMOD.DIR.NAME$  = "ADXLXACN::C:\SRMOD.DIR"
+   SRMOD.KEY.NAME$  = "ADXLXACN::C:\SRMOD.KEY"
+   SRPDF.DIR.NAME$  = "ADXLXACN::C:\SRPDF.DIR"
+   SRPDF.KEY.NAME$  = "ADXLXACN::C:\SRPDF.KEY"
+   SRSXF.DIR.NAME$  = "ADXLXACN::C:\SRSXF.DIR"
+   SRSXF.KEY.NAME$  = "ADXLXACN::C:\SRSXF.KEY"
+   
+   SPACE$ = " "   
+   
+   CREATE PHKEEP.LOG.NAME$ AS PHKEEP.SESS.NUM%   
+   
+   CREATE PHKEEP.OK.NAME$ AS PHKEEP.OK.SESS%
+    
+   SRMAP.FLAG$ = ""
+   SRPOG.FLAG$ = ""
+   SRMOD.FLAG$ = ""
+   SRSXF.FLAG$ = ""
+   SRPDF.FLAG$ = ""
+   
+RETURN 
+
+\***********************************************************************
+\*
+\*    ALLOCATE.SESSION.NUMBERS:   
+\*                
+\*
+\***********************************************************************
+ALLOCATE.SESSION.NUMBERS:
+
+    FUNCTION.FLAG$ = "O"  
+
+    PASSED.INTEGER% = SRMAP.REPORT.NUM%                                 !ARG
+    PASSED.STRING$  = SRMAP.FILE.NAME$                                  !ARG
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     !ARG
+    SRMAP.SESS.NUM% = F20.INTEGER.FILE.NO% 	                            !ARG
+    
+    PASSED.INTEGER% = SRPOG.REPORT.NUM%                                 
+    PASSED.STRING$  = SRPOG.FILE.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRPOG.SESS.NUM% = F20.INTEGER.FILE.NO%                              
+
+    PASSED.INTEGER% = SRMOD.REPORT.NUM%                                 
+    PASSED.STRING$  = SRMOD.FILE.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRMOD.SESS.NUM% = F20.INTEGER.FILE.NO%   
+
+    PASSED.INTEGER% = SRSXF.REPORT.NUM%                                 
+    PASSED.STRING$  = SRSXF.FILE.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRSXF.SESS.NUM% = F20.INTEGER.FILE.NO%                              
+
+    PASSED.INTEGER% = SRPDF.REPORT.NUM%                                 
+    PASSED.STRING$  = SRPDF.FILE.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRPDF.SESS.NUM% = F20.INTEGER.FILE.NO%                              
+
+    PASSED.INTEGER% = PHKEEP.SESS.NUM%                                  
+    PASSED.STRING$  = PHKEEP.LOG.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    PHKEEP.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = PHKEEP.OK.SESS%                                   
+    PASSED.STRING$  = PHKEEP.OK.NAME$                                   
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    PHKEEP.OK.SESS% = F20.INTEGER.FILE.NO%                              
+
+    PASSED.INTEGER% = 457                                               
+    PASSED.STRING$  = SRPOG.DIR.NAME$                                   
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRPOG.DIR.SESS% = F20.INTEGER.FILE.NO% 	
+
+    PASSED.INTEGER% = 458                                               
+    PASSED.STRING$  = SRMOD.DIR.NAME$                                   
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRMOD.DIR.SESS% = F20.INTEGER.FILE.NO%                              
+
+    PASSED.INTEGER% = 459                                               
+    PASSED.STRING$  = SRPDF.DIR.NAME$                                   
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRPDF.DIR.SESS% = F20.INTEGER.FILE.NO%                              
+
+    PASSED.INTEGER% = 460                                               
+    PASSED.STRING$  = SRSXF.DIR.NAME$                                   
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+    SRSXF.DIR.SESS% = F20.INTEGER.FILE.NO%                              
+
+RETURN
+
+\***********************************************************************
+\*
+\*    CALL.F20.SESS.NUM.UTILITY:  
+\*                
+\*
+\***********************************************************************
+CALL.F20.SESS.NUM.UTILITY: 
+        
+   FILE.OPERATION$ = FUNCTION.FLAG$
+   CURRENT.REPORT.NUM% = PASSED.INTEGER%
+   RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+                                 PASSED.STRING$)
+   IF RC% <> 0 THEN GOTO ERROR.DETECTED
+
+RETURN
+
+\***********************************************************************
+\*
+\*    CREATE.FILES:  
+\*             
+\***********************************************************************
+CREATE.FILES:
+
+   PRINT  TIME.STAMP$(2)  + "-Creating Direct And Log Files"     
+   
+   CREATE POSFILE SRMOD.DIR.NAME$ AS SRMOD.DIR.SESS% BUFFSIZE 32256 
+
+   CREATE POSFILE SRPDF.DIR.NAME$ AS SRPDF.DIR.SESS% BUFFSIZE 32256 
+
+   CREATE POSFILE SRSXF.DIR.NAME$ AS SRSXF.DIR.SESS% BUFFSIZE 32256 
+
+RETURN
+
+\***********************************************************************
+\*
+\*    OPEN.FILES:  
+\*              
+\*
+\***********************************************************************
+OPEN.FILES:
+
+   IF END #PHKEEP.SESS.NUM% THEN PHKEEP.END
+   OPEN PHKEEP.LOG.NAME$ AS PHKEEP.SESS.NUM% APPEND    
+
+RETURN
+
+PHKEEP.END:
+    
+   PRINT  TIME.STAMP$(2)  + "- No PHKEEP Log File"  
+STOP 
+ 
+\***********************************************************************
+\*
+\*    MAIN.PROCESSING
+\*
+\***********************************************************************
+MAIN.PROCESSING: 
+
+   GOSUB STOP.BACKGROUNDS
+   GOSUB BACKUP.ORIGINAL
+   GOSUB SEQUENTIAL.READ.SRPOG
+   GOSUB HOUSEKEEP.SRPOG
+
+   GOSUB SEQUENTIAL.READ.SRMOD  
+   GOSUB SEQUENTIAL.READ.SRSXF  
+   GOSUB SEQUENTIAL.READ.SRPDF 
+  
+   GOSUB COMPARE.SRMOD    
+   GOSUB COMPARE.SRPDF
+   
+   GOSUB CREATE.SRMOD.KEY 
+   GOSUB CREATE.SRSXF.KEY 
+   GOSUB CREATE.SRPDF.KEY                         
+     
+   GOSUB DELETE.EXISTING  
+   GOSUB COPY.NEW         
+   GOSUB START.BACKGROUNDS
+
+RETURN
+
+\***********************************************************************
+\*
+\*    INITIAL.CHECKS:  
+\*               
+\*
+\***********************************************************************
+INITIAL.CHECKS:
+
+   PRINT  TIME.STAMP$(2)  + "-Checking the existence of Files"    
+   
+   CALL OSSHELL ("IF EXIST C:/SRPOG.DIR DEL C:/SRPOG.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRMOD.DIR DEL C:/SRMOD.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRSXF.DIR DEL C:/SRSXF.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRPDF.DIR DEL C:/SRPDF.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRPOG.KEY DEL C:/SRPOG.KEY")
+   CALL OSSHELL ("IF EXIST C:/SRMOD.KEY DEL C:/SRMOD.KEY")
+   CALL OSSHELL ("IF EXIST C:/SRSXF.KEY DEL C:/SRSXF.KEY")
+   CALL OSSHELL ("IF EXIST C:/SRPDF.KEY DEL C:/SRPDF.KEY")
+   CALL OSSHELL ("IF EXIST C:/PHKEEP.OK DEL C:/PHKEEP.OK")
+   CALL OSSHELL ("IF EXIST C:/PHKEEP.ERR DEL C:/PHKEEP.ERR")
+   CALL OSSHELL ("IF EXIST C:/PHKEEP.LOG DEL C:/PHKEEP.LOG")
+   
+   PRINT  TIME.STAMP$(2)  + "-Checking the existence of D: drive SR files"
+   
+   CALL OSSHELL ("IF EXIST D:/SRPOG.DAT DEL D:/SRPOG.DAT")
+   CALL OSSHELL ("IF EXIST D:/SRMOD.DAT DEL D:/SRMOD.DAT")
+   CALL OSSHELL ("IF EXIST D:/SRSXF.DAT DEL D:/SRSXF.DAT")
+   CALL OSSHELL ("IF EXIST D:/SRPDF.DAT DEL D:/SRPDF.DAT")
+   
+  RETURN       
+
+\***********************************************************************
+\*
+\*   SEQUENTIAL.READ.SRPOG 
+\*               
+\*
+\***********************************************************************
+SEQUENTIAL.READ.SRPOG:
+
+   PRINT  TIME.STAMP$(2)  + "-Sequential Reading SRPOG"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Sequential Reading SRPOG"
+   
+   FILE.OPERATION$ = "O"      
+   OPEN SRMAP.FILE.NAME$ KEYED RECL SRMAP.RECL% AS SRMAP.SESS.NUM%      !ARG   
+   
+   EOF%   = 0
+   I%     = 0
+   J%     = 1
+   SRPOG% = 0
+   P%     = 0
+   SRPOG.FLAG$ = "S" 
+   SRPOG.COUNT% = 0 
+   
+   ! RPS indicates record per sector, as it is block read, will filtering
+   ! the number of records per each sector. same is obtained using the 
+   ! record size against total block size.
+  
+    FILE.NAME$ = "SRPOG"
+    FILE.RECL% = 101
+    OPTIONS%   = 201AH
+    PATTERN$   = ""
+    OFFSET%    = 0
+    MODE%      = 0
+ 
+    FID% = INITKF(FILE.NAME$,OPTIONS%)
+
+    ! Check for errors opening file
+    IF FID% <= 0 THEN BEGIN
+        PRINT #PHKEEP.SESS.NUM% ; "SRPOG OPENING ERROR"
+        STOP
+    ENDIF
+
+    END.OF.FILE% = 0
+
+    ! Continue until end of file reached
+    WHILE NOT END.OF.FILE%
+
+        SRPOG.STRING$= STRING$(FILE.RECL%,CHR$(0))
+
+        READKF.RC% = READKF(SRPOG.STRING$,PATTERN$,OFFSET%,MODE%)
+
+        IF READKF.RC% = 0 THEN BEGIN
+            IF GETN4(SRPOG.STRING$,0) <> 0 THEN BEGIN
+                 SRPOG% = SRPOG% + 1
+                 SRPOG.POGDB% = GETN4(SRPOG.STRING$,0)
+                 SRMAP.POGDB% = SRPOG.POGDB%                            !ARG
+                 SRMAP.CHAIN.SEQ% = 0                                   !ARG
+
+             ! Check if there is a proper match in SRMAP file as its    !ARG
+             ! been proved that, everday SRMAP file is read to create   !ARG
+             ! SRITEMP/SRITEML files so if any POGDB is missing from    !ARG
+             ! SRMAP, the planer wont be visible from next day after    !ARG
+             ! POGOK run. So any POGDB not present in SRMAP ignore it   !ARG
+             ! while writing to SRPOG.DIR file.0
+
+                 RC% = READ.SRMAP                                       !ARG
+
+                 IF RC% = 0 THEN BEGIN                                  !ARG
+
+                     SRPOG.COUNT% = SRPOG.COUNT% + 1                    !ARG
+                     SRPOG.ARRAY$(SRPOG.COUNT%) = SRPOG.STRING$         !ARG
+                 ENDIF ELSE BEGIN 
+                      P% = P% + 1
+                      TEMP.ARR%(P%) = SRPOG.POGDB%
+                 ENDIF  
+
+            ENDIF 
+
+        ENDIF ELSE BEGIN 
+
+            IF READKF.RC% = -1 THEN BEGIN
+                END.OF.FILE% = -1
+            ENDIF ELSE BEGIN
+            ! Check whether an error has been returned
+                IF READKF.RC% < -1 THEN BEGIN
+                    PRINT #PHKEEP.SESS.NUM% ; "SRPOG READ ERROR " 
+                    STOP
+                ENDIF
+            ENDIF                                
+
+        ENDIF
+
+    WEND
+
+    TERMKF.RC% = TERMKF(FID%)
+    IF TERMKF.RC% < 0 THEN BEGIN
+        PRINT #PHKEEP.SESS.NUM% ; "SRPOG File close failed"
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\*   HOUSEKEEP.SRPOG
+\*               
+\*
+\***********************************************************************
+HOUSEKEEP.SRPOG:
+
+   PRINT  TIME.STAMP$(2)  + "-Housekeeping SRPOG by checking the existence of planner in SRMAP"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Housekeeping SRPOG by checking against SRMAP"
+   
+   FILE.OPERATION$ = "O"  
+   OPEN SRPOG.FILE.NAME$ KEYED RECL SRPOG.RECL% AS SRPOG.SESS.NUM%
+  
+   I% = 1 
+    
+   FOR I% = 1 TO P%
+  
+   
+    SRPOG.POGDB% = TEMP.ARR%(I%)
+    RC% = READ.SRPOG
+    IF RC% = 0 THEN BEGIN
+        RC% = DELREC.SRPOG
+    ENDIF
+
+   NEXT I%
+ 
+ RETURN
+
+\***********************************************************************
+\*
+\*    SEQUENTIAL.READ.SRMOD
+\*                
+\*
+\***********************************************************************
+SEQUENTIAL.READ.SRMOD:                                                  
+
+   PRINT  TIME.STAMP$(2)  + "-Sequential Reading SRMOD"               
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  +                         \
+   "-Sequential Reading SRMOD"             
+      
+   I%          = 0
+   J%          = 1
+   RPS%        = 1                        
+   EOF%        = 0 
+   SRMOD%      = 0
+   SRMOD.FLAG$ = "S"
+   
+   FILE.NAME$ = "SRMOD"
+   FILE.RECL% = 508
+   OPTIONS%   = 201AH
+   PATTERN$   = ""
+   OFFSET%    = 0
+   MODE%      = 0
+ 
+    FID% = INITKF(FILE.NAME$,OPTIONS%)
+
+    ! Check for errors opening file
+    IF FID% <= 0 THEN BEGIN
+        PRINT #PHKEEP.SESS.NUM% ; "SRMOD OPENING ERROR"
+        STOP
+    ENDIF
+
+   END.OF.FILE% = 0
+   WHILE NOT END.OF.FILE%
+   
+      SRMOD.STRING$ = STRING$(FILE.RECL%,CHR$(0))
+      READKF.RC% = READKF(SRMOD.STRING$,PATTERN$,OFFSET%,MODE%)
+
+      IF READKF.RC% = 0 THEN BEGIN                  
+                                     
+         IF GETN4(SRMOD.STRING$,0) <> 0 THEN BEGIN                      
+            SRMOD% = SRMOD% + 1                                         
+            SRMOD.ARR$(SRMOD%) = SRMOD.STRING$                     
+
+         ENDIF
+
+      ENDIF ELSE BEGIN
+            IF READKF.RC% = -1 THEN BEGIN
+                END.OF.FILE% = -1
+            ENDIF ELSE BEGIN
+            ! Check whether an error has been returned
+                IF READKF.RC% < -1 THEN BEGIN
+                    PRINT #PHKEEP.SESS.NUM% ; "SRMOD READ ERROR " 
+                    STOP
+                ENDIF
+            ENDIF                                
+
+      ENDIF
+
+   WEND
+   
+    TERMKF.RC% = TERMKF(FID%)
+    IF TERMKF.RC% < 0 THEN BEGIN
+        PRINT #PHKEEP.SESS.NUM% ; "SRMOD File close failed"
+    ENDIF
+
+RETURN
+
+\***********************************************************************
+\*
+\*    SEQUENTIAL.READ.SRSXF 
+\*                
+\*
+\***********************************************************************
+SEQUENTIAL.READ.SRSXF:   
+
+   PRINT  TIME.STAMP$(2)  +                                             \
+   "-Sequential Reading SRSXF and filtering with SRPOG"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2) +                           \
+               "-Sequential Reading SRSXF and filtering with SRPOG"      
+   
+   SRSXF%      = 0   
+   SRSXF.FLAG$ = "S"
+   
+   FILE.NAME$ = "SRSXF"
+   FILE.RECL% = 63
+   OPTIONS%   = 201AH
+   PATTERN$   = ""
+   OFFSET%    = 0
+   MODE%      = 0
+   END.OF.FILE% = 0
+   
+    FID% = INITKF(FILE.NAME$,OPTIONS%)
+
+    ! Check for errors opening file
+    IF FID% <= 0 THEN BEGIN
+        PRINT #PHKEEP.SESS.NUM% ; "SRSXF OPENING ERROR"
+        STOP
+    ENDIF
+   
+    WHILE NOT END.OF.FILE%    
+       
+      SRSXF.STRING$ = STRING$(FILE.RECL%,CHR$(0))
+      READKF.RC% = READKF(SRSXF.STRING$,PATTERN$,OFFSET%,MODE%)
+          
+        IF READKF.RC% = 0 THEN BEGIN
+         
+            IF GETN4(SRSXF.STRING$,0) <> 0 THEN BEGIN                       
+
+                 SRSXF% = SRSXF% + 1
+
+         ! AS SRSXF file will generally have anything between 10000 to 
+         ! 90000 records based on the number of planners. It is 
+         ! impossible to do an array sort so filtering the records
+         ! and writing it individually to the SRSXF file
+           
+                SRPOG.POGDB% = GETN4(SRSXF.STRING$,0)                     
+
+                RC% = READ.SRPOG
+                
+                IF RC% = 0 THEN BEGIN
+
+                     SRSXF.COUNT% = SRSXF.COUNT% + 1
+
+                     GOSUB CREATE.SRSXF.DIR
+                 
+                 ENDIF
+                  
+            ENDIF ELSE BEGIN 
+                  
+            ENDIF
+
+        ENDIF ELSE BEGIN  
+        
+            IF READKF.RC% = -1 THEN BEGIN
+                END.OF.FILE% = -1
+            ENDIF ELSE BEGIN
+            ! Check whether an error has been returned
+                IF READKF.RC% < -1 THEN BEGIN
+                    PRINT #PHKEEP.SESS.NUM% ; "SRSXF READ ERROR " 
+                    STOP
+                ENDIF
+            ENDIF 
+
+        ENDIF
+     WEND
+
+    TERMKF.RC% = TERMKF(FID%)
+    IF TERMKF.RC% < 0 THEN BEGIN
+        PRINT #PHKEEP.SESS.NUM% ; "SRSXF File close failed"
+    ENDIF
+
+RETURN 
+
+\***********************************************************************
+\*
+\*    SEQUENTIAL.READ.SRPDF 
+\*              
+\*
+\***********************************************************************
+SEQUENTIAL.READ.SRPDF:   
+
+   PRINT  TIME.STAMP$(2)  + "-Sequential Reading SRPDF"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Sequential Reading SRPDF"
+    
+   SRPDF% = 0
+   
+   SRPDF.FLAG$ = "S"
+   FILE.NAME$ = "SRPDF"
+   FILE.RECL% = 169
+   OPTIONS%   = 201AH
+   PATTERN$   = ""
+   OFFSET%    = 0
+   MODE%      = 0
+   END.OF.FILE% = 0
+   
+   FID% = INITKF(FILE.NAME$,OPTIONS%)
+
+    ! Check for errors opening file
+   IF FID% <= 0 THEN BEGIN
+      PRINT #PHKEEP.SESS.NUM% ; "SRPDF OPENING ERROR"
+      STOP
+   ENDIF
+
+   WHILE NOT END.OF.FILE%
+
+       SRPDF.STRING$ = STRING$(FILE.RECL%,CHR$(0))
+       READKF.RC% = READKF(SRPDF.STRING$,PATTERN$,OFFSET%,MODE%)
+        IF READKF.RC% = 0 THEN BEGIN
+            IF GETN4(SRPDF.STRING$,0) <> 0 THEN BEGIN 
+
+                SRPDF% = SRPDF% + 1
+                SRPDF.ARRAY$(SRPDF%) = SRPDF.STRING$
+
+            ENDIF  
+        ENDIF ELSE BEGIN  
+        
+            IF READKF.RC% = -1 THEN BEGIN
+                END.OF.FILE% = -1
+            ENDIF ELSE BEGIN
+            ! Check whether an error has been returned
+                IF READKF.RC% < -1 THEN BEGIN
+                    PRINT #PHKEEP.SESS.NUM% ; "SRPDF READ ERROR " 
+                    STOP
+                ENDIF
+            ENDIF 
+
+        ENDIF
+
+   WEND
+
+    TERMKF.RC% = TERMKF(FID%)
+    IF TERMKF.RC% < 0 THEN BEGIN
+        PRINT #PHKEEP.SESS.NUM%; "SRPDF File close failed"
+    ENDIF
+
+RETURN 
+
+\***********************************************************************
+\*
+\*    WRITE.PHKEEP.OK  
+\*                
+\*
+\***********************************************************************
+WRITE.PHKEEP.OK:
+    
+   OPEN PHKEEP.OK.NAME$ AS PHKEEP.OK.SESS% APPEND
+
+   OK.STRING$ = SRPOG.FLAG$ + SRMOD.FLAG$ + SRSXF.FLAG$ + SRSXF.FLAG$
+
+   WRITE #PHKEEP.OK.SESS% ; OK.STRING$
+   
+   CLOSE PHKEEP.OK.SESS%
+
+RETURN
+
+
+\***********************************************************************
+\*
+\*    COMPARE.SRMOD   
+\*                
+\*
+\***********************************************************************
+COMPARE.SRMOD:
+
+    PRINT  TIME.STAMP$(2)  + "-Comparing SRMOD records against SRPOG"
+    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  +                       \
+                           "-Comparing SRMOD records against SRPOG"
+    J%           = 1      
+    SRMOD.COUNT% = 0      
+
+        WHILE J% < = SRMOD%                                             ! DRG
+  
+             SRPOG.POGDB%  = GETN4(SRMOD.ARR$(J%),0)                    ! DRG
+             RC% = READ.SRPOG                                           ! DRG
+             IF RC% = 0 THEN BEGIN                                      ! DRG
+                 SRMOD.COUNT% = SRMOD.COUNT% +1
+                 GOSUB CREATE.SRMOD.DIR 
+             ENDIF
+
+            J% = J% + 1                                                 ! DRG
+        WEND
+
+RETURN 
+
+\***********************************************************************
+\*
+\*    COMPARE.SRPDF  
+\*                
+\*
+\***********************************************************************
+COMPARE.SRPDF:    
+
+    PRINT  TIME.STAMP$(2)  + "-Comparing SRPDF records against SRPOG"
+    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                             \
+                        + "-Comparing SRPDF records against SRPOG"
+
+    J%           =  1    
+    SRPDF.COUNT% = 0
+   
+        WHILE  J% < = SRPDF%
+            SRPOG.POGDB%  = GETN4(SRPDF.ARRAY$(J%),0)                      ! DRG
+            RC% = READ.SRPOG                                               ! DRG
+            IF RC% = 0 THEN BEGIN                                          ! DRG
+                SRPDF.COUNT%  =  SRPDF.COUNT% + 1
+                GOSUB CREATE.SRPDF.DIR
+            ENDIF   
+
+            J% = J% + 1                                                    ! DRG
+        WEND
+ 
+RETURN
+ 
+
+\***********************************************************************
+\*
+\*    CREATE.SRMOD.DIR  
+\*                
+\*
+\***********************************************************************
+CREATE.SRMOD.DIR: 
+
+    WRITE FORM "C508" ;#SRMOD.DIR.SESS% ; SRMOD.ARR$(J%)  
+      
+RETURN
+
+\***********************************************************************
+\*
+\*    CREATE.SRSXF.DIR
+\*                
+\*
+\***********************************************************************
+CREATE.SRSXF.DIR:
+
+    WRITE FORM "C63" ;#SRSXF.DIR.SESS% ; SRSXF.STRING$	
+
+RETURN  
+
+\***********************************************************************
+\*
+\*    CREATE.SRPDF.DIR  
+\*               
+\*
+\***********************************************************************
+CREATE.SRPDF.DIR:  
+
+    WRITE FORM "C169" ;#SRPDF.DIR.SESS% ; SRPDF.ARRAY$(J%)   
+
+RETURN
+
+\***********************************************************************
+\*
+\*    REKEY.SRPOG  
+\*               
+\*
+\***********************************************************************
+  
+  REKEY.SRPOG:   
+  
+    CLOSE SRPOG.SESS.NUM%                                                ! DRG  
+    SRPOG.TEMP.NAME$ = "ADXLXACN::D:\ADX_UDT3\SRPOG.TST"
+
+    PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+    COMM.TAIL$ = "-C TURBO.286 REKEY"     + " "                         \
+                   +  SRPOG.FILE.NAME$    + " "                         \
+                   +  SRPOG.TEMP.NAME$    + " "                         \
+                   + "-R:" + STR$(6000)   + " "                         \
+                   +  SPACE$ +                                          \
+                   + "-O"  +  " "         + " "                         \
+                   + "-Z"  +  " "         + " "                         \
+                   + "-D:" + STR$(3)      + " "                         !
+
+    SVC.PARAM$   = STRING$(28,"0")
+    GOSUB EXECUTE.SVC
+
+    SRPOG.FLAG$ = "E"
+
+RETURN
+ 
+
+\***********************************************************************
+\*
+\*    CREATE.SRMOD.KEY  
+\*               
+\*
+\***********************************************************************
+CREATE.SRMOD.KEY:
+
+     PRINT  TIME.STAMP$(2)  + "-Creating SRMOD Key file from direct file"
+     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                           \
+                     + "-Creating SRMOD Key file from direct file"       
+
+     CLOSE SRMOD.DIR.SESS%
+
+     PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+     COMM.TAIL$ = "-C TURBO.286 KEYUP"     + " "                        \
+                   +  SRMOD.DIR.NAME$     + " "                         \
+                   +  SRMOD.KEY.NAME$     + " "                         \
+                   + "-k:" + STR$(6)      + " "                         \
+                   + "-l:" + STR$(508)    + " "                         \
+                   + "-r:" + STR$(8000)   + " "                         \
+                   + "-o"  +  " "         + " "                         \
+                   + "-d:" + STR$(3)      + " "                         !
+
+     SVC.PARAM$   = STRING$(28,"0")
+     GOSUB EXECUTE.SVC
+
+RETURN
+\***********************************************************************
+\*                
+\*    CREATE.SRSXF.KEY  
+\*                
+\*
+\***********************************************************************
+CREATE.SRSXF.KEY:
+      
+     PRINT  TIME.STAMP$(2)  + "-Creating SRSXF Key file from direct file"
+     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                           \
+                  + "-Creating SRSXF Key file from direct file" 
+
+     CLOSE SRSXF.DIR.SESS%
+
+     PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+     COMM.TAIL$ = "-C TURBO.286 KEYUP"     + " "                        \
+                   +  SRSXF.DIR.NAME$     + " "                         \
+                   +  SRSXF.KEY.NAME$     + " "                         \
+                   + "-k:" + STR$(6)      + " "                         \
+                   + "-l:" + STR$(63)     + " "                         \
+                   + "-r:" + STR$(60000)  + " "                         \
+                   + "-o"  +  " "         + " "                         \
+                   + "-d:" + STR$(3)      + " "                         !
+
+     SVC.PARAM$   = STRING$(28,"0")
+     GOSUB EXECUTE.SVC
+
+RETURN
+
+\***********************************************************************
+\*
+\*    CREATE.SRPDF.KEY 
+\*               
+\*
+\***********************************************************************
+CREATE.SRPDF.KEY:
+
+     PRINT  TIME.STAMP$(2)  + "-Creating SRPDF Key file from direct file"
+     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                           \
+               + "-Creating SRPDF Key file from direct file"
+     
+     CLOSE SRPDF.DIR.SESS%
+
+     PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+     COMM.TAIL$ = "-C TURBO.286 KEYUP"     + " "                        \
+                   +  SRPDF.DIR.NAME$    + " "                          \
+                   +  SRPDF.KEY.NAME$    + " "                          \
+                   + "-k:" + STR$(4)     + " "                          \
+                   + "-l:" + STR$(169)   + " "                          \
+                   + "-r:" + STR$(6000)  + " "                          \
+                   + "-o"  +  " "        + " "                          \
+                   + "-d:" + STR$(3)     + " "                          !
+
+     SVC.PARAM$   = STRING$(28,"0")
+     GOSUB EXECUTE.SVC
+    
+RETURN
+
+\*****************************************************************************
+\***    SUBROUTINE : EXECUTE.SVC                                             *
+\***    DETAILS    : EXECUTES APPLICATION ASYNC                              *
+\*****************************************************************************
+
+EXECUTE.SVC:
+
+     PINFO.TABLE$  = "DURATION  " + CHR$(200) + STRING$(9,CHR$(00))
+     PROG.NAME$   = PROG.NAME$ + CHR$(00)
+     COMM.TAIL$   = COMM.TAIL$ + CHR$(00)
+     CALL PUTN4(SVC.PARAM$,  0, 00000000H)
+     CALL PUTN4(SVC.PARAM$,  4, 00000000H)
+     CALL PUTN4(SVC.PARAM$,  8, SADD(PROG.NAME$) + 2)
+     CALL PUTN4(SVC.PARAM$, 12, SADD(COMM.TAIL$) + 2)
+     CALL PUTN4(SVC.PARAM$, 16, LEN(COMM.TAIL$) - 1)
+     CALL PUTN4(SVC.PARAM$, 20, SADD(PINFO.TABLE$) + 2)
+     CALL PUTN4(SVC.PARAM$, 24, 00000000H)
+     CALL FLEXOSSVC(38, SVC.PARAM$)
+
+RETURN
+\***********************************************************************
+\*
+\*    STOP.BACKGROUNDS 
+\*                
+\*
+\***********************************************************************
+STOP.BACKGROUNDS:
+ 
+     PRINT  TIME.STAMP$(2)  + "-Stopping BGMON Application"
+     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                             \
+                               + "-Stopping BGMON Application"   
+   
+     CALL OSSHELL("C:\ADX_UPGM\BGSTOP" + SPACE$ + "ADX_UPGM:BGMON.286")   
+   
+     PRINT  TIME.STAMP$(2)  + "-Stopping TRANSACT Application"
+     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                            \
+                       + "-Stopping TRANSACT Application" 
+   
+     CALL OSSHELL("C:\ADX_UPGM\BGSTOP" + SPACE$ + "ADX_UPGM:TRANSACT.286")  
+ 
+RETURN
+
+\***********************************************************************
+\*
+\*    BACKUP.ORIGINAL
+\*                
+\*
+\***********************************************************************
+BACKUP.ORIGINAL:
+
+   PRINT  TIME.STAMP$(2)  + "-Creating backups"                          
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Creating backups"       
+
+   CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRPOG.DAT",                 \
+                     "ADXLXACN::D:\SRPOG.DAT",0,0)                       
+
+   IF RC% = 0 THEN BEGIN
+
+       PRINT  TIME.STAMP$(2)  + "-Backing up of SRPOG Successful"        
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                     + "-Backing up of SRPOG Successful"                 
+                                                                         
+   ENDIF ELSE BEGIN
+       PRINT  TIME.STAMP$(2)  + "-SRPOG Backup Failed, program ending"        
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                     + "-SRPOG Backup Failed, program ending"  
+       STOP
+   ENDIF	   
+                                                                         
+   CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRMOD.DAT",                 \
+                     "ADXLXACN::D:\SRMOD.DAT",0,0)                       
+                                                                         
+   IF RC% = 0 THEN BEGIN                                                 
+                                                                         
+       PRINT  TIME.STAMP$(2)  + "-Backing up of SRMOD Successful"        
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+             + "-Backing up of SRMOD Successful"                         
+                                                                         
+   ENDIF ELSE BEGIN
+
+       PRINT  TIME.STAMP$(2)  + "-SRMOD Backup Failed, program ending"   
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                     + "-SRMOD Backup Failed, program ending"  
+       STOP   
+   ENDIF
+
+   CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRSXF.DAT",                 \
+                     "ADXLXACN::D:\SRSXF.DAT",0,0) 
+
+   IF RC% = 0 THEN BEGIN
+
+       PRINT  TIME.STAMP$(2)  + "-Backing up of SRSXF Successful"
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                              + "-Backing up of SRSXF Successful"
+
+   ENDIF ELSE BEGIN
+   
+       PRINT  TIME.STAMP$(2)  + "-SRSXF Backup Failed, program ending"        
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                     + "-SRSXF Backup Failed, program ending"  
+       STOP
+   ENDIF
+
+   CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRPDF.DAT",                 \
+                     "ADXLXACN::D:\SRPDF.DAT",0,0)   
+
+   IF RC% = 0 THEN BEGIN
+
+       PRINT  TIME.STAMP$(2)  + "-Backing up of SRPDF Successful"
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                        + "-Backing up of SRPDF Successful"
+
+   ENDIF ELSE BEGIN
+       PRINT  TIME.STAMP$(2)  + "-SRPDF Backup Failed, program ending"        
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                     + "-SRPDF Backup Failed, program ending"  
+       STOP
+   ENDIF    
+
+RETURN
+
+\***********************************************************************
+\*
+\*    DELETE.EXISTING 
+\*              
+\*
+\***********************************************************************
+DELETE.EXISTING:    
+
+   PRINT  TIME.STAMP$(2)  + "-Deleting SRMOD original"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                            \
+                                     + "-Deleting SRMOD original"    
+  
+   OPEN SRMOD.FILE.NAME$ AS SRMOD.SESS.NUM%
+
+   DELETE SRMOD.SESS.NUM%
+   
+   PRINT  TIME.STAMP$(2)  + "-Deleting SRPDF original"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  +                         \
+                                         "-Deleting SRPDF original"    
+  
+   OPEN SRPDF.FILE.NAME$ AS SRPDF.SESS.NUM%
+
+   DELETE SRPDF.SESS.NUM%
+   
+   PRINT  TIME.STAMP$(2)  + "-Deleting SRSXF original"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  +                          \
+                                     "-Deleting SRSXF original"    
+  
+   OPEN SRSXF.FILE.NAME$ AS SRSXF.SESS.NUM%
+
+   DELETE SRSXF.SESS.NUM%  
+
+RETURN
+
+\***********************************************************************
+\*
+\*    COPY.NEW 
+\*             
+\*
+\***********************************************************************
+COPY.NEW:    
+
+   PRINT  TIME.STAMP$(2)  + "-Rekeying SRPOG"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Rekeying SRPOG"    
+   
+   GOSUB REKEY.SRPOG                                                    ! ARG
+
+   CALL ADXCOPYF(RC%,"ADXLXACN::C:\SRMOD.KEY",                         \
+                     "ADXLXACN::D:\ADX_UDT3\SRMOD.DAT",0,0)   
+
+   IF RC% = 0 THEN BEGIN
+
+       PRINT  TIME.STAMP$(2)  + "- New SRMOD has been copied successfuly"
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                + "-New SRMOD has been copied successfuly"
+       SRMOD.FLAG$ = "E"
+
+   ENDIF 
+   
+   CALL ADXCOPYF(RC%,"ADXLXACN::C:\SRSXF.KEY",                          \
+                     "ADXLXACN::D:\ADX_UDT3\SRSXF.DAT",0,0)   
+
+   IF RC% = 0 THEN BEGIN
+
+       PRINT  TIME.STAMP$(2)  + "- New SRSXF has been copied successfuly"
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                      + "-New SRSXF has been copied successfuly"
+       SRSXF.FLAG$ = "E"
+
+   ENDIF   
+
+   CALL ADXCOPYF(RC%,"ADXLXACN::C:\SRPDF.KEY",                          \
+                     "ADXLXACN::D:\ADX_UDT3\SRPDF.DAT",0,0) 
+
+   IF RC% = 0 THEN BEGIN
+   
+       PRINT  TIME.STAMP$(2)  + "- New SRPDF has been copied successfuly"
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+                      + "-New SRPDF has been copied successfuly"
+
+       SRPDF.FLAG$ = "E"
+
+   ENDIF
+
+
+RETURN
+
+\***********************************************************************
+\*
+\*    START.BACKGROUNDS 
+\*                
+\*
+\***********************************************************************
+START.BACKGROUNDS:
+ 
+   PRINT  TIME.STAMP$(2)  + "-Starting BGMON Application"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                             \
+                               + "-Starting BGMON Application"   
+   
+   CALL OSSHELL("C:\ADX_UPGM\BGSTART" + SPACE$ + "ADX_UPGM:BGMON.286")   
+   
+   PRINT  TIME.STAMP$(2)  + "-Starting TRANSACT Application"
+   PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                             \
+                                   + "-Starting TRANSACT Application"    
+   
+   CALL OSSHELL("C:\ADX_UPGM\BGSTART" + SPACE$                          \
+                                           + "ADX_UPGM:TRANSACT.286")    
+ 
+RETURN
+
+\***********************************************************************
+\*
+\*    TERMINATION   
+\*               
+\*
+\***********************************************************************
+TERMINATION:
+
+   GOSUB WRITE.PHKEEP.OK     
+   
+   IF ERROR.CNT% = 0 THEN BEGIN  
+
+       PRINT  TIME.STAMP$(2)  + "-Renaming error file to OK file"        
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+        + "-Renaming error file to OK file"    
+
+       RC% = RENAME("C:/PHKEEP.OK","C:/PHKEEP.ERR")
+
+ 
+       PRINT  TIME.STAMP$(2)  + "-Read " +  STR$(SRPOG%) +              \
+                          " SRPOG records"  + \
+                          + " Written " + STR$(SRPOG.COUNT%) +          \
+                            " In to New file"
+
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Read " +           \
+                                                  STR$(SRPOG%)      +   \
+         " SRPOG records" + " Written " + STR$(SRPOG.COUNT%)            \
+                                        + " In to New file"
+
+
+       PRINT  TIME.STAMP$(2)  + "-Read " +  STR$(SRMOD%) +              \
+                          " SRMOD records"  + \
+                          + " Written " + STR$(SRMOD.COUNT%) +          \
+                            " In to New file"
+
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Read " +           \
+                                                  STR$(SRMOD%)      +   \
+         " SRMOD records" + " Written " + STR$(SRMOD.COUNT%)            \
+                                        + " In to New file"
+
+       PRINT  TIME.STAMP$(2)  + "-Read " +  STR$(SRSXF%)                \
+                                        +  " SRSXF records"  +          \
+                         + " Written " + STR$(SRSXF.COUNT%)             \
+                         + " In to New file"
+
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Read "             \
+                                              +  STR$(SRSXF%) +         \
+        " SRSXF records" + " Written " + STR$(SRSXF.COUNT%)             \
+                                    + " In to New file"
+
+       PRINT  TIME.STAMP$(2)  + "-Read " +  STR$(SRPDF%)                \
+                        + " SRPDF records"  + \
+                        + " Written " + STR$(SRPDF.COUNT%)              \
+                        + " In to New file"
+
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Read " +           \
+                         STR$(SRPDF%) +  \
+       " SRPDF records" + " Written " + STR$(SRPDF.COUNT%)              \
+       + " In to New file"
+
+       PRINT  TIME.STAMP$(2)  + "- Program completed successfully"
+       PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                         \
+              + "- Program completed successfuly"
+
+   ENDIF
+
+   GOSUB CLOSE.FILES
+   GOSUB HOUSEKEEP.WDRIVE
+   GOSUB DEALLOCATE.SESS.NUM
+
+RETURN
+
+\***********************************************************************
+\*
+\*    HOUSEKEEP.WDRIVE  
+\*               
+\*
+\***********************************************************************
+HOUSEKEEP.WDRIVE:
+
+   CALL OSSHELL ("IF EXIST C:/SRPOG.DIR DEL C:/SRPOG.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRMOD.DIR DEL C:/SRMOD.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRSXF.DIR DEL C:/SRSXF.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRPDF.DIR DEL C:/SRPDF.DIR")
+   CALL OSSHELL ("IF EXIST C:/SRPOG.KEY DEL C:/SRPOG.KEY")
+   CALL OSSHELL ("IF EXIST C:/SRMOD.KEY DEL C:/SRMOD.KEY")
+   CALL OSSHELL ("IF EXIST C:/SRSXF.KEY DEL C:/SRSXF.KEY")
+   CALL OSSHELL ("IF EXIST C:/SRPDF.KEY DEL C:/SRPDF.KEY")
+
+RETURN
+
+\***********************************************************************
+\*
+\*    ERROR.LOG  
+\*               
+\*
+\***********************************************************************
+ERROR.LOG: 
+        
+         VAR.STRING.1$ = FILE.OPERATION$                     +          \
+                CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +          \
+                CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +          \
+                CURRENT.CODE$
+         VAR.STRING.2$ = "PHKEEP"
+         MESSAGE.NO%   = 0
+         EVENT.NO%     = 106
+
+         RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,               \
+                      VAR.STRING.2$,EVENT.NO%)
+
+         GOSUB WRITE.PHKEEP.OK
+
+         GOTO END.PROGRAM
+
+RETURN
+
+\***********************************************************************
+\*
+\*    CLOSE.FILES:
+\*                
+\*
+\***********************************************************************
+
+CLOSE.FILES:
+   
+   CLOSE PHKEEP.SESS.NUM%   
+   
+RETURN  
+\***********************************************************************
+\*
+\*    DEALLOCATE.SESS.NUM  
+\*                
+\*
+\***********************************************************************
+DEALLOCATE.SESS.NUM: 
+
+    FUNCTION.FLAG$ = "C"   
+    
+    PASSED.INTEGER% = SRPOG.REPORT.NUM%                                
+    PASSED.STRING$  = SRPOG.FILE.NAME$                                 
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    SRPOG.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = SRMOD.REPORT.NUM%                                
+    PASSED.STRING$  = SRMOD.FILE.NAME$                                 
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    SRMOD.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = SRSXF.REPORT.NUM%                                
+    PASSED.STRING$  = SRSXF.FILE.NAME$                                 
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    SRSXF.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = SRPDF.REPORT.NUM%                                
+    PASSED.STRING$  = SRPDF.FILE.NAME$                                 
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    SRPDF.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = PHKEEP.SESS.NUM%                                 
+    PASSED.STRING$  = PHKEEP.LOG.NAME$                                 
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    PHKEEP.SESS.NUM% = F20.INTEGER.FILE.NO%                            
+
+    PASSED.INTEGER% = PHKEEP.OK.SESS%                                  
+    PASSED.STRING$  = PHKEEP.OK.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    PHKEEP.OK.SESS% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = 458                                              
+    PASSED.STRING$  = SRMOD.DIR.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    SRMOD.DIR.SESS% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = 459                                              
+    PASSED.STRING$  = SRPDF.DIR.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    SRPDF.DIR.SESS% = F20.INTEGER.FILE.NO%                             
+
+    PASSED.INTEGER% = 460                                              
+    PASSED.STRING$  = SRSXF.DIR.NAME$                                  
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+    SRSXF.DIR.SESS% = F20.INTEGER.FILE.NO%                             
+
+
+RETURN
+
+\***********************************************************************
+\*
+\*    ERROR.DETECTED  
+\*              
+\*
+\***********************************************************************
+ERROR.DETECTED:     
+
+     ERROR.CNT% = ERROR.CNT% + 1
+
+     IF ERR = "OE" AND ERRF% = SRMAP.SESS.NUM% THEN BEGIN
+         PRINT  TIME.STAMP$(2)  + "-NO SRMAP File" +                    \
+                                        " program can't be continued"   
+         PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                       \
+                + "-NO SRMAP File, program can't be continued"          
+         SRMAP.FLAG$ = "X" 
+         GOSUB ERROR.LOG
+     ENDIF
+
+     IF ERR = "OE" AND ERRF% = SRPOG.SESS.NUM% THEN BEGIN
+         PRINT  TIME.STAMP$(2)  + "-NO SRPOG File" +                    \
+                                        " program can't be continued"
+         PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                       \
+                + "-NO SRPOG File, program can't be continued"
+         SRPOG.FLAG$ = "X" 
+         GOSUB ERROR.LOG
+     ENDIF
+   
+     IF ERR = "OE" AND ERRF% = SRMOD.SESS.NUM% THEN BEGIN
+         PRINT  TIME.STAMP$(2)  + "-NO SRMOD File" +                    \
+                                    ",program can't be continued"
+         PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                       \
+                + "-NO SRMOD File, program can't be continued"
+         SRMOD.FLAG$ = "X" 
+         GOSUB ERROR.LOG
+     ENDIF
+   
+     IF ERR = "OE" AND ERRF% = SRSXF.SESS.NUM% THEN BEGIN
+         PRINT  TIME.STAMP$(2)  + "-NO SRSXF File," +                   \
+                                       "program can't be continued"
+         PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                       \
+              + "-NO SRSXF File, program can't be continued"
+         SRSXF.FLAG$ = "X" 
+         GOSUB ERROR.LOG
+     ENDIF
+   
+     IF ERR = "OE" AND ERRF% = SRPDF.SESS.NUM% THEN BEGIN
+         PRINT  TIME.STAMP$(2)  + "-NO SRPDF File," +                   \
+                                        "program can't be continued"
+         PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)                       \
+               + "-NO SRPDF File, program can't be continued"
+         SRPDF.FLAG$ = "X" 
+         GOSUB ERROR.LOG
+     ENDIF    
+   
+     GOSUB ERROR.LOG
+   
+RETURN  
+
+\***********************************************************************
+\*
+\*    END.PROGRAM 
+\*              
+\*
+\***********************************************************************
+
+   END.PROGRAM:
+
+   END 
+

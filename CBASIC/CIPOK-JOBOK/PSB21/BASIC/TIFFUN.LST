@@ -1,0 +1,782 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***    %INCLUDE FOR TERMINAL ITEM FILE - FUNCTION DEFINITIONS
+   5: 0000: \***
+   6: 0000: \***            REFERENCE : TIFFUN
+   7: 0000: \***
+   8: 0000: \***    Version A           Steve Windsor         06.05.93
+   9: 0000: \***
+  10: 0000: \***    Version B           Steve Perkins         21.09.93
+  11: 0000: \***    Deals Project: Change TIF fields to reflect new IRF
+  12: 0000: \***    record layout.
+  13: 0000: \***
+  14: 0000: \***    Version C            Dave West            08.09.98
+  15: 0000: \***    Added TIF.RECL7 to function TIF.SET and new format
+  16: 0000: \***    TIF read and write functions.
+  17: 0000: \***
+  18: 0000: \***    Version D   Stuart William McConnachie    11.02.2000
+  19: 0000: \***    Changed TIF.INDICAT2$ to TIF.INDICAT2%
+  20: 0000: \***    Changed TIF.DEAL.NUM$ to TIF.DEAL.NUM%
+  21: 0000: \***
+  22: 0000: \***    REVISION 1.5.                ROBERT COWEY.                05 AUG 2002.
+  23: 0000: \***    Major changes for 2002 Deals Rewrite project.
+  24: 0000: \***    Deleted redundant functions specific to unused TIF formats ...
+  25: 0000: \***      READ.TIF.FULL.PLUS.USER.DATA
+  26: 0000: \***      READ.TIF.FULL.NO.USER.DATA
+  27: 0000: \***      READ.TIF.SHORT.PLUS.USER.DATA
+  28: 0000: \***      READ.TIF.SHORT.NO.USER.DATA
+  29: 0000: \***      READ.TIF.JUST.USER.DATA
+  30: 0000: \***      READ.TIF.NO.DESC.OR.DATA
+  31: 0000: \***      WRITE.TIF.FULL.NO.USER.DATA
+  32: 0000: \***      WRITE.TIF.SHORT.PLUS.USER.DATA
+  33: 0000: \***      WRITE.TIF.SHORT.NO.USER.DATA
+  34: 0000: \***      WRITE.TIF.JUST.USER.DATA
+  35: 0000: \***      WRITE.TIF.NO.DESC.OR.DATA
+  36: 0000: \***    Created several new functions ...
+  37: 0000: \***      TIF.CONCAT.RECORD   - Concatonate TIF variables into file format data
+  38: 0000: \***      CREATE.TIF.RECORD$  - Create TIF record string from TIF variables
+  39: 0000: \***      TIF.SPLIT.RECORD    - Expand file format data into TIF variables
+  40: 0000: \***      SPLIT.TIF.IRF.DATA$ - Extract TIF variables from IRF record string
+  41: 0000: \***    Modified READ and WRITE functions for new record layout.
+  42: 0000: \***
+  43: 0000: \***    REVISION 1.6.                ROBERT COWEY.                23 JAN 2003.
+  44: 0000: \***    Corrected function SPLIT.TIF.IRF.DATA$ to set TIF.SALEPRIC$ to zero when
+  45: 0000: \***    IRF variable INDICAT0% Enforced Price Entry flag X'20' is ON (because
+  46: 0000: \***    TIF variable INDICAT0% is no longer present on the physical TIF record).
+  47: 0000: \***
+  48: 0000: \***    REVISION 1.7                 TITTOO THOMAS                19 AUG 2011.
+  49: 0000: \***    Changed function SPLIT.TIF.IRF.DATA$ to set the Age check flag if the
+  50: 0000: \***    IRF record has a non-zero Age Restriction set. Otherwise, set it OFF.
+  51: 0000: \***
+  52: 0000: \***    REVISION 1.8.                ROBERT COWEY.                01 MAY 2012.
+  53: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.15.
+  54: 0000: \***
+  55: 0000: \***    Defect 200 - Commented 1.8 RC (200)
+  56: 0000: \***    Modified function READ.TIF.BOOTS.DATA to bypass TIF file read when 
+  57: 0000: \***    key TIF.BAR.CODE$ contains nulls (to prevent program abending with 
+  58: 0000: \***    KF error 80F306CD null key specified).
+  59: 0000: \***
+  60: 0000: \***...........................................................................
+  61: 0000: 
+  62: 0000: 
+  63: 0000:     INTEGER*2 GLOBAL \
+  64: 0000:         CURRENT.REPORT.NUM%
+  65: 0000: 
+  66: 0000:     STRING GLOBAL \
+  67: 0000:         CURRENT.CODE$, \
+  68: 0000:         FILE.OPERATION$
+  69: 0000: 
+  70: 0000: 
+  71: 0000:     %INCLUDE TIFDEC.J86   ! TIF variable declarations
+  72: 0000: 
+  73: 0000: \*********************************************************************************
+  74: 0000: \***
+  75: 0000: \***    %INCLUDE FOR TERMINAL ITEM FILE - VARIABLE DECLARATIONS
+  76: 0000: \***
+  77: 0000: \***            FILE TYPE : Keyed
+  78: 0000: \***          
+  79: 0000: \***            REFERENCE : TIFDEC.J86
+  80: 0000: \***
+  81: 0000: \***    Version A             Steve Windsor          06.05.93
+  82: 0000: \*** 
+  83: 0000: \***    Version B             Steve Perkins          21.09.93
+  84: 0000: \***    Deals project: fields names updated to reflect new
+  85: 0000: \***    IRF layout for deals project.
+  86: 0000: \***
+  87: 0000: \***    Version C              Dave West             08.09.98
+  88: 0000: \***    Added declarations for GSA v2
+  89: 0000: \***
+  90: 0000: \***    Version D      Stuart William McConnachie    11.02.2000
+  91: 0000: \***    Changed TIF.INDICAT2$ to TIF.INDICAT2%
+  92: 0000: \***    Changed TIF.DEAL.NUM$ to TIF.DEAL.NUM%
+  93: 0000: \***
+  94: 0000: \***    REVISION 1.5.                ROBERT COWEY.                05 AUG 2002.
+  95: 0000: \***    Major changes for 2002 Deals Rewrite project.
+  96: 0000: \***    Incorporated up to date record layout to assist development work 
+  97: 0000: \***    (placed in the TIFDEC.J86 to make it visible from ...LST files).
+  98: 0000: \***    Defined TIF.IRF.DATA$ as a global variable for use with new functions
+  99: 0000: \***    CONCAT.TIF.IRF.DATA$ and SPLIT.TIF.IRF.DATA$.
+ 100: 0000: \***
+ 101: 0000: \***    REVISION 1.6.                ROBERT COWEY.                23 JAN 2003.
+ 102: 0000: \***    Corrected comments only.
+ 103: 0000: \***
+ 104: 0000: \***.............................................................................
+ 105: 0000: 
+ 106: 0000: 
+ 107: 0000: \*********************************************************************************
+ 108: 0000: \***
+ 109: 0000: \***    TIF RECORD LAYOUT - REVISION 1.5 - CORRECT FOR 2002 DEALS RE-WRITE PROJECT
+ 110: 0000: \***
+ 111: 0000: \***    Within Boots stores the TMCF.DESCTYPE% = 4
+ 112: 0000: \***    This defines the TIF.FORMAT% = 7 (TIF.RECL% = 18) layout that follows
+ 113: 0000: \***    Other TIF.FORMAT% layouts are not used by Boots
+ 114: 0000: \***
+ 115: 0000: \***     1  6  UPD  BAR.CODE$   Without check digit - File KEY
+ 116: 0000: \***       11  UPD  Modified    Padded with leading zeros to an 11 byte UPD
+ 117: 0000: \***     7  1  INT  INDICAT6%   Bit flags - Identical to IRF.INDICAT1%
+ 118: 0000: \***                    X"01" - Asprin
+ 119: 0000: \***                    X"02" - Paracetamol
+ 120: 0000: \***                    X"04" - TPLU inclusion flag
+ 121: 0000: \***                              "04" on till
+ 122: 0000: \***                              "00" not on till
+ 123: 0000: \***                    X"08" - Stock number required
+ 124: 0000: \***                    X"10" - Pharmacy item
+ 125: 0000: \***                    X"20" - Age restricted video
+ 126: 0000: \***                    X"40" - Insurance
+ 127: 0000: \***                    X"80" - Ibuprofen
+ 128: 0000: \***     8  2  INT  DEAL.DATA%(0)   See IRFDEC.J86 for further detail
+ 129: 0000: \***                    Sub-structure not used by TIF file functions
+ 130: 0000: \***                    X'3F' - Deal number 0 to 9999
+ 131: 0000: \***                    X'C0' - List ID     X'00' X
+ 132: 0000: \***                                        X'01' A
+ 133: 0000: \***                                        X'10' B
+ 134: 0000: \***                                        X'11' C                       ! 1.6 RC
+ 135: 0000: \***    10  2  INT  DEAL.DATA%(1)   See DEAL.DATA(0) for structure
+ 136: 0000: \***    12  3  UPD  SALEPRIC$   Current price in pence
+ 137: 0000: \***                            Zero price indicates Enforced Price Entry
+ 138: 0000: \***                            X'FFFFFF' indicates 1p giveaway item not priced
+ 139: 0000: \***                            (flag set on TIF.INDICAT0% by TIF READ function)
+ 140: 0000: \***        5  UPD  Modified    Padded with leading zeros to a 5 byte UPD
+ 141: 0000: \***    15  1  INT  INDICAT5%   Guarantee duration
+ 142: 0000: \***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+ 143: 0000: \***                    X'80' - Highest bit indicates months if set (years if not)
+ 144: 0000: \***                    X'40' - Item movement kept (not related to guarentee data)
+ 145: 0000: \***                            (flag set on TIF.INDICAT0% by TIF READ function)
+ 146: 0000: \***    16  2  INT  DEAL.DATA%(2)   See DEAL.DATA(0) for structure
+ 147: 0000: \***    18  1  INT  INDICAT3%   Bit flags - Identical to IRF.INDICAT3%
+ 148: 0000: \***                    X"01" - Discount exempt (item exempt from discount)
+ 149: 0000: \***                    X"02" - Boots brand item
+ 150: 0000: \***                    X"04" - Item redeemable for loyalty
+ 151: 0000: \***                    X"08" - Loyalty exempt (item exempt from loyalty)
+ 152: 0000: \***                    X"10" - Wellbeing Services item
+ 153: 0000: \***                    X"20" - Local Price active
+ 154: 0000: \***                    X"40" - Stock system item
+ 155: 0000: \***                    X"80" - CSR item
+ 156: 0000: \***
+ 157: 0000: \***    Record length 18
+ 158: 0000: \***
+ 159: 0000: \***    TIF VARIABLES - HELD EXTERNALLY FROM RECORD ITSELF
+ 160: 0000: \***
+ 161: 0000: \***     -  1  INT  INDICAT0%   Bit flags
+ 162: 0000: \***                    X"02" - Item not priced (giveaway)  Held in SALEPRIC
+ 163: 0000: \***                    X"80" - Item Movement kept          Held in INDICAT5%
+ 164: 0000: \***
+ 165: 0000: \***..............................................................................
+ 166: 0000:                                             
+ 167: 0000:     
+ 168: 0000:     STRING GLOBAL         \
+ 169: 0000:         TIF.BAR.CODE$,    \
+ 170: 0000:         TIF.BOOTS.CODE$,  \
+ 171: 0000:         TIF.DEAL.SAVING$, \ ! No longer used                              ! 1.5 RC
+ 172: 0000:         TIF.FILE.NAME$,   \
+ 173: 0000:         TIF.FILLER$,      \ ! No longer used                              ! 1.5 RC
+ 174: 0000:         TIF.IRF.DATA$,    \ ! Used to hold copy of IRF record string
+ 175: 0000:         TIF.ITEMNAME$,    \ ! No longer used                              ! 1.5 RC
+ 176: 0000:         TIF.MPGROUP$,     \ ! No longer used                              ! 1.5 RC
+ 177: 0000:         TIF.RECORD$,      \                                               ! 1.5 RC
+ 178: 0000:         TIF.SALEQUAN$,    \ ! No longer used                              ! 1.5 RC
+ 179: 0000:         TIF.SALEPRIC$
+ 180: 0000: 
+ 181: 0000:         
+ 182: 0000:     INTEGER*1 GLOBAL   \
+ 183: 0000:         TIF.INDICAT0%, \
+ 184: 0000:         TIF.INDICAT1%, \
+ 185: 0000:         TIF.INDICAT2%, \ ! No longer used                                 ! 1.5 RC
+ 186: 0000:         TIF.INDICAT3%, \
+ 187: 0000:         TIF.INDICAT4%, \ ! No longer used                                 ! 1.5 RC
+ 188: 0000:         TIF.INDICAT5%, \ ! No longer used                                 ! 1.5 RC
+ 189: 0000:         TIF.INDICAT6%, \
+ 190: 0000:         TIF.FORMAT%    ! Boots format (TIF.FORMAT% = 7) only is used      ! 1.5 RC
+ 191: 0000: 
+ 192: 0000:     
+ 193: 0000:     INTEGER*2 GLOBAL     \
+ 194: 0000:         TIF.DEAL.NUM%,   \ ! No longer used                               ! 1.5 RC
+ 195: 0000:         TIF.RECL%,       \ ! Actual RECL used in OPEN, READ, WRITE statements
+ 196: 0000:         TIF.RECL1%,      \ ! No longer used                               ! 1.5 RC
+ 197: 0000:         TIF.RECL2%,      \ ! No longer used                               ! 1.5 RC
+ 198: 0000:         TIF.RECL3%,      \ ! No longer used                               ! 1.5 RC
+ 199: 0000:         TIF.RECL4%,      \ ! No longer used                               ! 1.5 RC
+ 200: 0000:         TIF.RECL5%,      \ ! No longer used                               ! 1.5 RC
+ 201: 0000:         TIF.RECL6%,      \ ! No longer used                               ! 1.5 RC
+ 202: 0000:         TIF.RECL7%,      \ ! Record length for TIF.FORMAT% = 7
+ 203: 0000:         TIF.REPORT.NUM%, \
+ 204: 0000:         TIF.SESS.NUM%
+ 205: 0000: 
+ 206: 0000: 
+ 207: 0000:     INTEGER*2 GLOBAL \                                                    ! 1.5 RC
+ 208: 0000:         TIF.DEAL.DATA%(1)                                                 ! 1.5 RC
+ 209: 0000: 
+ 210: 0000: 
+ 211: 0000: 
+ 212: 0000:     %INCLUDE EALHSASC.J86 ! External assembler function definitions        ! 1.5 RC
+ 213: 0000: \/* TIME STAMP BLOCK **********************************************
+ 214: 0000: \** END OF TIME STAMP BLOCK **************************************/
+ 215: 0000: !! THIS MODULE WAS CREATED BY APAR IR70269
+ 216: 0000: !*********************************************************************
+ 217: 0000: !
+ 218: 0000: ! ASSEMBLER SUBROUTNE DEFINITIONS
+ 219: 0000: !
+ 220: 0000: ! These definitions should be copied by any routine which wishes to
+ 221: 0000: ! use the performanced enhanced assembler routines.
+ 222: 0000: !
+ 223: 0000: !*********************************************************************
+ 224: 0000:  
+ 225: 0000: !*********************************************************************
+ 226: 0000: !
+ 227: 0000: ! SUBSTR
+ 228: 0000: !
+ 229: 0000: ! This routine performs a merge of two strings. String P3$, offset P4
+ 230: 0000: ! is merged into string P1$ offset P2 for a length of P5 bytes
+ 231: 0000: !
+ 232: 0000: ! CAUTION: P1$ must be long enough to totally contain P3$
+ 233: 0000: !
+ 234: 0000: ! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE ZERO INDEXED
+ 235: 0000: !
+ 236: 0000: !*********************************************************************
+ 237: 0000:  
+ 238: 0000:  FUNCTION SUBSTR (P1$,P2,P3$,P4,P5) EXTERNAL
+ 239: 0000:  STRING P1$,P3$
+ 240: 0000:  INTEGER*2 P2,P4,P5
+ 241: 0000:  END FUNCTION
+ 242: 0000:  
+ 243: 0000: !*********************************************************************
+ 244: 0000: !
+ 245: 0000: ! GETN2/GETN4
+ 246: 0000: !
+ 247: 0000: ! These routines extract a two/four byte integer from a string.
+ 248: 0000: ! P2 is the offset within the string
+ 249: 0000: !
+ 250: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 251: 0000: !
+ 252: 0000: !*********************************************************************
+ 253: 0000:  
+ 254: 0000:  FUNCTION GETN2(P1$,P2) EXTERNAL
+ 255: 0000:  INTEGER*2 GETN2
+ 256: 0000:  STRING P1$
+ 257: 0000:  INTEGER*2 P2
+ 258: 0000:  END FUNCTION
+ 259: 0000:  
+ 260: 0000:  FUNCTION GETN4(P1$,P2) EXTERNAL
+ 261: 0000:  INTEGER*4 GETN4
+ 262: 0000:  STRING P1$
+ 263: 0000:  INTEGER*2 P2
+ 264: 0000:  END FUNCTION
+ 265: 0000:  
+ 266: 0000: !*********************************************************************
+ 267: 0000: !
+ 268: 0000: ! PUTN2/PUTN4
+ 269: 0000: !
+ 270: 0000: ! These routines insert a two/four byte integer into a string.
+ 271: 0000: ! P2 is the offset within the string and P3 is the source integer
+ 272: 0000: !
+ 273: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 274: 0000: !
+ 275: 0000: !*********************************************************************
+ 276: 0000:  
+ 277: 0000:  FUNCTION PUTN2(P1$,P2,P3) EXTERNAL
+ 278: 0000:  STRING P1$
+ 279: 0000:  INTEGER*2 P2,P3
+ 280: 0000:  END FUNCTION
+ 281: 0000:  
+ 282: 0000:  FUNCTION PUTN4(P1$,P2,P3) EXTERNAL
+ 283: 0000:  STRING P1$
+ 284: 0000:  INTEGER*2 P2
+ 285: 0000:  INTEGER*4 P3
+ 286: 0000:  END FUNCTION
+ 287: 0000:  
+ 288: 0000: !*********************************************************************
+ 289: 0000: !
+ 290: 0000: ! PACKBIN2/4
+ 291: 0000: !
+ 292: 0000: ! These routines take a packed decimal string and convert to integer
+ 293: 0000: ! (The equivalent of CBASIC INT%(VAL(UNPACK$())) )
+ 294: 0000: ! P1 is the source string, P2 the string offset and P3 the length
+ 295: 0000: !
+ 296: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 297: 0000: !
+ 298: 0000: !*********************************************************************
+ 299: 0000:  
+ 300: 0000:  FUNCTION PACKBIN2(P1$,P2,P3) EXTERNAL
+ 301: 0000:  INTEGER*2 PACKBIN2
+ 302: 0000:  STRING P1$
+ 303: 0000:  INTEGER*2 P2,P3
+ 304: 0000:  END FUNCTION
+ 305: 0000:  
+ 306: 0000:  FUNCTION PACKBIN4(P1$,P2,P3) EXTERNAL
+ 307: 0000:  INTEGER*4 PACKBIN4
+ 308: 0000:  STRING P1$
+ 309: 0000:  INTEGER*2 P2,P3
+ 310: 0000:  END FUNCTION
+ 311: 0000:  
+ 312: 0000: !*********************************************************************
+ 313: 0000: !
+ 314: 0000: ! ADDIN2/4
+ 315: 0000: !
+ 316: 0000: ! These routines add an integer into an integer which is imbedded within
+ 317: 0000: ! a string.  P1$ is the string containing at offset P2 the integer to be
+ 318: 0000: ! updated.  P3 is the integer to be added into P1$.
+ 319: 0000: !
+ 320: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 321: 0000: !
+ 322: 0000: !*********************************************************************
+ 323: 0000:  
+ 324: 0000:  FUNCTION ADDIN4(P1$,P2,P3) EXTERNAL
+ 325: 0000:  INTEGER*4 ADDIN4
+ 326: 0000:  STRING P1$
+ 327: 0000:  INTEGER*2 P2
+ 328: 0000:  INTEGER*4 P3
+ 329: 0000:  END FUNCTION
+ 330: 0000:  
+ 331: 0000:  FUNCTION ADDIN2(P1$,P2,P3) EXTERNAL
+ 332: 0000:  INTEGER*2 ADDIN2
+ 333: 0000:  STRING P1$
+ 334: 0000:  INTEGER*2 P2,P3
+ 335: 0000:  END FUNCTION
+ 336: 0000:  
+ 337: 0000: !*********************************************************************
+ 338: 0000: !
+ 339: 0000: ! MATCHB
+ 340: 0000: !
+ 341: 0000: ! This routine performs a fast match function when the string being
+ 342: 0000: ! searched for contains only a single character.  As with the MATCH
+ 343: 0000: ! function, P1$ is the character to be found, P2$ is the string to be
+ 344: 0000: ! searched, and P3 the offst at which to start the search.
+ 345: 0000: !
+ 346: 0000: !*********************************************************************
+ 347: 0000:  
+ 348: 0000:  FUNCTION MATCHB(P1$,P2$,P3) EXTERNAL
+ 349: 0000:  INTEGER*2 MATCHB
+ 350: 0000:  STRING P1$
+ 351: 0000:  STRING P2$
+ 352: 0000:  INTEGER*2 P3
+ 353: 0000:  END FUNCTION
+ 354: 0000:  
+ 355: 0000: \ REM!! *************************************************************!!
+ 356: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+ 357: 0000: \ REM!! 4 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+ 358: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 359: 0000: \ REM!! *************************************************************!!
+ 360: 0000:  
+ 361: 0000: SUB UPDBIN4 (IN$,OUT$) EXTERNAL
+ 362: 0000: STRING IN$,OUT$
+ 363: 0000: END SUB
+ 364: 0000:  
+ 365: 0000: \ REM!! *************************************************************!!
+ 366: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+ 367: 0000: \ REM!! 3 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+ 368: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 369: 0000: \ REM!! *************************************************************!!
+ 370: 0000:  
+ 371: 0000: SUB UPDBIN3 (IN$,OUT$) EXTERNAL
+ 372: 0000: STRING IN$,OUT$
+ 373: 0000: END SUB
+ 374: 0000:  
+ 375: 0000: \ REM!! *************************************************************!!
+ 376: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+ 377: 0000: \ REM!! 2 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+ 378: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 379: 0000: \ REM!! *************************************************************!!
+ 380: 0000:  
+ 381: 0000: SUB UPDBIN2 (IN$,OUT$) EXTERNAL
+ 382: 0000: STRING IN$,OUT$
+ 383: 0000: END SUB
+ 384: 0000:  
+ 385: 0000: \ REM!! *************************************************************!!
+ 386: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+ 387: 0000: \ REM!! 1 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+ 388: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 389: 0000: \ REM!! *************************************************************!!
+ 390: 0000:  
+ 391: 0000: SUB UPDBIN1 (IN$,OUT$) EXTERNAL
+ 392: 0000: STRING IN$,OUT$
+ 393: 0000: END SUB
+ 394: 0000:  
+ 395: 0000: \ REM!! *************************************************************!!
+ 396: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+ 397: 0000: \ REM!! 4 BYTE HEX REPRESENTATION OF A 2-BYTE INTEGER                !!
+ 398: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 399: 0000: \ REM!! *************************************************************!!
+ 400: 0000:  
+ 401: 0000: SUB UPDHEX2 (IN$,OUT$) EXTERNAL
+ 402: 0000: STRING IN$,OUT$
+ 403: 0000: END SUB
+ 404: 0000:  
+ 405: 0000: \ REM!! *************************************************************!!
+ 406: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+ 407: 0000: \ REM!! 2 BYTE HEX REPRESENTATION OF A 1-BYTE INTEGER                !!
+ 408: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 409: 0000: \ REM!! *************************************************************!!
+ 410: 0000:  
+ 411: 0000: SUB UPDHEX1 (IN$,OUT$) EXTERNAL
+ 412: 0000: STRING IN$,OUT$
+ 413: 0000: END SUB
+ 414: 0000:  
+ 415: 0000: \ REM!! *************************************************************!!
+ 416: 0000: \ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+ 417: 0000: \ REM!! STRING TO A 2 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+ 418: 0000: \ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+ 419: 0000: \ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+ 420: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 421: 0000: \ REM!!
+ 422: 0000: \ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+ 423: 0000: \ REM!! *************************************************************!!
+ 424: 0000:  
+ 425: 0000: SUB INTBIN2 (IN$,IN%,OUT$,OUT%) EXTERNAL
+ 426: 0000: STRING IN$,OUT$
+ 427: 0000: INTEGER IN%,OUT%
+ 428: 0000: END SUB
+ 429: 0000:  
+ 430: 0000: \ REM!! *************************************************************!!
+ 431: 0000: \ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+ 432: 0000: \ REM!! STRING TO A 3 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+ 433: 0000: \ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+ 434: 0000: \ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+ 435: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 436: 0000: \ REM!!
+ 437: 0000: \ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+ 438: 0000: \ REM!! *************************************************************!!
+ 439: 0000:  
+ 440: 0000: SUB INTBIN3 (IN$,IN%,OUT$,OUT%) EXTERNAL
+ 441: 0000: STRING IN$,OUT$
+ 442: 0000: INTEGER IN%,OUT%
+ 443: 0000: END SUB
+ 444: 0000:  
+ 445: 0000: \ REM!! *************************************************************!!
+ 446: 0000: \ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+ 447: 0000: \ REM!! STRING TO A 4 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+ 448: 0000: \ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+ 449: 0000: \ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+ 450: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+ 451: 0000: \ REM!!
+ 452: 0000: \ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+ 453: 0000: \ REM!! *************************************************************!!
+ 454: 0000:  
+ 455: 0000: SUB INTBIN4 (IN$,IN%,OUT$,OUT%) EXTERNAL
+ 456: 0000: STRING IN$,OUT$
+ 457: 0000: INTEGER IN%,OUT%
+ 458: 0000: END SUB
+ 459: 0000:  
+ 460: 0000:                           ! Includes all functions defined by EALGAADF.J86 ! 1.5.RC
+ 461: 0000: 
+ 462: 0000: FUNCTION TIF.SET PUBLIC
+ 463: 0014: 
+ 464: 0014:     TIF.RECL1%     = 50 ! For TIF.FORMAT% = 1 - not used by Boots
+ 465: 001d:     TIF.RECL2%     = 42 ! For TIF.FORMAT% = 2 - not used by Boots
+ 466: 0026:     TIF.RECL3%     = 44 ! For TIF.FORMAT% = 3 - not used by Boots
+ 467: 002f:     TIF.RECL4%     = 36 ! For TIF.FORMAT% = 4 - not used by Boots
+ 468: 0038:     TIF.RECL5%     = 32 ! For TIF.FORMAT% = 5 - not used by Boots
+ 469: 0041:     TIF.RECL6%     = 24 ! For TIF.FORMAT% = 6 - not used by Boots
+ 470: 004a:     TIF.RECL7%     = 18 ! TIF.FORMAT% = 7 - As used by Boots                 ! DW
+ 471: 0053: 
+ 472: 0053:     TIF.RECL% EQ TIF.RECL7%                                                ! 1.5 RC
+ 473: 0061: 
+ 474: 0061:     TIF.REPORT.NUM% = 65
+ 475: 006a:     TIF.FILE.NAME$ = "EALIMAGE"
+ 476: 0079: 
+ 477: 0079:     DIM TIF.DEAL.DATA%(2) ! Entries used are 0 to 2
+ 478: 00a0: 
+ 479: 00a0: END FUNCTION
+ 480: 00ac: 
+ 481: 00ac: 
+ 482: 00ac: \********************************************************************************
+ 483: 00ac: \***
+ 484: 00ac: \***    TIF.CONCAT.RECORD
+ 485: 00ac: \***    Sets Giveaway and Item Movement data from INDICAT0% as required.
+ 486: 00ac: \***    Truncates some variables to match compressed format of record layout.
+ 487: 00ac: \***
+ 488: 00ac: \***.............................................................................
+ 489: 00ac: 
+ 490: 00ac: 
+ 491: 00ac: FUNCTION TIF.CONCAT.RECORD ! Local to TIFFUN      ! Entire function new for 1.5 RC
+ 492: 00c0: 
+ 493: 00c0: !   If INDICAT0% Giveaway bit flag ON, set SALEPRIC to Not Priced (X'FFFFFF')
+ 494: 00c0: !   Leave INDICAT0% bit flag set
+ 495: 00c0: 
+ 496: 00c0:     IF (TIF.INDICAT0% AND 00000010b) EQ 00000010b THEN \ ! X'02' is ON
+ 497: 00cd:         BEGIN
+ 498: 00cd:         TIF.SALEPRIC$ EQ STRING$(3,CHR$(255)) ! X'FFFFFF'
+ 499: 00e7:         ENDIF
+ 500: 00e7: 
+ 501: 00e7: !   If INDICAT0% Item Movement flag set ON, set corresponding INDICAT5% flag
+ 502: 00e7: !   Leave INDICAT0% bit flag set
+ 503: 00e7: 
+ 504: 00e7:     IF (TIF.INDICAT0% AND 10000000b) EQ 10000000b THEN \ ! X'80' is ON
+ 505: 00f4:         BEGIN
+ 506: 00f4:         TIF.INDICAT5% EQ (TIF.INDICAT5% OR 01000000b) ! X'40' set ON
+ 507: 0104:         ENDIF
+ 508: 0104: 
+ 509: 0104: !   Truncates variables to match compressed format of TIF record layout
+ 510: 0104: 
+ 511: 0104:     TIF.BAR.CODE$ = RIGHT$(TIF.BAR.CODE$,6)
+ 512: 0121:     TIF.SALEPRIC$ = RIGHT$(TIF.SALEPRIC$,3)
+ 513: 013e: 
+ 514: 013e: END FUNCTION
+ 515: 014a: 
+ 516: 014a: 
+ 517: 014a: \********************************************************************************
+ 518: 014a: \***
+ 519: 014a: \***    CREATE.TIF.RECORD$
+ 520: 014a: \***    Creates TIF record string (TIF.RECORD$) from individual TIF variables.
+ 521: 014a: \***
+ 522: 014a: \***.............................................................................
+ 523: 014a: 
+ 524: 014a: 
+ 525: 014a: FUNCTION CREATE.TIF.RECORD$ PUBLIC                ! Entire function new for 1.5 RC
+ 526: 015e: 
+ 527: 015e:     CALL TIF.CONCAT.RECORD
+ 528: 0170: 
+ 529: 0170:     TIF.RECORD$ = \
+ 530: 01e0:            TIF.BAR.CODE$  + \
+ 531: 01e0:       CHR$(TIF.INDICAT6%) + \
+ 532: 01e0:           "  "            + \ ! Reserves two bytes for TIF.DEAL.DATA%(0)
+ 533: 01e0:           "  "            + \ ! Reserves two bytes for TIF.DEAL.DATA%(1)
+ 534: 01e0:            TIF.SALEPRIC$  + \
+ 535: 01e0:       CHR$(TIF.INDICAT5%) + \
+ 536: 01e0:           "  "            + \ ! Reserves two bytes for TIF.DEAL.DATA%(2)
+ 537: 01e0:       CHR$(TIF.INDICAT3%)
+ 538: 01e0: 
+ 539: 01e0:     CALL PUTN2 (TIF.RECORD$,  7, TIF.DEAL.DATA%(0)) ! Inserts TIF.DEAL.DATA%(n)
+ 540: 0216:     CALL PUTN2 (TIF.RECORD$,  9, TIF.DEAL.DATA%(1)) ! variables into string
+ 541: 024c:     CALL PUTN2 (TIF.RECORD$, 15, TIF.DEAL.DATA%(2)) ! TIF.RECORD$
+ 542: 0282: 
+ 543: 0282: END FUNCTION
+ 544: 0293: 
+ 545: 0293: 
+ 546: 0293: \********************************************************************************
+ 547: 0293: \***
+ 548: 0293: \***    TIF.SPLIT.RECORD
+ 549: 0293: \***    Sets Giveaway and Item Movement data as required.
+ 550: 0293: \***    Expands some variables to match the format of their IRF counterparts.
+ 551: 0293: \***    The function is called from TIF.SPLIT.RECORD (following a READ of the
+ 552: 0293: \***    TIF) and from SPLIT.TIF.IRF.DATA (following a "read" of TIF data from
+ 553: 0293: \***    IRF record string TIF.IRF.DATA$).
+ 554: 0293: \***
+ 555: 0293: \***    Note that when TIF.SALEPRIC$ is zero it is not possible to        ! 1.6 RC
+ 556: 0293: \***    distinguish whether this is because it is genuinely zero or       ! 1.6 RC
+ 557: 0293: \***    because its corresponding IRF record has the Enforced Price       ! 1.6 RC
+ 558: 0293: \***    Entry flag set (and consequently this flag cannot be set on       ! 1.6 RC
+ 559: 0293: \***    TIF.INDICAT0%).                                                   ! 1.6 RC
+ 560: 0293: \***
+ 561: 0293: \***.............................................................................
+ 562: 0293: 
+ 563: 0293: 
+ 564: 0293: FUNCTION TIF.SPLIT.RECORD ! Local to TIFFUN       ! Entire function new for 1.5 RC
+ 565: 02a7: 
+ 566: 02a7: !   Zeroise INDICAT0% prior to setting Giveaway and Item Movement bit flags
+ 567: 02a7: 
+ 568: 02a7:     TIF.INDICAT0% = 0
+ 569: 02af: 
+ 570: 02af: !   If item Not Priced, set INDICAT0% Giveaway bit flag to ON and Price to 1p
+ 571: 02af: 
+ 572: 02af:     IF TIF.SALEPRIC$ EQ STRING$(3,CHR$(255)) THEN \ ! X'FFFFFF' (Not Priced)
+ 573: 02d3:         BEGIN
+ 574: 02d3:         TIF.INDICAT0% EQ (TIF.INDICAT0% OR 00000010b) ! X'02' set ON
+ 575: 02e3:         TIF.SALEPRIC$ EQ PACK$("000001") ! Giveaway price 1 penny
+ 576: 02f7:         ENDIF
+ 577: 02f7: 
+ 578: 02f7: !   If Item Movement kept, set INDICAT0% Item Movement bit flag to ON
+ 579: 02f7: 
+ 580: 02f7:     IF (TIF.INDICAT5% AND 01000000b) EQ 01000000b THEN \ ! X'40' is ON
+ 581: 0304:         BEGIN
+ 582: 0304:         TIF.INDICAT0% EQ (TIF.INDICAT0% OR 10000000b) ! X'80' set ON
+ 583: 0314:         ENDIF
+ 584: 0314: 
+ 585: 0314: !   Expand TIF variables to match length of IRF counterparts
+ 586: 0314: 
+ 587: 0314:     TIF.BAR.CODE$ = PACK$("0000000000") + TIF.BAR.CODE$                    ! DW
+ 588: 0341:     TIF.SALEPRIC$ = PACK$("0000") + TIF.SALEPRIC$                          ! DW
+ 589: 036e: 
+ 590: 036e: !   Set variables no longer used to null
+ 591: 036e: 
+ 592: 036e:     TIF.INDICAT1%    = 0                                                   ! DW
+ 593: 0376:     TIF.INDICAT2%    = 0
+ 594: 037e:     TIF.INDICAT4%    = 0
+ 595: 0386:     TIF.DEAL.NUM%    = 0
+ 596: 038f:     TIF.DEAL.SAVING$ = PACK$("0000")
+ 597: 03a3:     TIF.SALEQUAN$    = PACK$("00")                                         ! DW
+ 598: 03b7:     TIF.BOOTS.CODE$  = PACK$("000000")                                     ! DW
+ 599: 03cb: 
+ 600: 03cb: END FUNCTION
+ 601: 03d7: 
+ 602: 03d7: 
+ 603: 03d7: \********************************************************************************
+ 604: 03d7: \***
+ 605: 03d7: \***    SPLIT.TIF.IRF.DATA$
+ 606: 03d7: \***    Sets individual TIF variables from TIF.IRF.DATA$.
+ 607: 03d7: \***    Sets Giveaway and Item Movement data as though read from the TIF (calling
+ 608: 03d7: \***    TIF.SPLIT.RECORD to complete this process).
+ 609: 03d7: \***    The function is only ever called from within the UPDT.IRF.UPDT    ! 1.6 RC
+ 610: 03d7: \***    function defined within PSBF19.                                   ! 1.6 RC
+ 611: 03d7: \***
+ 612: 03d7: \***.............................................................................
+ 613: 03d7: 
+ 614: 03d7: 
+ 615: 03d7: FUNCTION SPLIT.TIF.IRF.DATA$ PUBLIC               ! Entire function new for 1.5 RC
+ 616: 03eb: 
+ 617: 03eb: !   Extract TIF variables from TIF.IRF.DATA$ (copy of IRF record string)
+ 618: 03eb: 
+ 619: 03eb:     TIF.BAR.CODE$      =      MID$(TIF.IRF.DATA$,1,11)   ! IRF.BARCODE$
+ 620: 040a:     TIF.INDICAT6%      =  ASC(MID$(TIF.IRF.DATA$,13,1))  ! IRF.INDICAT1%
+ 621: 042d: !   TIF.DEAL.DATA%(0) from    MID$(TIF.IRF.DATA$,14, 2)  ! IRF.DEAL.DATA%(0)
+ 622: 042d: !   TIF.DEAL.DATA%(1) from    MID$(TIF.IRF.DATA$,46, 2)  ! IRF.DEAL.DATA%(1)
+ 623: 042d:     TIF.SALEPRIC$      =      MID$(TIF.IRF.DATA$,19,5)   ! IRF.SALEPRIC$
+ 624: 044c:     TIF.INDICAT5%      =  ASC(MID$(TIF.IRF.DATA$,24,1))  ! IRF.INDICAT5% modified
+ 625: 046f: !   TIF.DEAL.DATA%(2) from    MID$(TIF.IRF.DATA$,48, 2)  ! IRF.DEAL.DATA%(1)
+ 626: 046f:     TIF.INDICAT3%      =  ASC(MID$(TIF.IRF.DATA$,50, 1)) ! IRF.INDICAT3%
+ 627: 0492: 
+ 628: 0492:     TIF.DEAL.DATA%(0) = GETN2 (TIF.IRF.DATA$, 13) ! Extracts TIF.DEAL.DATA%(n)
+ 629: 04c0:     TIF.DEAL.DATA%(1) = GETN2 (TIF.IRF.DATA$, 45) ! variables from string
+ 630: 04ee:     TIF.DEAL.DATA%(2) = GETN2 (TIF.IRF.DATA$, 47) ! TIF.IRF.DATA$
+ 631: 051c: 
+ 632: 051c: !   If in IRF (TIF.IRF.DATA$) a non-zero age restriction is set ...         ! 1.7 TT
+ 633: 051c: !   Set in TIF.INDICAT6% the Check Age flag ON, else set it OFF                ! 1.7 TT
+ 634: 051c: 
+ 635: 051c:     IF ASC(MID$(TIF.IRF.DATA$,18,1)) AND 00000111b THEN BEGIN ! X'07' is ON ! 1.7 TT
+ 636: 053d:         TIF.INDICAT6% EQ (TIF.INDICAT6% OR 00100000b)  ! set X'20' ON       ! 1.7 TT
+ 637: 054f:     ENDIF ELSE BEGIN                                                        ! 1.7 TT
+ 638: 054f:         TIF.INDICAT6% EQ (TIF.INDICAT6% AND 11011111b) ! set X'20' OFF      ! 1.7 TT
+ 639: 055f:     ENDIF                                                                   ! 1.7 TT
+ 640: 055f: 
+ 641: 055f: !   If IRF (TIF.IRF.DATA$) Giveaway bit flag is ON ...
+ 642: 055f: !   Set TIF.SALEPRIC$ as for a Giveaway item read directly from the TIF
+ 643: 055f: !   Further Giveaway processing is performed by the TIF.SPLIT.RECORD function
+ 644: 055f: 
+ 645: 055f:     IF ASC(MID$(TIF.IRF.DATA$,12,1)) AND 00000010b THEN \ ! X'02' is ON
+ 646: 0580:         BEGIN
+ 647: 0580:         TIF.SALEPRIC$ EQ STRING$(3,CHR$(255)) ! X'FFFFFF' (Not Priced)
+ 648: 059a:         ENDIF
+ 649: 059a: 
+ 650: 059a: !   If IRF (TIF.IRF.DATA$) Item Movement flag is ON ...
+ 651: 059a: !   Set TIF.INDICAT5% as for an Item Movement item read directly from the TIF
+ 652: 059a: !   The corresponding TIF.INDICAT0% flag is set by the TIF.SPLIT.RECORD function
+ 653: 059a: 
+ 654: 059a:     IF ASC(MID$(TIF.IRF.DATA$,12,1)) AND 10000000b THEN \ ! X'80' is ON
+ 655: 05bb:         BEGIN
+ 656: 05bb:         TIF.INDICAT5% EQ (TIF.INDICAT5% OR 01000000b) ! X'40' set ON
+ 657: 05cb:         ENDIF
+ 658: 05cb: 
+ 659: 05cb: !   At this point the TIF variables extracted from the IRF record string
+ 660: 05cb: !   TIF.IRF.DATA$ have the same format and meaning as though read directly
+ 661: 05cb: !   from a record on the TIF itself.
+ 662: 05cb: !   (Eg; by the READ FORM statement within READ.TIF.BOOTS.DATA)           ! 1.6 RC
+ 663: 05cb: 
+ 664: 05cb:     CALL TIF.SPLIT.RECORD
+ 665: 05dd: 
+ 666: 05dd: !   At this point the TIF variables extracted from the IRF record string  ! 1.6 RC
+ 667: 05dd: !   TIF.IRF.DATA$ have the same format and meaning as though read         ! 1.6 RC
+ 668: 05dd: !   from a record on the TIF using function READ.TIF.BOOTS.DATA).         ! 1.6 RC
+ 669: 05dd: 
+ 670: 05dd: 
+ 671: 05dd: !   If IRF (TIF.IRF.DATA$) Enforced Price Entry flag is ON ...            ! 1.6 RC
+ 672: 05dd: !   Set TIF.SALEPRIC$ to zero to cause till to enforce price entry        ! 1.6 RC
+ 673: 05dd: !   when selling offline.                                                 ! 1.6 RC
+ 674: 05dd: 
+ 675: 05dd:     IF ASC(MID$(TIF.IRF.DATA$,12,1)) AND 00100000b THEN \ ! X'20' is ON   ! 1.6 RC
+ 676: 05fe:         BEGIN                                                             ! 1.6 RC
+ 677: 05fe:         TIF.SALEPRIC$ EQ PACK$("000000") ! Causes till to enforce price   ! 1.6 RC
+ 678: 0612:         ENDIF                            ! entry when selling offline     ! 1.6 RC
+ 679: 0612: 
+ 680: 0612: END FUNCTION
+ 681: 0623: 
+ 682: 0623: 
+ 683: 0623: \********************************************************************************
+ 684: 0623: \***
+ 685: 0623: \***    READ.TIF.BOOTS.DATA
+ 686: 0623: \***    Corresponds to TIF.FORMAT% = 7 (Boots format) using TIF RECL 18.
+ 687: 0623: \***    Reads the TIF record (and initialises TIF.INDICAT0% to zero).
+ 688: 0623: \***    Calls TIF.SPLIT.RECORD to set Giveaway and Item Movement data as
+ 689: 0623: \***    required and expand some variables to match the format of their
+ 690: 0623: \***    IRF counterparts.
+ 691: 0623: \***
+ 692: 0623: \***.............................................................................
+ 693: 0623: 
+ 694: 0623: 
+ 695: 0623: FUNCTION READ.TIF.BOOTS.DATA PUBLIC                              ! DW
+ 696: 0637: 
+ 697: 0637:     INTEGER*2 READ.TIF.BOOTS.DATA                                   ! DW
+ 698: 0637: 
+ 699: 0637:     READ.TIF.BOOTS.DATA = 1                                         ! DW
+ 700: 063c: 
+ 701: 063c:     TIF.BAR.CODE$ = RIGHT$(TIF.BAR.CODE$,6)                         ! DW
+ 702: 0659: 
+ 703: 0659: !   Prevent null key from causing KF error 80F306CD program abend   ! 1.8 RC (200)
+ 704: 0659:     IF TIF.BAR.CODE$ = PACK$("000000000000") THEN BEGIN             ! 1.8 RC (200)
+ 705: 0677:         GOTO READ.TIF.BOOTS.DATA.ERROR ! Exits function as for      ! 1.8 RC (200)
+ 706: 067a:     ENDIF                              ! record not found on file   ! 1.8 RC (200)
+ 707: 067a: 
+ 708: 067a:     IF END # TIF.SESS.NUM% THEN READ.TIF.BOOTS.DATA.ERROR             ! DW
+ 709: 068e: 
+ 710: 068e:     READ FORM "T7,I1,2I2,C3,I1,I2,I1"; \                                  ! 1.5 RC
+ 711: 0726:       # TIF.SESS.NUM%          \                                          ! DSWM
+ 712: 0726:         KEY TIF.BAR.CODE$;     \                                          ! DW
+ 713: 0726:             TIF.INDICAT6%,     \                                          ! 1.5 RC
+ 714: 0726:             TIF.DEAL.DATA%(0), \                                          ! 1.5 RC
+ 715: 0726:             TIF.DEAL.DATA%(1), \                                          ! 1.5 RC
+ 716: 0726:             TIF.SALEPRIC$,     \                                          ! DW
+ 717: 0726:             TIF.INDICAT5%,     \                                          ! DW
+ 718: 0726:             TIF.DEAL.DATA%(2), \                                          ! 1.5 RC
+ 719: 0726:             TIF.INDICAT3%                                                 ! DW
+ 720: 0726: 
+ 721: 0726:     CALL TIF.SPLIT.RECORD                                                 ! 1.5 RC
+ 722: 0738: 
+ 723: 0738: !   Lines incorporated into new function TIF.SPLIT.RECORD                 ! 1.5 RC
+ 724: 0738: 
+ 725: 0738:     READ.TIF.BOOTS.DATA = 0                                         ! DW
+ 726: 073d:     EXIT FUNCTION                                                   ! DW
+ 727: 073f: 
+ 728: 073f: READ.TIF.BOOTS.DATA.ERROR:                                          ! DW
+ 729: 073f: 
+ 730: 073f:     CURRENT.REPORT.NUM% = TIF.REPORT.NUM%                           ! DW
+ 731: 074d:     FILE.OPERATION$ = "R"                                           ! DW
+ 732: 075c:     CURRENT.CODE$ = ""                                              ! DW
+ 733: 076b: 
+ 734: 076b: END FUNCTION                                                        ! DW
+ 735: 077a: 
+ 736: 077a: 
+ 737: 077a: \********************************************************************************
+ 738: 077a: \***
+ 739: 077a: \***    WRITE.TIF.BOOTS.DATA
+ 740: 077a: \***    Corresponds to TIF.FORMAT% = 7 (Boots format) using TIF RECL 18.
+ 741: 077a: \***    Calls TIF.CONCAT.RECORD to set Giveaway and Item Movement data from
+ 742: 077a: \***    INDICAT0% and to truncate some variables as required.
+ 743: 077a: \***    Writes the TIF record.
+ 744: 077a: \***
+ 745: 077a: \***.............................................................................
+ 746: 077a: 
+ 747: 077a: 
+ 748: 077a: FUNCTION WRITE.TIF.BOOTS.DATA PUBLIC                                ! DW
+ 749: 078e: 
+ 750: 078e:     INTEGER*2 WRITE.TIF.BOOTS.DATA                                  ! DW
+ 751: 078e: 
+ 752: 078e:     WRITE.TIF.BOOTS.DATA = 1                                        ! DW
+ 753: 0793: 
+ 754: 0793: !   Lines deleted                                                   ! 1.5 RC
+ 755: 0793: 
+ 756: 0793:     CALL TIF.CONCAT.RECORD                                          ! 1.5 RC
+ 757: 07a5: 
+ 758: 07a5:     IF END # TIF.SESS.NUM% THEN WRITE.TIF.BOOTS.DATA.ERROR          ! DW
+ 759: 07b9: 
+ 760: 07b9:     WRITE FORM "C6,I1,2I2,C3,I1,I2,I1"; \                           ! 1.5 RC
+ 761: 085d:       # TIF.SESS.NUM%;         \                                    ! 1.5 RC
+ 762: 085d:             TIF.BAR.CODE$,     \                                    ! DW
+ 763: 085d:             TIF.INDICAT6%,     \                                    ! DW
+ 764: 085d:             TIF.DEAL.DATA%(0), \                                    ! 1.5 RC
+ 765: 085d:             TIF.DEAL.DATA%(1), \                                    ! 1.5 RC
+ 766: 085d:             TIF.SALEPRIC$,     \                                    ! DW
+ 767: 085d:             TIF.INDICAT5%,     \                                    ! DW
+ 768: 085d:             TIF.DEAL.DATA%(2), \                                    ! 1.5 RC
+ 769: 085d:             TIF.INDICAT3%                                           ! DW
+ 770: 085d: 
+ 771: 085d:     WRITE.TIF.BOOTS.DATA = 0                                        ! DW
+ 772: 0862:     EXIT FUNCTION                                                   ! DW
+ 773: 0864: 
+ 774: 0864:     WRITE.TIF.BOOTS.DATA.ERROR:                                     ! DW
+ 775: 0864: 
+ 776: 0864:     CURRENT.REPORT.NUM% = TIF.REPORT.NUM%                           ! DW
+ 777: 0872:     FILE.OPERATION$ = "W"                                           ! DW
+ 778: 0881:     CURRENT.CODE$ = ""                                              ! DW
+ 779: 0890: 
+ 780: 0890: END FUNCTION                                                     ! DW
+ 781: 089f: 
+ 782: 089f: End of Compilation

@@ -1,0 +1,361 @@
+!******************************************************************************
+!******************************************************************************
+!***
+!***            PROGRAM         :       PSBF39E.J86
+!***
+!***            DESCRIPTION     :       DISPLAY MANAGER INTERFACE
+!***
+!***            AUTHOR          :       Stuart William McConnachie
+!***            DATE WRITTEN    :       September 2000
+!***
+!***        Provides a much needed and easier to use interface to
+!***        IBM Display Manager.
+!***
+!***        Saves the user having to set up, highlight, tab between and
+!***        validate fields.  Also handles the help screens and conversion
+!***        of date fields to external/internal format.
+!***
+!******************************************************************************
+!******************************************************************************
+
+!******************************************************************************
+!   Initialises the display manager functions.
+!   You should call this from your program initialisation for screen programs.
+!   Note that the name of the display manager file is determined from the
+!   global variable MODULE.NUMBER$.  For example PSB1200 uses PSBD12.dat
+!   where the PSB and 12 have been derived from MODULE.NUMBER$.
+
+    FUNCTION DM.INIT EXTERNAL
+        INTEGER*1   DM.INIT
+    END FUNCTION
+
+!******************************************************************************
+!   Quits the display manager program and frees resources.
+!   You should call this from your program termination.
+
+    FUNCTION DM.QUIT EXTERNAL
+        INTEGER*1   DM.QUIT
+    END FUNCTION
+
+!******************************************************************************
+!   Initialises a particular screen from the current display manager file
+!   for display.  You supply the screen number, optional title message and
+!   the first and last help screens associated with the display.
+!   Once you have SHOWN a screen, you can use the remaining functions in
+!   this library to set field values, and actually retrieve input from the
+!   screen.  Note that showing a screen just displays it on the screen,
+!   you need to call PROCESS.SCREEN to actually get any user input.
+
+    FUNCTION DM.SHOW.SCREEN (SCREEN%, TITLE$, FIRST.HELP%, LAST.HELP%) EXTERNAL
+        INTEGER*1   DM.SHOW.SCREEN
+        INTEGER*2   SCREEN%
+        STRING      TITLE$
+        INTEGER*2   FIRST.HELP%
+        INTEGER*2   LAST.HELP%
+    END FUNCTION
+
+!******************************************************************************
+!   Sets a function key message to visible.  Optionally sets the text on that
+!   key to the message string passed, if it is not null.
+!   Note you must have shown a screen first, and that the function key fields
+!   need to be defined in your display file with field IDs 241-250.
+
+    FUNCTION DM.SHOW.FN.KEY (KEY.NUM%, MESSAGE$) EXTERNAL
+        INTEGER*1   DM.SHOW.FN.KEY
+        INTEGER*2   KEY.NUM%
+        STRING      MESSAGE$
+    END FUNCTION
+
+!******************************************************************************
+!   Sets a function key message to invisible.
+!   Note you must have shown a screen first, and that the function key fields
+!   need to be defined in your display file with field IDs 241-250.
+
+    FUNCTION DM.HIDE.FN.KEY (KEY.NUM%) EXTERNAL
+        INTEGER*1   DM.HIDE.FN.KEY
+        INTEGER*2   KEY.NUM%
+    END FUNCTION
+
+!******************************************************************************
+!   LEGACY: Do not use in new programs, use DM.FN.VISIBLE instead which takes
+!   an infix notation expression, as opposed to reverse polish
+!   This definition has been commented out accordingly.  If you are
+!   recompiling an application, change to useing the new function.
+!
+!   FUNCTION DM.FN.KEY.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+!       INTEGER*1   DM.FN.KEY.VISIBILITY
+!       INTEGER*2   KEY.NUM%
+!       STRING      EXPR$
+!   END FUNCTION
+
+!******************************************************************************
+!   Sets a runtine expression to determine if a function key is visible.
+!   This is the new version of the above which takes an infix notation EXPR$.
+!   Note you must have shown a screen first, and that the function key fields
+!   need to be defined in your display file with field IDs 241-250.
+
+    FUNCTION DM.FN.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+        INTEGER*1   DM.FN.VISIBILITY
+        INTEGER*2   KEY.NUM%
+        STRING      EXPR$
+    END FUNCTION
+
+!******************************************************************************
+!   Specifies that a given field contains a date.
+!   This means that the date will be displayed on screen in the system date
+!   format (e.g. DD/MM/YY or MM/DD/YY, but will be returned and set by your
+!   application in YYMMDD format.
+!   It does NOT mean that the field will be validated as a date, you must do
+!   that explicitly using the VALID$ string.
+
+    FUNCTION DM.DATE.FIELD (FIELD%) EXTERNAL
+        INTEGER*1   DM.DATE.FIELD
+        INTEGER*2   FIELD%
+    END FUNCTION
+
+!******************************************************************************
+!   Specifies that a given field will contain a time.
+!   This means that the time will be displayed on screen using the system time
+!   format.  e.g. HH:MM
+
+    FUNCTION DM.TIME.FIELD (FIELD%) EXTERNAL                                !CSWM
+        INTEGER*1   DM.TIME.FIELD                                           !CSWM
+        INTEGER*2   FIELD%                                                  !CSWM
+    END FUNCTION                                                            !CSWM
+
+!******************************************************************************
+!   Specifies that a given input field will be read only.
+!   This allows you to select an item from a list by highlighting it.
+
+    FUNCTION DM.RO.FIELD (FIELD%) EXTERNAL                                  !ESWM
+        INTEGER*1   DM.RO.FIELD                                             !ESWM
+        INTEGER*2   FIELD%                                                  !ESWM
+    END FUNCTION                                                            !ESWM
+
+!******************************************************************************
+!   Specifies that a given input field will be read write.
+!   Undoes the effect of DM.RO.FIELD.
+
+    FUNCTION DM.RW.FIELD (FIELD%) EXTERNAL                                  !ESWM
+        INTEGER*1   DM.RW.FIELD                                             !ESWM
+        INTEGER*2   FIELD%                                                  !ESWM
+    END FUNCTION                                                            !ESWM
+
+!******************************************************************************
+!   LEGACY: Do not use in new programs, use DM.STATUS instead which takes
+!   an infix notation expression, as opposed to reverse polish.
+!   This definition has been commented out accordingly.  If you are
+!   recompiling an application, change to useing the new function.
+!
+!   FUNCTION DM.DISPLAY.MESSAGE (MESSAGE$) EXTERNAL                         !DSWM
+!       INTEGER*1   DM.DISPLAY.MESSAGE                                      !DSWM
+!       STRING      MESSAGE$                                                !DSWM
+!   END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Displays a message in the status line of the display.  Does not wait for
+!   input.  Use this function for display messages such as B251 Processing...
+!   You must have field 1 defined in your display manager file.
+!   This is the new version of the above which takes an infix notation MESSAGE$.
+
+    FUNCTION DM.STATUS (MESSAGE$) EXTERNAL                                  !DSWM
+        INTEGER*1   DM.STATUS                                               !DSWM
+        STRING      MESSAGE$                                                !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Waits for input in the invisible input field of the display.  Additionally
+!   displays a message prompting the user on the status line.
+!   You must have fields 1 and 240 defined in your display manager file.
+!   The message supplied should be in Reverse Polish form.
+!   The function returns the key value that ended the input.
+
+    FUNCTION DM.INVISIBLE.INPUT (MESSAGE$) EXTERNAL
+        STRING      MESSAGE$
+        INTEGER*2   DM.INVISIBLE.INPUT
+    END FUNCTION
+
+!******************************************************************************
+!   Gets the contents of the invisible field from the display.  This will
+!   allow you to get the Y or N answer that the user typed, for example.
+
+    FUNCTION DM.INVISIBLE.FIELD EXTERNAL
+        STRING      DM.INVISIBLE.FIELD
+    END FUNCTION
+
+!******************************************************************************
+!   Returns or sets the current field used for input on the current display.
+!   If NEW.FIELD% is zero, the function simply returns the current field.
+!   If NEW.FIELD% is non zero, the function sets the current field.
+
+    FUNCTION DM.CURRENT.FIELD (NEW.FIELD%) EXTERNAL
+        INTEGER*2   DM.CURRENT.FIELD
+        INTEGER*2   NEW.FIELD%
+    END FUNCTION
+
+!******************************************************************************
+!   Sets a key number as being a validation key.  When this key is used the
+!   function will handle the key in the same way as the ENTER key.  i.e. all
+!   the visible fields on in input form are check for validity, and the key
+!   press is only returned to the user if the form entries are valid.
+!   Use this function to add the PGUP.KEY% and PGDN.KEY% keys, for example.
+
+    FUNCTION DM.VALIDATE.KEY (KEY%) EXTERNAL                                !BSWM
+        INTEGER*1   DM.VALIDATE.KEY                                         !BSWM
+        INTEGER*2   KEY%                                                    !BSWM
+    END FUNCTION                                                            !BSWM
+
+!******************************************************************************
+!   Returns or sets the flag which says if the screen contents have been
+!   changed or not.  Use this function when you have multiple pages to a
+!   form, but want the user to be prompted to save any changes on exit.
+!   When called with FLAG% set 0 or -1, the function updates the current
+!   displays setting.  When called with any other value, the function simply
+!   returns the current setting and does not update it.
+
+    FUNCTION DM.CHANGED.FLAG (FLAG%) EXTERNAL                               !BSWM
+        INTEGER*1   FLAG%                                                   !BSWM
+        INTEGER*1   DM.CHANGED.FLAG                                         !BSWM
+    END FUNCTION                                                            !BSWM
+
+!******************************************************************************
+!   Sets the field tab order.  The tab order can be either:
+!   0 - The TAB order is defined by the fields position on the display,
+!       left to right then top to bottom of the display.
+!   1 - The TAB order is defined by the number order of the fields.  This is
+!       a new option which allows greater control over the field TAB order.
+!   -1  Returns the current setting without changing it.
+!   The default tab order is 0.  Once set, the TAB order is a global setting
+!   for the current and all future screens.
+
+    FUNCTION DM.TAB.ORDER (ORDER%) EXTERNAL                                 !DSWM
+        INTEGER*1   ORDER%                                                  !DSWM
+        INTEGER*1   DM.TAB.ORDER                                            !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   This function actually processes user input on the currently shown form.
+!   The function returns when any unrecognised key terminates input in a
+!   field.  The keys which will do this are determined by the properties of
+!   the Display Manager fields on your form.  The function internally handles
+!   most of the form navigation keys (e.g. Tab, Back Tab, Home End) the
+!   rest are up to the user application.
+
+    FUNCTION DM.PROCESS.SCREEN (FIRST.FIELD%, LAST.FIELD%, CONFIRM) EXTERNAL
+        INTEGER*2   DM.PROCESS.SCREEN
+        INTEGER*2   FIRST.FIELD%
+        INTEGER*2   LAST.FIELD%
+        INTEGER*1   CONFIRM
+    END FUNCTION
+
+!******************************************************************************
+!   Associates a field on the current display with a given compile time
+!   variable.  This allows the varibale to be used in your program code
+!   AND be updated by the display manager fields in PROCESS.SCREEN.
+!
+!   NOTE: PLEASE BE VERY CAREFUL WITH THE THIRD PARAMETER TO THIS SUB
+!   Always use an absolute variable for VARIABLE$:
+!       CALL DM.NAME (2, "MY.VAR$", MY.VAR$)
+!   NEVER use a calcualted value. These forms are all ILLEGAL:
+!       CALL DM.NAME (2, "MY.VAR$", "1234")
+!       CALL DM.NAME (2, "MY.VAR$", STR$(MY.VAR%))
+!   Also, if you MUST pass in an array element, for example:
+!       CALL DM.NAME (2, "MY.VAR$", ARRAY.ELEMENT$(I%))
+!   then you must make sure you do not reDIM the array until you have finished
+!   displaying and processing the screen.
+
+    SUB DM.NAME (FIELD%, NAME$, VARIABLE$) EXTERNAL                         !DSWM
+        INTEGER*2 FIELD%                                                    !DSWM
+        STRING NAME$                                                        !DSWM
+        STRING VARIABLE$                                                    !DSWM
+    END SUB                                                                 !DSWM
+
+!******************************************************************************
+!   Returns the index of a field on the current screen, given its name.
+
+    FUNCTION DM.INDEX (FIELD$) EXTERNAL                                     !DSWM
+        STRING FIELD$                                                       !DSWM
+        INTEGER*2 DM.INDEX                                                  !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets the validation expression for a field on the display.  Exactly the
+!   same as setting the global VALID$ array yourself, except it is done
+!   via the fields name as assoicated via DM.NAME.FIELD and the expression
+!   is in standard infix notation.
+
+    FUNCTION DM.VALID (FIELD$, VALID$) EXTERNAL                             !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING VALID$                                                       !DSWM
+        INTEGER*2 DM.VALID                                                  !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets the message expression for a field on the display.  Exactly the
+!   same as setting the global MESSAGE$ array yourself, except it is done
+!   via the fields name as assoicated via DM.NAME.FIELD and the expression
+!   is in standard infix notation.
+
+    FUNCTION DM.MESSAGE (FIELD$, MESSAGE$) EXTERNAL                         !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING MESSAGE$                                                     !DSWM
+        INTEGER*2 DM.MESSAGE                                                !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets the field attributes for a field on the display. Exactly the
+!   same as using the SETF command yourself except that it is done by
+!   using the fields name as associated via the DM.NAME.FIELD.
+
+SUB DM.FLD.ATT (FIELD$, VALUE$) EXTERNAL                                    !FNWB
+    STRING      FIELD$                                                      !FNWB
+    STRING      VALUE$                                                      !FNWB
+END SUB                                                                     !FNWB
+
+!******************************************************************************
+!   Sets an input field to act as an output only field on the display. This
+!   allows setting input fields that contain headings etc. to be skipped by
+!   the cursor movement keys.
+
+FUNCTION DM.OO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+    INTEGER*2   DM.OO.FIELD                                                 !FNWB
+    STRING      FIELD$                                                      !FNWB
+END FUNCTION                                                                !FNWB
+
+!******************************************************************************
+!   Sets an input field back to an i/o field
+
+FUNCTION DM.IO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+    INTEGER*2   DM.IO.FIELD                                                 !FNWB
+    STRING      FIELD$                                                      !FNWB
+END FUNCTION                                                                !FNWB
+
+!******************************************************************************
+!   Sets the visibility expression for a field on the display.  Exactly the
+!   same as setting the global VISIBLE$ array yourself, except it is done
+!   via the fields name as assoicated via DM.NAME.FIELD and the expression
+!   is in standard infix notation.
+
+    FUNCTION DM.VISIBLE (FIELD$, VISIBLE$) EXTERNAL                         !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING VISIBLE$                                                     !DSWM
+        INTEGER*2 DM.VISIBLE                                                !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+!   Sets an error message in field 1 of the display and moves the input
+!   focus to the offending line of the display.  Should be called from user
+!   validation code.  Equivalent of the following separate calls:
+!       CALL DM.CURRENT.FIELD%(DM.INDEX(FIELD$))
+!       FIELD$(1) = POLISH$(MESSAGE$)
+!   Can also be called with a null field name, in which case the cursor
+!   remains in the current input field, but the error is displayed.
+
+    FUNCTION DM.FOCUS (FIELD$, MESSAGE$) EXTERNAL                           !DSWM
+        STRING FIELD$                                                       !DSWM
+        STRING MESSAGE$                                                     !DSWM
+        INTEGER*2 DM.FOCUS                                                  !DSWM
+    END FUNCTION                                                            !DSWM
+
+!******************************************************************************
+

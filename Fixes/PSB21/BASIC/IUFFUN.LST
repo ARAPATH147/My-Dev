@@ -1,0 +1,2136 @@
+   1: 0000: \REM
+   2: 0000: \*******************************************************************************
+   3: 0000: \*******************************************************************************
+   4: 0000: \***
+   5: 0000: \***    %INCLUDE FOR ITEM UPDATE FILES PUBLIC FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***        REFERENCE   :   IUFFUN (BAS)
+   8: 0000: \***
+   9: 0000: \***        FILE TYPE   :   Sequential
+  10: 0000: \***
+  11: 0000: \***
+  12: 0000: \***    Version 1.6           Charles Skadorwa / Mark Goode         28th Novemeber 2011
+  13: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+  14: 0000: \***    Functions rewritten.
+  15: 0000: \***
+  16: 0000: \***    Version 1.7           Mark Goode                            22nd December 2011
+  17: 0000: \***    Calling application to validate RPD date length
+  18: 0000: \***
+  19: 0000: \***    Version 1.8           Rob Cowey                             18th January 2012
+  20: 0000: \***    Fix to GETN1 function to prevent privilege exception when the passed string is
+  21: 0000: \***    NULL.
+  22: 0000: \***
+  23: 0000: \***    Version 1.9          Tittoo Thomas                          19th January 2012
+  24: 0000: \***    Fixed for the local opening and processing of the BCF file without
+  25: 0000: \***    affecting the mainline program.
+  26: 0000: \***
+  27: 0000: \***    Old format IUF.RPD.DATE$ extended to 8-bytes by prefixing with century ie. "20".
+  28: 0000: \***
+  29: 0000: \***    Defect 2551: CIP Markdown processing fails for new IUF format.
+  30: 0000: \***    New format IUF.MARKDOWN$ flag overridden to "N" (same as old IUF setting) as
+  31: 0000: \***    it is not currently used - the code references IDF INDICAT1% Bit6 CIP Markdown
+  32: 0000: \***    flag.
+  33: 0000: \***
+  34: 0000: \***    VERSION 1.10.                ROBERT COWEY.                07 FEB 2012.
+  35: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+  36: 0000: \***    Various corrections relating to the transformation of legacy IUF
+  37: 0000: \***    data into Core R2 format
+  38: 0000: \***
+  39: 0000: \***    Defect 19 - Commented 1.10 RC (19).
+  40: 0000: \***    Corrected transformation of IUF.LOYALTY.FLAG$ to IUF.EARN.POINTS$
+  41: 0000: \***    and IUF.REDEEMABLE$.
+  42: 0000: \***
+  43: 0000: \***    Defect 21 - Commented 1.10 RC (21).
+  44: 0000: \***    Original fix (and associated comments) were incorrect as they were    ! 1.11 RC (21)
+  45: 0000: \***    based on a mis-understanding of variable IUF.DISCOUNTABLE$.           ! 1.11 RC (21)
+  46: 0000: \***    The fix has now been re-coded (commented 1.11 RC (21) ) and any       ! 1.11 RC (21)
+  47: 0000: \***    potentially confusing comments also corrected or removed.             ! 1.11 RC (21)
+  48: 0000: \***
+  49: 0000: \***    Defect 39 - Commented 1.10 RC (39).
+  50: 0000: \***    Set IUF.GUARANTEE.LENGTH$ to "25" for IUF.GUARANTEE.CAT$ = "Z".
+  51: 0000: \***    Set IUF.GUARANTEE.LENGTH$ to "63" for IUF.GUARANTEE.CAT$ = "G".
+  52: 0000: \***
+  53: 0000: \***    Defect 40 - Commented 1.10 RC (40).
+  54: 0000: \***    Converted IUF.GIVEAWAY$ of "C" to "Y" otherwise set to "N".
+  55: 0000: \***
+  56: 0000: \***    Defect 46 - Commented 1.10 RC (46).
+  57: 0000: \***    Converted IUF.GRP.CODE.FLAG$ of "G" to "Y" otherwise set to "N".
+  58: 0000: \***
+  59: 0000: \***    Defect 47 - Commented 1.10 RC (47).
+  60: 0000: \***    Converted IUF.ENF.PRICE.ENTRY$ to "N" when not "Y".
+  61: 0000: \***
+  62: 0000: \***    VERSION 1.11.                ROBERT COWEY.                20 FEB 2012.
+  63: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.6.
+  64: 0000: \***    Further correction relating to the transformation of legacy IUF
+  65: 0000: \***    data into Core R2 format
+  66: 0000: \***
+  67: 0000: \***    Defect 44 - Commented 1.11 RC (44).
+  68: 0000: \***    Modified LEGACY.IUF.FORMAT to set INSURE.CONCEPT.GROUPS$ from
+  69: 0000: \***    BCF record 2 containing list of insurance concept groups.
+  70: 0000: \***    Modified READ.IUF to search this using IUF items concept group
+  71: 0000: \***    to identify insurance related item.
+  72: 0000: \***
+  73: 0000: \***    Defect 21 - Commented 1.11 RC (21).
+  74: 0000: \***    For legacy IUF ...
+  75: 0000: \***    Set IUF.DISCOUNTABLE$ to "N" when IUF.DISCOUNT.CAT$ is "X"
+  76: 0000: \***    (or default it to "Y" otherwise).
+  77: 0000: \***    For Core R2 format IUF ...
+  78: 0000: \***    Check IUF.DISCOUNTABLE$ is "Y" (or default it to "N" otherwise).
+  79: 0000: \***
+  80: 0000: \***    Defect 71 - Commented 1.11 RC (71)                        24 FEB 2012.
+  81: 0000: \***    For Core R2 IUF ...
+  82: 0000: \***    Set IUF.UNRESTRICTED.GROUP.CODE$ to a default value of "N" when it
+  83: 0000: \***    contains a value other than "N" or "Y" (eg, null, blank, invalid).
+  84: 0000: \***
+  85: 0000: \***    Defect 71 - Reversed out                                  27 FEB 2012.
+  86: 0000: \***    The previous fix correctly follows Detailed Design 1.6 however the
+  87: 0000: \***    DD refers to setting of IRF flags from valid IUF data ("N" or "Y").
+  88: 0000: \***    The project level documents however require that invalid IUF data
+  89: 0000: \***    for this variable causes the item to be rejected (by PSB2100.BAS).
+  90: 0000: \***
+  91: 0000: \***    VERSION 1.12.                ROBERT COWEY.                13 MAR 2012.
+  92: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.8.
+  93: 0000: \***
+  94: 0000: \***    Defect 103 - Commented 1.12 RC (103).
+  95: 0000: \***    When processing REFPGF data from REFPGF.RECORDS$ table ...
+  96: 0000: \***    Cater for non-Dispose return route of blank (ie, special instructions).
+  97: 0000: \***
+  98: 0000: \***    VERSION 1.13.                ROBERT COWEY.                20 MAR 2012.
+  99: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.9.
+ 100: 0000: \***
+ 101: 0000: \***    Defect 129 - Commented 1.13 RC (129)
+ 102: 0000: \***    Removed "YN" translation of Core R2 format IUF.EARN.POINTS$ flag.
+ 103: 0000: \***    Code now causes Core R2 IUF.EARN.POINTS$ flag "Y" to set IRF.INDICAT3%
+ 104: 0000: \***    Exclude-from-Loyalty flag X'08' to OFF.
+ 105: 0000: \***    This correction should have been made as part of defect 19 work.
+ 106: 0000: \***
+ 107: 0000: \***    VERSION 1.14.                ROBERT COWEY.                26 APR 2012.
+ 108: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.14.
+ 109: 0000: \***
+ 110: 0000: \***    Defect 208 - Commented 1.14 RC (208)
+ 111: 0000: \***    Corrected IF test setting IUF.RETURN.ROUTE$ to uniquely identify
+ 112: 0000: \***    each REFPGF Return Label Type (incl "Semi-Centralised").
+ 113: 0000: \***
+ 114: 0000: \***    VERSION 1.15.               ROBERT COWEY.                16 MAY 2012.
+ 115: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.17.
+ 116: 0000: \***
+ 117: 0000: \***    Defect 230 - Commented 1.15 RC (230)
+ 118: 0000: \***    Modified READ.IUF to bypass redundant type 002 Flashpack records
+ 119: 0000: \***    and adjusted IUF.RECORD.COUNT% normally incremented within PSB21.
+ 120: 0000: \***
+ 121: 0000: \***    VERSION B               Rejiya Nair             13th May 2016
+ 122: 0000: \***    PRJ1452 Restricting Item Sales
+ 123: 0000: \***    - Check for the pattern; (*R##) or (*R#) in IUF.STNDRD.DESC$;
+ 124: 0000: \***      where # refers to group number. This means that; the group
+ 125: 0000: \***      number can be from 01 - 99 or 1 to 99. If the pattern is found
+ 126: 0000: \***      then;
+ 127: 0000: \***       . Set the new variable, IUF.RESTRICT.SALES.FLAG$ to "Y".
+ 128: 0000: \***       . Assign the group number of this item in to IUF.GRP.NO$.
+ 129: 0000: \***    - Removed the commented out code
+ 130: 0000: \***
+ 131: 0000: \***--------------------------------------------------------------------------------
+ 132: 0000: \***  IMPORTANT: When you change PSB21, please search for the line containing
+ 133: 0000: \***------------        CALL DO.MESSAGE("PSB21 PROGRAM START
+ 134: 0000: \***             in Module PSB2100 and wind the date and version on.
+ 135: 0000: \***
+ 136: 0000: \*******************************************************************************
+ 137: 0000: \*******************************************************************************
+ 138: 0000: 
+ 139: 0000: \*******************************************************************************
+ 140: 0000: \***    Function globals
+ 141: 0000: \*******************************************************************************
+ 142: 0000: %INCLUDE PSBF20G.J86    ! Sess Num Utility
+ 143: 0000: REM\
+ 144: 0000: \*******************************************************************************
+ 145: 0000: \*******************************************************************************
+ 146: 0000: \***
+ 147: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 148: 0000: \***
+ 149: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 150: 0000: \*** 
+ 151: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 152: 0000: \*** 
+ 153: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 154: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 155: 0000: \***     to two byte integer.
+ 156: 0000: \***
+ 157: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 158: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 159: 0000: \***
+ 160: 0000: \*******************************************************************************
+ 161: 0000: \*******************************************************************************
+ 162: 0000: 
+ 163: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 164: 0000:                        F20.STRING.FILE.NO$,                            \
+ 165: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 166: 0000:                        SESS.NUM.TABLE$(1)
+ 167: 0000: 
+ 168: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 169: 0000: 
+ 170: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 171: 0000: 
+ 172: 0000: 
+ 173: 0000: %INCLUDE IUFDEC.J86 ! IUF variable declarations
+ 174: 0000: \REM
+ 175: 0000: \*******************************************************************************
+ 176: 0000: \*******************************************************************************
+ 177: 0000: \***
+ 178: 0000: \***    %INCLUDE FOR ITEM UPDATE FILES VARIABLE DECLARATIONS
+ 179: 0000: \***
+ 180: 0000: \***        REFERENCE   :   IUFDEC (J86)
+ 181: 0000: \***
+ 182: 0000: \***        FILE TYPE   :   Sequential
+ 183: 0000: \***
+ 184: 0000: \***    VERSION H.              ROBERT COWEY.                       24 AUG 1993.
+ 185: 0000: \***    Original version created by combining IUFFLDG and IUFNUMG.
+ 186: 0000: \***
+ 187: 0000: \***    VERSION I.              ROBERT COWEY.                       25 AUG 1993.
+ 188: 0000: \***    Added NEW.DEAL.COUNT$ and BC.LETTER$ to record type "001" (Item
+ 189: 0000: \***    reference).
+ 190: 0000: \***    Removed falconcraft detail variables (SALESPLAN.ID$, BUS.CENTRE$,
+ 191: 0000: \***    START.DATE$, END.DATE$, TICKET.TYPE$, GENOF.NUM$, GENOF.DESC$,
+ 192: 0000: \***    FOOTER.TYPE$) from record types "003" (Deal price) and "004" (Item
+ 193: 0000: \***    pending).
+ 194: 0000: \***    Defined record type "006" (Deals).
+ 195: 0000: \***
+ 196: 0000: \***    VERSION J.              Andrew Wedgeworth                13th March 1995
+ 197: 0000: \***    Focus flag, Price Pledge flag and ASCOTT/COMPASS flag replaced with
+ 198: 0000: \***    fields for the Staff Discount, Customer Loyalty and Give-away systems.
+ 199: 0000: \***
+ 200: 0000: \***    VERSION K               Rebecca Dakin                    28th June 1999
+ 201: 0000: \***
+ 202: 0000: \***    Version L        Andy Cotton & Amy Hoggard     29th Jan 2003
+ 203: 0000: \***    Change use and name of variable IUF.DEAL.PRICE.FLAG$ to IUF.KEYLINES.FLAG$
+ 204: 0000: \***
+ 205: 0000: \***    Version M               Brian Greenfield                 25th June 2004
+ 206: 0000: \***    Added new IUF.MARKDOWN$ tor use with SEL Markdown flagged items.
+ 207: 0000: \***
+ 208: 0000: \***    Version 1.6           Charles Skadorwa                 4th July 2011
+ 209: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+ 210: 0000: \***    Added new globals.
+ 211: 0000: \***
+ 212: 0000: \***    VERSION 1.7.                ROBERT COWEY.                07 FEB 2012.
+ 213: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+ 214: 0000: \***
+ 215: 0000: \***    Defect 21 - Commented 1.9 RC (21).
+ 216: 0000: \***    Commented real meaning of IUF.DISCOUNTABLE$ as Discount Exempt.
+ 217: 0000: \***
+ 218: 0000: \***    VERSION 1.8.                ROBERT COWEY.                20 FEB 2012.
+ 219: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.6.
+ 220: 0000: \***    Correction relating to transformation of legacy IUF data to Core R2 format
+ 221: 0000: \***
+ 222: 0000: \***    Defect 44 - Commented 1.11 RC (44).
+ 223: 0000: \***    Replaced variables HEALTH.CONCEPT.GROUPS$ and HEALTH.GROUP$ with more
+ 224: 0000: \***    meaningfully named single variable INSURE.CONCEPT.GROUPS$.
+ 225: 0000: \***
+ 226: 0000: \***    VERSION B               Rejiya Nair             13th May 2016
+ 227: 0000: \***    PRJ1452 Restricting Item Sales
+ 228: 0000: \***    - Declaration of two new variables (version tagged as !BRN)
+ 229: 0000: \***    - Removed the commented out code
+ 230: 0000: \***
+ 231: 0000: \*******************************************************************************
+ 232: 0000: \*******************************************************************************
+ 233: 0000: 
+ 234: 0000: 
+ 235: 0000: \*******************************************************************************
+ 236: 0000: \*******************************************************************************
+ 237: 0000: \***
+ 238: 0000: \***    RECORD LAYOUTS
+ 239: 0000: \***
+ 240: 0000: \***    HEADER RECORD
+ 241: 0000: \***
+ 242: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 243: 0000: \***     8  3  ASC  TRANS.TYPE$             "000" Header
+ 244: 0000: \***    11  4  ASC  IUF.BRANCH.NO$
+ 245: 0000: \***    15  5  ASC  IUF.SERIAL.NO$
+ 246: 0000: \***
+ 247: 0000: \***    ITEM REFERENCE RECORD
+ 248: 0000: \***
+ 249: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 250: 0000: \***     8  3  ASC  TRANS.TYPE$             "001" Item reference
+ 251: 0000: \***    11  1  ASC  IUF.GRP.CODE.FLAG$
+ 252: 0000: \***    12 24  ASC  IUF.STNDRD.DESC$
+ 253: 0000: \***    36 18  ASC  IUF.TILL.DESC$
+ 254: 0000: \***    54 45  ASC  IUF.S.E.DESC$
+ 255: 0000: \***    99  1  ASC  IUF.SUPPLY.ROUTE$
+ 256: 0000: \***   100  1  ASC  IUF.GIVEAWAY$
+ 257: 0000: \***   101  5  ASC  IUF.PROD.GRP$
+ 258: 0000: \***   106  1  ASC  IUF.GUARANTEE.CAT$          ! SBH CHANGED FROM ENF.QTY 31/1/96
+ 259: 0000: \***   107  1  ASC  IUF.ENF.PRICE.ENTRY$
+ 260: 0000: \***   108  1  ASC  IUF.LOYALTY.FLAG$
+ 261: 0000: \***   109  1  ASC  IUF.DISCOUNT.CAT$
+ 262: 0000: \***   110  1  ASC  IUF.OWN.BRAND$
+ 263: 0000: \***   111  1  ASC  IUF.DIRECT.PROC$
+ 264: 0000: \***   112  1  ASC  IUF.STATUS.1$
+ 265: 0000: \***   113  1  ASC  IUF.EANS.CHANGED$
+ 266: 0000: \***   114  3  ASC  IUF.NO.OF.EANS$
+ 267: 0000: \***   117  8  ASC  IUF.CURRENT.PRICE$      Price in pence
+ 268: 0000: \***   125  1  ASC  IUF.NO.OF.RPD.PRICES$
+ 269: 0000: \***   126  2  ASC  IUF.NO.OF.FLASHPACKS$
+ 270: 0000: \***   128  7  ASC  IUF.ORIGIN.CODE$
+ 271: 0000: \***   135  1  ASC  IUF.DEAL.PRICE.FLAG$    !L CHANGED TO IUF.KEYLINES.FLAG$
+ 272: 0000: \***   136  1  ASC  IUF.STOCK.SYSTEM.FLAG$  "Y" Stock system item
+ 273: 0000: \***                                        "N" Non stock system item
+ 274: 0000: \***   137  2  ASC  NEW.DEAL.COUNT$         Number of type 6 records
+ 275: 0000: \***   139  1  ASC  BC.LETTER$              Business centre letter
+ 276: 0000: \***
+ 277: 0000: \***    FLASHPACK RECORD
+ 278: 0000: \***
+ 279: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 280: 0000: \***     8  3  ASC  TRANS.TYPE$             "002" Flashpack
+ 281: 0000: \***    11  7  ASC  FLASH.PACK.CODE$
+ 282: 0000: \***    18  3  ASC  MULTIPLICATION.FACTOR$
+ 283: 0000: \***
+ 284: 0000: \***    DEAL PRICE RECORD
+ 285: 0000: \***
+ 286: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 287: 0000: \***     8  3  ASC  TRANS.TYPE$             "003" Deal price
+ 288: 0000: \***    11  1  ASC  DEAL.TYPE$
+ 289: 0000: \***    12  2  ASC  DEAL.QUANTITY$
+ 290: 0000: \***    14  5  ASC  SPECIAL.PRICE$          Price in pence
+ 291: 0000: \***    19  2  ASC  M.P.GROUP$
+ 292: 0000: \***    21  6  ASC  FIRST.DATE$             YYMMDD format
+ 293: 0000: \***    27  6  ASC  LAST.DATE$              YYMMDD format
+ 294: 0000: \***
+ 295: 0000: \***    ITEM PENDING PRICE RECORD
+ 296: 0000: \***
+ 297: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 298: 0000: \***     8  3  ASC  TRANS.TYPE$             "004" Item pending price
+ 299: 0000: \***    11  6  ASC  RPD.DATE$               YYMMDD format
+ 300: 0000: \***    17  8  ASC  NEW.PRICE$              Price in pance
+ 301: 0000: \***    25  5  ASC  RPD.NO$
+ 302: 0000: \***    30  1  ASC  MARKDOWN$               Markdown flag of "Y" or "N" !MBG
+ 303: 0000: \***
+ 304: 0000: \***    ITEM BARCODE RECORD
+ 305: 0000: \***
+ 306: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 307: 0000: \***     8  3  ASC  TRANS.TYPE$             "005" Item barcode
+ 308: 0000: \***    11 12  ASC  BAR.CODE$
+ 309: 0000: \***
+ 310: 0000: \***    DEALS RECORD (MULTI-BUY FORMAT)     Sorted by ...
+ 311: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 312: 0000: \***
+ 313: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 314: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 315: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 316: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 317: 0000: \***    23  1  ASC  DEAL.ID$                "M" Multi-Buy
+ 318: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      " " (not used for Multi-Buy)
+ 319: 0000: \***    25  1  ASC  3FOR2.FLAG$             "T" Three-For-Two type Multi-Buy
+ 320: 0000: \***    26  2  ASC  DEAL.LIMIT$             2 to 15 Qualifying purchases
+ 321: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 322: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 323: 0000: \***                                        zero if highest price purchased
+ 324: 0000: \***
+ 325: 0000: \***    DEALS RECORD (LINK-SAVE FORMAT)     Sorted by ...
+ 326: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 327: 0000: \***
+ 328: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 329: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 330: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 331: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 332: 0000: \***    23  1  ASC  DEAL.ID$                "A" "B" "X" Link-Save list ID
+ 333: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      "P" Pair, "T" Triplet
+ 334: 0000: \***    25  1  ASC  3FOR2.FLAG$             " " (not used for Link-Save)
+ 335: 0000: \***    26  2  ASC  DEAL.LIMIT$             1 to 15 Qualifying (list) purchases
+ 336: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 337: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 338: 0000: \***                                        zero if highest price purchased
+ 339: 0000: \***    TRAILER RECORD
+ 340: 0000: \***
+ 341: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 342: 0000: \***    ]8  3  ASC  TRANS.TYPE$             "999" Trailer
+ 343: 0000: \***    11  7  ASC  IUF.ITEM.COUNT$
+ 344: 0000: \***
+ 345: 0000: \*******************************************************************************
+ 346: 0000: \*******************************************************************************
+ 347: 0000: 
+ 348: 0000: 
+ 349: 0000:     STRING GLOBAL                                                       \
+ 350: 0000:         IUF.FILE.NAME$
+ 351: 0000: 
+ 352: 0000:     INTEGER*1 GLOBAL                                                    \ 1.6CSk
+ 353: 0000:         IUF.NEW.FORMAT                                                  ! 1.6CSk
+ 354: 0000: 
+ 355: 0000:     INTEGER*2 GLOBAL                                                    \
+ 356: 0000:         IUF.REPORT.NUM%,                                                \
+ 357: 0000:         IUF.SESS.NUM%,                                                  \ 1.6CSk
+ 358: 0000:         REFPGF.COUNT%,                                                  \ 1.6CSk
+ 359: 0000:         REFPGF.REPORT.NUM%,                                             \ 1.6CSk
+ 360: 0000:         REFPGF.SESS.NUM%                                                ! 1.6CSk
+ 361: 0000: 
+ 362: 0000:   STRING GLOBAL                                                         \
+ 363: 0000:         IUF.3FOR2.FLAG$,                                                \ IRC
+ 364: 0000:         IUF.BAR.CODE$,                                                  \
+ 365: 0000:         IUF.BC.LETTER$,                                                 \ IRC
+ 366: 0000:         IUF.BOOTS.CODE$,                                                \
+ 367: 0000:         IUF.BRANCH.NO$,                                                 \
+ 368: 0000:         IUF.CURRENT.PRICE$,                                             \
+ 369: 0000:         IUF.DEAL.ID$,                                                   \ IRC
+ 370: 0000:         IUF.DEAL.LIMIT$,                                                \ IRC
+ 371: 0000:         IUF.DEAL.NUMBER$,                                               \ IRC
+ 372: 0000:         IUF.KEYLINES.FLAG$,                                             \ LAC/AH
+ 373: 0000:         IUF.DEAL.QUANTITY$,                                             \
+ 374: 0000:         IUF.DEAL.TYPE$,                                                 \
+ 375: 0000:         IUF.DIRECT.PROC$,                                               \
+ 376: 0000:         IUF.DISCOUNT.CAT$,                                              \ JAW
+ 377: 0000:         IUF.EANS.CHANGED$,                                              \
+ 378: 0000:         IUF.END.DATE$,                                                  \
+ 379: 0000:         IUF.ENF.PRICE.ENTRY$,                                           \
+ 380: 0000:         IUF.GUARANTEE.CAT$,                                             \ SBH 31/1/96
+ 381: 0000:         IUF.FIRST.DATE$,                                                \
+ 382: 0000:         IUF.FLASH.PACK.CODE$,                                           \
+ 383: 0000:         IUF.GIVEAWAY$,                                                  \ JAW
+ 384: 0000:         IUF.GRP.NO$,                                                   \!BRN
+ 385: 0000:         IUF.GRP.CODE.FLAG$,                                             \
+ 386: 0000:         IUF.ITEM.COUNT$,                                                \
+ 387: 0000:         IUF.ITEM.QTY$,                                                  \ KRD
+ 388: 0000:         IUF.LAST.DATE$,                                                 \
+ 389: 0000:         IUF.LOYALTY.FLAG$,                                              \ JAW
+ 390: 0000:         IUF.M.P.GROUP$,                                                 \
+ 391: 0000:         IUF.MULTIPLICATION.FACTOR$,                                     \
+ 392: 0000:         IUF.NEW.DEAL.COUNT$,                                            \ IRC
+ 393: 0000:         IUF.NEW.PRICE$,                                                 \
+ 394: 0000:         IUF.NO.OF.EANS$,                                                \
+ 395: 0000:         IUF.NO.OF.RPD.PRICES$,                                          \
+ 396: 0000:         IUF.OWN.BRAND$,                                                 \
+ 397: 0000:         IUF.PAIR.TRIPLET.FLAG$,                                         \ IRC
+ 398: 0000:         IUF.PROD.GRP$,                                                  \
+ 399: 0000:         IUF.RECORD$,                                                    \
+ 400: 0000:         IUF.RESTRICT.SALES.FLAG$,                                      \!BRN
+ 401: 0000:         IUF.RPD.DATE$,                                                  \
+ 402: 0000:         IUF.RPD.NO$,                                                    \
+ 403: 0000:         IUF.S.E.DESC$,                                                  \
+ 404: 0000:         IUF.SAVED.AMOUNT$,                                              \ IRC
+ 405: 0000:         IUF.SERIAL.NO$,                                                 \
+ 406: 0000:         IUF.SPECIAL.PRICE$,                                             \
+ 407: 0000:         IUF.START.DATE$,                                                \ IRC
+ 408: 0000:         IUF.STATUS.1$,                                                  \
+ 409: 0000:         IUF.STNDRD.DESC$,                                               \
+ 410: 0000:         IUF.STOCK.SYSTEM.FLAG$,                                         \
+ 411: 0000:         IUF.SUPPLY.ROUTE$,                                              \
+ 412: 0000:         IUF.TILL.DESC$,                                                 \
+ 413: 0000:         IUF.TRANS.TYPE$,                                                \
+ 414: 0000:         IUF.UNIT.MEASUREMENT$,                                          \ KRD
+ 415: 0000:         IUF.UNIT.NAME$                                                  ! KRD
+ 416: 0000: 
+ 417: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+ 418: 0000:         AGES$(1),                                                       \ 1.6CSk
+ 419: 0000:         GIFTBRCD.TABLE$(1),                                             \ 1.6CSk
+ 420: 0000:         IUF.MATRIX$(1),                                                 \ 1.6CSk
+ 421: 0000:         MEDICINES.TABLE$(1),                                            \ 1.6CSk
+ 422: 0000:         REFPGF.RECORDS$(1)                                              ! 1.6CSk
+ 423: 0000: 
+ 424: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+ 425: 0000:         AGE$,                                                           \ 1.6CSk
+ 426: 0000:         AGE.RESTRICT$,                                                  \ 1.6CSk
+ 427: 0000:         ALCOHOL.PROD.GRP.LIST$,                                         \ 1.6CSk
+ 428: 0000:         ALL.MEDICINES$,                                                 \ 1.6CSk
+ 429: 0000:         ALREADY.IN.TABLE$,                                              \ 1.6CSk
+ 430: 0000:         ASPIRIN.RECORD$,                                                \ 1.6CSk
+ 431: 0000:         DOSAGE$,                                                        \ 1.6CSk
+ 432: 0000:         EPHED.TEMP$,                                                    \ 1.6CSk
+ 433: 0000:         GIFTRECORD$,                                                    \ 1.6CSk
+ 434: 0000:         INSURE.CONCEPT.GROUPS$, \ ! From BCF record 2                   \ 1.11 RC (44)
+ 435: 0000:         IBRUPROFEN.RECORD$,                                             \ 1.6CSk
+ 436: 0000:         IUF.AGE.RESTRICTION$,                                           \ 1.6CSk
+ 437: 0000:         IUF.BLOCKED.FROM.SALE$,                                         \ 1.6CSk
+ 438: 0000:         IUF.BOOTS.COM.EXTENDED$,                                        \ 1.6CSk
+ 439: 0000:         IUF.CONTAINS.ALCOHOL$,                                          \ 1.6CSk
+ 440: 0000:         IUF.CONTAINS.ASPIRIN$,                                          \ 1.6CSk
+ 441: 0000:         IUF.CONTAINS.EPHEDRINE$,                                        \ 1.6CSk
+ 442: 0000:         IUF.CONTAINS.IBUPROFEN$,                                        \ 1.6CSk
+ 443: 0000:         IUF.CONTAINS.NONSOLID.PAINKILLER$,                              \ 1.6CSk
+ 444: 0000:         IUF.CONTAINS.PARACETAMOL$,                                      \ 1.6CSk
+ 445: 0000:         IUF.CONTAINS.PSEUDOEPHEDRINE$,                                  \ 1.6CSk
+ 446: 0000:         IUF.DATE.SENSITIVE$,                                            \ 1.6CSk
+ 447: 0000:         IUF.DISCOUNTABLE$, \ ! Mis-leading variable name (should be Discount Exempt)  ! 1.9 RC (21)
+ 448: 0000:                            \ ! "Y" equates to IRF.INDICAT3% X'01' Discount Exempt ON  ! 1.9 RC (21)
+ 449: 0000:         IUF.EARN.POINTS$,                                               \ 1.6CSk
+ 450: 0000:         IUF.EFFERVESCENT$,                                              \ 1.6CSk
+ 451: 0000:         IUF.ETHICAL.ACTIVE$,                                            \ 1.6CSk
+ 452: 0000:         IUF.ETHICAL.CLASS$,                                             \ 1.6CSk
+ 453: 0000:         IUF.ETHICAL.DESCRIPTION$,                                       \ 1.6CSk
+ 454: 0000:         IUF.ETHICAL.PACK.SIZE$,                                         \ 1.6CSk
+ 455: 0000:         IUF.GIFTCARD$,                                                  \ 1.6CSk
+ 456: 0000:         IUF.GUARANTEE.LENGTH$,                                          \ 1.6CSk
+ 457: 0000:         IUF.INSURANCE$,                                                 \ 1.6CSk
+ 458: 0000:         IUF.INITIAL.LOAD$,                                              \ 1.6CSk
+ 459: 0000:         IUF.MARKDOWN$,                                                  \ 1.6CSk
+ 460: 0000:         IUF.PRIMARY.SUPPLIER$,                                          \ 1.6CSk
+ 461: 0000:         IUF.REC.COUNT$,                                                 \ 1.6CSk
+ 462: 0000:         IUF.REC.TYPE$,                                                  \ 1.6CSk
+ 463: 0000:         IUF.REDEEMABLE$,                                                \ 1.6CSk
+ 464: 0000:         IUF.RESALEABLE$,                                                \ 1.6CSk
+ 465: 0000:         IUF.RETURN.ROUTE$,                                              \ 1.6CSk
+ 466: 0000:         IUF.RETURNABLE$,                                                \ 1.6CSk
+ 467: 0000:         IUF.SPECIAL.INSTRUCTION$,                                       \ 1.6CSk
+ 468: 0000:         IUF.STORE.NUM$,                                                 \ 1.6CSk
+ 469: 0000:         IUF.TIME.STAMP$,                                                \ 1.6CSk
+ 470: 0000:         IUF.UNRESTRICTED.GROUP.CODE$,                                   \ 1.6CSk
+ 471: 0000:         PARACETAMOL.RECORD$,                                            \ 1.6CSk
+ 472: 0000:         PROD.GRP$                                                       ! 1.6CSk
+ 473: 0000: 
+ 474: 0000: 
+ 475: 0000: 
+ 476: 0000:   INTEGER*2 GLOBAL                                                      \ 1.6CSk
+ 477: 0000:         A%,                                                             \ 1.6CSk
+ 478: 0000:         J%,                                                             \ 1.6CSk
+ 479: 0000:         ADD.TO.TABLE%,                                                  \ 1.6CSk
+ 480: 0000:         AGE.POS%,                                                       \ 1.6CSk
+ 481: 0000:         GIFTBRCD.COUNT%,                                                \ 1.6CSk
+ 482: 0000:         HEALTH.INDEX%,                                                  \ 1.6CSk
+ 483: 0000:         MATCH.COMMA%,                                                   \ 1.6CSk
+ 484: 0000:         MATCH.POS1%,                                                    \ 1.6CSk
+ 485: 0000:         MATCH.POS2%,                                                    \ 1.6CSk
+ 486: 0000:         MEDICINES.IN.TABLE%,                                            \ 1.6CSk
+ 487: 0000:         NO.OF.AGES%,                                                    \ 1.6CSk
+ 488: 0000:         NO.OF.MEDICINES%,                                               \ 1.6CSk
+ 489: 0000:         PROD.GRP.NUM%,                                                  \ 1.6CSk
+ 490: 0000:         SPACE%                                                          ! 1.6CSk
+ 491: 0000: 
+ 492: 0000: %INCLUDE BCFDEC.J86 ! BCF File Functions
+ 493: 0000: \*****************************************************************************
+ 494: 0000: \*****************************************************************************
+ 495: 0000: \***
+ 496: 0000: \***               %INCLUDE FOR BCF - FIELD DECLARATIONS
+ 497: 0000: \***                                  FILE REFERENCE PARAMETERS
+ 498: 0000: \***
+ 499: 0000: \***                      FILE TYPE    : SEQUENTIAL
+ 500: 0000: \***
+ 501: 0000: \***                      REFERENCE    : BCFDEC.J86
+ 502: 0000: \***
+ 503: 0000: \***      Version A             Steve Windsor          5th Jan 1993
+ 504: 0000: \***
+ 505: 0000: \***      Version B             Michael J. Kelsall    01st Dec 1993
+ 506: 0000: \***      Addition to file of CCMVT serial number as part of
+ 507: 0000: \***      RETURNS/AUTOMATIC CREDIT CLAIMING package.
+ 508: 0000: \***
+ 509: 0000: \***      Version C           Stuart William McConnachie 23rd Jan 1995
+ 510: 0000: \***      Addition of TXR serial number as part of the TRANSACTION RETRIEVAL
+ 511: 0000: \***      project.
+ 512: 0000: \***
+ 513: 0000: \***      Version D           Stuart William McConnachie  7th June 1995
+ 514: 0000: \***      Converted calls to enable more than 1 record on the BCF.
+ 515: 0000: \***      The second record is to be used for the No7 customer card trial.
+ 516: 0000: \***
+ 517: 0000: \***      Version E                 Stuart Highley        7th April 1999
+ 518: 0000: \***      Added new fields for cash accounting.
+ 519: 0000: \***
+ 520: 0000: \***      Version F                 Mark Goode            20th May 2000
+ 521: 0000: \***      Added new fields for Dentistry project.
+ 522: 0000: \***
+ 523: 0000: \***      Version G                 Mark Goode            18th July 2000
+ 524: 0000: \***      Added new fields for Well-Being project.
+ 525: 0000: \***
+ 526: 0000: \***      Version I                 Amy Hoggard           13th Oct 2000
+ 527: 0000: \***      Added new fields for ECO project.
+ 528: 0000: \***
+ 529: 0000: \***      Version K                 Brian Greenfield      1st May 2001
+ 530: 0000: \***      Added new field for Wellbeing Services record 13.
+ 531: 0000: \***
+ 532: 0000: \***      Version L                 Amy Hoggard           4th Jan 2002
+ 533: 0000: \***      Added new field for ETOPUP project.
+ 534: 0000: \***
+ 535: 0000: \***      Version M                 Julia Stones          22nd July 2002
+ 536: 0000: \***      Added new fields for Deals rewrite project record 14.
+ 537: 0000: \***
+ 538: 0000: \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003.
+ 539: 0000: \***    Modifications for All Txn Data To CDAS project.
+ 540: 0000: \***    Removed redundant variables ...
+ 541: 0000: \***      BCF.CTSL1.SERIAL.NUM$, BCF.CTSL2,SERIAL.NUM$
+ 542: 0000: \***    Defined new variable ...
+ 543: 0000: \***      BCF.MTSLQ.DAYS$, BCF.FILLER67$
+ 544: 0000: \***
+ 545: 0000: \***    Revision 4.7           Julia Stones              9th July 2003.
+ 546: 0000: \***    Modifications for New Lines Report project.
+ 547: 0000: \***    Defined new variable
+ 548: 0000: \***    BCF.NEWLINES.WEEKS$
+ 549: 0000: \***
+ 550: 0000: \***    Revision 4.8           Julia Stones              3rd October 2003.
+ 551: 0000: \***    Modifications for New Lines Report project.
+ 552: 0000: \***    Defined new variable
+ 553: 0000: \***    BCF.NEWLINES.LINES$
+ 554: 0000: \***
+ 555: 0000: \***    Version N              Jamie Thorpe             27th June 2006
+ 556: 0000: \***    Added BCF.DVCHR.SERIAL.NUM$
+ 557: 0000: \***
+ 558: 0000: \***    Revision 4.10          Charles Skadorwa            4th July 2011
+ 559: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+ 560: 0000: \***    New variables defined: BCF.ECC.DATETIMESTAMP$
+ 561: 0000: \***                           BCF.IUF.DATETIMESTAMP$
+ 562: 0000: \***
+ 563: 0000: \***    Revision 4.11          Arun Sudhakaran             10th April 2013
+ 564: 0000: \***    Added new variables for including Supplier Number lengths
+ 565: 0000: \***    as part of Automatic Booking In of Chilled Food ASNs project
+ 566: 0000: \***
+ 567: 0000: \***    Revision 4.12          Charles Skadorwa            5th Sept 2013
+ 568: 0000: \***    F261 Gift Card Mall IIN Range Extension Project - Commented !4.12 CSk
+ 569: 0000: \***    Defined new variables for GCM Product Group Number and Record 22
+ 570: 0000: \***    lengths.
+ 571: 0000: \***
+ 572: 0000: \***    Version O              Mark Walker                  3rd Feb 2014
+ 573: 0000: \***    F337 Centralised View of Stock
+ 574: 0000: \***    - Defined variables for record 23 (stock snapshot parameters).
+ 575: 0000: \***    - Minor formatting changes (uncommented).
+ 576: 0000: \***
+ 577: 0000: \***    Revision O             Charles Skadorwa             25th June 2014
+ 578: 0000: \***    F353 Deal Limits Increase Project.
+ 579: 0000: \***    Renamed 3 variables in function BCF.RECORD.14.W -
+ 580: 0000: \***        BCF.DINF.NUM.REC$ becomes BCF.ITMDL.NUM.REC$
+ 581: 0000: \***        BCF.DINF.KEY.LEN$ becomes BCF.ITMDL.KEY.LEN$
+ 582: 0000: \***        BCF.ECC.DATETIMESTAMP$ becomes BCF.FILLER.DATETIMESTAMP$
+ 583: 0000: \*****************************************************************************
+ 584: 0000: \*****************************************************************************
+ 585: 0000: 
+ 586: 0000:     STRING GLOBAL                                                       \
+ 587: 0000:         BCF.FILE.NAME$
+ 588: 0000: 
+ 589: 0000:     INTEGER*2 GLOBAL                                                    \
+ 590: 0000:         BCF.RECL%,                                                      \   !OMW
+ 591: 0000:         BCF.REPORT.NUM%,                                                \
+ 592: 0000:         BCF.SESS.NUM%
+ 593: 0000: 
+ 594: 0000:     STRING GLOBAL                                                       \
+ 595: 0000:     BCF.RECORD$,          \ 80 bytes
+ 596: 0000:     BCF.IUF.SERIAL.NO$,   \ 5 bytes, IUF serial number
+ 597: 0000:     BCF.OPEN.DATE$,       \ 6 bytes, Last store opening date (YYMMDD)
+ 598: 0000:     BCF.FILLER.DATE$,     \ 3 bytes, filler
+ 599: 0000:     BCF.LABEL.DATE$,      \ 6 bytes, label print date (YYMMDD)
+ 600: 0000:     BCF.SALES.SERIAL.NO$ ,\ 5 bytes, sales serial number
+ 601: 0000:     BCF.STMVB.SERIAL.NO$, \ 5 bytes, current serial number          \
+ 602: 0000:                               \     of Stock Movement Backup file       \
+ 603: 0000:     BCF.TOF.DAYS$,        \ 2 bytes, number of days' worth of sales to \
+ 604: 0000:                           \       be held on the TIF at re-build       \
+ 605: 0000:         BCF.EPS.BATCH$,       \ 2 bytes, highest batch number to have   \
+ 606: 0000:                               \     been reported upon by PSE31         \
+ 607: 0000:     BCF.NO.EPF.COPIES$,   \ 2 bytes, no. of copies of EPS payment file \
+ 608: 0000:     BCF.CCMVT.SERIAL.NUM$,\ 5 bytes ASC                                ! BMJK
+ 609: 0000:     BCF.TXR.SERIAL.NUM$,  \ 5 bytes transaction retrieval serial number!SWM
+ 610: 0000:     BCF.CUSTD.SERIAL.NUM$,\ 5 bytes customer data file serial number   !SWM
+ 611: 0000:     BCF.PSB58.DATE$,      \ 6 bytes date of last MTSL/CUSTW cut-off    !SWM
+ 612: 0000:     BCF.CTSL1.SERIAL.NUM$,\ 5 bytes serial number on first MTSLQ (and  ! 4.6 RC
+ 613: 0000:                           \         thereore CTSL1) batch header       ! 4.6 RC
+ 614: 0000:     BCF.MTSLQ.DAYS$,      \ 2 byte MTSLQ data retention period (PSB14) ! 4.6 RC
+ 615: 0000:     BCF.FILLER67$,        \ 8 bytes filler beginning at byte 67        ! 4.6 RC
+ 616: 0000:         BCF.NTIUF.SERIAL.NO$,                                           \   !FMG
+ 617: 0000:         BCF.DENTISTRY.PSAUDIT.SERIAL.NO$,                               \   !FMG
+ 618: 0000:         BCF.WELL.SERIAL.NO$,                                            \   !GMG
+ 619: 0000:         BCF.WELL.PSAUDIT.SERIAL.NO$,                                    \   !GMG
+ 620: 0000:     BCF.ACSAL.SERIAL.NUM$,\ 5 bytes serial number on ACSAL             !ESDH
+ 621: 0000:     BCF.DENTISTRY.PRODUCT.GROUP$,                                      \FMG
+ 622: 0000:     BCF.WELL.PRODUCT.GROUP$,                                           \GMG
+ 623: 0000:     BCF.FILLER$,         \! 1 byte, filler                             !BMJK
+ 624: 0000:     BCF.WELL.SERV.PRODUCT.GROUP$,                                      \KBG
+ 625: 0000:         BCF.ETOPUP.PROD.GRP$,                                           \   !LAH
+ 626: 0000:         BCF.END.FILLER$,                                                \   !LAH
+ 627: 0000:     BCF.TBAG.BATCH.NO$,                                                \IAH
+ 628: 0000:     BCF.TBAG.DAYS.KEPT$,                                               \IAH
+ 629: 0000:     BCF.NEWLINES.WEEKS$,                                               \4.7JAS
+ 630: 0000:     BCF.NEWLINES.LINES$,                                               \4.8JAS
+ 631: 0000:     BCF.TBAG.FILLER$,                                                  \ 79 Bytes filler !IAH 70 Bytes filler 4.7JAS ! 65 Bytes fille 4.8JAS
+ 632: 0000:     BCF.DEALDIR.SERIAL.NUM$, \ 4 bytes serial number                   !MJAS
+ 633: 0000:     BCF.DIDIR.SERIAL.NUM$,   \ 4 bytes serial number                   !MJAS
+ 634: 0000:     BCF.DEAL.NUM.REC$,       \ 6 bytes number of records in deal file  !MJAS
+ 635: 0000:     BCF.ITMDL.NUM.REC$,      \ 6 bytes number of records in ITMDL file !OCS
+ 636: 0000:     BCF.DEAL.KEY.LEN$,       \ 3 bytes key length of deal file         !MJAS
+ 637: 0000:     BCF.ITMDL.KEY.LEN$,      \ 3 bytes bytes ITMDL record key length   !OCS
+ 638: 0000:     BCF.DVCHR.SERIAL.NUM$,   \ 4 bytes serial numbr                    !NJT !4.10CSk
+ 639: 0000:     BCF.FILLER.DATETIMESTAMP$,\17 bytes filler for future use          !OCS
+ 640: 0000:     BCF.IUF.DATETIMESTAMP$, \ !17 bytes timestamp YYYYMMDDHHMMSSsss     !4.10CSk
+ 641: 0000:                             \ !   Last successfully processed IUF from SAP.
+ 642: 0000:         BCF.ITEM.STATUS$(1),     \1 byte array, item status             \   !OMW
+ 643: 0000:         BCF.NEGATIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+ 644: 0000:                                  \   to include items with a negative   \   !OMW
+ 645: 0000:                                  \   stock figure in the initial stock  \   !OMW
+ 646: 0000:                                  \   snapshot messages.                 \   !OMW
+ 647: 0000:         BCF.POSITIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+ 648: 0000:                                  \   to include items with a positive   \   !OMW
+ 649: 0000:                                  \   stock figure in the initial stock  \   !OMW
+ 650: 0000:                                  \   snapshot messages.                 \   !OMW
+ 651: 0000:         BCF.ZERO.STOCK.FLAG$(1)  !1 byte array, Flag (Y/N) whether to   \   !OMW
+ 652: 0000:                                  \   include items with a zero          \   !OMW
+ 653: 0000:                                  \   stock figure in the initial stock  \   !OMW
+ 654: 0000:                                  !   snapshot messages.                     !OMW
+ 655: 0000:                 
+ 656: 0000:     INTEGER*1                                                           \
+ 657: 0000:         BCF.NO.CPM.COPIES%
+ 658: 0000: 
+ 659: 0000:     INTEGER*2 GLOBAL                                                    \
+ 660: 0000:     BCF.CC.SERIAL.NO,        \ 1 byte UPD, CC serial number
+ 661: 0000:         BCF.MAX.STATUS.COUNT%,        \ Maximum number of item status   \   !OMW
+ 662: 0000:     BCF.REC21.REC.LEN%,      \ Total Supplier number length            !4.11 AS
+ 663: 0000:     BCF.REC21.SUPPLIER.LEN%, \ Length of the supplier number           !4.11 AS
+ 664: 0000:         BCF.MAX.STOCK.INIT.MESSAGES%, \ Maximum number of initial       \   !OMW
+ 665: 0000:                                       \ stock snapshot message to       \   !OMW
+ 666: 0000:                                       \ send per day.                   \   !OMW
+ 667: 0000:         BCF.MAX.STOCK.INIT.ITEMS%,    \ Maximum number of items to      \   !OMW
+ 668: 0000:                                       \ include in a single initial     \   !OMW
+ 669: 0000:                                       \ stock snapshot message.         \   !OMW
+ 670: 0000:         BCF.NEGATIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+ 671: 0000:                                       \ a negative stock figure to      \   !OMW
+ 672: 0000:                                       \ include in the initial stock    \   !OMW
+ 673: 0000:                                       \ snapshot messages.              \   !OMW
+ 674: 0000:         BCF.POSITIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+ 675: 0000:                                       \ a positive stock figure to      \   !OMW
+ 676: 0000:                                       \ include in the initial stock    \   !OMW
+ 677: 0000:                                       \ snapshot messages.              \   !OMW
+ 678: 0000:         BCF.REC22.REC.LEN%,           \                                 \   !4.12 CSk
+ 679: 0000:         BCF.REC22.PROD.GROUP.LEN%,    \ Length of GCM Product Group No  \   !4.12 CSk
+ 680: 0000:         BCF.ZERO.DAYS%(1)             \ Number of days' movements with  \   !OMW
+ 681: 0000:                                       \ a zero stock figure to include  \   !OMW
+ 682: 0000:                                       \ in the initial stock snapshot   \   !OMW
+ 683: 0000:                                       ! messages.                           !OMW
+ 684: 0000: 
+ 685: 0000: 
+ 686: 0000:     INTEGER*4 GLOBAL                                                    \
+ 687: 0000:         BCF.REC.NO%
+ 688: 0000: 
+ 689: 0000: 
+ 690: 0000: STRING GLOBAL                                \
+ 691: 0000:     CURRENT.CODE$,                           \
+ 692: 0000:     FILE.OPERATION$,                         \
+ 693: 0000:     REFPGF.FILE.NAME$                        !
+ 694: 0000: 
+ 695: 0000: INTEGER*1 GLOBAL                             \
+ 696: 0000:     TRUE,                                    \
+ 697: 0000:     FALSE,                                   \
+ 698: 0000:     DO.PGF.FILE,                             \
+ 699: 0000:     FINISHED                                 !
+ 700: 0000: 
+ 701: 0000: INTEGER*2 GLOBAL                             \
+ 702: 0000:     CURRENT.REPORT.NUM%
+ 703: 0000: 
+ 704: 0000: INTEGER*4 GLOBAL \                           ! 1.15 RC (230)
+ 705: 0000:     COUNT.RECORDS.IUF%                       ! 1.15 RC (230)
+ 706: 0000: 
+ 707: 0000: INTEGER*2                                    \
+ 708: 0000:     CGRP.NUM%,                               \
+ 709: 0000:     PGRP.NUM%,                               \
+ 710: 0000:     NO.OF.BCF.19.FIELDS%,                    \
+ 711: 0000:     VALUE1%,                                 \
+ 712: 0000:     VALUE2%                                  !
+ 713: 0000: 
+ 714: 0000: STRING                                       \
+ 715: 0000:     BCF.RECORD19$,                           \
+ 716: 0000:     BCF.RECORD19.INDICATOR$(1),              \
+ 717: 0000:     BCF.RECORD19.FIELD$,                     \
+ 718: 0000:     RESALEABLE$,                             \
+ 719: 0000:     RETURN.ROUTE$,                           \
+ 720: 0000:     SPECIAL.INSTRUCTION$,                    \
+ 721: 0000:     RETURN.LABEL.TYPE$,                      \
+ 722: 0000:     TEMP$                                    !
+ 723: 0000: 
+ 724: 0000: 
+ 725: 0000: 
+ 726: 0000: \*******************************************************************
+ 727: 0000: \***    External functions
+ 728: 0000: \********************************************************************
+ 729: 0000: %INCLUDE PSBF20E.J86        ! SESSION NUMBER UTILITY
+ 730: 0000: REM\
+ 731: 0000: \*******************************************************************************
+ 732: 0000: \*******************************************************************************
+ 733: 0000: \***
+ 734: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 735: 0000: \***
+ 736: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 737: 0000: \***
+ 738: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 739: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 740: 0000: \***     128 files.
+ 741: 0000: \***
+ 742: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 743: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 744: 0000: \***     as a variable.  This new variable contains the function's return
+ 745: 0000: \***     code.
+ 746: 0000: \***
+ 747: 0000: \*******************************************************************************
+ 748: 0000: \*******************************************************************************
+ 749: 0000: 
+ 750: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 751: 0000:                               PASSED.INTEGER%,                         \
+ 752: 0000:                               PASSED.STRING$)                          \
+ 753: 0000:    EXTERNAL
+ 754: 0000: 
+ 755: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 756: 0000:              PASSED.STRING$
+ 757: 0000:    ! 3 variables removed from here                                     ! CAW
+ 758: 0000: 
+ 759: 0000: 
+ 760: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 761: 0000:              PASSED.INTEGER%				               ! CJAS
+ 762: 0000: 
+ 763: 0000:    END FUNCTION
+ 764: 0000: 
+ 765: 0000: %INCLUDE PSBF30E.J86        ! KEYED FILE READER
+ 766: 0000: \*****************************************************************************
+ 767: 0000: \*****************************************************************************
+ 768: 0000: \***
+ 769: 0000: \***                 EXTERNAL FUNCTION DEFINITION PSBF30
+ 770: 0000: \***
+ 771: 0000: \*****************************************************************************
+ 772: 0000: \*****************************************************************************
+ 773: 0000: 
+ 774: 0000: \*****************************************************************************
+ 775: 0000: \*****************************************************************************
+ 776: 0000: \***
+ 777: 0000: \***   Version 96A              Mark Walker                31st May 1995
+ 778: 0000: \***   Original version.
+ 779: 0000: \***
+ 780: 0000: \***   Version B                Andrew Wedgeworth          17th March 1997
+ 781: 0000: \***   Added READONLY$ variable.  This parameter may be used to specify 
+ 782: 0000: \***   whether the file is to be opened with the READONLY option.
+ 783: 0000: \***
+ 784: 0000: \*****************************************************************************
+ 785: 0000: \*****************************************************************************
+ 786: 0000:  
+ 787: 0000:        FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \ 
+ 788: 0000:                                    REPORT.NUM%,                        \  
+ 789: 0000:                                    READONLY$) EXTERNAL
+ 790: 0000: 
+ 791: 0000:        STRING FILE.NAME$,READONLY$
+ 792: 0000:        INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+ 793: 0000: 
+ 794: 0000:        END FUNCTION
+ 795: 0000: 
+ 796: 0000: 
+ 797: 0000: %INCLUDE BCFEXT.J86         ! BCF File Functions
+ 798: 0000: \*****************************************************************************
+ 799: 0000: \*****************************************************************************
+ 800: 0000: \***
+ 801: 0000: \***         FUNCTION DEFINITIONS FOR BOOTS CONTROL FILE
+ 802: 0000: \***
+ 803: 0000: \***                    REFERENCE : BCFEXTA.J86
+ 804: 0000: \***
+ 805: 0000: \***    Version A           Steve Windsor          5th Jan 1993
+ 806: 0000: \***
+ 807: 0000: \***    Version B           Michael J. Kelsall    14th Sep 1993
+ 808: 0000: \***    Code incremented to maintain consistency with other included code
+ 809: 0000: \***    for RETURNS/AUTOMATIC CREDIT CLAIMING system.
+ 810: 0000: \***
+ 811: 0000: \***    Version C           Stuart William McConnachie 23rd Jan 1995
+ 812: 0000: \***    Addition of TXR serial number as part of the TRANSACTION RETRIEVAL
+ 813: 0000: \***    project.
+ 814: 0000: \***
+ 815: 0000: \***    Version D           Stuart William McConnachie  7th June 1995
+ 816: 0000: \***    Converted calls to enable more than 1 record on the BCF.
+ 817: 0000: \***    The second record is to be used for the No7 customer card trial.
+ 818: 0000: \***
+ 819: 0000: \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003.
+ 820: 0000: \***    Modifications for All Txn Data To CDAS project.
+ 821: 0000: \***    No changes to this file.
+ 822: 0000: \***
+ 823: 0000: \***    Revision 4.7            Julia Stones              9th July 2003
+ 824: 0000: \***    Modifications for New Lines Report project.
+ 825: 0000: \***    No changes to this file.
+ 826: 0000: \***
+ 827: 0000: \*****************************************************************************
+ 828: 0000: \*****************************************************************************
+ 829: 0000: 
+ 830: 0000:    FUNCTION BCF.SET EXTERNAL
+ 831: 0000:    END FUNCTION
+ 832: 0000: 
+ 833: 0000:   FUNCTION READ.BCF EXTERNAL
+ 834: 0000:    INTEGER*2 READ.BCF
+ 835: 0000:   END FUNCTION
+ 836: 0000: 
+ 837: 0000:   FUNCTION READ.BCF.LOCK EXTERNAL
+ 838: 0000:    INTEGER*2 READ.BCF.LOCK
+ 839: 0000:   END FUNCTION
+ 840: 0000: 
+ 841: 0000:   FUNCTION WRITE.BCF EXTERNAL
+ 842: 0000:    INTEGER*2 WRITE.BCF
+ 843: 0000:   END FUNCTION
+ 844: 0000: 
+ 845: 0000:   FUNCTION WRITE.BCF.UNLOCK EXTERNAL
+ 846: 0000:    INTEGER*2 WRITE.BCF.UNLOCK
+ 847: 0000:   END FUNCTION
+ 848: 0000: 
+ 849: 0000:   FUNCTION WRITE.HOLD.BCF.UNLOCK EXTERNAL
+ 850: 0000:    INTEGER*2 WRITE.HOLD.BCF.UNLOCK
+ 851: 0000:   END FUNCTION
+ 852: 0000: 
+ 853: 0000: 
+ 854: 0000: 
+ 855: 0000: \*****************************************************************************
+ 856: 0000: \***
+ 857: 0000: \***    Included code defining external IBM functions / subroutines
+ 858: 0000: \***
+ 859: 0000: \***..........................................................................
+ 860: 0000: 
+ 861: 0000:     %INCLUDE EALHSASC.J86 ! External assembler function definitions
+ 862: 0000: \/* TIME STAMP BLOCK **********************************************
+ 863: 0000: \** END OF TIME STAMP BLOCK **************************************/
+ 864: 0000: !! THIS MODULE WAS CREATED BY APAR IR70269
+ 865: 0000: !*********************************************************************
+ 866: 0000: !
+ 867: 0000: ! ASSEMBLER SUBROUTNE DEFINITIONS
+ 868: 0000: !
+ 869: 0000: ! These definitions should be copied by any routine which wishes to
+ 870: 0000: ! use the performanced enhanced assembler routines.
+ 871: 0000: !
+ 872: 0000: !*********************************************************************
+ 873: 0000:  
+ 874: 0000: !*********************************************************************
+ 875: 0000: !
+ 876: 0000: ! SUBSTR
+ 877: 0000: !
+ 878: 0000: ! This routine performs a merge of two strings. String P3$, offset P4
+ 879: 0000: ! is merged into string P1$ offset P2 for a length of P5 bytes
+ 880: 0000: !
+ 881: 0000: ! CAUTION: P1$ must be long enough to totally contain P3$
+ 882: 0000: !
+ 883: 0000: ! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE ZERO INDEXED
+ 884: 0000: !
+ 885: 0000: !*********************************************************************
+ 886: 0000:  
+ 887: 0000:  FUNCTION SUBSTR (P1$,P2,P3$,P4,P5) EXTERNAL
+ 888: 0000:  STRING P1$,P3$
+ 889: 0000:  INTEGER*2 P2,P4,P5
+ 890: 0000:  END FUNCTION
+ 891: 0000:  
+ 892: 0000: !*********************************************************************
+ 893: 0000: !
+ 894: 0000: ! GETN2/GETN4
+ 895: 0000: !
+ 896: 0000: ! These routines extract a two/four byte integer from a string.
+ 897: 0000: ! P2 is the offset within the string
+ 898: 0000: !
+ 899: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 900: 0000: !
+ 901: 0000: !*********************************************************************
+ 902: 0000:  
+ 903: 0000:  FUNCTION GETN2(P1$,P2) EXTERNAL
+ 904: 0000:  INTEGER*2 GETN2
+ 905: 0000:  STRING P1$
+ 906: 0000:  INTEGER*2 P2
+ 907: 0000:  END FUNCTION
+ 908: 0000:  
+ 909: 0000:  FUNCTION GETN4(P1$,P2) EXTERNAL
+ 910: 0000:  INTEGER*4 GETN4
+ 911: 0000:  STRING P1$
+ 912: 0000:  INTEGER*2 P2
+ 913: 0000:  END FUNCTION
+ 914: 0000:  
+ 915: 0000: !*********************************************************************
+ 916: 0000: !
+ 917: 0000: ! PUTN2/PUTN4
+ 918: 0000: !
+ 919: 0000: ! These routines insert a two/four byte integer into a string.
+ 920: 0000: ! P2 is the offset within the string and P3 is the source integer
+ 921: 0000: !
+ 922: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 923: 0000: !
+ 924: 0000: !*********************************************************************
+ 925: 0000:  
+ 926: 0000:  FUNCTION PUTN2(P1$,P2,P3) EXTERNAL
+ 927: 0000:  STRING P1$
+ 928: 0000:  INTEGER*2 P2,P3
+ 929: 0000:  END FUNCTION
+ 930: 0000:  
+ 931: 0000:  FUNCTION PUTN4(P1$,P2,P3) EXTERNAL
+ 932: 0000:  STRING P1$
+ 933: 0000:  INTEGER*2 P2
+ 934: 0000:  INTEGER*4 P3
+ 935: 0000:  END FUNCTION
+ 936: 0000:  
+ 937: 0000: !*********************************************************************
+ 938: 0000: !
+ 939: 0000: ! PACKBIN2/4
+ 940: 0000: !
+ 941: 0000: ! These routines take a packed decimal string and convert to integer
+ 942: 0000: ! (The equivalent of CBASIC INT%(VAL(UNPACK$())) )
+ 943: 0000: ! P1 is the source string, P2 the string offset and P3 the length
+ 944: 0000: !
+ 945: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 946: 0000: !
+ 947: 0000: !*********************************************************************
+ 948: 0000:  
+ 949: 0000:  FUNCTION PACKBIN2(P1$,P2,P3) EXTERNAL
+ 950: 0000:  INTEGER*2 PACKBIN2
+ 951: 0000:  STRING P1$
+ 952: 0000:  INTEGER*2 P2,P3
+ 953: 0000:  END FUNCTION
+ 954: 0000:  
+ 955: 0000:  FUNCTION PACKBIN4(P1$,P2,P3) EXTERNAL
+ 956: 0000:  INTEGER*4 PACKBIN4
+ 957: 0000:  STRING P1$
+ 958: 0000:  INTEGER*2 P2,P3
+ 959: 0000:  END FUNCTION
+ 960: 0000:  
+ 961: 0000: !*********************************************************************
+ 962: 0000: !
+ 963: 0000: ! ADDIN2/4
+ 964: 0000: !
+ 965: 0000: ! These routines add an integer into an integer which is imbedded within
+ 966: 0000: ! a string.  P1$ is the string containing at offset P2 the integer to be
+ 967: 0000: ! updated.  P3 is the integer to be added into P1$.
+ 968: 0000: !
+ 969: 0000: ! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 970: 0000: !
+ 971: 0000: !*********************************************************************
+ 972: 0000:  
+ 973: 0000:  FUNCTION ADDIN4(P1$,P2,P3) EXTERNAL
+ 974: 0000:  INTEGER*4 ADDIN4
+ 975: 0000:  STRING P1$
+ 976: 0000:  INTEGER*2 P2
+ 977: 0000:  INTEGER*4 P3
+ 978: 0000:  END FUNCTION
+ 979: 0000:  
+ 980: 0000:  FUNCTION ADDIN2(P1$,P2,P3) EXTERNAL
+ 981: 0000:  INTEGER*2 ADDIN2
+ 982: 0000:  STRING P1$
+ 983: 0000:  INTEGER*2 P2,P3
+ 984: 0000:  END FUNCTION
+ 985: 0000:  
+ 986: 0000: !*********************************************************************
+ 987: 0000: !
+ 988: 0000: ! MATCHB
+ 989: 0000: !
+ 990: 0000: ! This routine performs a fast match function when the string being
+ 991: 0000: ! searched for contains only a single character.  As with the MATCH
+ 992: 0000: ! function, P1$ is the character to be found, P2$ is the string to be
+ 993: 0000: ! searched, and P3 the offst at which to start the search.
+ 994: 0000: !
+ 995: 0000: !*********************************************************************
+ 996: 0000:  
+ 997: 0000:  FUNCTION MATCHB(P1$,P2$,P3) EXTERNAL
+ 998: 0000:  INTEGER*2 MATCHB
+ 999: 0000:  STRING P1$
+1000: 0000:  STRING P2$
+1001: 0000:  INTEGER*2 P3
+1002: 0000:  END FUNCTION
+1003: 0000:  
+1004: 0000: \ REM!! *************************************************************!!
+1005: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+1006: 0000: \ REM!! 4 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+1007: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1008: 0000: \ REM!! *************************************************************!!
+1009: 0000:  
+1010: 0000: SUB UPDBIN4 (IN$,OUT$) EXTERNAL
+1011: 0000: STRING IN$,OUT$
+1012: 0000: END SUB
+1013: 0000:  
+1014: 0000: \ REM!! *************************************************************!!
+1015: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+1016: 0000: \ REM!! 3 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+1017: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1018: 0000: \ REM!! *************************************************************!!
+1019: 0000:  
+1020: 0000: SUB UPDBIN3 (IN$,OUT$) EXTERNAL
+1021: 0000: STRING IN$,OUT$
+1022: 0000: END SUB
+1023: 0000:  
+1024: 0000: \ REM!! *************************************************************!!
+1025: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+1026: 0000: \ REM!! 2 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+1027: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1028: 0000: \ REM!! *************************************************************!!
+1029: 0000:  
+1030: 0000: SUB UPDBIN2 (IN$,OUT$) EXTERNAL
+1031: 0000: STRING IN$,OUT$
+1032: 0000: END SUB
+1033: 0000:  
+1034: 0000: \ REM!! *************************************************************!!
+1035: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+1036: 0000: \ REM!! 1 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+1037: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1038: 0000: \ REM!! *************************************************************!!
+1039: 0000:  
+1040: 0000: SUB UPDBIN1 (IN$,OUT$) EXTERNAL
+1041: 0000: STRING IN$,OUT$
+1042: 0000: END SUB
+1043: 0000:  
+1044: 0000: \ REM!! *************************************************************!!
+1045: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+1046: 0000: \ REM!! 4 BYTE HEX REPRESENTATION OF A 2-BYTE INTEGER                !!
+1047: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1048: 0000: \ REM!! *************************************************************!!
+1049: 0000:  
+1050: 0000: SUB UPDHEX2 (IN$,OUT$) EXTERNAL
+1051: 0000: STRING IN$,OUT$
+1052: 0000: END SUB
+1053: 0000:  
+1054: 0000: \ REM!! *************************************************************!!
+1055: 0000: \ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+1056: 0000: \ REM!! 2 BYTE HEX REPRESENTATION OF A 1-BYTE INTEGER                !!
+1057: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1058: 0000: \ REM!! *************************************************************!!
+1059: 0000:  
+1060: 0000: SUB UPDHEX1 (IN$,OUT$) EXTERNAL
+1061: 0000: STRING IN$,OUT$
+1062: 0000: END SUB
+1063: 0000:  
+1064: 0000: \ REM!! *************************************************************!!
+1065: 0000: \ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+1066: 0000: \ REM!! STRING TO A 2 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+1067: 0000: \ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+1068: 0000: \ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+1069: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1070: 0000: \ REM!!
+1071: 0000: \ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+1072: 0000: \ REM!! *************************************************************!!
+1073: 0000:  
+1074: 0000: SUB INTBIN2 (IN$,IN%,OUT$,OUT%) EXTERNAL
+1075: 0000: STRING IN$,OUT$
+1076: 0000: INTEGER IN%,OUT%
+1077: 0000: END SUB
+1078: 0000:  
+1079: 0000: \ REM!! *************************************************************!!
+1080: 0000: \ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+1081: 0000: \ REM!! STRING TO A 3 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+1082: 0000: \ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+1083: 0000: \ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+1084: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1085: 0000: \ REM!!
+1086: 0000: \ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+1087: 0000: \ REM!! *************************************************************!!
+1088: 0000:  
+1089: 0000: SUB INTBIN3 (IN$,IN%,OUT$,OUT%) EXTERNAL
+1090: 0000: STRING IN$,OUT$
+1091: 0000: INTEGER IN%,OUT%
+1092: 0000: END SUB
+1093: 0000:  
+1094: 0000: \ REM!! *************************************************************!!
+1095: 0000: \ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+1096: 0000: \ REM!! STRING TO A 4 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+1097: 0000: \ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+1098: 0000: \ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+1099: 0000: \ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+1100: 0000: \ REM!!
+1101: 0000: \ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+1102: 0000: \ REM!! *************************************************************!!
+1103: 0000:  
+1104: 0000: SUB INTBIN4 (IN$,IN%,OUT$,OUT%) EXTERNAL
+1105: 0000: STRING IN$,OUT$
+1106: 0000: INTEGER IN%,OUT%
+1107: 0000: END SUB
+1108: 0000:  
+1109: 0000:                           ! Includes all functions defined by EALGAADF.J86
+1110: 0000: 
+1111: 0000: 
+1112: 0000: \*************************************************************************
+1113: 0000: \***
+1114: 0000: \***    GETN1 - Extract 1 byte integer from string
+1115: 0000: \***
+1116: 0000: \*************************************************************************
+1117: 0000: 
+1118: 0000: FUNCTION GETN1(DATA$, POS%) PUBLIC
+1119: 0019: 
+1120: 0019:     STRING DATA$
+1121: 0019:     INTEGER*2 GETN1
+1122: 0019:     INTEGER*4 POS% ! Offset of required byte within DATA$              ! 1.8 RC
+1123: 0019: 
+1124: 0019: !   Set GETN1 to zero when DATA$ is not long enough compared to POS%   ! 1.8 RC
+1125: 0019: !   and so prevent privilege exception error                           ! 1.8 RC
+1126: 0019:     IF LEN(DATA$) < POS% + 1 THEN BEGIN                                ! 1.8 RC
+1127: 0044:         GETN1 = 0                                                      ! 1.8 RC
+1128: 0049:         EXIT FUNCTION                                                  ! 1.8 RC
+1129: 004b:     ENDIF                                                              ! 1.8 RC
+1130: 004b: 
+1131: 004b:     GETN1 = PEEK(SADD(DATA$) + POS% + 2)
+1132: 0073: 
+1133: 0073: END FUNCTION
+1134: 0087: 
+1135: 0087: 
+1136: 0087: \*****************************************************************************
+1137: 0087: \***
+1138: 0087: \***           Subprogram : LOAD.RECORDS.INTO.MEDICINES.TABLE
+1139: 0087: \***
+1140: 0087: \*****************************************************************************
+1141: 0087: 
+1142: 0087: SUB LOAD.RECORDS.INTO.MEDICINES.TABLE
+1143: 009b: 
+1144: 009b:     ALL.MEDICINES$ = ASPIRIN.RECORD$ + "," + PARACETAMOL.RECORD$ +        \
+1145: 00d6:                                        "," + IBRUPROFEN.RECORD$  + " "
+1146: 00d6:     NO.OF.MEDICINES%    = 0
+1147: 00df:     MATCH.COMMA%        = 1
+1148: 00e8:     MEDICINES.IN.TABLE% = 1
+1149: 00f1: 
+1150: 00f1:     WHILE MATCH.COMMA% <> 0
+1151: 00f3:           MATCH.COMMA% = MATCH(",", ALL.MEDICINES$, MATCH.COMMA% +1)
+1152: 0117:           NO.OF.MEDICINES% = NO.OF.MEDICINES% + 1
+1153: 011e:     WEND
+1154: 0128: 
+1155: 0128:     DIM MEDICINES.TABLE$(NO.OF.MEDICINES%)
+1156: 0154: 
+1157: 0154:     MATCH.POS1% = 1
+1158: 015d:     FOR A% = 1 TO NO.OF.MEDICINES%
+1159: 0169: 
+1160: 0169:         IF MATCH.POS1% = 1 THEN BEGIN
+1161: 0176:             MATCH.POS2% = MATCH(",",ALL.MEDICINES$,MATCH.POS1%)
+1162: 0198:             IF MATCH.POS2% THEN BEGIN
+1163: 01a3:                DOSAGE$ = LEFT$(ALL.MEDICINES$,MATCH.POS2% - 1)
+1164: 01c9:                MATCH.POS1% = MATCH.POS2% + 1
+1165: 01da:             ENDIF ELSE BEGIN
+1166: 01da:                MATCH.POS1% = MATCH(" ", ALL.MEDICINES$, 1)
+1167: 01f7:                DOSAGE$ = LEFT$(ALL.MEDICINES$, MATCH.POS1% - 1)
+1168: 021d:             ENDIF
+1169: 0220:         ENDIF ELSE BEGIN
+1170: 0220:             MATCH.POS2% = MATCH(",",ALL.MEDICINES$,MATCH.POS1%)
+1171: 0242:             IF MATCH.POS2% <> 0 THEN BEGIN
+1172: 024c:                DOSAGE$ = MID$(ALL.MEDICINES$, MATCH.POS1%,  \
+1173: 027d:                       (MATCH.POS2% - MATCH.POS1%))
+1174: 027d:                MATCH.POS1% = MATCH.POS2% + 1
+1175: 028e:             ENDIF ELSE BEGIN
+1176: 028e:                DOSAGE$ = RIGHT$(ALL.MEDICINES$,(LEN(ALL.MEDICINES$) \
+1177: 02c3:                       - MATCH.POS1%) + 1)
+1178: 02c3:                MATCH.POS1% = MATCH(" ", DOSAGE$, 1)
+1179: 02e0:                DOSAGE$ = LEFT$(DOSAGE$, MATCH.POS1% - 1)
+1180: 0306:             ENDIF
+1181: 0306:         ENDIF
+1182: 0306: 
+1183: 0306:         ALREADY.IN.TABLE$ = "N"
+1184: 0315:         FOR ADD.TO.TABLE% = 1 TO NO.OF.MEDICINES%
+1185: 0320:             IF MATCH(DOSAGE$,MEDICINES.TABLE$(ADD.TO.TABLE%),1) THEN BEGIN
+1186: 0352:                ALREADY.IN.TABLE$ = "Y"
+1187: 0361:             ENDIF
+1188: 0361:         NEXT ADD.TO.TABLE%
+1189: 0380: 
+1190: 0380:         IF ALREADY.IN.TABLE$ = "N" THEN BEGIN
+1191: 0396:             MEDICINES.TABLE$(MEDICINES.IN.TABLE%) = DOSAGE$
+1192: 03bd:             MEDICINES.IN.TABLE% = MEDICINES.IN.TABLE% + 1
+1193: 03c4:         ENDIF
+1194: 03c4: 
+1195: 03c4:     NEXT A%
+1196: 03e6: 
+1197: 03e6:     MEDICINES.IN.TABLE% = MEDICINES.IN.TABLE% -1
+1198: 03ed: 
+1199: 03ed: END SUB
+1200: 03f9: 
+1201: 03f9: \*****************************************************************************
+1202: 03f9: \***
+1203: 03f9: \***           Subprogram : LEGACY.IUF.FORMAT
+1204: 03f9: \***
+1205: 03f9: \*****************************************************************************
+1206: 03f9: 
+1207: 03f9: 
+1208: 03f9: SUB LEGACY.IUF.FORMAT
+1209: 040d: 
+1210: 040d:     INTEGER*1 FALSE, TRUE
+1211: 040d:     INTEGER*2 BCF.SAVED.SESS.NUM%                                       ! 1.9 TT
+1212: 040d:     INTEGER*4 RC%
+1213: 040d: 
+1214: 040d:     ! If global 'IUF.LEGACY.SUPPORT' is ON then extract details from BCF
+1215: 040d:     CALL BCF.SET
+1216: 0420:     !----------------------------------------------------------------
+1217: 0420:     ! Save off global session number since BCF needs to be opened and
+1218: 0420:     ! read locally.
+1219: 0420:     !----------------------------------------------------------------
+1220: 0420:     BCF.SAVED.SESS.NUM% = BCF.SESS.NUM%                                 ! 1.9 TT
+1221: 042a:     CALL SESS.NUM.UTILITY("O", BCF.REPORT.NUM%, BCF.FILE.NAME$)
+1222: 0448:     BCF.SESS.NUM% = F20.INTEGER.FILE.NO%
+1223: 0456: 
+1224: 0456: 
+1225: 0456:     !Open, read and close the BRCF to obtain:
+1226: 0456:     FILE.OPERATION$ = "O"
+1227: 0465:     CURRENT.REPORT.NUM% = BCF.REPORT.NUM%
+1228: 0473:     IF END # BCF.SESS.NUM% THEN EXIT.SUB
+1229: 0487:     OPEN BCF.FILE.NAME$ RECL BCF.RECL% AS BCF.SESS.NUM% NODEL
+1230: 04ac: 
+1231: 04ac:     FILE.OPERATION$ = "R"
+1232: 04bb: 
+1233: 04bb: !---------------------------------------------------------  ! 1.11 (44)
+1234: 04bb: !   Read BCF record 2 for list of Insurance Concept Groups  ! 1.11 (44)
+1235: 04bb: !---------------------------------------------------------  ! 1.11 (44)
+1236: 04bb:     BCF.REC.NO% = 2                                         ! 1.11 (44)
+1237: 04ca:     RC% = READ.BCF                                          ! 1.11 (44)
+1238: 04db: 
+1239: 04db:     IF RC% <> 0 THEN BEGIN                                  ! 1.11 (44)
+1240: 04ee:         EXIT SUB                                            ! 1.11 (44)
+1241: 04f1:     ENDIF                                                   ! 1.11 (44)
+1242: 04f1: 
+1243: 04f1:     INSURE.CONCEPT.GROUPS$ = BCF.RECORD$                    ! 1.11 (44)
+1244: 0507: 
+1245: 0507:     !-----------------------------------------------------
+1246: 0507:     ! The list of Age Restriction patterns from record 3
+1247: 0507:     ! Currently set to (12),(15),(16),(18),(21)
+1248: 0507:     !-----------------------------------------------------
+1249: 0507:     BCF.REC.NO% = 3
+1250: 0516:     RC% = READ.BCF
+1251: 0527: 
+1252: 0527:     IF RC% <> 0 THEN BEGIN
+1253: 053a:         EXIT SUB
+1254: 053d:     ENDIF
+1255: 053d: 
+1256: 053d:     AGE.POS% = MATCH(":",BCF.RECORD$,1)
+1257: 055a:     AGE.RESTRICT$ = MID$(BCF.RECORD$,AGE.POS% + 1, LEN(BCF.RECORD$) - AGE.POS%)
+1258: 0597: 
+1259: 0597:     NO.OF.AGES% = 0
+1260: 05a0:     IF LEFT$(AGE.RESTRICT$,1) <> " " THEN BEGIN
+1261: 05cd: 
+1262: 05cd:         MATCH.COMMA% = 1
+1263: 05d6:         WHILE MATCH.COMMA% <> 0
+1264: 05d8:             MATCH.COMMA% = MATCH(",", AGE.RESTRICT$, MATCH.COMMA% + 1)
+1265: 05fc:             NO.OF.AGES% = NO.OF.AGES% + 1
+1266: 0603:         WEND
+1267: 060d: 
+1268: 060d:         DIM AGES$(NO.OF.AGES%)
+1269: 063b:     ENDIF ELSE BEGIN
+1270: 063b:          AGE.RESTRICT$ = "EMPTY"
+1271: 064a:     ENDIF
+1272: 064a: 
+1273: 064a:     IF NO.OF.AGES% > 0 THEN BEGIN
+1274: 0657: 
+1275: 0657:         MATCH.POS1% = 1
+1276: 0660: 
+1277: 0660:         FOR J% = 1 TO NO.OF.AGES%
+1278: 066c: 
+1279: 066c:             IF MATCH.POS1% = 1 THEN BEGIN
+1280: 0679:                MATCH.POS2% = MATCH(",",AGE.RESTRICT$,MATCH.POS1%)
+1281: 069b:                IF MATCH.POS2% THEN BEGIN
+1282: 06a6:                   AGE$ = LEFT$(AGE.RESTRICT$,MATCH.POS2% - 1)
+1283: 06cc:                   MATCH.POS1% = MATCH.POS2% + 1
+1284: 06dd:                ENDIF ELSE BEGIN
+1285: 06dd:                   MATCH.POS1% = MATCH(" ", AGE.RESTRICT$, 1)
+1286: 06fa:                   AGE$ = LEFT$(AGE.RESTRICT$, MATCH.POS1% - 1)
+1287: 0720:                ENDIF
+1288: 0723:             ENDIF ELSE BEGIN
+1289: 0723:                 MATCH.POS2% = MATCH(",",AGE.RESTRICT$,MATCH.POS1%)
+1290: 0745:                 IF MATCH.POS2% <> 0 THEN BEGIN
+1291: 074f:                     AGE$ = MID$(AGE.RESTRICT$, MATCH.POS1%, (MATCH.POS2% - MATCH.POS1%))
+1292: 0780:                     MATCH.POS1% = MATCH.POS2% + 1
+1293: 0791:                 ENDIF ELSE BEGIN
+1294: 0791:                     AGE$ = RIGHT$(AGE.RESTRICT$,(LEN(AGE.RESTRICT$) - MATCH.POS1%) + 1)
+1295: 07c6:                     MATCH.POS1% = MATCH(" ", AGE$, 1)
+1296: 07e3:                     AGE$ = LEFT$(AGE$, MATCH.POS1% - 1)
+1297: 0809:                 ENDIF
+1298: 0809:             ENDIF
+1299: 0809:             AGES$(J%) = AGE$
+1300: 0830:         NEXT J%
+1301: 0852:     ENDIF
+1302: 0852: 
+1303: 0852:     !-----------------------------------------------------
+1304: 0852:     ! Extract data from BCF records 6, 7 & 8
+1305: 0852:     !-----------------------------------------------------
+1306: 0852:     FOR BCF.REC.NO% = 6 TO 8
+1307: 0864:         RC% = READ.BCF
+1308: 0875: 
+1309: 0875:         IF RC% <> 0 THEN BEGIN
+1310: 0888:             EXIT SUB
+1311: 088b:         ENDIF
+1312: 088b: 
+1313: 088b:         SPACE% = MATCH(" ",BCF.RECORD$,1)
+1314: 08a8: 
+1315: 08a8:         IF BCF.REC.NO% = 6 THEN BEGIN
+1316: 08bf:             !-----------------------------------------------------
+1317: 08bf:             ! The Aspirin indicators from record 6 -
+1318: 08bf:             ! Currently set to (2),(4),(6),(7),(2E),(4E),(6E),(7E)
+1319: 08bf:             !-----------------------------------------------------
+1320: 08bf:             ASPIRIN.RECORD$ = LEFT$(BCF.RECORD$,SPACE% -1)
+1321: 08e8: 
+1322: 08e8:         ENDIF ELSE IF BCF.REC.NO% = 7 THEN BEGIN
+1323: 08ff:             !-----------------------------------------------------
+1324: 08ff:             ! The Paracetamol indicators from record 7. Currently
+1325: 08ff:             ! set to (1),(4),(5),(7),(1E),(4E),(5E),(7E)
+1326: 08ff:             !-----------------------------------------------------
+1327: 08ff:             PARACETAMOL.RECORD$ = LEFT$(BCF.RECORD$,SPACE% -1)
+1328: 0927: 
+1329: 0927:         ENDIF ELSE IF BCF.REC.NO% = 8 THEN BEGIN
+1330: 093e:             !-----------------------------------------------------
+1331: 093e:             ! The Ibuprofen indicators from record 8
+1332: 093e:             ! Currently set to (3),(5),(6),(7),(3E),(5E) (6E),(7E)
+1333: 093e:             !-----------------------------------------------------
+1334: 093e:             IBRUPROFEN.RECORD$ = LEFT$(BCF.RECORD$,SPACE% -1)
+1335: 0964:         ENDIF
+1336: 0964: 
+1337: 0964:     NEXT BCF.REC.NO%
+1338: 0990: 
+1339: 0990:     CALL LOAD.RECORDS.INTO.MEDICINES.TABLE
+1340: 0994: 
+1341: 0994:     !-----------------------------------------------------
+1342: 0994:     ! The list of Alcohol product groups from record 15
+1343: 0994:     !-----------------------------------------------------
+1344: 0994:     BCF.REC.NO% = 15
+1345: 09a3:     RC% = READ.BCF
+1346: 09b4: 
+1347: 09b4:     IF RC% <> 0 THEN BEGIN
+1348: 09c7:         EXIT SUB
+1349: 09ca:     ENDIF
+1350: 09ca: 
+1351: 09ca:     PROD.GRP.NUM% = 1
+1352: 09d3: 
+1353: 09d3:     WHILE PROD.GRP.NUM% LE 16 ! Maximum 16 product groups on BCF record
+1354: 09d6: 
+1355: 09d6:         PROD.GRP$ = MID$(BCF.RECORD$, 5*PROD.GRP.NUM% -4 , 5)
+1356: 09ff: 
+1357: 09ff:         IF PROD.GRP$ <> "     " THEN BEGIN ! Product group position in
+1358: 0a15:                                            ! use so append data to list
+1359: 0a15:             ALCOHOL.PROD.GRP.LIST$ = ALCOHOL.PROD.GRP.LIST$ + \
+1360: 0a3d:                                      PROD.GRP$ + ","
+1361: 0a3d:             PROD.GRP$ = STR$(VAL(PROD.GRP$)) ! Error if not numeric
+1362: 0a62:         ENDIF
+1363: 0a62: 
+1364: 0a62:         PROD.GRP.NUM% = PROD.GRP.NUM% + 1
+1365: 0a69: 
+1366: 0a69:     WEND
+1367: 0a76: 
+1368: 0a76:     !---------------------------------------------------------
+1369: 0a76:     ! Ephedrine and Pseudoephedrine indicators from record 19
+1370: 0a76:     !---------------------------------------------------------
+1371: 0a76:     BCF.REC.NO% = 19
+1372: 0a85:     RC% = READ.BCF
+1373: 0a96:     IF RC% <> 0 THEN BEGIN
+1374: 0aa9:         EXIT SUB
+1375: 0aae:     ENDIF ELSE BEGIN
+1376: 0aae:         BCF.RECORD19$ = BCF.RECORD$
+1377: 0ac2:     ENDIF
+1378: 0ac2: 
+1379: 0ac2:     MATCH.COMMA% = 1
+1380: 0acb:     WHILE MATCH.COMMA% <> 0
+1381: 0acd:         MATCH.COMMA% = MATCH(",", BCF.RECORD19$, MATCH.COMMA% + 1)
+1382: 0aee:         NO.OF.BCF.19.FIELDS% = NO.OF.BCF.19.FIELDS% + 1
+1383: 0af2:     WEND
+1384: 0afc: 
+1385: 0afc:     DIM BCF.RECORD19.INDICATOR$(NO.OF.BCF.19.FIELDS%)
+1386: 0b1f: 
+1387: 0b1f:     MATCH.POS1% = 1
+1388: 0b28: 
+1389: 0b28:     FOR J% = 1 TO NO.OF.BCF.19.FIELDS%
+1390: 0b34: 
+1391: 0b34:          IF MATCH.POS1% = 1 THEN BEGIN
+1392: 0b41:                MATCH.POS2% = MATCH(",",BCF.RECORD19$,MATCH.POS1%)
+1393: 0b60:                IF MATCH.POS2% THEN BEGIN
+1394: 0b6b:                   BCF.RECORD19.FIELD$ = LEFT$(BCF.RECORD19$,MATCH.POS2% - 1)
+1395: 0b8c:                   MATCH.POS1% = MATCH.POS2% + 1
+1396: 0b9d:                ENDIF ELSE BEGIN
+1397: 0b9d:                   MATCH.POS1% = MATCH(" ", BCF.RECORD19$, 1)
+1398: 0bb7:                   BCF.RECORD19.FIELD$ = LEFT$(BCF.RECORD19$, MATCH.POS1% - 1)
+1399: 0bd8:                ENDIF
+1400: 0bdb:             ENDIF ELSE BEGIN
+1401: 0bdb:                 MATCH.POS2% = MATCH(",",BCF.RECORD19$,MATCH.POS1%)
+1402: 0bfa:                 IF MATCH.POS2% <> 0 THEN BEGIN
+1403: 0c04:                     BCF.RECORD19.FIELD$ = MID$(BCF.RECORD19$, MATCH.POS1%, (MATCH.POS2% - MATCH.POS1%))
+1404: 0c30:                     MATCH.POS1% = MATCH.POS2% + 1
+1405: 0c41:                 ENDIF ELSE BEGIN
+1406: 0c41:                     BCF.RECORD19.FIELD$ = RIGHT$(BCF.RECORD19$,(LEN(BCF.RECORD19$) - MATCH.POS1%) + 1)
+1407: 0c6e:                     MATCH.POS1% = MATCH(" ", BCF.RECORD19.FIELD$, 1)
+1408: 0c88:                     BCF.RECORD19.FIELD$ = LEFT$(BCF.RECORD19.FIELD$, MATCH.POS1% - 1)
+1409: 0ca9:                 ENDIF
+1410: 0ca9:             ENDIF
+1411: 0ca9:             BCF.RECORD19.INDICATOR$(J%) = BCF.RECORD19.FIELD$
+1412: 0cca: 
+1413: 0cca:     NEXT
+1414: 0ce9: 
+1415: 0ce9:     CLOSE BCF.SESS.NUM%
+1416: 0cf5:     BCF.SESS.NUM% = BCF.SAVED.SESS.NUM%                                 ! 1.9 TT
+1417: 0cff: 
+1418: 0cff:     !-------------------------------
+1419: 0cff:     ! Load records into REFPGF table
+1420: 0cff:     !-------------------------------
+1421: 0cff:     REFPGF.FILE.NAME$  = "REFPGF"    ! No .set as previously only
+1422: 0d0e:     REFPGF.REPORT.NUM% = 789         ! used by the Till.
+1423: 0d17: 
+1424: 0d17:     DIM REFPGF.RECORDS$(100) ! Each record holds the Prod Group details
+1425: 0d3e:                              ! associated to a concept group(0-99)
+1426: 0d3e:     REFPGF.COUNT% = 0
+1427: 0d47:     DO.PGF.FILE = FALSE
+1428: 0d51: 
+1429: 0d51:     RC% = PROCESS.KEYED.FILE(REFPGF.FILE.NAME$,REFPGF.REPORT.NUM%,"N")
+1430: 0d7b: 
+1431: 0d7b:     IF RC% <> 0 THEN BEGIN
+1432: 0d8e:        EXIT SUB
+1433: 0d90:     ENDIF
+1434: 0d90: 
+1435: 0d90:  EXIT.SUB:
+1436: 0d90: 
+1437: 0d90: END SUB
+1438: 0d9c: 
+1439: 0d9c: \*******************************************************************
+1440: 0d9c: \***    IUF File functions
+1441: 0d9c: \*******************************************************************
+1442: 0d9c: 
+1443: 0d9c: 
+1444: 0d9c: !==================================================================================
+1445: 0d9c: !
+1446: 0d9c: !  IUF.SET
+1447: 0d9c: !
+1448: 0d9c: !==================================================================================
+1449: 0d9c: FUNCTION IUF.SET PUBLIC
+1450: 0db0: 
+1451: 0db0:     IUF.FILE.NAME$  = "IUF"
+1452: 0dbf:     IUF.REPORT.NUM% =  15
+1453: 0dc8:     IUF.NEW.FORMAT  = -1
+1454: 0dd0: 
+1455: 0dd0: END FUNCTION
+1456: 0ddc: 
+1457: 0ddc: !==================================================================================
+1458: 0ddc: !
+1459: 0ddc: !  VALIDATE.HEADER
+1460: 0ddc: !
+1461: 0ddc: !==================================================================================
+1462: 0ddc: 
+1463: 0ddc: 
+1464: 0ddc: FUNCTION VALIDATE.IUF.HEADER.RECORD PUBLIC
+1465: 0df0: 
+1466: 0df0:     STRING TYPE$
+1467: 0df0:     STRING NUMBER$
+1468: 0df0:     STRING FLAG$
+1469: 0df0:     STRING TIME.STAMP$
+1470: 0df0:     STRING MATRIX$(1)
+1471: 0df0:     STRING VALIDATE.IUF.HEADER.RECORD
+1472: 0df0: 
+1473: 0df0:     VALIDATE.IUF.HEADER.RECORD = "ACK"
+1474: 0dfe: 
+1475: 0dfe:     !---------------------------------------------------------
+1476: 0dfe:     ! Open the IUF, read the first record, then close the file
+1477: 0dfe:     !---------------------------------------------------------
+1478: 0dfe:     CALL SESS.NUM.UTILITY("O", IUF.REPORT.NUM%, IUF.FILE.NAME$)
+1479: 0e1c:     IUF.SESS.NUM% = F20.INTEGER.FILE.NO%
+1480: 0e2a: 
+1481: 0e2a:     IF END # IUF.SESS.NUM% THEN EXIT.FUNCTION
+1482: 0e3e:     OPEN IUF.FILE.NAME$ AS IUF.SESS.NUM%      \
+1483: 0e5f:          BUFFSIZE 32256 LOCKED NOWRITE NODEL
+1484: 0e5f: 
+1485: 0e5f:     FILE.OPERATION$ = "R"
+1486: 0e6e: 
+1487: 0e6e:     IF END # IUF.SESS.NUM% THEN EXIT.FUNCTION
+1488: 0e82:     READ # IUF.SESS.NUM%; IUF.RECORD$
+1489: 0ea0: 
+1490: 0ea0:     CLOSE IUF.SESS.NUM%
+1491: 0eac: 
+1492: 0eac:     !-----------------------------------------------------
+1493: 0eac:     ! Check if the record is a header in old or new format
+1494: 0eac:     ! also validate each field.
+1495: 0eac:     !-----------------------------------------------------
+1496: 0eac:     ! IF we have a new format IUF
+1497: 0eac:     IF LEFT$(UCASE$(IUF.RECORD$),1) = "H" THEN BEGIN
+1498: 0eec: 
+1499: 0eec:         DIM MATRIX$(4)
+1500: 0f0d: 
+1501: 0f0d:         ! Open file as and read the header record
+1502: 0f0d:         IF END # IUF.SESS.NUM% THEN EXIT.FUNCTION
+1503: 0f21:         OPEN IUF.FILE.NAME$ AS IUF.SESS.NUM% NOWRITE NODEL
+1504: 0f41: 
+1505: 0f41:         IF END # IUF.SESS.NUM% THEN EXIT.FUNCTION
+1506: 0f55:         READ MATRIX #IUF.SESS.NUM%; MATRIX$(1), 4
+1507: 0f72: 
+1508: 0f72:         CLOSE IUF.SESS.NUM%
+1509: 0f7e: 
+1510: 0f7e:         IF MATCH("!",MATRIX$(2),1) OR LEN(MATRIX$(2)) <> 4 THEN BEGIN
+1511: 0fc9:             VALIDATE.IUF.HEADER.RECORD = "INVALID STORE NUMBER"
+1512: 0fd7:             EXIT FUNCTION
+1513: 0fdd:         ENDIF ELSE IF NOT MATCH(MATRIX$(3),"NY",1) THEN BEGIN
+1514: 1000:             VALIDATE.IUF.HEADER.RECORD = "INVALID INITIAL LOAD FLAG"
+1515: 100e:             EXIT FUNCTION
+1516: 1013:         ENDIF ELSE IF MATCH("!",MATRIX$(4),1) OR LEN(MATRIX$(4)) <> 17 THEN BEGIN
+1517: 105e:             VALIDATE.IUF.HEADER.RECORD = "INVALID DATE TIME STAMP"
+1518: 106c:             EXIT FUNCTION
+1519: 106f:         ENDIF
+1520: 106f: 
+1521: 106f:         IUF.NEW.FORMAT = TRUE
+1522: 1080: 
+1523: 1080:        ! Check store number is valid. i.e. numeric
+1524: 1080:     ! ELSE IF we have an old format IUF
+1525: 1080:     ENDIF ELSE IF MID$(IUF.RECORD$,8,3) = "000" THEN BEGIN
+1526: 10b0: 
+1527: 10b0:         ! Check store number is valid. i.e. numeric
+1528: 10b0:         IF MATCH("!",MID$(IUF.RECORD$,11,4),1) THEN BEGIN
+1529: 10e1:             VALIDATE.IUF.HEADER.RECORD = "INVALID STORE NUMBER"
+1530: 10ef:             EXIT FUNCTION
+1531: 10f4: 
+1532: 10f4:         ! Check serial number is valid. i.e. numeric
+1533: 10f4:         ENDIF ELSE IF MATCH("!",MID$(IUF.RECORD$,15,5),1) THEN BEGIN
+1534: 1125: 
+1535: 1125:              VALIDATE.IUF.HEADER.RECORD = "INVALID SERIAL NUMBER"
+1536: 1133:              EXIT FUNCTION
+1537: 1137: 
+1538: 1137:         ENDIF ELSE BEGIN
+1539: 1137: 
+1540: 1137:             IUF.NEW.FORMAT = FALSE
+1541: 1145:             !Set up for legacy IUF format
+1542: 1145:             CALL LEGACY.IUF.FORMAT
+1543: 1149: 
+1544: 1149:         ENDIF
+1545: 114b: 
+1546: 114b:     ENDIF ELSE BEGIN
+1547: 114b:          ! ELSE IF the IUF format is unknown
+1548: 114b:          ! Return unknow iuf format
+1549: 114b:          VALIDATE.IUF.HEADER.RECORD = "UNKNOWN IUF FORMAT"
+1550: 1159:          EXIT FUNCTION
+1551: 115b:     ENDIF
+1552: 115b: 
+1553: 115b:          EXIT FUNCTION
+1554: 115d: 
+1555: 115d: EXIT.FUNCTION:
+1556: 115d: 
+1557: 115d:     VALIDATE.IUF.HEADER.RECORD = "UNABLE TO OPEN / READ IUF"
+1558: 116b: 
+1559: 116b: END FUNCTION
+1560: 117c: 
+1561: 117c: 
+1562: 117c: !==================================================================================
+1563: 117c: !
+1564: 117c: !  READ.IUF
+1565: 117c: !
+1566: 117c: !==================================================================================
+1567: 117c: FUNCTION READ.IUF PUBLIC
+1568: 1190: 
+1569: 1190:     INTEGER*2 READ.IUF
+1570: 1190:     READ.IUF = 1
+1571: 1195: 
+1572: 1195:     IUF.REC.TYPE$  = ""
+1573: 11a4: 
+1574: 11a4:     IF NOT IUF.NEW.FORMAT THEN BEGIN
+1575: 11b1:         !---------------------------------------
+1576: 11b1:         ! Old IUF Format - Convert to new format
+1577: 11b1:         !---------------------------------------
+1578: 11b1:         CURRENT.CODE$ = MID$(IUF.RECORD$,1,10)
+1579: 11d0: 
+1580: 11d0:         IF END # IUF.SESS.NUM% THEN READ.IUF.IF.END
+1581: 11e4:         READ # IUF.SESS.NUM%; IUF.RECORD$
+1582: 1202: 
+1583: 1202:         IUF.BOOTS.CODE$ = MID$(IUF.RECORD$,1,7)
+1584: 1221:         IUF.TRANS.TYPE$ = MID$(IUF.RECORD$,8,3)
+1585: 1240: 
+1586: 1240:         WHILE IUF.TRANS.TYPE$ = "002" ! Bypass redundant       ! 1.15 RC (230)
+1587: 1242:                                       ! flashpack record       ! 1.15 RC (230)
+1588: 1242:             READ # IUF.SESS.NUM%; IUF.RECORD$                  ! 1.15 RC (230)
+1589: 1260:             IUF.BOOTS.CODE$ = MID$(IUF.RECORD$,1,7)            ! 1.15 RC (230)
+1590: 127f:             IUF.TRANS.TYPE$ = MID$(IUF.RECORD$,8,3)            ! 1.15 RC (230)
+1591: 129e: !           Adjust PSB21 trailer count                         ! 1.15 RC (230)
+1592: 129e:             COUNT.RECORDS.IUF% = COUNT.RECORDS.IUF% + 1        ! 1.15 RC (230)
+1593: 12af:         WEND                                                   ! 1.15 RC (230)
+1594: 12c8: 
+1595: 12c8:         IF IUF.TRANS.TYPE$ = "000" THEN BEGIN  ! Header record
+1596: 12e1: 
+1597: 12e1:             IUF.REC.TYPE$     = "H"
+1598: 12f0:             IUF.BRANCH.NO$    = MID$(IUF.RECORD$,11,4)
+1599: 130f:             IUF.STORE.NUM$    = IUF.BRANCH.NO$
+1600: 1325:             IUF.SERIAL.NO$    = MID$(IUF.RECORD$,15,5)
+1601: 1344:             IUF.INITIAL.LOAD$ = "N"
+1602: 1353:             IUF.TIME.STAMP$   = "20" + DATE$ + TIME$ + "000"
+1603: 138c: 
+1604: 138c:         ENDIF ELSE IF IUF.TRANS.TYPE$ = "001" THEN BEGIN ! Item reference record
+1605: 13a5: 
+1606: 13a5:             IUF.REC.TYPE$      = "I"
+1607: 13b4:             IUF.GRP.CODE.FLAG$ = MID$(IUF.RECORD$,11,1)
+1608: 13d3:             IF IUF.GRP.CODE.FLAG$ = "G" THEN BEGIN                            ! 1.10 RC (46)
+1609: 13e9:                 IUF.GRP.CODE.FLAG$ = "Y"                                      ! 1.10 RC (46)
+1610: 13fa:             ENDIF ELSE BEGIN                                                  ! 1.10 RC (46)
+1611: 13fa:                 IUF.GRP.CODE.FLAG$ = "N"                                      ! 1.10 RC (46)
+1612: 1409:             ENDIF
+1613: 1409:             IUF.STNDRD.DESC$   = MID$(IUF.RECORD$,12,24)
+1614: 1428:             IUF.TILL.DESC$     = MID$(IUF.RECORD$,36,18)
+1615: 1447:             IUF.S.E.DESC$      = MID$(IUF.RECORD$,54,45)
+1616: 1466:             IUF.SUPPLY.ROUTE$  = MID$(IUF.RECORD$,99,1)
+1617: 1485:             IUF.GIVEAWAY$      = MID$(IUF.RECORD$,100,1)
+1618: 14a4: 
+1619: 14a4:             IF IUF.GIVEAWAY$ = "C" THEN BEGIN                                 ! 1.10 RC (40)
+1620: 14ba:                 IUF.GIVEAWAY$ = "Y"                                           ! 1.10 RC (40)
+1621: 14cb:             ENDIF ELSE BEGIN                                                  ! 1.10 RC (40)
+1622: 14cb:                 IUF.GIVEAWAY$ = "N"
+1623: 14da:             ENDIF
+1624: 14da:             IUF.PROD.GRP$      = MID$(IUF.RECORD$,101,5)
+1625: 14f9:             IUF.GUARANTEE.CAT$ = MID$(IUF.RECORD$,106,1)
+1626: 1518: 
+1627: 1518:             IF   IUF.GUARANTEE.CAT$ = "L" \                                   ! 1.10 RC (39)
+1628: 1562:               OR IUF.GUARANTEE.CAT$ = "Z" THEN BEGIN                          ! 1.10 RC (39)
+1629: 1562:                 IUF.GUARANTEE.LENGTH$  =  "25"
+1630: 1573:             ENDIF ELSE BEGIN                                                  ! 1.10 RC (39)
+1631: 1573:                 IF IUF.GUARANTEE.CAT$ = "G" THEN BEGIN ! Gift Experience      ! 1.10 RC (39)
+1632: 1589:                     IUF.GUARANTEE.LENGTH$  =  "63"                            ! 1.10 RC (39)
+1633: 159a:                 ENDIF ELSE BEGIN
+1634: 159a:                     IUF.GUARANTEE.LENGTH$  =  STR$(MATCH(IUF.GUARANTEE.CAT$,"ABCDFHIJKMOPQRSTUVWX",1)) ! 1.10 RC (39)
+1635: 15c3:                 ENDIF
+1636: 15c3:             ENDIF                                                             ! 1.10 RC (39)
+1637: 15c3: 
+1638: 15c3:             IUF.ENF.PRICE.ENTRY$ = MID$(IUF.RECORD$,107,1)
+1639: 15e2: 
+1640: 15e2:             IF IUF.ENF.PRICE.ENTRY$ <> "Y" THEN BEGIN                         ! 1.10 RC (47)
+1641: 15f8:                 IUF.ENF.PRICE.ENTRY$ = "N"                                    ! 1.10 RC (47)
+1642: 1607:             ENDIF                                                             ! 1.10 RC (47)
+1643: 1607: 
+1644: 1607:             IUF.LOYALTY.FLAG$    = MID$(IUF.RECORD$,108,1)
+1645: 1626:             IUF.EARN.POINTS$     = "Y"                                        ! 1.10 RC (19)
+1646: 1635:             IUF.REDEEMABLE$      = "N"
+1647: 1644: 
+1648: 1644:             IF   IUF.LOYALTY.FLAG$ = "R" \                                    ! 1.10 RC (19)
+1649: 168e:               OR IUF.LOYALTY.FLAG$ = "S" THEN BEGIN                           ! 1.10 RC (19)
+1650: 168e:                 IUF.REDEEMABLE$ = "Y"                                         ! 1.10 RC (19)
+1651: 169d:             ENDIF                                                             ! 1.10 RC (19)
+1652: 169d: 
+1653: 169d:             IF IUF.LOYALTY.FLAG$ = "E" THEN BEGIN                             ! 1.10 RC (19)
+1654: 16b3:                 IUF.EARN.POINTS$ = "N"                                        ! 1.10 RC (19)
+1655: 16c2:             ENDIF                                                             ! 1.10 RC (19)
+1656: 16c2: 
+1657: 16c2:             IF IUF.LOYALTY.FLAG$ = "X" THEN BEGIN                             ! 1.10 RC (19)
+1658: 16d8:                 IUF.REDEEMABLE$ = "Y"                                         ! 1.10 RC (19)
+1659: 16e7:                 IUF.EARN.POINTS$ = "N"                                        ! 1.10 RC (19)
+1660: 16f6:             ENDIF                                                             ! 1.10 RC (19)
+1661: 16f6: 
+1662: 16f6:             IUF.DISCOUNT.CAT$      =  MID$(IUF.RECORD$,109,1)
+1663: 1715: 
+1664: 1715:             IUF.DISCOUNTABLE$ = "Y" ! Default - equates to IRF.INDICAT3% X'01' OFF              ! 1.11 RC (21)
+1665: 1724: 
+1666: 1724:             IF IUF.DISCOUNT.CAT$ = "X" THEN BEGIN ! Exempt from discount                        ! 1.11 RC (21)
+1667: 173a:                 IUF.DISCOUNTABLE$ = "N" ! Equates to IRF.INDICAT3% X'01' ON                     ! 1.11 RC (21)
+1668: 1749:             ENDIF                                                                               ! 1.10 RC (21)
+1669: 1749: 
+1670: 1749:             IUF.OWN.BRAND$         = MID$(IUF.RECORD$,110,1)
+1671: 1768:             IUF.DIRECT.PROC$       = MID$(IUF.RECORD$,111,1)
+1672: 1787:             IUF.STATUS.1$          = MID$(IUF.RECORD$,112,1)
+1673: 17a6:             IUF.EANS.CHANGED$      = MID$(IUF.RECORD$,113,1)
+1674: 17c5:             IUF.NO.OF.EANS$        = MID$(IUF.RECORD$,114,3)
+1675: 17e4:             IUF.CURRENT.PRICE$     = MID$(IUF.RECORD$,117,8)
+1676: 1803:             IUF.NO.OF.RPD.PRICES$  = MID$(IUF.RECORD$,125,1)
+1677: 1822:             IUF.STOCK.SYSTEM.FLAG$ = MID$(IUF.RECORD$,136,1)
+1678: 1842:             IUF.NEW.DEAL.COUNT$    = MID$(IUF.RECORD$,137,2)
+1679: 1862:             IUF.ETHICAL.CLASS$     = ""
+1680: 1871: 
+1681: 1871:             IF MATCH("(P)",IUF.STNDRD.DESC$,1) THEN BEGIN
+1682: 188b:                 IUF.ETHICAL.CLASS$  =  "P"
+1683: 189a:             ENDIF
+1684: 189a: 
+1685: 189a:             IUF.ETHICAL.DESCRIPTION$   =  ""
+1686: 18a9:             IUF.ETHICAL.ACTIVE$        =  "N"
+1687: 18b8:             IUF.ETHICAL.PACK.SIZE$     =  "0000000"
+1688: 18c7:             IUF.PRIMARY.SUPPLIER$      =  "00000000"
+1689: 18d6:             IUF.CONTAINS.NONSOLID.PAINKILLER$  =  "N"
+1690: 18e5: 
+1691: 18e5:             IF MATCH("(#E)",IUF.STNDRD.DESC$,1) THEN BEGIN
+1692: 18ff:                 IUF.CONTAINS.NONSOLID.PAINKILLER$  =  "Y"
+1693: 190e:             ENDIF
+1694: 190e: 
+1695: 190e:             IUF.BC.LETTER$        = MID$(IUF.RECORD$,139,1)
+1696: 192e:             IUF.ITEM.QTY$         = MID$(IUF.RECORD$,140,7)
+1697: 194e:             IUF.UNIT.MEASUREMENT$ = MID$(IUF.RECORD$,147,4)
+1698: 196e:             IUF.UNIT.NAME$        = MID$(IUF.RECORD$,151,10)
+1699: 198e: 
+1700: 198e:             IUF.RESTRICT.SALES.FLAG$  =  "N"                            !BRN
+1701: 199d: 
+1702: 199d:             MATCH.POS1% = MATCH("(*R##)",IUF.STNDRD.DESC$,1)            !BRN
+1703: 19ba:             MATCH.POS2% = MATCH("(*R#)",IUF.STNDRD.DESC$,1)             !BRN
+1704: 19d7: 
+1705: 19d7:             !Check for the match of (*R##) where # refers to a number   !BRN
+1706: 19d7:             IF (MATCH.POS1% <> 0) OR (MATCH.POS2% <> 0) THEN BEGIN      !BRN
+1707: 19fb: 
+1708: 19fb:                 IUF.RESTRICT.SALES.FLAG$  =  "Y"                        !BRN
+1709: 1a0a: 
+1710: 1a0a:                 IF MATCH.POS1% <> 0 THEN BEGIN                          !BRN
+1711: 1a14:                     !Get the group number from the patten; (*R##)       !BRN
+1712: 1a14:                     IUF.GRP.NO$ = MID$(IUF.STNDRD.DESC$,               \!BRN
+1713: 1a3e:                                                 (MATCH.POS1% + 3),2)    !BRN
+1714: 1a3e: 
+1715: 1a3e:                 ENDIF ELSE IF MATCH.POS2% <> 0 THEN BEGIN               !BRN
+1716: 1a48:                     !Get the group number from the patten; (*R#)        !BRN
+1717: 1a48:                     IUF.GRP.NO$ = MID$(IUF.STNDRD.DESC$,               \!BRN
+1718: 1a70:                                                 (MATCH.POS2% + 3),1)    !BRN
+1719: 1a70:                 ENDIF                                                   !BRN
+1720: 1a70: 
+1721: 1a70:             ENDIF                                                       !BRN
+1722: 1a70: 
+1723: 1a70:             ! The following code fixes a mainframe feature that results in the pound
+1724: 1a70:             ! and dollar characters being transposed.
+1725: 1a70:             IUF.STNDRD.DESC$ = TRANSLATE$ (IUF.STNDRD.DESC$, "$", "œ")
+1726: 1a93:             IUF.TILL.DESC$   = TRANSLATE$ (IUF.TILL.DESC$,   "$", "œ")
+1727: 1ab6:             IUF.S.E.DESC$    = TRANSLATE$ (IUF.S.E.DESC$,    "$", "œ")
+1728: 1ad9: 
+1729: 1ad9:             !-----------------------------------------------------------
+1730: 1ad9:             !Lookup Product Group in new REFPGF table and set values
+1731: 1ad9:             !-----------------------------------------------------------
+1732: 1ad9:             CGRP.NUM% = VAL(LEFT$(IUF.PROD.GRP$,2)) !2 bytes concept grp
+1733: 1afa:             PGRP.NUM% = VAL(RIGHT$(IUF.PROD.GRP$,3)) !3 bytes prodct grp
+1734: 1b19: 
+1735: 1b19:             IUF.RESALEABLE$   = "N"
+1736: 1b28:             IUF.RETURN.ROUTE$ = ""
+1737: 1b37:             IUF.RETURNABLE$   = "Y"                                            ! 1.8 RC
+1738: 1b46:             IUF.SPECIAL.INSTRUCTION$ = "0"
+1739: 1b55: 
+1740: 1b55:             TEMP$ = REFPGF.RECORDS$(CGRP.NUM%)
+1741: 1b77: 
+1742: 1b77:             VALUE1% = GETN1( TEMP$, PGRP.NUM% * 2)
+1743: 1b91:             VALUE2% = GETN1( TEMP$, PGRP.NUM% * 2 + 1)
+1744: 1bac: 
+1745: 1bac:             IF VALUE2% AND 40H THEN BEGIN
+1746: 1bb1:                 IUF.RESALEABLE$   = "Y"
+1747: 1bc0:             ENDIF
+1748: 1bc0: 
+1749: 1bc0:                        IF VALUE1% = 0040h THEN BEGIN   ! 1.14 RC (208)
+1750: 1bc7:                 IUF.RETURN.ROUTE$   = "R"
+1751: 1bd8:             ENDIF ELSE IF VALUE1% = 0080h THEN BEGIN   ! 1.14 RC (208)
+1752: 1be0:                 IUF.RETURN.ROUTE$   = "D"
+1753: 1bf1:             ENDIF ELSE IF VALUE1% = 00C0h THEN BEGIN   ! 1.14 RC (208)
+1754: 1bf9:                 IUF.RETURN.ROUTE$   = "S"
+1755: 1c0a:             ENDIF ELSE IF VALUE1% = 0020h THEN BEGIN   ! 1.14 RC (208)
+1756: 1c11:                 IUF.RETURN.ROUTE$   = " "              ! 1.12 RC (103)
+1757: 1c22:             ENDIF ELSE BEGIN
+1758: 1c22:                 IUF.RETURNABLE$ = "N"
+1759: 1c31:             ENDIF
+1760: 1c31: 
+1761: 1c31:             IUF.SPECIAL.INSTRUCTION$ = STR$(VALUE2% AND 3FH)
+1762: 1c4a: 
+1763: 1c4a:             !----------------------------------------------------------------
+1764: 1c4a:             ! Check if product group is in the list of alcohol product groups
+1765: 1c4a:             !----------------------------------------------------------------
+1766: 1c4a:             IF MATCH(IUF.PROD.GRP$, ALCOHOL.PROD.GRP.LIST$, 1) <> 0 THEN BEGIN
+1767: 1c6c:                 IUF.CONTAINS.ALCOHOL$ = "Y"
+1768: 1c7d:             ENDIF ELSE BEGIN
+1769: 1c7d:                 IUF.CONTAINS.ALCOHOL$ = "N"
+1770: 1c8c:             ENDIF
+1771: 1c8c:             !-------------------------------------------------------------------------
+1772: 1c8c:             ! Check if one of the Medicine patterns appears in the new IDF description
+1773: 1c8c:             !-------------------------------------------------------------------------
+1774: 1c8c:             IUF.CONTAINS.ASPIRIN$     = "N"
+1775: 1c9b:             IUF.CONTAINS.PARACETAMOL$ = "N"
+1776: 1caa:             IUF.CONTAINS.IBUPROFEN$   = "N"
+1777: 1cb9: 
+1778: 1cb9:             FOR A% = 1 TO MEDICINES.IN.TABLE%
+1779: 1cc5:                 IF MATCH(MEDICINES.TABLE$(A%),IUF.STNDRD.DESC$,1) THEN BEGIN  ! Check if medicine
+1780: 1cfa:                    IF MATCH(MEDICINES.TABLE$(A%),ASPIRIN.RECORD$,1) THEN BEGIN
+1781: 1d2c:                        IUF.CONTAINS.ASPIRIN$ = "Y"                            ! Set Aspirin Flag
+1782: 1d3b:                    ENDIF
+1783: 1d3b:                    IF MATCH(MEDICINES.TABLE$(A%),PARACETAMOL.RECORD$,1) THEN BEGIN
+1784: 1d6d:                        IUF.CONTAINS.PARACETAMOL$ = "Y"                        ! Set Paracetamol Flag
+1785: 1d7c:                    ENDIF
+1786: 1d7c:                    IF MATCH(MEDICINES.TABLE$(A%),IBRUPROFEN.RECORD$,1) THEN BEGIN
+1787: 1dae:                        IUF.CONTAINS.IBUPROFEN$ = "Y"                          ! Set Ibruprofen Flag
+1788: 1dbd:                    ENDIF
+1789: 1dbd:                 ENDIF
+1790: 1dbd:             NEXT A%
+1791: 1ddf: 
+1792: 1ddf:             !---------------------------------------------------------------------------------------------
+1793: 1ddf:             ! Check if one of the Ephedrine or Pseudoephedrine patterns appears in the new IDF description
+1794: 1ddf:             !---------------------------------------------------------------------------------------------
+1795: 1ddf: 
+1796: 1ddf:                 ! Ephedrine indicator
+1797: 1ddf:                 IF MATCH(BCF.RECORD19.INDICATOR$(1),IUF.STNDRD.DESC$,1) THEN BEGIN
+1798: 1e09:                     IUF.CONTAINS.EPHEDRINE$ = "Y"
+1799: 1e1a:                 ENDIF ELSE BEGIN
+1800: 1e1a:                     IUF.CONTAINS.EPHEDRINE$ = "N"
+1801: 1e29:                 ENDIF
+1802: 1e29: 
+1803: 1e29:                 ! Pseudoephedrine indicator
+1804: 1e29:                 IF MATCH(BCF.RECORD19.INDICATOR$(2),IUF.STNDRD.DESC$,1) THEN BEGIN
+1805: 1e53:                     IUF.CONTAINS.PSEUDOEPHEDRINE$ = "Y"
+1806: 1e64:                 ENDIF ELSE BEGIN
+1807: 1e64:                     IUF.CONTAINS.PSEUDOEPHEDRINE$ = "N"
+1808: 1e73:                 ENDIF
+1809: 1e73: 
+1810: 1e73:             !----------------------------------------------------------------------------------
+1811: 1e73:             ! Check if one of the age patterns appears in the new IRF description & set the age
+1812: 1e73:             !----------------------------------------------------------------------------------
+1813: 1e73:             IUF.AGE.RESTRICTION$ = ""
+1814: 1e82: 
+1815: 1e82:             FINISHED = FALSE
+1816: 1e90:             J% = 1
+1817: 1e99: 
+1818: 1e99:             WHILE NOT FINISHED
+1819: 1e9c: 
+1820: 1e9c:               IF MATCH(AGES$(J%),IUF.TILL.DESC$,1) THEN BEGIN ! Match against Till description
+1821: 1ece: 
+1822: 1ece:                     IUF.AGE.RESTRICTION$ = MID$(AGES$(J%),2,2)
+1823: 1efe:                     FINISHED = TRUE
+1824: 1f0c: 
+1825: 1f0c:               ENDIF
+1826: 1f0c:               J% = J% + 1
+1827: 1f13:               IF J% > NO.OF.AGES% THEN FINISHED = TRUE
+1828: 1f31: 
+1829: 1f31:             WEND
+1830: 1f3e: 
+1831: 1f3e:             IUF.GIFTCARD$                = "N"
+1832: 1f4d:             IUF.UNRESTRICTED.GROUP.CODE$ = "N"
+1833: 1f5c:             IUF.BOOTS.COM.EXTENDED$      = "N"
+1834: 1f6b:             IUF.DATE.SENSITIVE$          = "N"
+1835: 1f7a:             IUF.BLOCKED.FROM.SALE$       = ""
+1836: 1f89: 
+1837: 1f89:             !--------------------------------------------------------
+1838: 1f89:             ! Check if item has an insurance related concept groups                        ! 1.11 RC (44)
+1839: 1f89:             !--------------------------------------------------------
+1840: 1f89:             IUF.INSURANCE$ = "N"
+1841: 1f98: 
+1842: 1f98:             IF MATCH(LEFT$(IUF.PROD.GRP$,2) + "000", INSURE.CONCEPT.GROUPS$, 1) THEN BEGIN ! 1.11 RC (44)
+1843: 1fe6:                 IUF.INSURANCE$ = "Y"                                                       ! 1.11 RC (44)
+1844: 1ff5:             ENDIF                                                                          ! 1.11 RC (44)
+1845: 1ff5: 
+1846: 1ff5:             !---------------------------------------------------------
+1847: 1ff5:             ! Set OWN BRAND flag. Ignore Exclusive line flag.
+1848: 1ff5:             !---------------------------------------------------------
+1849: 1ff5:             IF IUF.OWN.BRAND$ = "B" THEN BEGIN
+1850: 200b:                 IUF.OWN.BRAND$ = "Y"
+1851: 201c:             ENDIF ELSE BEGIN
+1852: 201c:                 IUF.OWN.BRAND$ = "N"
+1853: 202b:             ENDIF
+1854: 202b: 
+1855: 202b:             !---------------------------------------------------------
+1856: 202b:             ! Force Direct Procedures B and C to be Direct Procedure A
+1857: 202b:             !---------------------------------------------------------
+1858: 202b:             ! IF direct supplied item
+1859: 202b:             IF NOT (IUF.DIRECT.PROC$ = " ") THEN BEGIN
+1860: 2041:                IUF.DIRECT.PROC$ = "A"
+1861: 2050:             ENDIF
+1862: 2050: 
+1863: 2050:             !------------------------------------------------------------
+1864: 2050:             ! Convert any Supply Status 'U' items to 'D', as 'U' will not
+1865: 2050:             ! exist as a supply status in future.
+1866: 2050:             !------------------------------------------------------------
+1867: 2050:             IF IUF.STATUS.1$ = "U" THEN BEGIN
+1868: 2066:                 IUF.STATUS.1$ = "D"
+1869: 2075:             ENDIF
+1870: 2075: 
+1871: 2075:             !-----------------------------------
+1872: 2075:             ! Convert any CSR items to Warehouse
+1873: 2075:             !-----------------------------------OLD.BATCH.FOUND
+1874: 2075:             IF IUF.SUPPLY.ROUTE$ = "C" THEN BEGIN
+1875: 208b:                 IUF.SUPPLY.ROUTE$ = "W"
+1876: 209a:             ENDIF
+1877: 209d: 
+1878: 209d:         ENDIF ELSE IF IUF.TRANS.TYPE$ = "004" THEN BEGIN ! Pending price record
+1879: 20b6: 
+1880: 20b6:             IUF.REC.TYPE$  = "P"
+1881: 20c5:             IF LEN(IUF.RECORD$) = 29 THEN IUF.RECORD$ = IUF.RECORD$ + "N"
+1882: 20f8:             IUF.RPD.DATE$  = "20" + MID$(IUF.RECORD$,11,6)                ! 1.9 TT
+1883: 211e:             IUF.NEW.PRICE$ = MID$(IUF.RECORD$,17,8)
+1884: 213d:             IUF.RPD.NO$    = MID$(IUF.RECORD$,25,5)
+1885: 215c:             IUF.MARKDOWN$  = "N"
+1886: 216e:         ENDIF ELSE IF IUF.TRANS.TYPE$ = "005" THEN BEGIN ! Barcode record
+1887: 2184: 
+1888: 2184:             IUF.REC.TYPE$   = "B"
+1889: 2193:             IUF.BAR.CODE$   = MID$(IUF.RECORD$,11,12) + "0"   ! Zero added.
+1890: 21c6: 
+1891: 21c6:         ENDIF ELSE IF IUF.TRANS.TYPE$ = "999" THEN BEGIN ! Trailer record
+1892: 21dc: 
+1893: 21dc:             IUF.REC.TYPE$   = "T"
+1894: 21eb:             IUF.ITEM.COUNT$ = MID$(IUF.RECORD$,11,7)
+1895: 220a:             IUF.REC.COUNT$  = IUF.ITEM.COUNT$
+1896: 2222:         ENDIF ELSE BEGIN
+1897: 2222:             ! Unknown Record Type - default to '*'
+1898: 2222:             ! and let calling program handle it
+1899: 2222:             IUF.REC.TYPE$   = "*"
+1900: 2231:         ENDIF
+1901: 2234: 
+1902: 2234:     ENDIF ELSE BEGIN
+1903: 2234:         !------------------------------------------------------------
+1904: 2234:         !                      NEW IUF Format
+1905: 2234:         !------------------------------------------------------------
+1906: 2234:         DIM IUF.MATRIX$(200)
+1907: 225c: 
+1908: 225c:         IF END # IUF.SESS.NUM% THEN READ.IUF.IF.END
+1909: 2270:         READ MATRIX #IUF.SESS.NUM%; IUF.MATRIX$(1), 200
+1910: 2291: 
+1911: 2291:         IUF.REC.TYPE$ = IUF.MATRIX$(1)
+1912: 22b3: 
+1913: 22b3:         IF IUF.REC.TYPE$ = "I" THEN BEGIN
+1914: 22cc:             !-----------------------------------------------------------------------------
+1915: 22cc:             ! Process Item Record
+1916: 22cc:             !
+1917: 22cc:             !-----------------------------------------------------------------------------
+1918: 22cc:             !1  IUF.REC.TYPE$          ASCII   1   "I"
+1919: 22cc:             !2  IUF.BOOTS.CODE$        ASCII   7   Boots code including check digit
+1920: 22cc:             !3  IUF.GRP.CODE.FLAG$     ASCII   1   Y/N
+1921: 22cc:             !4  IUF.STNDRD.DESC$       ASCII   24  Report description
+1922: 22cc:             !5  IUF.TILL.DESC$         ASCII   18
+1923: 22cc:             !6  IUF.S.E.DESC$          ASCII   45  3 lines of 15 characters
+1924: 22cc:             !7  IUF.SUPPLY.ROUTE$      ASCII   1   W - Warehouse  D - Direct   B - Direct via warehouse
+1925: 22cc:             !8  IUF.GIVEAWAY$          ASCII   1   Y/N  Blank = N
+1926: 22cc:             !9  IUF.PROD.GRP$          ASCII   5   ccsss
+1927: 22cc:             !                                      cc  = Concept Group
+1928: 22cc:             !                                      sss = Sequence number
+1929: 22cc:             !10 IUF.GUARANTEE.LENGTH$  ASCII   3   range 0-63
+1930: 22cc:             !                                       0  - No guarantee
+1931: 22cc:             !                                       63 - Gift Experience
+1932: 22cc:             !                                       Assumed unit is years, but can be overridden to months.
+1933: 22cc:             !                                        E.g., 10M = 10 months
+1934: 22cc:             !11 IUF.ENF.PRICE.ENTRY$   ASCII   1   Y/N
+1935: 22cc:             !12 IUF.EARN.POINTS$       ASCII   1   Y/N  Y - Earns points etc
+1936: 22cc:             !13 IUF.REDEEMABLE$        ASCII   1   Y/N  Y - Can be redeemed
+1937: 22cc:             !14 IUF.DISCOUNTABLE$      ASCII   1   If on, item does attract staff discount
+1938: 22cc:             !15 IUF.OWN.BRAND$         ASCII   1   Y - Boots  N - Brand
+1939: 22cc:             !16 IUF.STATUS.1$          ASCII   1   Space - Active (default)
+1940: 22cc:             !                                          B - Discontinued (on planner)
+1941: 22cc:             !                                          C - Outstanding order cancelled (demised?)
+1942: 22cc:             !                                          D - Discontinued (off planner)
+1943: 22cc:             !                                          P - Suspended (demised?)
+1944: 22cc:             !                                          U - Unsuppliable (demised)
+1945: 22cc:             !                                          X - Flagged for deletion
+1946: 22cc:             !                                          Z - Deleted
+1947: 22cc:             !17 IUF.CURRENT.PRICE$     ASCII   8   In pence or cents
+1948: 22cc:             !18 IUF.STOCK.SYSTEM.FLAG$ ASCII   1   Y/N  Y - EPOS maintains stock figure
+1949: 22cc:             !19 IUF.BC.LETTER$         ASCII   1   e.g. H - Food & Baby
+1950: 22cc:             !20 IUF.ITEM.QTY$          ASCII   7   Number of singles in the pack
+1951: 22cc:             !21 IUF.UNIT.MEASUREMENT$  ASCII   5   eg. 100, if "per 100ml"
+1952: 22cc:             !22 IUF.UNIT.NAME$         ASCII   10
+1953: 22cc:             !23 IUF.DATE.SENSITIVE$    ASCII   1   Y/N
+1954: 22cc:             !24 IUF.RETURNABLE$        ASCII   1   Y - Can be returned  N - Must be destroyed
+1955: 22cc:             !25 IUF.RESALEABLE$        ASCII   1   Y/N
+1956: 22cc:             !26 IUF.SPECIAL.INSTRUCTION$   ASCII   2   0-63
+1957: 22cc:             !27 IUF.RETURN.ROUTE$      ASCII   1   NULL - No returns route
+1958: 22cc:             !                                         R - Returns & Recovery
+1959: 22cc:             !                                         S - Semi-centralised
+1960: 22cc:             !                                         D - Direct
+1961: 22cc:             !28 IUF.ETHICAL.CLASS$     ASCII   1   NULL - Retail
+1962: 22cc:             !                                         G - General Sales Licence
+1963: 22cc:             !                                         M - Pharmacy only med
+1964: 22cc:             !                                         P - Pharmacy medicine
+1965: 22cc:             !29 IUF.ETHICAL.DESCRIPTION$   Alphan  40  Ethical item description. Must be null if legal class is blank
+1966: 22cc:             !30 IUF.ETHICAL.ACTIVE$        ASCII   1   N - NOT active in store   Y - Active in store (load into POD)
+1967: 22cc:             !31 IUF.ETHICAL.PACK.SIZE$     ASCII   7   TODO-Will this always be the same as Unit pricing field?
+1968: 22cc:             !32 IUF.PRIMARY.SUPPLIER$      ASCII   8
+1969: 22cc:             !33 IUF.CONTAINS.ALCOHOL$      ASCII   1   Y/N
+1970: 22cc:             !34 IUF.CONTAINS.PARACETAMOL$  ASCII   1   Y/N
+1971: 22cc:             !35 IUF.CONTAINS.ASPIRIN$      ASCII   1   Y/N
+1972: 22cc:             !36 IUF.CONTAINS.IBUPROFEN$    ASCII   1   Y/N
+1973: 22cc:             !37 IUF.CONTAINS.EPHEDRINE$    ASCII   1   Y/N
+1974: 22cc:             !38 IUF.CONTAINS.PSUEDOEPHEDRINE$     ASCII    1   Y/N
+1975: 22cc:             !39 IUF.CONTAINS.NONSOLID.PAINKILLER$ ASCII    1   Y/N
+1976: 22cc:             !40 IUF.UNRESTRICTED.GROUP.CODE$      ASCII    1   Y/N
+1977: 22cc:             !41 IUF.GIFTCARD$                     ASCII    1   Y/N
+1978: 22cc:             !42 IUF.AGE.RESTRICTION$              ASCII    2   BLANK, 12, 15, 16, 18, 21
+1979: 22cc:             !43 IUF.BOOTS.COM.EXTENDED$           ASCII    1   Y/N
+1980: 22cc:             !44 IUF.INSURANCE$                    ASCII    1   Y/N
+1981: 22cc:             !45 IUF.BLOCKED.FROM.SALE$            ASCII    1   Blank - Not blocked
+1982: 22cc:             !                                                      R - Blocked (recall)
+1983: 22cc:             !                                                      W - Blocked (withdrawn)
+1984: 22cc:             !-----------------------------------------------------------------------------
+1985: 22cc:             IUF.BOOTS.CODE$ = IUF.MATRIX$(2)  !SAP sends leading zeroes
+1986: 22ee: 
+1987: 22ee:             IUF.GRP.CODE.FLAG$ = IUF.MATRIX$(3)
+1988: 2310: 
+1989: 2310:             IF IUF.GRP.CODE.FLAG$ <> "Y" THEN BEGIN
+1990: 2326:                IUF.GRP.CODE.FLAG$ = "N"
+1991: 2335:             ENDIF
+1992: 2335: 
+1993: 2335:             IUF.STNDRD.DESC$ = IUF.MATRIX$(4)
+1994: 2357:             IUF.STNDRD.DESC$ = LEFT$(IUF.STNDRD.DESC$ + STRING$(24, " "), 24)
+1995: 239e: 
+1996: 239e:             IUF.TILL.DESC$   = IUF.MATRIX$(5)
+1997: 23c0:             IUF.TILL.DESC$   = LEFT$(IUF.TILL.DESC$   + STRING$(18, " "), 18)
+1998: 2407: 
+1999: 2407:             IUF.S.E.DESC$    = IUF.MATRIX$(6)
+2000: 2429:             IUF.S.E.DESC$    = LEFT$(IUF.S.E.DESC$    + STRING$(45, " "), 45)
+2001: 2470: 
+2002: 2470:             IUF.SUPPLY.ROUTE$                 = IUF.MATRIX$(7)
+2003: 2492:             IUF.GIVEAWAY$                     = IUF.MATRIX$(8)
+2004: 24b4:             IUF.PROD.GRP$                     = IUF.MATRIX$(9)   !SAP sends leading zeroes
+2005: 24d6:             IUF.GUARANTEE.LENGTH$             = IUF.MATRIX$(10)  !SAP sends leading zeroes
+2006: 24f8:             IUF.ENF.PRICE.ENTRY$              = IUF.MATRIX$(11)
+2007: 251a:             IUF.EARN.POINTS$                  = IUF.MATRIX$(12)
+2008: 253c: 
+2009: 253c:             IUF.REDEEMABLE$                   = IUF.MATRIX$(13)
+2010: 255e:             IUF.DISCOUNTABLE$                 = IUF.MATRIX$(14)
+2011: 2580: 
+2012: 2580: !           IUF.DISCOUNTABLE$ should be either "Y" or "N"                     ! 1.11 RC (21)
+2013: 2580: !           If it is not then force an invalid value to "N"                   ! 1.11 RC (21)
+2014: 2580:             IF IUF.DISCOUNTABLE$ <> "Y" THEN BEGIN                            ! 1.11 RC (21)
+2015: 2596:                 IUF.DISCOUNTABLE$ = "N" ! No discount given                   ! 1.11 RC (21)
+2016: 25a5:             ENDIF                                                             ! 1.11 RC (21)
+2017: 25a5: 
+2018: 25a5:             IUF.OWN.BRAND$                    = IUF.MATRIX$(15)
+2019: 25c7:             IUF.STATUS.1$                     = IUF.MATRIX$(16)
+2020: 25e9: 
+2021: 25e9:             IUF.CURRENT.PRICE$ = IUF.MATRIX$(17)
+2022: 260b:             IUF.CURRENT.PRICE$ = RIGHT$("00000000" + IUF.CURRENT.PRICE$, 8)
+2023: 263e: 
+2024: 263e:             IUF.STOCK.SYSTEM.FLAG$            = IUF.MATRIX$(18)
+2025: 2660:             IUF.BC.LETTER$                    = IUF.MATRIX$(19)
+2026: 2682:             IUF.ITEM.QTY$                     = IUF.MATRIX$(20)
+2027: 26a4:             IUF.UNIT.MEASUREMENT$             = IUF.MATRIX$(21)
+2028: 26c6:             IUF.UNIT.NAME$                    = IUF.MATRIX$(22)
+2029: 26e8:             IUF.DATE.SENSITIVE$               = IUF.MATRIX$(23)
+2030: 270a:             IUF.RETURNABLE$                   = IUF.MATRIX$(24)
+2031: 272c:             IUF.RESALEABLE$                   = IUF.MATRIX$(25)
+2032: 274e:             IUF.SPECIAL.INSTRUCTION$          = IUF.MATRIX$(26)
+2033: 2770:             IUF.RETURN.ROUTE$                 = IUF.MATRIX$(27)
+2034: 2792:             IUF.ETHICAL.CLASS$                = IUF.MATRIX$(28)
+2035: 27b4: 
+2036: 27b4:             IUF.ETHICAL.DESCRIPTION$          = IUF.MATRIX$(29)
+2037: 27d6:             IUF.ETHICAL.DESCRIPTION$  = LEFT$(IUF.ETHICAL.DESCRIPTION$    + STRING$(40, " "), 40)
+2038: 281d: 
+2039: 281d:             IUF.ETHICAL.ACTIVE$               = IUF.MATRIX$(30)
+2040: 283f:             IUF.ETHICAL.PACK.SIZE$            = IUF.MATRIX$(31)
+2041: 2861:             IUF.PRIMARY.SUPPLIER$             = IUF.MATRIX$(32)
+2042: 2883:             IUF.CONTAINS.ALCOHOL$             = IUF.MATRIX$(33)
+2043: 28a5:             IUF.CONTAINS.PARACETAMOL$         = IUF.MATRIX$(34)
+2044: 28c7:             IUF.CONTAINS.ASPIRIN$             = IUF.MATRIX$(35)
+2045: 28e9:             IUF.CONTAINS.IBUPROFEN$           = IUF.MATRIX$(36)
+2046: 290b:             IUF.CONTAINS.EPHEDRINE$           = IUF.MATRIX$(37)
+2047: 292d:             IUF.CONTAINS.PSEUDOEPHEDRINE$     = IUF.MATRIX$(38)
+2048: 294f:             IUF.CONTAINS.NONSOLID.PAINKILLER$ = IUF.MATRIX$(39)
+2049: 2971:             IUF.UNRESTRICTED.GROUP.CODE$      = IUF.MATRIX$(40)
+2050: 2993:             IUF.GIFTCARD$                     = IUF.MATRIX$(41)
+2051: 29b5:             IUF.AGE.RESTRICTION$              = IUF.MATRIX$(42)
+2052: 29d7:             IUF.BOOTS.COM.EXTENDED$           = IUF.MATRIX$(43)
+2053: 29f9:             IUF.INSURANCE$                    = IUF.MATRIX$(44)
+2054: 2a1b:             IUF.BLOCKED.FROM.SALE$            = IUF.MATRIX$(45)
+2055: 2a40: 
+2056: 2a40:         ENDIF ELSE IF IUF.REC.TYPE$ = "P" THEN BEGIN
+2057: 2a59:             !-----------------------------------------------------------------------------
+2058: 2a59:             ! Process Price Change Record
+2059: 2a59:             !
+2060: 2a59:             !-----------------------------------------------------------------------------
+2061: 2a59:             !1  IUF.REC.TYPE$      ASCII   1   "P"
+2062: 2a59:             !2  IUF.BOOTS.CODE$    ASCII   7   Includes check digit
+2063: 2a59:             !3  IUF.RPD.DATE$      ASCII   8   Date the price change is required
+2064: 2a59:             !4  IUF.RPD.NO$        ASCII   5   5-digit RPD number special values:
+2065: 2a59:             !                                  99999 Emergency RPD
+2066: 2a59:             !                                  99998 May have special processing associated with it
+2067: 2a59:             !                                  99995 May be reserved for CIP markdowns
+2068: 2a59:             !                                  99997 May have special processing associated with it
+2069: 2a59:             !5  IUF.NEW.PRICE$     ASCII   8   Price to be activated at the specified RPD date
+2070: 2a59:             !6  IUF.MARKDOWN$      ASCII   1   PLACEHOLDER Possible future use:
+2071: 2a59:             !                                  blank - Normal price change
+2072: 2a59:             !                                      L - SSM Normal Leaver
+2073: 2a59:             !                                      S - SSM Sales Plan Leaver
+2074: 2a59:             !-----------------------------------------------------------------------------
+2075: 2a59:             IUF.BOOTS.CODE$ = IUF.MATRIX$(2)  !SAP sends leading zeroes
+2076: 2a7b:             IUF.RPD.DATE$   = IUF.MATRIX$(3)                                                        ! 1.7MG
+2077: 2a9d:             IUF.RPD.NO$     = IUF.MATRIX$(4)  !xxxx can be NULL? Default to 0's?
+2078: 2abf: 
+2079: 2abf:             IUF.NEW.PRICE$  = IUF.MATRIX$(5)
+2080: 2ae1:             IUF.NEW.PRICE$  = RIGHT$("00000000" + IUF.NEW.PRICE$, 8)
+2081: 2b14: 
+2082: 2b14:             IUF.MARKDOWN$   = "N"                                                         ! 1.9 TT
+2083: 2b26: 
+2084: 2b26:         ENDIF ELSE IF IUF.REC.TYPE$ = "B" THEN BEGIN
+2085: 2b3f:             !-----------------------------------------------------------------------------
+2086: 2b3f:             ! Process Barcode Record
+2087: 2b3f:             !
+2088: 2b3f:             !-----------------------------------------------------------------------------
+2089: 2b3f:             !1  IUF.REC.TYPE$       ASCII  1   "B"
+2090: 2b3f:             !2  IUF.BOOTS.CODE$     ASCII  8
+2091: 2b3f:             !3  IUF.BAR.CODE$       ASCII  13
+2092: 2b3f:             !-----------------------------------------------------------------------------
+2093: 2b3f:             IUF.BOOTS.CODE$ = IUF.MATRIX$(2)  !SAP sends leading zeroes
+2094: 2b61:             IUF.BAR.CODE$   = IUF.MATRIX$(3)  ! SAP will not be sending leading zeroes
+2095: 2b83:             IUF.BAR.CODE$   = RIGHT$(STRING$(13,"0") +  IUF.BAR.CODE$,13)
+2096: 2bcb: 
+2097: 2bcb:         ENDIF ELSE IF IUF.REC.TYPE$ = "T" THEN BEGIN
+2098: 2be1:             !-----------------------------------------------------------------------------
+2099: 2be1:             ! Process Trailer Record
+2100: 2be1:             !
+2101: 2be1:             !-----------------------------------------------------------------------------
+2102: 2be1:             !1  IUF.REC.TYPE$      ASCII   1   "T"
+2103: 2be1:             !2  IUF.REC.COUNT$     Integer 8
+2104: 2be1:             !-----------------------------------------------------------------------------
+2105: 2be1:             IUF.REC.COUNT$ = IUF.MATRIX$(2)
+2106: 2c05: 
+2107: 2c05:         ENDIF ELSE IF IUF.REC.TYPE$ = "H" THEN BEGIN
+2108: 2c1b:             !-----------------------------------------------------------------------------
+2109: 2c1b:             ! Process Header Record (moved to end of ELSE test in order to speed up processing
+2110: 2c1b:             !                         - rarer record types should always be tested for last).
+2111: 2c1b:             !
+2112: 2c1b:             !1  IUF.REC.TYPE$     ASCII  1  "H"
+2113: 2c1b:             !2  IUF.STORE.NUM$    ASCII  4
+2114: 2c1b:             !3  IUF.INITIAL.LOAD$ Char   1  Y/N - initial load flag
+2115: 2c1b:             !4  IUF.TIME.STAMP$   Char  17  yyyymmddhhmmsssss
+2116: 2c1b:             !-----------------------------------------------------------------------------
+2117: 2c1b:             IUF.STORE.NUM$    = IUF.MATRIX$(2)  !SAP sends leading zeroes
+2118: 2c3d:             IUF.INITIAL.LOAD$ = IUF.MATRIX$(3)
+2119: 2c5f:             IUF.TIME.STAMP$   = IUF.MATRIX$(4)
+2120: 2c81: 
+2121: 2c81:         ENDIF
+2122: 2c81:     ENDIF
+2123: 2c81: 
+2124: 2c81:     READ.IUF = 0
+2125: 2c86:     EXIT FUNCTION
+2126: 2c88: 
+2127: 2c88: READ.IUF.IF.END:
+2128: 2c88: 
+2129: 2c88:     FILE.OPERATION$     = "R"
+2130: 2c97:     CURRENT.REPORT.NUM% =  IUF.REPORT.NUM%
+2131: 2ca5:     CURRENT.CODE$       =  CURRENT.CODE$ ! Previous successful read (if any)
+2132: 2cbb: 
+2133: 2cbb:     EXIT FUNCTION
+2134: 2cbd: 
+2135: 2cbd: END FUNCTION
+2136: 2ccc: End of Compilation

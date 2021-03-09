@@ -1,0 +1,282 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***********************************************************************
+   3: 0000: \***
+   4: 0000: \***    DESCRIPTION: IRFITGRP (IRF Attribute Extension File)
+   5: 0000: \***                 Public File Function Definitions
+   6: 0000: \***
+   7: 0000: \***    FILE TYPE : Keyed
+   8: 0000: \***
+   9: 0000: \***********************************************************************
+  10: 0000: \***
+  11: 0000: \***    Version A.          Rejiya Nair                12th May 2016
+  12: 0000: \***    PRJ1452 Restricting Item Sales
+  13: 0000: \***    Initial version.
+  14: 0000: \***
+  15: 0000: \***********************************************************************
+  16: 0000: \***********************************************************************
+  17: 0000: 
+  18: 0000:     INTEGER*2 GLOBAL                                                    \
+  19: 0000:         CURRENT.REPORT.NUM%
+  20: 0000: 
+  21: 0000:     STRING GLOBAL                                                       \
+  22: 0000:         CURRENT.CODE$,                                                  \
+  23: 0000:         FILE.OPERATION$
+  24: 0000: 
+  25: 0000:     STRING                                                              \
+  26: 0000:         FORMAT.STRING$
+  27: 0000: 
+  28: 0000: %INCLUDE ITGRPDEC.J86
+  29: 0000: \***********************************************************************
+  30: 0000: \***********************************************************************
+  31: 0000: \***
+  32: 0000: \***    DESCRIPTION: IRFITGRP (IRF Attribute Extension File)
+  33: 0000: \***                 Field Definitions
+  34: 0000: \***
+  35: 0000: \***    FILE TYPE : Keyed
+  36: 0000: \***
+  37: 0000: \***********************************************************************
+  38: 0000: \***
+  39: 0000: \***    Version A.              Rejiya Nair             12th May 2016
+  40: 0000: \***    PRJ1452 Restricting Item Sales
+  41: 0000: \***    Initial version.
+  42: 0000: \***
+  43: 0000: \***********************************************************************
+  44: 0000: \***********************************************************************
+  45: 0000: 
+  46: 0000: \***********************************************************************
+  47: 0000: \***********************************************************************
+  48: 0000: \***
+  49: 0000: \***    File Record Layout
+  50: 0000: \***
+  51: 0000: \***    IRFITGRP.ITEM.CODE$          3 UPD  Item code (Key)
+  52: 0000: \***    IRFITGRP.GROUP.NO%           1 INT  Group number of the item
+  53: 0000: \***
+  54: 0000: \***********************************************************************
+  55: 0000: \***********************************************************************
+  56: 0000: 
+  57: 0000:     INTEGER*2 GLOBAL                                                   \
+  58: 0000:         IRFITGRP.KEYL%,                                                \
+  59: 0000:         IRFITGRP.RECL%,                                                \
+  60: 0000:         IRFITGRP.REPORT.NUM%,                                          \
+  61: 0000:         IRFITGRP.SESS.NUM%
+  62: 0000: 
+  63: 0000:     INTEGER*1 GLOBAL                                                   \
+  64: 0000:         IRFITGRP.GROUP.NO%,                                            \
+  65: 0000:         IRFITGRP.OPEN
+  66: 0000: 
+  67: 0000:     STRING GLOBAL                                                      \
+  68: 0000:         IRFITGRP.FILE.NAME$,                                           \
+  69: 0000:         IRFITGRP.ITEM.CODE$
+  70: 0000: 
+  71: 0000: \***********************************************************************
+  72: 0000: \***
+  73: 0000: \***    IRFITGRP.SET
+  74: 0000: \***
+  75: 0000: \***    Declare IRFITGRP file constants
+  76: 0000: \***
+  77: 0000: \***********************************************************************
+  78: 0000: FUNCTION IRFITGRP.SET PUBLIC
+  79: 0014: 
+  80: 0014:     IRFITGRP.FILE.NAME$  = "IRFITGRP" ! File name
+  81: 0023:     IRFITGRP.KEYL%       = 3          ! Key length
+  82: 002c:     IRFITGRP.RECL%       = 4          ! Record length
+  83: 0035:     IRFITGRP.REPORT.NUM% = 878        ! Report number
+  84: 003e: 
+  85: 003e: END FUNCTION
+  86: 004a: 
+  87: 004a: \***********************************************************************
+  88: 004a: \***
+  89: 004a: \***    READ.IRFITGRP
+  90: 004a: \***
+  91: 004a: \***    Read IRFITGRP file record
+  92: 004a: \***
+  93: 004a: \***********************************************************************
+  94: 004a: FUNCTION READ.IRFITGRP PUBLIC
+  95: 005e: 
+  96: 005e:     INTEGER*1 READ.IRFITGRP
+  97: 005e: 
+  98: 005e:     READ.IRFITGRP = 1
+  99: 0062: 
+ 100: 0062:     FORMAT.STRING$ = "T4,I1" 
+ 101: 006f: 
+ 102: 006f:     IF END #IRFITGRP.SESS.NUM% THEN READ.IRFITGRP.ERROR
+ 103: 0083: 	
+ 104: 0083: 	 
+ 105: 0083: 	 
+ 106: 0083:     READ FORM FORMAT.STRING$; #IRFITGRP.SESS.NUM%                      \
+ 107: 00b9:          KEY IRFITGRP.ITEM.CODE$;           \ Item code                \
+ 108: 00b9:              IRFITGRP.GROUP.NO%             ! Group number of the item
+ 109: 00b9: 	 		  
+ 110: 00b9:     READ.IRFITGRP = 0
+ 111: 00bd: 	 
+ 112: 00bd: 
+ 113: 00bd:     EXIT FUNCTION
+ 114: 00bf: 
+ 115: 00bf: READ.IRFITGRP.ERROR:
+ 116: 00bf: 
+ 117: 00bf:     FILE.OPERATION$     = "R"
+ 118: 00ce:     CURRENT.REPORT.NUM% = IRFITGRP.REPORT.NUM%
+ 119: 00dc:     CURRENT.CODE$       = IRFITGRP.ITEM.CODE$
+ 120: 00f2: 
+ 121: 00f2: END FUNCTION
+ 122: 0101: 
+ 123: 0101: \***********************************************************************
+ 124: 0101: \***
+ 125: 0101: \***    READ.IRFITGRP.LOCK
+ 126: 0101: \***
+ 127: 0101: \***    Read IRFITGRP file record with lock
+ 128: 0101: \***
+ 129: 0101: \***********************************************************************
+ 130: 0101: FUNCTION READ.IRFITGRP.LOCK PUBLIC
+ 131: 0115: 
+ 132: 0115:     INTEGER*1 READ.IRFITGRP.LOCK
+ 133: 0115: 
+ 134: 0115:     READ.IRFITGRP.LOCK = 1
+ 135: 0119: 
+ 136: 0119:     FORMAT.STRING$ = "T4,I1"
+ 137: 0126: 
+ 138: 0126:     IF END #IRFITGRP.SESS.NUM% THEN READ.IRFITGRP.LOCK.ERROR
+ 139: 013a:     READ FORM FORMAT.STRING$; #IRFITGRP.SESS.NUM% AUTOLOCK             \
+ 140: 0170:          KEY IRFITGRP.ITEM.CODE$;           \ Item code                \
+ 141: 0170:              IRFITGRP.GROUP.NO%             ! Group number of the item
+ 142: 0170: 
+ 143: 0170:     READ.IRFITGRP.LOCK = 0
+ 144: 0174: 
+ 145: 0174:     EXIT FUNCTION
+ 146: 0176: 
+ 147: 0176: READ.IRFITGRP.LOCK.ERROR:
+ 148: 0176: 
+ 149: 0176:     FILE.OPERATION$     = "R"
+ 150: 0185:     CURRENT.REPORT.NUM% = IRFITGRP.REPORT.NUM%
+ 151: 0193:     CURRENT.CODE$       = IRFITGRP.ITEM.CODE$
+ 152: 01a9: 
+ 153: 01a9: END FUNCTION
+ 154: 01b8: 
+ 155: 01b8: \***********************************************************************
+ 156: 01b8: \***
+ 157: 01b8: \***    WRITE.IRFITGRP
+ 158: 01b8: \***
+ 159: 01b8: \***    Write IRFITGRP file record
+ 160: 01b8: \***
+ 161: 01b8: \***********************************************************************
+ 162: 01b8: FUNCTION WRITE.IRFITGRP PUBLIC
+ 163: 01cc: 
+ 164: 01cc:     INTEGER*1 WRITE.IRFITGRP
+ 165: 01cc: 
+ 166: 01cc:     WRITE.IRFITGRP = 1
+ 167: 01d0: 
+ 168: 01d0:     FORMAT.STRING$ = "C3,I1"
+ 169: 01dd: 
+ 170: 01dd:     IF END #IRFITGRP.SESS.NUM% THEN WRITE.IRFITGRP.ERROR
+ 171: 01f1:     WRITE FORM FORMAT.STRING$; #IRFITGRP.SESS.NUM%;                    \
+ 172: 0225:         IRFITGRP.ITEM.CODE$,               \ Item code                 \
+ 173: 0225:         IRFITGRP.GROUP.NO%                 ! Group number of the item
+ 174: 0225: 
+ 175: 0225:     WRITE.IRFITGRP = 0
+ 176: 0229: 
+ 177: 0229:     EXIT FUNCTION
+ 178: 022b: 
+ 179: 022b: WRITE.IRFITGRP.ERROR:
+ 180: 022b: 
+ 181: 022b:     FILE.OPERATION$     = "W"
+ 182: 023a:     CURRENT.REPORT.NUM% = IRFITGRP.REPORT.NUM%
+ 183: 0248:     CURRENT.CODE$       = IRFITGRP.ITEM.CODE$
+ 184: 025e: 
+ 185: 025e: END FUNCTION
+ 186: 026d: 
+ 187: 026d: \***********************************************************************
+ 188: 026d: \***
+ 189: 026d: \***    WRITE.IRFITGRP.HOLD
+ 190: 026d: \***
+ 191: 026d: \***    Write hold IRFITGRP file record
+ 192: 026d: \***
+ 193: 026d: \***********************************************************************
+ 194: 026d: FUNCTION WRITE.IRFITGRP.HOLD PUBLIC
+ 195: 0281: 
+ 196: 0281:     INTEGER*1 WRITE.IRFITGRP.HOLD
+ 197: 0281: 
+ 198: 0281:     WRITE.IRFITGRP.HOLD = 1
+ 199: 0285: 
+ 200: 0285:     FORMAT.STRING$ = "C3,I1"
+ 201: 0292: 
+ 202: 0292:     IF END #IRFITGRP.SESS.NUM% THEN WRITE.IRFITGRP.HOLD.ERROR
+ 203: 02a6:     WRITE FORM FORMAT.STRING$; HOLD #IRFITGRP.SESS.NUM%;               \
+ 204: 02da:         IRFITGRP.ITEM.CODE$,               \ Item code                 \
+ 205: 02da:         IRFITGRP.GROUP.NO%                 ! Group number of the item
+ 206: 02da: 
+ 207: 02da:     WRITE.IRFITGRP.HOLD = 0
+ 208: 02de: 
+ 209: 02de:     EXIT FUNCTION
+ 210: 02e0: 
+ 211: 02e0: WRITE.IRFITGRP.HOLD.ERROR:
+ 212: 02e0: 
+ 213: 02e0:     FILE.OPERATION$     = "W"
+ 214: 02ef:     CURRENT.REPORT.NUM% = IRFITGRP.REPORT.NUM%
+ 215: 02fd:     CURRENT.CODE$       = IRFITGRP.ITEM.CODE$
+ 216: 0313: 
+ 217: 0313: END FUNCTION
+ 218: 0322: 
+ 219: 0322: \***********************************************************************
+ 220: 0322: \***
+ 221: 0322: \***    WRITE.IRFITGRP.UNLOCK
+ 222: 0322: \***
+ 223: 0322: \***    Write IRFITGRP file record and unlock
+ 224: 0322: \***
+ 225: 0322: \***********************************************************************
+ 226: 0322: FUNCTION WRITE.IRFITGRP.UNLOCK PUBLIC
+ 227: 0336: 
+ 228: 0336:     INTEGER*1 WRITE.IRFITGRP.UNLOCK
+ 229: 0336: 
+ 230: 0336:     WRITE.IRFITGRP.UNLOCK = 1
+ 231: 033a: 
+ 232: 033a:     FORMAT.STRING$ = "C3,I1"
+ 233: 0347: 
+ 234: 0347:     IF END #IRFITGRP.SESS.NUM% THEN WRITE.IRFITGRP.UNLOCK.ERROR
+ 235: 035b:     WRITE FORM FORMAT.STRING$; #IRFITGRP.SESS.NUM% AUTOUNLOCK;         \
+ 236: 038f:         IRFITGRP.ITEM.CODE$,               \ Item code                 \
+ 237: 038f:         IRFITGRP.GROUP.NO%                 ! Group number of the item
+ 238: 038f: 
+ 239: 038f:     WRITE.IRFITGRP.UNLOCK = 0
+ 240: 0393: 
+ 241: 0393:     EXIT FUNCTION
+ 242: 0395: 
+ 243: 0395: WRITE.IRFITGRP.UNLOCK.ERROR:
+ 244: 0395: 
+ 245: 0395:     FILE.OPERATION$     = "W"
+ 246: 03a4:     CURRENT.REPORT.NUM% = IRFITGRP.REPORT.NUM%
+ 247: 03b2:     CURRENT.CODE$       = IRFITGRP.ITEM.CODE$
+ 248: 03c8: 
+ 249: 03c8: END FUNCTION
+ 250: 03d7: 
+ 251: 03d7: \***********************************************************************
+ 252: 03d7: \***
+ 253: 03d7: \***    WRITE.IRFITGRP.UNLOCK.HOLD
+ 254: 03d7: \***
+ 255: 03d7: \***    Write hold IRFITGRP file record and unlock
+ 256: 03d7: \***
+ 257: 03d7: \***********************************************************************
+ 258: 03d7: FUNCTION WRITE.IRFITGRP.UNLOCK.HOLD PUBLIC
+ 259: 03eb: 
+ 260: 03eb:     INTEGER*1 WRITE.IRFITGRP.UNLOCK.HOLD
+ 261: 03eb: 
+ 262: 03eb:     WRITE.IRFITGRP.UNLOCK.HOLD = 1
+ 263: 03ef: 
+ 264: 03ef:     FORMAT.STRING$ = "C3,I1"
+ 265: 03fc: 
+ 266: 03fc:     IF END #IRFITGRP.SESS.NUM% THEN WRITE.IRFITGRP.UNLOCK.HOLD.ERROR
+ 267: 0410:     WRITE FORM FORMAT.STRING$; HOLD #IRFITGRP.SESS.NUM% AUTOUNLOCK;    \
+ 268: 0444:         IRFITGRP.ITEM.CODE$,               \ Item code                 \
+ 269: 0444:         IRFITGRP.GROUP.NO%                 ! Group number of the item
+ 270: 0444: 
+ 271: 0444:     WRITE.IRFITGRP.UNLOCK.HOLD = 0
+ 272: 0448: 
+ 273: 0448:     EXIT FUNCTION
+ 274: 044a: 
+ 275: 044a: WRITE.IRFITGRP.UNLOCK.HOLD.ERROR:
+ 276: 044a: 
+ 277: 044a:     FILE.OPERATION$     = "W"
+ 278: 0459:     CURRENT.REPORT.NUM% = IRFITGRP.REPORT.NUM%
+ 279: 0467:     CURRENT.CODE$       = IRFITGRP.ITEM.CODE$
+ 280: 047d: 
+ 281: 047d: END FUNCTION
+ 282: 048c: End of Compilation

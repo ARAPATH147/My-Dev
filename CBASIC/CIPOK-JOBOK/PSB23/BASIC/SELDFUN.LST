@@ -1,0 +1,111 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***             SEL DESCRIPTION FILE USED FOR PAINKILLER WARNINGS    
+   5: 0000: \***                                                                
+   6: 0000: \***                      REFERENCE : SELDFUN
+   7: 0000: \***                                                                
+   8: 0000: \***                      FILE TYPE : SEQUENTIAL
+   9: 0000: \***                                                                
+  10: 0000: \***
+  11: 0000: \***   Version A               Andy Cotton                   8th April 2003
+  12: 0000: \***   
+  13: 0000: \***                                                                       
+  14: 0000: \******************************************************************************
+  15: 0000: \******************************************************************************
+  16: 0000: 
+  17: 0000:        %INCLUDE SELDDEC.J86 ! COUNTRY variable declarations      
+  18: 0000: \******************************************************************************
+  19: 0000: \******************************************************************************
+  20: 0000: \***
+  21: 0000: \***               SEL DESCRIPTION FILE USED FOR PAINKILLER WARNINGS 
+  22: 0000: \***                                                                
+  23: 0000: \***                      REFERENCE : SELDDEC.J86 
+  24: 0000: \***                                                                
+  25: 0000: \***                      FILE TYPE : Sequential                       
+  26: 0000: \***                                                                
+  27: 0000: \***                                                                
+  28: 0000: \***   Version A               Andy Cotton                   8th April 2003
+  29: 0000: \***   
+  30: 0000: \***                                                                        
+  31: 0000: \***                                                                       
+  32: 0000: \******************************************************************************
+  33: 0000: \******************************************************************************
+  34: 0000: 
+  35: 0000:  
+  36: 0000: STRING GLOBAL        SELDESC.FILE.NAME$,       \ 
+  37: 0000:                      SELDESC$(1)
+  38: 0000:                      
+  39: 0000: INTEGER*2 GLOBAL     SELDESC.REPORT.NUM%,      \
+  40: 0000:                      SELDESC.SESS.NUM%
+  41: 0000: 
+  42: 0000:        INTEGER*2 GLOBAL        CURRENT.REPORT.NUM%             
+  43: 0000:                         
+  44: 0000:        STRING GLOBAL           FILE.OPERATION$  
+  45: 0000: 
+  46: 0000: \****************************** SET FUNCTION **********************************
+  47: 0000: 
+  48: 0000:        FUNCTION SELDESC.SET PUBLIC
+  49: 0014: 
+  50: 0014:            INTEGER*2 SELDESC.SET
+  51: 0014:     
+  52: 0014:            SELDESC.SET = 1
+  53: 0019: 
+  54: 0019:            SELDESC.FILE.NAME$  = "ADXLXACN::D:\ADX_UDT1\SELDESC.BIN"
+  55: 0028:            SELDESC.REPORT.NUM% =  665
+  56: 0031:            
+  57: 0031:            DIM SELDESC$(20)
+  58: 0058: 
+  59: 0058:            SELDESC.SET = 0
+  60: 005d: 
+  61: 005d:        END FUNCTION
+  62: 006c: 
+  63: 006c: \******************************* READ FUNCTION ************************************
+  64: 006c: 
+  65: 006c:        FUNCTION READ.SELDESC PUBLIC
+  66: 0080: 
+  67: 0080:            INTEGER*2 READ.SELDESC,  \
+  68: 0080:                      INDEX%,        \
+  69: 0080:                      OFFSET%
+  70: 0080:                      
+  71: 0080:            STRING SELDESC.RECORD$
+  72: 0080: 
+  73: 0080:            ON ERROR GOTO READ.SELDESC.ERROR
+  74: 008d:            
+  75: 008d:            IF END # SELDESC.SESS.NUM% THEN END.OF.FILE
+  76: 00a1: 
+  77: 00a1:            INDEX% = 1
+  78: 00a7:        
+  79: 00a7:            WHILE -1
+  80: 00a9: 
+  81: 00a9:              READ # SELDESC.SESS.NUM%; LINE SELDESC.RECORD$
+  82: 00c0:            
+  83: 00c0:              !Remove any comments from the end of the descriptions
+  84: 00c0:               
+  85: 00c0:               OFFSET% = MATCH("\#", SELDESC.RECORD$, 1)
+  86: 00d6:               IF OFFSET% > 0 THEN BEGIN
+  87: 00db:                  SELDESC.RECORD$ = LEFT$(SELDESC.RECORD$, OFFSET% -1)
+  88: 00f8:               ENDIF
+  89: 00f8:               
+  90: 00f8:               SELDESC$(INDEX%) = SELDESC.RECORD$
+  91: 0119:               INDEX% = INDEX% + 1
+  92: 011d:            WEND
+  93: 011f:            
+  94: 011f: END.OF.FILE:
+  95: 011f:         
+  96: 011f:         READ.SELDESC = 0
+  97: 0124:         
+  98: 0124: EXIT.FUNCTION:              
+  99: 0124: 
+ 100: 0124:        EXIT FUNCTION
+ 101: 0126: 
+ 102: 0126: READ.SELDESC.ERROR:
+ 103: 0126: 
+ 104: 0126:        FILE.OPERATION$     = "R"
+ 105: 0135:        CURRENT.REPORT.NUM% = SELDESC.REPORT.NUM%
+ 106: 0143:        READ.SELDESC = 1
+ 107: 0148:     
+ 108: 0148:        RESUME EXIT.FUNCTION
+ 109: 0157:        
+ 110: 0157: END FUNCTION                
+ 111: 0166: End of Compilation

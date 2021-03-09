@@ -1,0 +1,317 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***            TERMINAL MAINTENANCE CONTROL FILE FUNCTIONS 
+   5: 0000: \***
+   6: 0000: \***      Version A           Steve Windsor              5th Feb 1993
+   7: 0000: \***
+   8: 0000: \***    Revision 1.3            ROBERT COWEY                      19 JUN 2002
+   9: 0000: \***    Defined new function WRITE.TMCF.HEADER.
+  10: 0000: \***
+  11: 0000: \*****************************************************************************
+  12: 0000: \*****************************************************************************
+  13: 0000: 
+  14: 0000:    INTEGER*2 GLOBAL                  \
+  15: 0000:       CURRENT.REPORT.NUM%
+  16: 0000: 
+  17: 0000:    STRING GLOBAL                     \
+  18: 0000:       CURRENT.CODE$,                 \
+  19: 0000:       FILE.OPERATION$
+  20: 0000: 
+  21: 0000:    %INCLUDE TMCFDEC.J86
+  22: 0000: \*****************************************************************************
+  23: 0000: \*****************************************************************************
+  24: 0000: \***
+  25: 0000: \***         %INCLUDE FOR TERMINAL MAINT CONT FILE - FIELD DECLARATIONS
+  26: 0000: \***                                          FILE REFERENCE PARAMETERS
+  27: 0000: \***
+  28: 0000: \***                      FILE TYPE    :
+  29: 0000: \***
+  30: 0000: \***                      REFERENCE    : tmcfdeca.J86
+  31: 0000: \***
+  32: 0000: \***      Version A             Steve Windsor          8.2.93
+  33: 0000: \***
+  34: 0000: \***    Revision 1.3            ROBERT COWEY                      19 JUN 2002
+  35: 0000: \***    Defined new function WRITE.TMCF.HEADER.
+  36: 0000: \***    No changes to this file.
+  37: 0000: \***
+  38: 0000: \*****************************************************************************
+  39: 0000: \*****************************************************************************
+  40: 0000: 
+  41: 0000: 
+  42: 0000:   STRING GLOBAL            \
+  43: 0000:     TMCF.FILE.NAME$
+  44: 0000: 
+  45: 0000:   INTEGER*2 GLOBAL         \
+  46: 0000:     TMCF.REC.NO%,          \
+  47: 0000:     TMCF.SESS.NUM%,        \
+  48: 0000:     TMCF.REPORT.NUM%
+  49: 0000: 
+  50: 0000:   STRING GLOBAL            \
+  51: 0000:     TMCF.RCDKEY$,          \ 11 byte UPD.     Key of last item updated
+  52: 0000:     TMCF.SPACE$,           \ 20 byte ASC.     Not used at present        
+  53: 0000:     TMCF.TERMLOAD$,        \ 2 byte UPD.      ID of terminal loading TIF
+  54: 0000:     TMCF.MNTDATA$          ! 50 byte ASC.     Data for IRF record   
+  55: 0000: 
+  56: 0000: 
+  57: 0000:   INTEGER*1 GLOBAL         \
+  58: 0000:     TMCF.ACTION%,          \ 1 byte integer.  1 = Add/replace, 2 = delete
+  59: 0000:     TMCF.DESCTYPE%,        \ 1 byte integer.  1 = full descriptor
+  60: 0000:                            \                  2 = short descriptor
+  61: 0000:                            \                  3 = no descriptor
+  62: 0000:     TMCF.TERMILU%,         \ 1 byte integer.  Terminal look-up used;
+  63: 0000:                            \                  0 = no, 1 = yes
+  64: 0000:     TMCF.USERDATA%         ! 1 byte integer.  user data included flag
+  65: 0000: 
+  66: 0000: 
+  67: 0000:   INTEGER*2 GLOBAL         \
+  68: 0000:     TMCF.FILELVL%,         \ 2 byte integer.  Reload level for terminals
+  69: 0000:     TMCF.RECL%             ! 2 byte integer.  TMCF record length
+  70: 0000: 
+  71: 0000: 
+  72: 0000:   INTEGER*4 GLOBAL         \
+  73: 0000:     TMCF.MAINTLVL%,        \ 4 byte integer. Maintenance level of last update
+  74: 0000:     TMCF.NUMITEMS%,        \ 4 byte integer. Maximum number of items on TIF
+  75: 0000:     TMCF.NUMRECS%          ! 4 byte integer. Current number of items on TIF
+  76: 0000: 
+  77: 0000: 
+  78: 0000:    FUNCTION TMCF.SET PUBLIC
+  79: 0014: REM \
+  80: 0014: 
+  81: 0014:     TMCF.REPORT.NUM% = 66
+  82: 001d:     TMCF.RECL%      = 51
+  83: 0026:     TMCF.FILE.NAME$ = "EALTMCFR"
+  84: 0035: END FUNCTION
+  85: 0041: 
+  86: 0041: \----------------------------------------------------------------------------
+  87: 0041: 
+  88: 0041: 
+  89: 0041:   FUNCTION READ.TMCF.DATA.RECORD PUBLIC
+  90: 0055: 
+  91: 0055:    INTEGER*2 READ.TMCF.DATA.RECORD
+  92: 0055: 
+  93: 0055:    READ.TMCF.DATA.RECORD = 1
+  94: 005a: 
+  95: 005a:    IF END#TMCF.SESS.NUM% THEN READ.TMCF.DATA.RECORD.ERROR
+  96: 006e: 
+  97: 006e:     READ FORM "I1,C50"; #TMCF.SESS.NUM% AUTOLOCK, TMCF.REC.NO%;   \ 
+  98: 00aa:              TMCF.ACTION%,                                        \
+  99: 00aa:              TMCF.MNTDATA$                                         
+ 100: 00aa: 
+ 101: 00aa:    READ.TMCF.DATA.RECORD = 0
+ 102: 00af:    EXIT FUNCTION
+ 103: 00b1: 
+ 104: 00b1:    READ.TMCF.DATA.RECORD.ERROR:
+ 105: 00b1: 
+ 106: 00b1:    CURRENT.REPORT.NUM% = TMCF.REPORT.NUM%
+ 107: 00bf:    FILE.OPERATION$ = "R"
+ 108: 00ce:    CURRENT.CODE$ = ""
+ 109: 00dd: 
+ 110: 00dd:    EXIT FUNCTION
+ 111: 00df:   END FUNCTION
+ 112: 00ee: 
+ 113: 00ee: 
+ 114: 00ee: 
+ 115: 00ee:   FUNCTION READ.TMCF.HEADER.LOCKED PUBLIC
+ 116: 0102: 
+ 117: 0102:    INTEGER*2 READ.TMCF.HEADER.LOCKED
+ 118: 0102: 
+ 119: 0102:    READ.TMCF.HEADER.LOCKED = 1
+ 120: 0107: 
+ 121: 0107:    IF END#TMCF.SESS.NUM% THEN READ.TMCF.HEADER.LOCKED.ERROR
+ 122: 011b: 
+ 123: 011b:     READ FORM "I4,I1,C11,I4,C2,I2,I1,I4,I1,I1,C20";               \
+ 124: 01ba:               #TMCF.SESS.NUM% AUTOLOCK, TMCF.REC.NO%;             \
+ 125: 01ba:              TMCF.MAINTLVL%,                                      \
+ 126: 01ba:              TMCF.ACTION%,                                        \
+ 127: 01ba:              TMCF.RCDKEY$,                                        \
+ 128: 01ba:              TMCF.NUMRECS%,                                       \
+ 129: 01ba:              TMCF.TERMLOAD$,                                      \
+ 130: 01ba:              TMCF.FILELVL%,                                       \
+ 131: 01ba:              TMCF.TERMILU%,                                       \
+ 132: 01ba:              TMCF.NUMITEMS%,                                      \
+ 133: 01ba:              TMCF.DESCTYPE%,                                      \
+ 134: 01ba:              TMCF.USERDATA%,                                      \
+ 135: 01ba:              TMCF.SPACE$ 
+ 136: 01ba: 
+ 137: 01ba:    READ.TMCF.HEADER.LOCKED = 0
+ 138: 01bf:    EXIT FUNCTION
+ 139: 01c1: 
+ 140: 01c1:    READ.TMCF.HEADER.LOCKED.ERROR:
+ 141: 01c1: 
+ 142: 01c1:    CURRENT.REPORT.NUM% = TMCF.REPORT.NUM%
+ 143: 01cf:    FILE.OPERATION$ = "R"
+ 144: 01de:    CURRENT.CODE$ = ""
+ 145: 01ed: 
+ 146: 01ed:    EXIT FUNCTION
+ 147: 01ef:   END FUNCTION
+ 148: 01fe: 
+ 149: 01fe: 
+ 150: 01fe:   FUNCTION READ.TMCF.HEADER PUBLIC
+ 151: 0212: 
+ 152: 0212:    INTEGER*2 READ.TMCF.HEADER
+ 153: 0212: 
+ 154: 0212:    READ.TMCF.HEADER = 1
+ 155: 0217: 
+ 156: 0217:    IF END#TMCF.SESS.NUM% THEN READ.TMCF.HEADER.ERROR
+ 157: 022b: 
+ 158: 022b:     READ FORM "I4,I1,C11,I4,C2,I2,I1,I4,I1,I1,C20";               \
+ 159: 02ca:               #TMCF.SESS.NUM%, TMCF.REC.NO%;                      \
+ 160: 02ca:              TMCF.MAINTLVL%,                                      \
+ 161: 02ca:              TMCF.ACTION%,                                        \
+ 162: 02ca:              TMCF.RCDKEY$,                                        \
+ 163: 02ca:              TMCF.NUMRECS%,                                       \
+ 164: 02ca:              TMCF.TERMLOAD$,                                      \
+ 165: 02ca:              TMCF.FILELVL%,                                       \
+ 166: 02ca:              TMCF.TERMILU%,                                       \
+ 167: 02ca:              TMCF.NUMITEMS%,                                      \
+ 168: 02ca:              TMCF.DESCTYPE%,                                      \
+ 169: 02ca:              TMCF.USERDATA%,                                      \
+ 170: 02ca:              TMCF.SPACE$ 
+ 171: 02ca: 
+ 172: 02ca:    READ.TMCF.HEADER = 0
+ 173: 02cf:    EXIT FUNCTION
+ 174: 02d1: 
+ 175: 02d1:    READ.TMCF.HEADER.ERROR:
+ 176: 02d1: 
+ 177: 02d1:    CURRENT.REPORT.NUM% = TMCF.REPORT.NUM%
+ 178: 02df:    FILE.OPERATION$ = "R"
+ 179: 02ee:    CURRENT.CODE$ = ""
+ 180: 02fd: 
+ 181: 02fd:    EXIT FUNCTION
+ 182: 02ff:   END FUNCTION
+ 183: 030e: 
+ 184: 030e: 
+ 185: 030e:   FUNCTION WRITE.TMCF.HEADER PUBLIC ! 1.1 RC New function
+ 186: 0322: 
+ 187: 0322:    INTEGER*2 WRITE.TMCF.HEADER
+ 188: 0322: 
+ 189: 0322:    WRITE.TMCF.HEADER = 1
+ 190: 0327: 
+ 191: 0327:    IF END # TMCF.SESS.NUM% THEN WRITE.TMCF.HEADER.ERROR
+ 192: 033b: 
+ 193: 033b:     WRITE FORM "I4,I1,C11,I4,C2,I2,I1,I4,I1,I1,C20";               \
+ 194: 0400:               # TMCF.SESS.NUM%, TMCF.REC.NO%;                      \
+ 195: 0400:              TMCF.MAINTLVL%,                                      \
+ 196: 0400:              TMCF.ACTION%,                                        \
+ 197: 0400:              TMCF.RCDKEY$,                                        \
+ 198: 0400:              TMCF.NUMRECS%,                                       \
+ 199: 0400:              TMCF.TERMLOAD$,                                      \
+ 200: 0400:              TMCF.FILELVL%,                                       \
+ 201: 0400:              TMCF.TERMILU%,                                       \
+ 202: 0400:              TMCF.NUMITEMS%,                                      \
+ 203: 0400:              TMCF.DESCTYPE%,                                      \
+ 204: 0400:              TMCF.USERDATA%,                                      \
+ 205: 0400:              TMCF.SPACE$ 
+ 206: 0400: 
+ 207: 0400:    WRITE.TMCF.HEADER = 0
+ 208: 0405:    EXIT FUNCTION
+ 209: 0407: 
+ 210: 0407:    WRITE.TMCF.HEADER.ERROR:
+ 211: 0407: 
+ 212: 0407:    CURRENT.REPORT.NUM% = TMCF.REPORT.NUM%
+ 213: 0415:    FILE.OPERATION$ = "W"
+ 214: 0424:    CURRENT.CODE$ = ""
+ 215: 0433: 
+ 216: 0433:    EXIT FUNCTION
+ 217: 0435:   END FUNCTION
+ 218: 0444: 
+ 219: 0444: 
+ 220: 0444:   FUNCTION WRITE.TMCF.HEADER.HOLD.UNLOCK PUBLIC
+ 221: 0458: 
+ 222: 0458:    INTEGER*2 WRITE.TMCF.HEADER.HOLD.UNLOCK
+ 223: 0458: 
+ 224: 0458:    WRITE.TMCF.HEADER.HOLD.UNLOCK = 1
+ 225: 045d: 
+ 226: 045d:    IF END#TMCF.SESS.NUM% THEN WRITE.TMCF.HEADER.HOLD.UNLOCK.ERROR
+ 227: 0471: 
+ 228: 0471:     WRITE FORM "I4,I1,C11,I4,C2,I2,I1,I4,I1,I1,C20"; HOLD         \
+ 229: 0536:                 #TMCF.SESS.NUM% AUTOUNLOCK, TMCF.REC.NO%;         \ 
+ 230: 0536:              TMCF.MAINTLVL%,                                      \
+ 231: 0536:              TMCF.ACTION%,                                        \
+ 232: 0536:              TMCF.RCDKEY$,                                        \
+ 233: 0536:              TMCF.NUMRECS%,                                       \
+ 234: 0536:              TMCF.TERMLOAD$,                                      \
+ 235: 0536:              TMCF.FILELVL%,                                       \
+ 236: 0536:              TMCF.TERMILU%,                                       \
+ 237: 0536:              TMCF.NUMITEMS%,                                      \
+ 238: 0536:              TMCF.DESCTYPE%,                                      \
+ 239: 0536:              TMCF.USERDATA%,                                      \
+ 240: 0536:              TMCF.SPACE$ 
+ 241: 0536: 
+ 242: 0536:    WRITE.TMCF.HEADER.HOLD.UNLOCK = 0
+ 243: 053b:    EXIT FUNCTION
+ 244: 053d: 
+ 245: 053d:    WRITE.TMCF.HEADER.HOLD.UNLOCK.ERROR:
+ 246: 053d: 
+ 247: 053d:    CURRENT.REPORT.NUM% = TMCF.REPORT.NUM%
+ 248: 054b:    FILE.OPERATION$ = "W"
+ 249: 055a:    CURRENT.CODE$ = ""
+ 250: 0569: 
+ 251: 0569:    EXIT FUNCTION
+ 252: 056b:   END FUNCTION
+ 253: 057a: 
+ 254: 057a: 
+ 255: 057a:   FUNCTION WRITE.TMCF.HEADER.UNLOCK PUBLIC
+ 256: 058e: 
+ 257: 058e:    INTEGER*2 WRITE.TMCF.HEADER.UNLOCK
+ 258: 058e: 
+ 259: 058e:    WRITE.TMCF.HEADER.UNLOCK = 1
+ 260: 0593: 
+ 261: 0593:    IF END#TMCF.SESS.NUM% THEN WRITE.TMCF.HEADER.UNLOCK.ERROR
+ 262: 05a7: 
+ 263: 05a7:     WRITE FORM "I4,I1,C11,I4,C2,I2,I1,I4,I1,I1,C20";              \
+ 264: 066c:                 #TMCF.SESS.NUM% AUTOUNLOCK, TMCF.REC.NO%;         \ 
+ 265: 066c:              TMCF.MAINTLVL%,                                      \
+ 266: 066c:              TMCF.ACTION%,                                        \
+ 267: 066c:              TMCF.RCDKEY$,                                        \
+ 268: 066c:              TMCF.NUMRECS%,                                       \
+ 269: 066c:              TMCF.TERMLOAD$,                                      \
+ 270: 066c:              TMCF.FILELVL%,                                       \
+ 271: 066c:              TMCF.TERMILU%,                                       \
+ 272: 066c:              TMCF.NUMITEMS%,                                      \
+ 273: 066c:              TMCF.DESCTYPE%,                                      \
+ 274: 066c:              TMCF.USERDATA%,                                      \
+ 275: 066c:              TMCF.SPACE$ 
+ 276: 066c: 
+ 277: 066c:    WRITE.TMCF.HEADER.UNLOCK = 0
+ 278: 0671:    EXIT FUNCTION
+ 279: 0673: 
+ 280: 0673:    WRITE.TMCF.HEADER.UNLOCK.ERROR:
+ 281: 0673: 
+ 282: 0673:    CURRENT.REPORT.NUM% = TMCF.REPORT.NUM%
+ 283: 0681:    FILE.OPERATION$ = "W"
+ 284: 0690:    CURRENT.CODE$ = ""
+ 285: 069f: 
+ 286: 069f:    EXIT FUNCTION
+ 287: 06a1:   END FUNCTION
+ 288: 06b0: 
+ 289: 06b0: 
+ 290: 06b0: 
+ 291: 06b0:   FUNCTION WRITE.TMCF.DATA PUBLIC
+ 292: 06c4: 
+ 293: 06c4:    INTEGER*2 WRITE.TMCF.DATA  
+ 294: 06c4: 
+ 295: 06c4:    WRITE.TMCF.DATA = 1
+ 296: 06c9: 
+ 297: 06c9:    IF END#TMCF.SESS.NUM% THEN WRITE.TMCF.DATA.ERROR
+ 298: 06dd: 
+ 299: 06dd:     WRITE FORM "I1,C50"; #TMCF.SESS.NUM%, TMCF.REC.NO%;           \ 
+ 300: 071c:                                           TMCF.ACTION%,           \
+ 301: 071c:                                           TMCF.MNTDATA$
+ 302: 071c: 
+ 303: 071c:    WRITE.TMCF.DATA   = 0
+ 304: 0721:    EXIT FUNCTION
+ 305: 0723: 
+ 306: 0723:    WRITE.TMCF.DATA.ERROR:
+ 307: 0723: 
+ 308: 0723:    CURRENT.REPORT.NUM% = TMCF.REPORT.NUM%
+ 309: 0731:    FILE.OPERATION$ = "W"
+ 310: 0740:    CURRENT.CODE$ = ""
+ 311: 074f: 
+ 312: 074f:    EXIT FUNCTION
+ 313: 0751:   END FUNCTION
+ 314: 0760: 
+ 315: 0760: 
+ 316: 0760: 
+ 317: 0760: End of Compilation

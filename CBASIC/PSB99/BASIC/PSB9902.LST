@@ -1,0 +1,2911 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***    PROGRAM         :    PSB99
+   6: 0000: \***    AUTHOR          :    Mark Walker
+   7: 0000: \***    DATE WRITTEN    :    March 4th 1994
+   8: 0000: \***
+   9: 0000: \******************************************************************************
+  10: 0000: \******************************************************************************
+  11: 0000: 
+  12: 0000: 
+  13: 0000: \*****************************************************************************
+  14: 0000: \*****************************************************************************
+  15: 0000: \***
+  16: 0000: \***    MODULE PSB9902
+  17: 0000: \***    This module handles option 6 "Delete an Operator".
+  18: 0000: \***
+  19: 0000: \***    REVISION 1.0.                ROBERT COWEY.                11 JUN 2009.
+  20: 0000: \***    Original revison created by separation of PROCESS.SCREEN.06 (and its
+  21: 0000: \***    numerous subroutines) from module PSB9900.
+  22: 0000: \***    Removed revision initials from transferred code (except for Rv 1.5 RC
+  23: 0000: \***    retained as 1.0 RC to indicate subroutines converted to subprograms).
+  24: 0000: \***
+  25: 0000: \***    REVISION 1.1.                ROBERT COWEY.                15 JUN 2009.
+  26: 0000: \***    Changes for A9C POS Improvements project creating PSB99.286 Rv 1.6.
+  27: 0000: \***    Defined operator Birth Date.
+  28: 0000: \***    Add Operator acreen ...
+  29: 0000: \***      Forced setting of Birth Date.
+  30: 0000: \***      Continued to allow zeros to be entered for Staff Number.
+  31: 0000: \***    Change Operator screen ...
+  32: 0000: \***      Allowed (but not forced) setting of Birth Date.
+  33: 0000: \***      Prevented access to Birth Date variable if already set.
+  34: 0000: \***      Allowed (but not forced) setting of Staff Number.
+  35: 0000: \***      Prevented access to Staff Number variable if already set.
+  36: 0000: \***
+  37: 0000: \***    REVISION 1.2.                ROBERT COWEY.                17 JUL 2009.
+  38: 0000: \***    Changes for A9C POS Improvements project creating PSB99.286 Rv 1.7.
+  39: 0000: \***    Bug fix for defect 3247.
+  40: 0000: \***    Corrected VALID.YYMMDD function to reject day component less than 1.
+  41: 0000: \***
+  42: 0000: \***    REVISION 1.3.                ROBERT COWEY.                22 JUL 2009.
+  43: 0000: \***    Changes for A9C POS Improvements project creating PSB99.286 Rv 1.8.
+  44: 0000: \***    Defect 3247 - Redefined AF.BIRTH.DATE$ format as UPD-hex DDMCYY.
+  45: 0000: \***    Coded functions to handle DDMCYY date formats ...
+  46: 0000: \***      DDMCYY.HEX.FROM.DDMMCCYY$ (DDMMCCYY$)
+  47: 0000: \***      DDMMCCYY.FROM.DDMCYY.HEX$ (DDMCYY.HEX$)
+  48: 0000: \***      YYMMDD.FROM.DDMCYY.HEX$ (DDMCYY.HEX$)
+  49: 0000: \***      VALID.DDMCYY (DDMCYY.HEX$)
+  50: 0000: \***
+  51: 0000: \*****************************************************************************
+  52: 0000: \*****************************************************************************
+  53: 0000: 
+  54: 0000: 
+  55: 0000: 
+  56: 0000: \******************************************************************************
+  57: 0000: \******************************************************************************
+  58: 0000: \***                                                                          *
+  59: 0000: \***    Module Overview                                                       *
+  60: 0000: \***    ---------------                                                       *
+  61: 0000: \***                                                                          *
+  62: 0000: \***    This program allows the user to add, change, delete or report on      *
+  63: 0000: \***    operators. The following options are available :                      *
+  64: 0000: \***                                                                          *
+  65: 0000: \***            - Add a new operator                                          *
+  66: 0000: \***            - Display operator details                                    *
+  67: 0000: \***            - Change operator details                                     *
+  68: 0000: \***            - Set operator password                                       *
+  69: 0000: \***            - Delete an operator                                          *
+  70: 0000: \***            - Report operators                                            *
+  71: 0000: \***                                                                          *
+  72: 0000: \******************************************************************************
+  73: 0000: \******************************************************************************
+  74: 0000: 
+  75: 0000: 
+  76: 0000: !       %INCLUDE MODELDEC.J86
+  77: 0000:         %INCLUDE CSOUFDEC.J86
+  78: 0000: \*****************************************************************************
+  79: 0000: \*****************************************************************************
+  80: 0000: \***
+  81: 0000: \***               %INCLUDE FOR ADXCSOUF.DAT - FIELD DECLARATIONS
+  82: 0000: \***                                           FILE REFERENCE PARAMETERS
+  83: 0000: \***
+  84: 0000: \***                      FILE TYPE    : DIRECT
+  85: 0000: \***
+  86: 0000: \***                      REFERENCE    : CSOUFDEA.J86
+  87: 0000: \***
+  88: 0000: \***      Version A             Steve Windsor                 Nov 92      
+  89: 0000: \***
+  90: 0000: \*****************************************************************************
+  91: 0000: \*****************************************************************************
+  92: 0000: 
+  93: 0000: 
+  94: 0000: REM \
+  95: 0000: 
+  96: 0000: 
+  97: 0000:     STRING GLOBAL               \
+  98: 0000:         CSOUF.FILE.NAME$        \
+  99: 0000: 
+ 100: 0000:     INTEGER*2 GLOBAL            \
+ 101: 0000:         CSOUF.RECL%,            \
+ 102: 0000:         CSOUF.REPORT.NUM%,      \
+ 103: 0000:         CSOUF.SESS.NUM%
+ 104: 0000: 
+ 105: 0000:     INTEGER*4 GLOBAL            \
+ 106: 0000:         CSOUF.REC.NUM%          \
+ 107: 0000: 
+ 108: 0000: 
+ 109: 0000: REM \
+ 110: 0000: 
+ 111: 0000: 
+ 112: 0000:     STRING GLOBAL               \
+ 113: 0000:         CSOUF.REC$,             \ 34 bytes
+ 114: 0000:         CSOUF.OP.ID$,           \  8 bytes 
+ 115: 0000:         CSOUF.FILLER.01$,       \  1 byte
+ 116: 0000:         CSOUF.PSWD$,            \  8 bytes
+ 117: 0000:         CSOUF.FILLER.02$,       \  1 byte
+ 118: 0000:         CSOUF.USER.ID$,         \  1 byte UPD
+ 119: 0000:         CSOUF.GROUP.ID$,        \  1 byte UPD
+ 120: 0000:         CSOUF.FLAGS$            ! 14 bytes
+ 121: 0000: 
+ 122: 0000:         %INCLUDE AFDEC.J86
+ 123: 0000: 
+ 124: 0000: \REM
+ 125: 0000: \*******************************************************************************
+ 126: 0000: \*******************************************************************************
+ 127: 0000: \***
+ 128: 0000: \***    %INCLUDE FOR GSA AUTHORISATION FILE VARIABLE DECLARATIONS
+ 129: 0000: \***
+ 130: 0000: \***        REFERENCE   :  AFDEC (J86)
+ 131: 0000: \***
+ 132: 0000: \***        FILE TYPE   :  Keyed
+ 133: 0000: \***
+ 134: 0000: \***    The GSA Authorisation File (EALAUTH.DAT) should not be confused with
+ 135: 0000: \***    the Operating System Authorisation File (ADXCSOUF.DAT).
+ 136: 0000: \***
+ 137: 0000: \***    VERSION A.              ROBERT COWEY.                       18 AUG 1992.
+ 138: 0000: \***    Original version created by merging AFFLDD and AFNUMD.
+ 139: 0000: \***
+ 140: 0000: \***    VERSION B.              Steve Windsor                          Nov 1992.
+ 141: 0000: \***    Addition of new fields for the CASTLE project.
+ 142: 0000: \***    Supervisor flag and operator model.
+ 143: 0000: \***
+ 144: 0000: \***    VERSION C.              ROBERT COWEY.                       03 MAR 1994.
+ 145: 0000: \***    Defined fields DATE.PSWD.CHANGE$, and MODEL.FLAGS.1% and ...2%.
+ 146: 0000: \***
+ 147: 0000: \***    VERSION D.             Mike Bishop                          30 JUN 2004
+ 148: 0000: \***    Defined field AF.STAFF.NUM$ AF.EMPLOYEE.FLAG$
+ 149: 0000: \***
+ 150: 0000: \***    VERSION E.             Alan Carr  (AJC)                      4 Oct 2004
+ 151: 0000: \***    Defined field AF.RECEIPT.NAME$
+ 152: 0000: \***
+ 153: 0000: \***    VERSION F.             Alan Carr  (AJC)                     31 Jan 2005
+ 154: 0000: \***    Defined field AF.GROUP.CODE$
+ 155: 0000: \***
+ 156: 0000: \***    REVISION 1.6.                ROBERT COWEY.                15 JUN 2009.
+ 157: 0000: \***    Changes for A9C POS improvements project.
+ 158: 0000: \***    Used up last available three bytes of EALAUTH user data by redefining 
+ 159: 0000: \***    remaining AF.USER$ variable as AF.BIRTH.DATE$.
+ 160: 0000: \***    See IBM manual "GSA Programming Guide" Appendix A-27 for file layout 
+ 161: 0000: \***    describing INDICAT flags (and position of original 20 bytes user data).
+ 162: 0000: \***
+ 163: 0000: \***    REVISION 1.7.                ROBERT COWEY.                22 JUN 2009.
+ 164: 0000: \***    Changes for A9C POS improvements project creating PSB99.286 Rv 1.8.
+ 165: 0000: \***    Defect 3247 - Redefined AF.BIRTH.DATE$ format as UPD-hex DDMCYY.
+ 166: 0000: \***    Description text change only - No code changes to this file.
+ 167: 0000: \***
+ 168: 0000: \*******************************************************************************
+ 169: 0000: \*******************************************************************************
+ 170: 0000: 
+ 171: 0000: 
+ 172: 0000:     STRING GLOBAL \
+ 173: 0000:         AF.BIRTH.DATE$,       \ ! 3 byte DDMCYY UPD/hex format         ! 1.7 RC
+ 174: 0000:                               \ ! M is month  A=Oct B=Nov C=Dec        ! 1.7 RC
+ 175: 0000:                               \ ! C is century  0=19xx 1=20xx          ! 1.7 RC
+ 176: 0000:         AF.DATE.PSWD.CHANGE$, \ ! 3 bytes UPD                          ! CRC
+ 177: 0000:         AF.FILE.NAME$, \
+ 178: 0000:         AF.FLAGS.01.12$, \      ! 15 bytes
+ 179: 0000:         AF.FLAGS.13.16$, \      ! 4 bytes
+ 180: 0000:         AF.OPERATOR.NAME$,\     ! 20 bytes
+ 181: 0000:         AF.OPERATOR.NO$, \      ! 4 byte UPD (key)
+ 182: 0000:         AF.OPTIONS.KEY$, \      ! 1 byte UPD
+ 183: 0000:         AF.PASSWORD$, \         ! 4 byte UPD
+ 184: 0000:         AF.RECEIPT.NAME$, \     ! 12 bytes                             ! AJC
+ 185: 0000:         AF.STAFF.NUM$, \         ! 4 byte UPD                          DMB
+ 186: 0000:         AF.EMPLOYEE.FLAG$, \     ! 1 byte UPD                          DMB
+ 187: 0000:         AF.GROUP.CODE$, \       ! 1  byte UPD                          AJC
+ 188: 0000: \       AF.USER$, \             ! 3  bytes                             ! 1.6 RC
+ 189: 0000:         AF.SUP.FLAG$, \         ! 1  byte                              BSJW
+ 190: 0000:         AF.OP.MODEL$            ! 3  bytes                             BSJW
+ 191: 0000: 
+ 192: 0000:     INTEGER*1 GLOBAL \
+ 193: 0000:         AF.INDICAT4%, \
+ 194: 0000:         AF.INDICAT5%, \
+ 195: 0000:         AF.INDICAT6%, \
+ 196: 0000:         AF.INDICAT7%, \
+ 197: 0000:         AF.INDICAT8%, \
+ 198: 0000:         AF.INDICAT9%, \
+ 199: 0000:         AF.INDICAT10%, \
+ 200: 0000:         AF.INDICAT11%, \
+ 201: 0000:         AF.INDICAT12%, \
+ 202: 0000:         AF.INDICAT13%, \
+ 203: 0000:         AF.INDICAT14%, \
+ 204: 0000:         AF.INDICAT15%, \
+ 205: 0000:         AF.INDICAT16%, \
+ 206: 0000:         AF.REPORT.NUM%
+ 207: 0000: 
+ 208: 0000:     INTEGER*2 GLOBAL \
+ 209: 0000:         AF.INDICAT1%, \
+ 210: 0000:         AF.INDICAT2%, \
+ 211: 0000:         AF.INDICAT3%, \
+ 212: 0000:         AF.MODEL.FLAGS.1%, \                                           ! CRC
+ 213: 0000:         AF.MODEL.FLAGS.2%, \                                           ! CRC
+ 214: 0000:         AF.RECL%, \
+ 215: 0000:         AF.SESS.NUM%
+ 216: 0000: 
+ 217: 0000:         %INCLUDE OPAUDDEC.J86
+ 218: 0000: \*******************************************************************************
+ 219: 0000: \*******************************************************************************
+ 220: 0000: \***
+ 221: 0000: \***   %INCLUDE FOR OPERATOR AUTHORISATION AUDIT FILE VARIABLE DECLARATIONS
+ 222: 0000: \***
+ 223: 0000: \***                     REFERENCE : OPAUDDEC
+ 224: 0000: \***
+ 225: 0000: \***                     FILE TYPE : Direct
+ 226: 0000: \***
+ 227: 0000: \***    VERSION A.               Mark Walker                  22nd March 1994
+ 228: 0000: \***    Original version.
+ 229: 0000: \***
+ 230: 0000: \*******************************************************************************
+ 231: 0000: \*******************************************************************************
+ 232: 0000: 
+ 233: 0000:         STRING GLOBAL                   OPAUD.RECORD$,                  \
+ 234: 0000:                                         OPAUD.FILE.NAME$,		\
+ 235: 0000:                                         OPAUD.DATE$,			\
+ 236: 0000: 					OPAUD.TIME$,			\
+ 237: 0000: 					OPAUD.CURRENT.ID$,		\
+ 238: 0000: 					OPAUD.CHANGED.ID$,		\
+ 239: 0000: 					OPAUD.OPTION$,			\
+ 240: 0000: 					OPAUD.DETAILS.1$,		\
+ 241: 0000: 					OPAUD.DETAILS.2$,		\
+ 242: 0000: 					OPAUD.FILLER$,			\
+ 243: 0000: 					OPAUD.CRLF$,			\
+ 244: 0000: 					OPAUD.LAST.REC.UPDATED$,	\
+ 245: 0000: 					OPAUD.FILE.SIZE$
+ 246: 0000: 
+ 247: 0000:         INTEGER*2 GLOBAL                OPAUD.RECL%,                    \
+ 248: 0000:                                         OPAUD.REPORT.NUM%,              \
+ 249: 0000:                                         OPAUD.SESS.NUM%,                \
+ 250: 0000:                                         OPAUD.REC.NUM%
+ 251: 0000: !       %INCLUDE PRINTDEC.J86
+ 252: 0000: !       %INCLUDE PPDFDEC.J86
+ 253: 0000: !       %INCLUDE PHRMLDEC.J86
+ 254: 0000: 
+ 255: 0000:         %INCLUDE PSBF03G.J86   ! Display Manager
+ 256: 0000: REM \
+ 257: 0000: \*******************************************************************************
+ 258: 0000: \***
+ 259: 0000: \***      INCLUDED CODE FOR DISPLAY MANAGER FUNCTIONS GLOBAL DECLARATIONS
+ 260: 0000: \***
+ 261: 0000: \***                    REFERENCE :  PSBF03G.J86
+ 262: 0000: \***              
+ 263: 0000: \***      Version A                                        21st March 1986
+ 264: 0000: \***
+ 265: 0000: \***      Version B          Andrew Wedgeworth              27th July 1992
+ 266: 0000: \***      Removal of F03.RETURN.CODE% which is no longer used.
+ 267: 0000: \***
+ 268: 0000: \*******************************************************************************
+ 269: 0000: 
+ 270: 0000:    ! 1 line deleted from here                                          ! BAW
+ 271: 0000:    INTEGER*2   GLOBAL   F03.RETURNED.INTEGER%    ! from IBM Display Manager
+ 272: 0000:    STRING      GLOBAL   F03.RETURNED.STRING$     ! from IBM Display Manager
+ 273: 0000: 
+ 274: 0000: 
+ 275: 0000: 
+ 276: 0000: 
+ 277: 0000: 
+ 278: 0000: 
+ 279: 0000:         %INCLUDE PSBF20G.J86   ! Session Number Utility
+ 280: 0000: REM\
+ 281: 0000: \*******************************************************************************
+ 282: 0000: \*******************************************************************************
+ 283: 0000: \***
+ 284: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 285: 0000: \***
+ 286: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 287: 0000: \*** 
+ 288: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 289: 0000: \*** 
+ 290: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 291: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 292: 0000: \***     to two byte integer.
+ 293: 0000: \***
+ 294: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 295: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 296: 0000: \***
+ 297: 0000: \*******************************************************************************
+ 298: 0000: \*******************************************************************************
+ 299: 0000: 
+ 300: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 301: 0000:                        F20.STRING.FILE.NO$,                            \
+ 302: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 303: 0000:                        SESS.NUM.TABLE$(1)
+ 304: 0000: 
+ 305: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 306: 0000: 
+ 307: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 308: 0000: 
+ 309: 0000: 
+ 310: 0000:         %INCLUDE PSBUSEG.J86
+ 311: 0000: \/*********************************************************************/ PSBUSEG
+ 312: 0000: \/*                                                                   */ PSBUSEG
+ 313: 0000: \/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+ 314: 0000: \/* ----------------------------------------------------------------- */ PSBUSEG
+ 315: 0000: \/*                                                                   */ PSBUSEG
+ 316: 0000: \/*********************************************************************/ PSBUSEG
+ 317: 0000:                                                                        ! PSBUSEG
+ 318: 0000:         STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+ 319: 0000:                        PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+ 320: 0000:                        PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+ 321: 0000:                        PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+ 322: 0000:                        PSBCHN.U1,       \ User parameter               ! PSBUSEG
+ 323: 0000:                        PSBCHN.U2,       \ User parameter               ! PSBUSEG
+ 324: 0000:                        PSBCHN.U3        ! User parameter               ! PSBUSEG
+ 325: 0000:                                                                        ! PSBUSEG
+ 326: 0000: 
+ 327: 0000:         STRING GLOBAL           BATCH.SCREEN.FLAG$,                    \
+ 328: 0000:                                 CHAIN.TO.PROG$,                        \
+ 329: 0000:                                 CURSOR.STATE$,                         \
+ 330: 0000:                                 INVISIBLE$,                            \
+ 331: 0000:                                 LAST.MESSAGE$,                         \
+ 332: 0000:                                 MODULE.NUMBER$,                        \
+ 333: 0000:                                 OPERATOR.NUMBER$,                      \
+ 334: 0000:                                 SB.ACTION$,                            \
+ 335: 0000:                                 SB.FILE.NAME$,                         \
+ 336: 0000:                                 SB.STRING$,                            \
+ 337: 0000:                                 STRING.DATA$,                          \
+ 338: 0000:                                 VAR.STRING.1$,                         \
+ 339: 0000:                                 VAR.STRING.2$,                         \
+ 340: 0000:                                 VISIBLE$,                              \
+ 341: 0000:                                 DISPLAY.MESSAGE.TEXT$,                 \
+ 342: 0000:                                 CURSOR.ON$,                            \
+ 343: 0000:                                 CURSOR.OFF$,                           \
+ 344: 0000:                                 CHAR$,                                 \
+ 345: 0000:                                 FILE.OPERATION$,                       \
+ 346: 0000:                                 FILE.NO$,                              \
+ 347: 0000:                                 CURRENT.CODE$
+ 348: 0000: 
+ 349: 0000:         INTEGER*1 GLOBAL        EVENT.NO%,                             \
+ 350: 0000:                                 TRUE,FALSE,                            \
+ 351: 0000:                                 EXIT.KEY.PRESSED(1)
+ 352: 0000: 
+ 353: 0000:         INTEGER*2 GLOBAL        CURRENT.REPORT.NUM%,                   \
+ 354: 0000:                                 SB.INTEGER%,                           \
+ 355: 0000:                                 SB.FILE.REP.NUM%,                      \
+ 356: 0000:                                 SB.FILE.SESS.NUM%,                     \
+ 357: 0000:                                 CURSOR.POSITION%,                      \
+ 358: 0000:                                 DISPLAY.MESSAGE.NUMBER%,               \
+ 359: 0000:                                 INTEGER.DATA%,                         \
+ 360: 0000:                                 RETURN.FIELD%,                         \
+ 361: 0000:                                 I%,                                    \
+ 362: 0000:                                 J%,                                    \
+ 363: 0000:                                 S%,                                    \
+ 364: 0000:                                 FUNCTION.KEY%,                         \
+ 365: 0000:                                 MESSAGE.NO%,                           \
+ 366: 0000:                                 OLD.POSITION%,                         \
+ 367: 0000:                                 SAVED.POSITION%,                       \
+ 368: 0000:                                 HELP.KEY%,                             \
+ 369: 0000:                                 QUIT.KEY%,                             \
+ 370: 0000:                                 END.KEY%,                              \
+ 371: 0000:                                 HOME.KEY%,                             \
+ 372: 0000:                                 TAB.KEY%,                              \
+ 373: 0000:                                 BTAB.KEY%,                             \
+ 374: 0000:                                 ESC.KEY%,                              \
+ 375: 0000:                                 ENTER.KEY%,                            \
+ 376: 0000:                                 PGUP.KEY%,                             \
+ 377: 0000:                                 PGDN.KEY%,                             \
+ 378: 0000:                                 F7UP.KEY%,                             \
+ 379: 0000:                                 F8DN.KEY%,                             \
+ 380: 0000:                                 INVISIBLE.FIELD%
+ 381: 0000: 
+ 382: 0000:         STRING GLOBAL           BIRTH.DATE$, \ ! DDMMCCYY              ! 1.1 RC
+ 383: 0000:                                 OPTION$,                               \
+ 384: 0000:                                 OPERATOR.ID$,                          \
+ 385: 0000:                                 OPERATOR.NAME$,                        \
+ 386: 0000:                                 OPERATOR.PASSWORD$,                    \
+ 387: 0000:                                 MODEL.FLAG$,                           \
+ 388: 0000:                                 CONFIRM$,                              \
+ 389: 0000:                                 TILL.MODEL.FLAG$(1),                   \
+ 390: 0000:                                 CTLR.MODEL.FLAG$(1),                   \
+ 391: 0000:                                 TILL.MODEL.NAME$(1),                   \
+ 392: 0000:                                 CTLR.MODEL.NAME$(1),                   \
+ 393: 0000:                                 TILL.MODEL.RECORD$(1),                 \
+ 394: 0000:                                 CTLR.MODEL.RECORD$(1),                 \
+ 395: 0000:                                 TODAYS.DATE$,                          \
+ 396: 0000:                                 CSOUF.RECORD$,                         \
+ 397: 0000:                                 CSOUF.OPERATION$,                      \
+ 398: 0000:                                 MODEL.NUMBER$,                         \
+ 399: 0000:                                 SUPERVISOR.FLAG$,                      \
+ 400: 0000:                                 OPTIONS.KEY$,                          \
+ 401: 0000:                                 GROUP.ID$,                             \
+ 402: 0000:                                 OLD.OPERATOR.ID$,                      \
+ 403: 0000:                                 OLD.PASSWORD$,                         \
+ 404: 0000:                                 MONTH.ARRAY$(1),                       \
+ 405: 0000:                                 DISPLAY.DATE$,                         \
+ 406: 0000:                                 STAFF.NO$,                             \
+ 407: 0000:                                 EMPLOYEE.FLG$,                         \
+ 408: 0000:                                 RECEIPT.NAME$,                         \
+ 409: 0000:                                 GROUP.CODE$
+ 410: 0000: 
+ 411: 0000:         INTEGER*1 GLOBAL        VALID.OPTION.FOUND,                    \
+ 412: 0000:                                 VALID.OPERATOR.ID.FOUND,               \
+ 413: 0000:                                 VALID.NAME.FOUND,                      \
+ 414: 0000:                                 VALID.PASSWORD.FOUND,                  \
+ 415: 0000:                                 VALID.STAFF.NO.FOUND,                  \
+ 416: 0000:                                 VALID.EMPLOYEE.FLG.FOUND,              \
+ 417: 0000:                                 VALID.RECEIPT.NAME.FOUND,              \
+ 418: 0000:                                 VALID.GROUP.CODE.FOUND,                \
+ 419: 0000:                                 VALID.MODEL.FLAG.FOUND,                \
+ 420: 0000:                                 VALID.CONFIRM.FOUND,                   \
+ 421: 0000:                                 CSOUF.RECORD.FOUND,                    \
+ 422: 0000:                                 OPTION.ALLOWED(1)
+ 423: 0000: 
+ 424: 0000:         INTEGER*2 GLOBAL        S1.OPTION%,                            \
+ 425: 0000:                                 S1.DATE%,                              \
+ 426: 0000:                                 S2.OPERATOR.ID%,                       \
+ 427: 0000:                                 S2.NAME%,                              \
+ 428: 0000:                                 S2.PASSWORD%,                          \
+ 429: 0000:                                 S2.STAFF.NO%,                          \
+ 430: 0000:                                 S2.EMPLOYEE.FLG%,                      \
+ 431: 0000:                                 S2.RECEIPT.NAME%,                      \
+ 432: 0000:                                 S2.GROUP.CODE%,                        \
+ 433: 0000:                                 S2.CONFIRM%,                           \
+ 434: 0000:                                 S2.CONFIRM.TEXT%,                      \
+ 435: 0000: \ 1.1 RC                        S3.OPERATOR.ID%,                       \
+ 436: 0000: \ 1.1 RC                        S3.NAME%,                              \
+ 437: 0000: \ 1.1 RC                        S3.STAFF.NO%,                          \
+ 438: 0000: \ 1.1 RC                        S3.EMPLOYEE.FLG%,                      \
+ 439: 0000: \ 1.1 RC                        S3.RECEIPT.NAME%,                      \
+ 440: 0000: \ 1.1 RC                        S3.GROUP.CODE%,                        \
+ 441: 0000: \ 1.1 RC                        S4.OPERATOR.ID%,                       \
+ 442: 0000: \ 1.1 RC                        S4.NAME%,                              \
+ 443: 0000: \ 1.1 RC                        S4.STAFF.NO%,                          \
+ 444: 0000: \ 1.1 RC                        S4.EMPLOYEE.FLG%,                      \
+ 445: 0000: \ 1.1 RC                        S4.RECEIPT.NAME%,                      \
+ 446: 0000: \ 1.1 RC                        S4.GROUP.CODE%,                        \
+ 447: 0000: \ 1.1 RC                        S5.OPERATOR.ID%,                       \
+ 448: 0000: \ 1.1 RC                        S5.NAME%,                              \
+ 449: 0000: \ 1.1 RC                        S5.PASSWORD%,                          \
+ 450: 0000: \ 1.1 RC                        S5.STAFF.NO%,                          \
+ 451: 0000: \ 1.1 RC                        S5.EMPLOYEE.FLG%,                      \
+ 452: 0000: \ 1.1 RC                        S5.RECEIPT.NAME%,                      \
+ 453: 0000: \ 1.1 RC                        S5.GROUP.CODE%,                        \
+ 454: 0000:                                 S6.BIRTH.DATE%,                        \ 1.1 RC
+ 455: 0000:                                 S6.OPERATOR.ID%,                       \
+ 456: 0000:                                 S6.NAME%,                              \
+ 457: 0000:                                 S6.STAFF.NO%,                          \
+ 458: 0000:                                 S6.EMPLOYEE.FLG%,                      \
+ 459: 0000:                                 S6.RECEIPT.NAME%,                      \
+ 460: 0000:                                 S6.GROUP.CODE%,                        \
+ 461: 0000:                                 S7.REPORT.OPTION%,                     \
+ 462: 0000:                                 S7.SORT.OPTION%,                       \
+ 463: 0000:                                 S2.TILL.MODEL.TEXT%(1),                \
+ 464: 0000:                                 S2.TILL.MODEL.FLAG%(1),                \
+ 465: 0000:                                 S2.CTLR.MODEL.TEXT%(1),                \
+ 466: 0000:                                 S2.CTLR.MODEL.FLAG%(1),                \
+ 467: 0000:                                 TILL.PTR%,                             \
+ 468: 0000:                                 MAX.TILL.PTR%,                         \
+ 469: 0000:                                 CTLR.PTR%,                             \
+ 470: 0000:                                 MAX.CTLR.PTR%,                         \
+ 471: 0000:                                 MAX.TILL.MODELS%,                      \
+ 472: 0000:                                 MAX.CTLR.MODELS%,                      \
+ 473: 0000:                                 INDICATOR%,                            \
+ 474: 0000:                                 AUTH.FLAGS%,                           \
+ 475: 0000:                                 TILL.INDEX%,                           \
+ 476: 0000:                                 CTLR.INDEX%,                           \
+ 477: 0000:                                 SAVED.OPAUD.REC.NUM%
+ 478: 0000: 
+ 479: 0000:         INTEGER*4 GLOBAL        BIT.MASK%,                             \
+ 480: 0000:                                 OPM.BIT.MASK%,                         \
+ 481: 0000:                                 SDK.BIT.MASK%
+ 482: 0000: 
+ 483: 0000:         INTEGER*4               ERROR.COUNT%
+ 484: 0000: 
+ 485: 0000:         %INCLUDE CSOUFEXT.J86
+ 486: 0000: \*****************************************************************************
+ 487: 0000: \*****************************************************************************
+ 488: 0000: \***
+ 489: 0000: \***         FUNCTION DEFINITIONS FOR Operating System Authorisation file
+ 490: 0000: \***
+ 491: 0000: \***                    REFERENCE : CSOUFEXA.J86
+ 492: 0000: \***
+ 493: 0000: \***    Version A           Steve Windsor                      Nov 92 
+ 494: 0000: \***
+ 495: 0000: \*****************************************************************************
+ 496: 0000: \*****************************************************************************
+ 497: 0000: 
+ 498: 0000:    FUNCTION CSOUF.SET EXTERNAL
+ 499: 0000:    END FUNCTION
+ 500: 0000: 
+ 501: 0000: FUNCTION READ.CSOUF.ABREV EXTERNAL
+ 502: 0000:    INTEGER*2 READ.CSOUF.ABREV
+ 503: 0000:   END FUNCTION
+ 504: 0000: 
+ 505: 0000: FUNCTION READ.CSOUF.ABREV.LOCKED EXTERNAL
+ 506: 0000:    INTEGER*2 READ.CSOUF.ABREV.LOCKED
+ 507: 0000:   END FUNCTION
+ 508: 0000: 
+ 509: 0000: FUNCTION WRITE.CSOUF.ABREV.UNLOCK EXTERNAL
+ 510: 0000:    INTEGER*2 WRITE.CSOUF.ABREV.UNLOCK
+ 511: 0000:   END FUNCTION
+ 512: 0000: 
+ 513: 0000: FUNCTION WRITE.CSOUF.ABREV EXTERNAL
+ 514: 0000:    INTEGER*2 WRITE.CSOUF.ABREV
+ 515: 0000:   END FUNCTION
+ 516: 0000: 
+ 517: 0000:         %INCLUDE AFEXT.J86
+ 518: 0000: 
+ 519: 0000: \REM
+ 520: 0000: \*******************************************************************************
+ 521: 0000: \*******************************************************************************
+ 522: 0000: \***
+ 523: 0000: \***    %INCLUDE FOR GSA AUTHORISATION FILE EXTERNAL FUNCTIONS
+ 524: 0000: \***
+ 525: 0000: \***        REFERENCE   :  AFEXT (J86)
+ 526: 0000: \***
+ 527: 0000: \***        FILE TYPE   :  Keyed
+ 528: 0000: \***
+ 529: 0000: \***    The GSA Authorisation File (EALAUTH.DAT) should not be confused with
+ 530: 0000: \***    the Operating System Authorisation File (ADXCSOUF.DAT).
+ 531: 0000: \***
+ 532: 0000: \***    VERSION A.              ROBERT COWEY.                       18 AUG 1992.
+ 533: 0000: \***    Original version created from AFEXTA.
+ 534: 0000: \***
+ 535: 0000: \***    VERSION B.              Steve Windsor                       29 Dec 1992.
+ 536: 0000: \***    Version incremented to keep in line with other included code           
+ 537: 0000: \***
+ 538: 0000: \***    VERSION C.              ROBERT COWEY.                       03 MAR 1994.
+ 539: 0000: \***    No changes to this file.
+ 540: 0000: \***
+ 541: 0000: \***    REVISION 1.6.                ROBERT COWEY.                15 JUN 2009.
+ 542: 0000: \***    Changes for A9C POS improvements project.
+ 543: 0000: \***    Used up last available three bytes of EALAUTH user data by redefining 
+ 544: 0000: \***    remaining AF.USER$ variable as AF.BIRTH.DATE$.
+ 545: 0000: \***    No changes to this file.
+ 546: 0000: \***
+ 547: 0000: \***    REVISION 1.7.                ROBERT COWEY.                22 JUN 2009.
+ 548: 0000: \***    Changes for A9C POS improvements project creating PSB99.286 Rv 1.8.
+ 549: 0000: \***    Defect 3247 - Redefined AF.BIRTH.DATE$ format within AFDEC.J86.
+ 550: 0000: \***    Description text change only - No code changes to this file.
+ 551: 0000: \***
+ 552: 0000: \*******************************************************************************
+ 553: 0000: \*******************************************************************************
+ 554: 0000: 
+ 555: 0000: 
+ 556: 0000: FUNCTION AF.SET EXTERNAL
+ 557: 0000:     INTEGER*2 AF.SET
+ 558: 0000: END FUNCTION
+ 559: 0000: 
+ 560: 0000: 
+ 561: 0000: FUNCTION READ.AF EXTERNAL
+ 562: 0000:     INTEGER*2 READ.AF
+ 563: 0000: END FUNCTION
+ 564: 0000: 
+ 565: 0000: 
+ 566: 0000: FUNCTION READ.AF.LOCKED EXTERNAL
+ 567: 0000:     INTEGER*2 READ.AF.LOCKED
+ 568: 0000: END FUNCTION
+ 569: 0000: 
+ 570: 0000:   
+ 571: 0000: FUNCTION READ.AF.ABREV EXTERNAL
+ 572: 0000:     INTEGER*2 READ.AF.ABREV
+ 573: 0000: END FUNCTION
+ 574: 0000: 
+ 575: 0000: 
+ 576: 0000: FUNCTION READ.AF.ABREV.LOCKED EXTERNAL
+ 577: 0000:     INTEGER*2 READ.AF.ABREV.LOCKED
+ 578: 0000: END FUNCTION
+ 579: 0000: 
+ 580: 0000:   
+ 581: 0000: FUNCTION WRITE.AF.UNLOCK EXTERNAL
+ 582: 0000:     INTEGER*2 WRITE.AF.UNLOCK
+ 583: 0000: END FUNCTION
+ 584: 0000: 
+ 585: 0000: 
+ 586: 0000: FUNCTION WRITE.AF.ABREV EXTERNAL
+ 587: 0000:     INTEGER*2 WRITE.AF.ABREV
+ 588: 0000: END FUNCTION
+ 589: 0000: 
+ 590: 0000: 
+ 591: 0000: FUNCTION WRITE.AF.ABREV.UNLOCK EXTERNAL
+ 592: 0000:     INTEGER*2 WRITE.AF.ABREV.UNLOCK
+ 593: 0000: END FUNCTION
+ 594: 0000: 
+ 595: 0000:         %INCLUDE OPAUDEXT.J86
+ 596: 0000: \*******************************************************************************
+ 597: 0000: \*******************************************************************************
+ 598: 0000: \***
+ 599: 0000: \***    %INCLUDE FOR OPERATOR AUTHORISATION AUDIT FILE EXTERNAL FUNCTIONS
+ 600: 0000: \***
+ 601: 0000: \***                         REFERENCE : OPAUDEXT
+ 602: 0000: \***
+ 603: 0000: \***                         FILE TYPE : Direct
+ 604: 0000: \***
+ 605: 0000: \***    VERSION A.              Mark Walker                   22nd March 1994
+ 606: 0000: \***    Original version.
+ 607: 0000: \***
+ 608: 0000: \*******************************************************************************
+ 609: 0000: \*******************************************************************************
+ 610: 0000: 
+ 611: 0000:         FUNCTION OPAUD.SET EXTERNAL
+ 612: 0000:         INTEGER*2 OPAUD.SET
+ 613: 0000:         END FUNCTION
+ 614: 0000: 
+ 615: 0000:         FUNCTION READ.OPAUD EXTERNAL
+ 616: 0000:         INTEGER*2 READ.OPAUD
+ 617: 0000:         END FUNCTION 
+ 618: 0000: 
+ 619: 0000:         FUNCTION WRITE.OPAUD EXTERNAL
+ 620: 0000:         INTEGER*2 WRITE.OPAUD
+ 621: 0000:         END FUNCTION 
+ 622: 0000: 
+ 623: 0000: 
+ 624: 0000:         %INCLUDE PSBF01E.J86   ! Application Log
+ 625: 0000: REM \
+ 626: 0000: \*******************************************************************************
+ 627: 0000: \*******************************************************************************
+ 628: 0000: \***
+ 629: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 630: 0000: \***
+ 631: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 632: 0000: \***
+ 633: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 634: 0000: \*** 
+ 635: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 636: 0000: \***      Three parameters which passed to the function have been removed.
+ 637: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 638: 0000: \***      return code).
+ 639: 0000: \***
+ 640: 0000: \*******************************************************************************
+ 641: 0000: 
+ 642: 0000: 
+ 643: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 644: 0000:                              VAR.STRING.1$,                                   \
+ 645: 0000:                              VAR.STRING.2$,                                   \
+ 646: 0000:                              EVENT.NO%)  EXTERNAL
+ 647: 0000: 
+ 648: 0000:       INTEGER*1 EVENT.NO%
+ 649: 0000: 
+ 650: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 651: 0000:                 MESSAGE.NO%
+ 652: 0000: 
+ 653: 0000:       STRING VAR.STRING.1$,                                            \
+ 654: 0000:              VAR.STRING.2$
+ 655: 0000: 
+ 656: 0000:    END FUNCTION
+ 657: 0000: 
+ 658: 0000: \*******************************************************************************
+ 659: 0000:         %INCLUDE PSBF03E.J86   ! Display Manager
+ 660: 0000: REM \
+ 661: 0000: \*******************************************************************************
+ 662: 0000: \***
+ 663: 0000: \***    %INCLUDED CODE FOR EXTERNAL DEFINITIONS OF DISPLAY MANAGER FUNCTIONS
+ 664: 0000: \***     
+ 665: 0000: \***            REFERENCE       : PSBF03E.J86     
+ 666: 0000: \***     
+ 667: 0000: \***            DATE.WRITTEN    : 21/03/1986     
+ 668: 0000: \***     
+ 669: 0000: \***    Version B              Andrew Wedgeworth              21st July 1992
+ 670: 0000: \***    Remove redundant function parameters (BATCH.SCREEN.FLAG$, 
+ 671: 0000: \***    MODULE.NUMBER$ and OPERATOR.NUMBER$).  Function names defined as 
+ 672: 0000: \***    variables to hold return codes.
+ 673: 0000: \***
+ 674: 0000: \*******************************************************************************
+ 675: 0000: 
+ 676: 0000:    FUNCTION DM.INITDM (STRING.DATA$,                                   \
+ 677: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 678: 0000: 
+ 679: 0000:       STRING      STRING.DATA$
+ 680: 0000: 
+ 681: 0000:       INTEGER*2   DM.INITDM,                                           \ BAW
+ 682: 0000:                   INTEGER.DATA%
+ 683: 0000:                          
+ 684: 0000:      
+ 685: 0000: 
+ 686: 0000:    END FUNCTION
+ 687: 0000: 
+ 688: 0000:    FUNCTION DM.CLRSCR (STRING.DATA$,                                   \
+ 689: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 690: 0000: 
+ 691: 0000:       STRING      STRING.DATA$
+ 692: 0000: 
+ 693: 0000:       INTEGER*2   DM.CLRSCR,                                           \ BAW
+ 694: 0000:                   INTEGER.DATA%
+ 695: 0000: 
+ 696: 0000:    END FUNCTION
+ 697: 0000: 
+ 698: 0000:    FUNCTION DM.CLSDIS (STRING.DATA$,                                   \
+ 699: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 700: 0000: 
+ 701: 0000:       STRING      STRING.DATA$
+ 702: 0000: 
+ 703: 0000:       INTEGER*2   DM.CLSDIS,                                           \ BAW
+ 704: 0000:                   INTEGER.DATA%
+ 705: 0000: 
+ 706: 0000:    END FUNCTION
+ 707: 0000: 
+ 708: 0000:    FUNCTION DM.OPNDIS (STRING.DATA$,                                   \
+ 709: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 710: 0000: 
+ 711: 0000:       STRING      STRING.DATA$
+ 712: 0000: 
+ 713: 0000:       INTEGER*2   DM.OPNDIS,                                           \ BAW 
+ 714: 0000:                   INTEGER.DATA%
+ 715: 0000: 
+ 716: 0000:    END FUNCTION
+ 717: 0000: 
+ 718: 0000:    FUNCTION DM.DISPD  (STRING.DATA$,                                   \
+ 719: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 720: 0000: 
+ 721: 0000:       STRING      STRING.DATA$
+ 722: 0000: 
+ 723: 0000:       INTEGER*2   DM.DISPD,                                            \ BAW
+ 724: 0000:                   INTEGER.DATA%
+ 725: 0000: 
+ 726: 0000:    END FUNCTION
+ 727: 0000: 
+ 728: 0000:    FUNCTION DM.RETDM  (STRING.DATA$,                                   \
+ 729: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 730: 0000: 
+ 731: 0000:       STRING      STRING.DATA$
+ 732: 0000: 
+ 733: 0000:       INTEGER*2   DM.RETDM,                                            \ BAW 
+ 734: 0000:                   INTEGER.DATA%
+ 735: 0000: 
+ 736: 0000:    END FUNCTION
+ 737: 0000: 
+ 738: 0000:    FUNCTION DM.CURS   (STRING.DATA$,                                   \
+ 739: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 740: 0000: 
+ 741: 0000:       STRING      STRING.DATA$
+ 742: 0000: 
+ 743: 0000:       INTEGER*2   DM.CURS,                                             \ BAW      
+ 744: 0000:                   INTEGER.DATA%
+ 745: 0000: 
+ 746: 0000:    END FUNCTION
+ 747: 0000: 
+ 748: 0000:    FUNCTION DM.RETF   (STRING.DATA$,                                   \
+ 749: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 750: 0000: 
+ 751: 0000:       STRING      STRING.DATA$
+ 752: 0000: 
+ 753: 0000:       INTEGER*2   DM.RETF,                                             \ BAW
+ 754: 0000:                   INTEGER.DATA%
+ 755: 0000: 
+ 756: 0000:    END FUNCTION
+ 757: 0000: 
+ 758: 0000:    FUNCTION DM.SETF   (STRING.DATA$,                                   \
+ 759: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 760: 0000: 
+ 761: 0000:       STRING      STRING.DATA$
+ 762: 0000: 
+ 763: 0000:       INTEGER*2   DM.SETF,                                             \ BAW
+ 764: 0000:                   INTEGER.DATA%
+ 765: 0000: 
+ 766: 0000:    END FUNCTION
+ 767: 0000: 
+ 768: 0000:    FUNCTION DM.POSF   (STRING.DATA$,                            \
+ 769: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 770: 0000: 
+ 771: 0000:       STRING      STRING.DATA$
+ 772: 0000: 
+ 773: 0000:       INTEGER*2   DM.POSF,                                             \ BAW
+ 774: 0000:                   INTEGER.DATA%
+ 775: 0000: 
+ 776: 0000:    END FUNCTION
+ 777: 0000: 
+ 778: 0000:    FUNCTION DM.NEXTF  (STRING.DATA$,                                   \
+ 779: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 780: 0000: 
+ 781: 0000:       STRING      STRING.DATA$
+ 782: 0000: 
+ 783: 0000:       INTEGER*2   DM.NEXTF,                                            \ BAW
+ 784: 0000:                   INTEGER.DATA%
+ 785: 0000: 
+ 786: 0000:    END FUNCTION
+ 787: 0000: 
+ 788: 0000:    FUNCTION DM.PUTF   (STRING.DATA$,                                   \
+ 789: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 790: 0000: 
+ 791: 0000:       STRING      STRING.DATA$
+ 792: 0000: 
+ 793: 0000:       INTEGER*2   DM.PUTF,                                             \ BAW
+ 794: 0000:                   INTEGER.DATA%
+ 795: 0000: 
+ 796: 0000:    END FUNCTION
+ 797: 0000: 
+ 798: 0000:    FUNCTION DM.GETF   (STRING.DATA$,                                   \ BAW
+ 799: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 800: 0000: 
+ 801: 0000:       STRING      STRING.DATA$
+ 802: 0000: 
+ 803: 0000:       INTEGER*2   DM.GETF,                                             \ BAW 
+ 804: 0000:                   INTEGER.DATA%
+ 805: 0000: 
+ 806: 0000:    END FUNCTION
+ 807: 0000: 
+ 808: 0000:    FUNCTION DM.UPDF   (STRING.DATA$,                                   \
+ 809: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 810: 0000: 
+ 811: 0000:       STRING      STRING.DATA$
+ 812: 0000: 
+ 813: 0000:       INTEGER*2   DM.UPDF,                                             \ BAW
+ 814: 0000:                   INTEGER.DATA%
+ 815: 0000: 
+ 816: 0000:    END FUNCTION
+ 817: 0000: 
+ 818: 0000:    FUNCTION DM.RESF   (STRING.DATA$,                                   \
+ 819: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 820: 0000: 
+ 821: 0000:       STRING      STRING.DATA$
+ 822: 0000: 
+ 823: 0000:       INTEGER*2   DM.RESF,                                             \ BAW
+ 824: 0000:                   INTEGER.DATA%
+ 825: 0000: 
+ 826: 0000:    END FUNCTION
+ 827: 0000: 
+ 828: 0000: \*******************************************************************************
+ 829: 0000:         %INCLUDE PSBF04E.J86   ! External Message
+ 830: 0000: REM \
+ 831: 0000: \*******************************************************************************
+ 832: 0000: \*******************************************************************************
+ 833: 0000: \***
+ 834: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION EXTERNAL.MESSAGE
+ 835: 0000: \***
+ 836: 0000: \***
+ 837: 0000: \***            FUNCTION NUMBER    : PSBF04
+ 838: 0000: \***
+ 839: 0000: \***            INCLUDE REFERENCE  : PSBF04E.J86
+ 840: 0000: \***
+ 841: 0000: \***            DATE WRITTEN       : 5th March 1986
+ 842: 0000: \***
+ 843: 0000: \***        Version B        Andrew Wedgeworth         15th July 1992
+ 844: 0000: \***        Redundant function parameters removed.  EXTERNAL.MESSAGE
+ 845: 0000: \***        is defined as a variable which holds the return code.  
+ 846: 0000: \***
+ 847: 0000: \*******************************************************************************
+ 848: 0000: \*******************************************************************************
+ 849: 0000: 
+ 850: 0000:    FUNCTION EXTERNAL.MESSAGE  (MESSAGE.NO%,                            \
+ 851: 0000:                                STRING.DATA$,                           \
+ 852: 0000:                                RETURN.FIELD%) EXTERNAL
+ 853: 0000:    ! 3 parameters deleted from here                                    ! BAW
+ 854: 0000: 
+ 855: 0000:       STRING     STRING.DATA$
+ 856: 0000: 
+ 857: 0000:       INTEGER*2  EXTERNAL.MESSAGE,                                     \ BAW
+ 858: 0000:                  MESSAGE.NO%,                                          \
+ 859: 0000:                  RETURN.FIELD%
+ 860: 0000: 
+ 861: 0000:    END FUNCTION
+ 862: 0000: 
+ 863: 0000: \*******************************************************************************
+ 864: 0000:         %INCLUDE PSBF12E.J86   ! Help
+ 865: 0000: REM \
+ 866: 0000: \*****************************************************************************
+ 867: 0000: \*****************************************************************************
+ 868: 0000: \***
+ 869: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF HELP FUNCTION
+ 870: 0000: \***
+ 871: 0000: \***            FUNCTION NUMBER      : PSBF12
+ 872: 0000: \***
+ 873: 0000: \***            REFERENCE            : PSBF12E.J86
+ 874: 0000: \***
+ 875: 0000: \***            DATE WRITTEN         : 17th March 1986
+ 876: 0000: \***
+ 877: 0000: \***      Version B           Andrew Wedgeworth           21st July 1992
+ 878: 0000: \***      Removal of redundant function parameters. HELP included as a 
+ 879: 0000: \***      variable to hold the return code.
+ 880: 0000: \***
+ 881: 0000: \*****************************************************************************
+ 882: 0000: \*****************************************************************************
+ 883: 0000: 
+ 884: 0000:    FUNCTION HELP (SCREEN.NO$) EXTERNAL
+ 885: 0000: 
+ 886: 0000:        STRING SCREEN.NO$
+ 887: 0000:        
+ 888: 0000:        INTEGER*2 HELP       
+ 889: 0000: 
+ 890: 0000:    END FUNCTION
+ 891: 0000: 
+ 892: 0000: \******************************************************************************
+ 893: 0000:         %INCLUDE PSBF20E.J86   ! Session Number Utility
+ 894: 0000: REM\
+ 895: 0000: \*******************************************************************************
+ 896: 0000: \*******************************************************************************
+ 897: 0000: \***
+ 898: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 899: 0000: \***
+ 900: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 901: 0000: \***
+ 902: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 903: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 904: 0000: \***     128 files.
+ 905: 0000: \***
+ 906: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 907: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 908: 0000: \***     as a variable.  This new variable contains the function's return
+ 909: 0000: \***     code.
+ 910: 0000: \***
+ 911: 0000: \*******************************************************************************
+ 912: 0000: \*******************************************************************************
+ 913: 0000: 
+ 914: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 915: 0000:                               PASSED.INTEGER%,                         \
+ 916: 0000:                               PASSED.STRING$)                          \
+ 917: 0000:    EXTERNAL
+ 918: 0000: 
+ 919: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 920: 0000:              PASSED.STRING$
+ 921: 0000:    ! 3 variables removed from here                                     ! CAW
+ 922: 0000: 
+ 923: 0000: 
+ 924: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 925: 0000:              PASSED.INTEGER%				               ! CJAS
+ 926: 0000: 
+ 927: 0000:    END FUNCTION
+ 928: 0000: 
+ 929: 0000:         %INCLUDE PSBF24E.J86   ! Standard Error Detected
+ 930: 0000: REM \
+ 931: 0000: \*******************************************************************************
+ 932: 0000: \*******************************************************************************
+ 933: 0000: \***
+ 934: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 935: 0000: \***
+ 936: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 937: 0000: \***
+ 938: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 939: 0000: \***
+ 940: 0000: \*******************************************************************************
+ 941: 0000: \*******************************************************************************
+ 942: 0000: 
+ 943: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 944: 0000: 				    ERRFILE%,              \
+ 945: 0000: 				    ERRL%,                 \
+ 946: 0000: 				    ERR$)        EXTERNAL
+ 947: 0000: 				    
+ 948: 0000:           STRING    ERR$
+ 949: 0000: 
+ 950: 0000:           INTEGER*2 ERRFILE%,              \
+ 951: 0000: 	            ERRL%,                 \
+ 952: 0000: 		    STANDARD.ERROR.DETECTED
+ 953: 0000: 		    
+ 954: 0000:           INTEGER*4 ERRN%
+ 955: 0000: 	  		    
+ 956: 0000:    END FUNCTION
+ 957: 0000: 
+ 958: 0000: 
+ 959: 0000: 
+ 960: 0000:         %INCLUDE DMEXTR.J86
+ 961: 0000: \/* TIME STAMP BLOCK **************************************************
+ 962: 0000: \** END OF TIME STAMP BLOCK ******************************************/
+ 963: 0000:  REM  INCLUDE FILE FOR  DISPLAY MANAGER EXTERNAL FUNCTIONS FOR CB80  June 7/82
+ 964: 0000:  REM  IR91470 01 10 91  LAB G53  marked for EFT
+ 965: 0000:         DEF CLRSCR EXTERNAL             REM Clear screen for Display Manager
+ 966: 0000:         INTEGER CLRSCR
+ 967: 0000:         FEND
+ 968: 0000:         DEF CLSDIS EXTERNAL
+ 969: 0000:         INTEGER CLSDIS
+ 970: 0000:         FEND                            REM Close Display Manager
+ 971: 0000:         DEF DISPD(I%) EXTERNAL          REM Display a display.
+ 972: 0000:         INTEGER DISPD
+ 973: 0000:         FEND
+ 974: 0000:         DEF CURS(X$) EXTERNAL           REM turn on/off cursor visibility.
+ 975: 0000:         STRING CURS
+ 976: 0000:         FEND
+ 977: 0000:         DEF ENDF EXTERNAL               REM ENDF method of return.
+ 978: 0000:         INTEGER ENDF
+ 979: 0000:         FEND
+ 980: 0000:         DEF GETF EXTERNAL               REM GETF get data from a field
+ 981: 0000:         STRING GETF
+ 982: 0000:         FEND
+ 983: 0000:         DEF INITDM(A$) EXTERNAL         REM INITIALIZE Display Manager
+ 984: 0000:         INTEGER INITDM
+ 985: 0000:         FEND
+ 986: 0000:         DEF NXTF(I%)  EXTERNAL          REM NXTF Go to Next Field
+ 987: 0000:         INTEGER NXTF
+ 988: 0000:         FEND
+ 989: 0000:         DEF POSF(I%) EXTERNAL           REM POSTION on Field
+ 990: 0000:         INTEGER POSF
+ 991: 0000:         FEND
+ 992: 0000: 
+ 993: 0000:         DEF OPNDIS(A$) EXTERNAL         REM OPEN DISPLAY FILE
+ 994: 0000:         INTEGER OPNDIS
+ 995: 0000:         FEND
+ 996: 0000:         DEF PUTF(A$)  EXTERNAL          REM PUT data to Field
+ 997: 0000:         INTEGER PUTF
+ 998: 0000:         FEND
+ 999: 0000:         DEF RESF(I%)  EXTERNAL          REM RESUME field
+1000: 0000:         STRING RESF
+1001: 0000:         FEND
+1002: 0000: 
+1003: 0000:         DEF RETDM  EXTERNAL             REM RETURN Display Mgr Characteristics
+1004: 0000:         STRING RETDM
+1005: 0000:         FEND
+1006: 0000:         DEF SETF(A$) EXTERNAL           REM SET Field  video attributes
+1007: 0000:         STRING SETF
+1008: 0000:         FEND
+1009: 0000:         DEF UPDF  EXTERNAL                      REM UPDATE Field data
+1010: 0000:         STRING UPDF
+1011: 0000:         FEND
+1012: 0000: 
+1013: 0000:         DEF RETF EXTERNAL
+1014: 0000:         STRING RETF
+1015: 0000:         FEND
+1016: 0000:    REM  END OF INCLUDE FILE FOR DISPLAY MANAGER CALLS FOR CB80
+1017: 0000: 
+1018: 0000: 
+1019: 0000: \******************************************************************************
+1020: 0000: \***
+1021: 0000: \***    EXTERNAL FUNCTIONS DEFINED WITHIN PSB9900
+1022: 0000: \***
+1023: 0000: \***...........................................................................
+1024: 0000: 
+1025: 0000: 
+1026: 0000: FUNCTION DISPLAY.SCREEN(SCREEN.NUMBER%) EXTERNAL ! PSB9900
+1027: 0000: END FUNCTION
+1028: 0000: 
+1029: 0000: FUNCTION VALID.CONFIRM EXTERNAL ! PSB9900
+1030: 0000:     INTEGER*1 VALID.CONFIRM
+1031: 0000: END FUNCTION
+1032: 0000: 
+1033: 0000: FUNCTION VALID.OPERATOR.ID EXTERNAL ! PSB9900
+1034: 0000:     INTEGER*1 VALID.OPERATOR.ID
+1035: 0000: END FUNCTION
+1036: 0000: 
+1037: 0000: FUNCTION READ.CSOUF.RECORD EXTERNAL ! PSB9900
+1038: 0000:     INTEGER*1 READ.CSOUF.RECORD
+1039: 0000: END FUNCTION
+1040: 0000: 
+1041: 0000: FUNCTION DELETE.CSOUF.RECORD EXTERNAL ! PSB9900
+1042: 0000:     INTEGER*1 DELETE.CSOUF.RECORD
+1043: 0000: END FUNCTION
+1044: 0000: 
+1045: 0000: FUNCTION SCREEN.HELP(SCREEN.NUMBER%) EXTERNAL ! PSB9900
+1046: 0000: END FUNCTION
+1047: 0000: 
+1048: 0000: 
+1049: 0000: 
+1050: 0000: \******************************************************************************
+1051: 0000: \***
+1052: 0000: \***    INTERNAL FUNCTIONS
+1053: 0000: \***
+1054: 0000: \***...........................................................................
+1055: 0000: 
+1056: 0000: 
+1057: 0000: 
+1058: 0000: \******************************************************************************
+1059: 0000: \***
+1060: 0000: \***    VALID.YYMMDD (YYMMDD$)
+1061: 0000: \***    Checks if passed date YYMMDD$ is a valid YYMMDD format
+1062: 0000: \***    Handles both packed and unpacked forms
+1063: 0000: \***    Based on similar VALID.DATE functions within FIXTBAGK and PSD26
+1064: 0000: \***
+1065: 0000: \***...........................................................................
+1066: 0000: 
+1067: 0000: FUNCTION VALID.YYMMDD (YYMMDD$) PUBLIC ! Entire function new for Rv 1.1      RC
+1068: 0029: 
+1069: 0029:     INTEGER*1 VALID.YYMMDD ! Function return code
+1070: 0029: 
+1071: 0029:     STRING    YYMMDD$
+1072: 0029:     STRING    WORK$
+1073: 0029: 
+1074: 0029:     INTEGER*2 YY%
+1075: 0029:     INTEGER*2 MM%
+1076: 0029:     INTEGER*2 DD%
+1077: 0029:     INTEGER*2 DD.MAX%
+1078: 0029:     
+1079: 0029:     
+1080: 0029:     VALID.YYMMDD = 0 ! FALSE -  Default for EXIT FUNCTION
+1081: 0035: 
+1082: 0035:     IF LEN(YYMMDD$) = 3 THEN YYMMDD$ = UNPACK$(YYMMDD$)
+1083: 0063:     
+1084: 0063:     IF LEN(YYMMDD$) <> 6 THEN EXIT FUNCTION ! Not YYMMDD format
+1085: 007f: 
+1086: 007f:     WORK$ = TRANSLATE$(YYMMDD$, "0123456789#", "########## ")
+1087: 00a3: 
+1088: 00a3:     IF WORK$ <> "######" THEN EXIT FUNCTION ! Contains non-numeric characters
+1089: 00c1:     
+1090: 00c1:     YY% = VAL(MID$(YYMMDD$, 1, 2))
+1091: 00e5:     MM% = VAL(MID$(YYMMDD$, 3, 2))
+1092: 0109:     DD% = VAL(MID$(YYMMDD$, 5, 2))
+1093: 012d: 
+1094: 012d: !   IF YY% < ? OR YY% > ?  THEN EXIT FUNCTION ! Invalid year not checked for
+1095: 012d:     
+1096: 012d:     IF MM% < 1 OR MM% > 12 THEN EXIT FUNCTION ! Month not 1-12
+1097: 0151: 
+1098: 0151:     IF DD% < 1 THEN EXIT FUNCTION ! Less than one day in month         ! 1.2 RC
+1099: 0163:     
+1100: 0163:     DD.MAX% = 31 ! Default for Jan Mar May Jul Aug Oct Dec
+1101: 0171:     
+1102: 0171:     IF MM% = 4 OR MM% = 6 OR MM% = 9 OR MM% = 11 THEN \
+1103: 01a8:         DD.MAX% = 30 ! Apr Jun Sep Nov
+1104: 01b6:     
+1105: 01b6:     IF MM% = 2 THEN BEGIN ! Feb (may be leap year)
+1106: 01c5:         IF MOD(YY%, 4) = 0 THEN DD.MAX% = 29 ELSE DD.MAX% = 28 ! Feb
+1107: 01f6:     ENDIF
+1108: 01fe: 
+1109: 01fe:     IF DD% > DD.MAX% THEN EXIT FUNCTION ! More than days in month
+1110: 0211: 
+1111: 0211:     VALID.YYMMDD = -1 ! TRUE
+1112: 021d:     
+1113: 021d: END FUNCTION
+1114: 0239: 
+1115: 0239: 
+1116: 0239: \******************************************************************************
+1117: 0239: \***
+1118: 0239: \***    DDMCYY.HEX.FROM.DDMMCCYY$ (DDMMCCYY$)
+1119: 0239: \***    Converts 8 byte date DDMMCCYY$ into 3 byte UPD-hex DDMCYY format.
+1120: 0239: \***
+1121: 0239: \***...........................................................................
+1122: 0239: 
+1123: 0239: FUNCTION DDMCYY.HEX.FROM.DDMMCCYY$ (DDMMCCYY$) PUBLIC ! Entire function  1.3 RC
+1124: 0262:                                                       ! new for Rv 1.3   1.3 RC
+1125: 0262:     
+1126: 0262:     STRING DDMCYY.HEX.FROM.DDMMCCYY$ ! Function output (3 butes)
+1127: 0262:     STRING DDMMCCYY$                 ! Function input (8 bytes)
+1128: 0262: 
+1129: 0262:     IF DDMMCCYY$ = "00000000" THEN BEGIN
+1130: 027b:         DDMCYY.HEX.FROM.DDMMCCYY$ = PACK$("000000")
+1131: 0296:         EXIT FUNCTION
+1132: 02a1:     ENDIF
+1133: 02a9:     
+1134: 02a9:     DDMCYY.HEX.FROM.DDMMCCYY$ = \
+1135: 039a:           PACK$(MID$(DDMMCCYY$,1,2))        + \ ! DD
+1136: 039a:       CHR$( VAL(MID$(DDMMCCYY$,3,2)) *16    + \ ! M from MM
+1137: 039a:             VAL(MID$(DDMMCCYY$,5,2)) -19  ) + \ ! C from CC
+1138: 039a:           PACK$(MID$(DDMMCCYY$,7,2))            ! YY
+1139: 039a: 
+1140: 039a: END FUNCTION
+1141: 03b8: 
+1142: 03b8: 
+1143: 03b8: \******************************************************************************
+1144: 03b8: \***
+1145: 03b8: \***    DDMMCCYY.FROM.DDMCYY.HEX$ (DDMCYY.HEX$)
+1146: 03b8: \***    Converts 3 byte UPD-hex date DDMCYY.HEX$ into 8 byte DDMMCCYY format.
+1147: 03b8: \***
+1148: 03b8: \***...........................................................................
+1149: 03b8: 
+1150: 03b8: FUNCTION DDMMCCYY.FROM.DDMCYY.HEX$ (DDMCYY.HEX$) ! Entire function     ! 1.3 RC
+1151: 03e1:                                                  ! new from Rv 1.3     ! 1.3 RC
+1152: 03e1:     
+1153: 03e1:     STRING DDMMCCYY.FROM.DDMCYY.HEX$ ! Function output
+1154: 03e1:     STRING DDMCYY.HEX$               ! Function input
+1155: 03e1:     
+1156: 03e1:     DDMMCCYY.FROM.DDMCYY.HEX$ = \
+1157: 04cc:                     UNPACK$(MID$(DDMCYY.HEX$,1,1))               + \ ! DD
+1158: 04cc:       RIGHT$("0" + STR$(ASC(MID$(DDMCYY.HEX$,2,1) ) / 16),2)     + \ ! MM from M
+1159: 04cc:                   STR$((ASC(MID$(DDMCYY.HEX$,2,1)) AND 0Fh) +19) + \ ! CC from C
+1160: 04cc:                     UNPACK$(MID$(DDMCYY.HEX$,3,1))                   ! YY
+1161: 04cc: 
+1162: 04cc: END FUNCTION
+1163: 04ea: 
+1164: 04ea: 
+1165: 04ea: \******************************************************************************
+1166: 04ea: \***
+1167: 04ea: \***    YYMMDD.FROM.DDMCYY.HEX$ (DDMCYY.HEX$)
+1168: 04ea: \***    Converts 3 byte UPD-hex date DDMCYY.HEX$ into 6 byte YYMMDD format.
+1169: 04ea: \***
+1170: 04ea: \***...........................................................................
+1171: 04ea: 
+1172: 04ea: FUNCTION YYMMDD.FROM.DDMCYY.HEX$ (DDMCYY.HEX$) PUBLIC ! Entire function  1.3 RC
+1173: 0513:                                                       ! new for Rv 1.3   1.3 RC
+1174: 0513:     
+1175: 0513:     STRING YYMMDD.FROM.DDMCYY.HEX$ ! Function output
+1176: 0513:     STRING DDMCYY.HEX$             ! Function input
+1177: 0513:     STRING DDMMCCYY$               ! Work
+1178: 0513:     
+1179: 0513:     DDMMCCYY$ = DDMMCCYY.FROM.DDMCYY.HEX$ (DDMCYY.HEX$)
+1180: 052e:     
+1181: 052e:     YYMMDD.FROM.DDMCYY.HEX$ = \
+1182: 058c:       MID$(DDMMCCYY$,7,2) + \ ! YY
+1183: 058c:       MID$(DDMMCCYY$,3,2) + \ ! MM
+1184: 058c:       MID$(DDMMCCYY$,1,2)     ! DD
+1185: 058c: 
+1186: 058c: END FUNCTION
+1187: 05aa: 
+1188: 05aa: 
+1189: 05aa: \******************************************************************************
+1190: 05aa: \***
+1191: 05aa: \***    VALID.DDMCYY (DDMCYY$)
+1192: 05aa: \***    This function should only be updated in line with PSB9900 function 
+1193: 05aa: \***    VALID.BIRTH.DATE upon which it is based.
+1194: 05aa: \***
+1195: 05aa: \***    Checks whether input date is a valid DDMCYY format.
+1196: 05aa: \***
+1197: 05aa: \***...........................................................................
+1198: 05aa: 
+1199: 05aa: FUNCTION VALID.DDMCYY (DDMCYY$) PUBLIC ! Entire function new for Rv 1.3 RC
+1200: 05d3: 
+1201: 05d3:     INTEGER*1 VALID.DDMCYY
+1202: 05d3:     
+1203: 05d3:     STRING    DDMCYY$ ! Function input
+1204: 05d3:     STRING    DDMMCCYY$
+1205: 05d3:     STRING    WORK$
+1206: 05d3:     STRING    YYMMDD$
+1207: 05d3:     INTEGER*4 CCYYMMDD%
+1208: 05d3: 
+1209: 05d3: 
+1210: 05d3:     VALID.DDMCYY = 0 ! FALSE
+1211: 05df: 
+1212: 05df:     DDMMCCYY$ = DDMMCCYY.FROM.DDMCYY.HEX$ (DDMCYY$)
+1213: 05fa: 
+1214: 05fa: !   Confirm converted date is eight bytes numeric data
+1215: 05fa:     
+1216: 05fa:     WORK$ = TRANSLATE$(DDMMCCYY$, "0123456789#", "########## ")
+1217: 0620:     
+1218: 0620:     IF WORK$ <> "########" THEN EXIT FUNCTION
+1219: 063e: 
+1220: 063e: !   Confirm DDMMCCYY$ has a sensible CC component
+1221: 063e: 
+1222: 063e:     IF   VAL( MID$(DDMMCCYY$,5,2) ) < 19 \
+1223: 06e7:       OR VAL( MID$(DDMMCCYY$,5,2) ) > 20 THEN EXIT FUNCTION
+1224: 06f2: 
+1225: 06f2: !   Confirm DDMMCCYY$ has a valid YYMMDD combination
+1226: 06f2:     
+1227: 06f2:     YYMMDD$ = MID$(DDMMCCYY$,7,2) + \
+1228: 074f:               MID$(DDMMCCYY$,3,2) + \
+1229: 074f:               MID$(DDMMCCYY$,1,2)
+1230: 074f: 
+1231: 074f:     IF NOT VALID.YYMMDD (YYMMDD$) THEN EXIT FUNCTION
+1232: 076d: 
+1233: 076d: !   Reject birth date when age is before 14th birthday
+1234: 076d: 
+1235: 076d:     CCYYMMDD% = VAL( MID$(DDMMCCYY$,5,2) + YYMMDD$ ) \
+1236: 07e3:                   + 140000 ! Adds 14 years to birth date
+1237: 07e3:     
+1238: 07e3:     IF CCYYMMDD% > VAL("20" + DATE$) THEN EXIT FUNCTION
+1239: 0839: 
+1240: 0839: !   Reject birth date when age is on or after 100th birthday
+1241: 0839:     
+1242: 0839:     CCYYMMDD% = VAL( MID$(DDMMCCYY$,5,2) + YYMMDD$ ) \
+1243: 08af:                   + 1000000 ! Adds 100 years to birth date
+1244: 08af:     
+1245: 08af:     IF CCYYMMDD% <= VAL("20" + DATE$) THEN EXIT FUNCTION
+1246: 0904: 
+1247: 0904:     VALID.DDMCYY = -1 ! TRUE
+1248: 0910: 
+1249: 0910: END FUNCTION
+1250: 092c: 
+1251: 092c: 
+1252: 092c: \******************************************************************************
+1253: 092c: \***
+1254: 092c: \***    SET.STAFF.NO.FROM.AF
+1255: 092c: \***    Sets STAFF.NO$ from AF.STAFF.NO$
+1256: 092c: \***
+1257: 092c: \***...........................................................................
+1258: 092c: 
+1259: 092c: FUNCTION SET.STAFF.NO.FROM.AF ! Entire function new for Rv 1.1       ! 1.1 RC
+1260: 0950:     
+1261: 0950:     STRING    WORK$
+1262: 0950:     
+1263: 0950:     STAFF.NO$ = "00000000" ! Default value
+1264: 0967:     
+1265: 0967:     WORK$ = TRANSLATE$(UNPACK$(AF.STAFF.NUM$), "0123456789#", "########## ")
+1266: 09a0: 
+1267: 09a0:     IF WORK$ <> "########" THEN EXIT FUNCTION ! Contains non-numeric characters
+1268: 09bd: 
+1269: 09bd:     STAFF.NO$ = UNPACK$(AF.STAFF.NUM$)
+1270: 09e0: 
+1271: 09e0: END FUNCTION
+1272: 09f4: 
+1273: 09f4: 
+1274: 09f4: \******************************************************************************
+1275: 09f4: \***
+1276: 09f4: \***    SET.BIRTH.DATE.FROM.AF
+1277: 09f4: \***    Sets BIRTH.DATE$ (including century) from AF.BIRTH.DATE$
+1278: 09f4: \***
+1279: 09f4: \***...........................................................................
+1280: 09f4: 
+1281: 09f4: FUNCTION SET.BIRTH.DATE.FROM.AF ! Entire function new for Rv 1.1       ! 1.1 RC
+1282: 0a18: 
+1283: 0a18:     BIRTH.DATE$ = "00000000" ! Default CCYYMMDD value
+1284: 0a2f: 
+1285: 0a2f:     IF NOT VALID.DDMCYY (AF.BIRTH.DATE$) THEN BEGIN \                  ! 1.3 RC
+1286: 0a4d:         AF.BIRTH.DATE$ = PACK$("000000") ! Set invalid AF.BIRTH.DATE$  ! 1.3 RC
+1287: 0a69:         EXIT FUNCTION                    ! to null in case written     ! 1.3 RC
+1288: 0a73:     ENDIF                                ! back to file                ! 1.3 RC
+1289: 0a7b:     
+1290: 0a7b:     BIRTH.DATE$ = DDMMCCYY.FROM.DDMCYY.HEX$ (AF.BIRTH.DATE$)           ! 1.3 RC
+1291: 0a9d:    
+1292: 0a9d: END FUNCTION
+1293: 0ab1: 
+1294: 0ab1: 
+1295: 0ab1: 
+1296: 0ab1: \******************************************************************************
+1297: 0ab1: \***
+1298: 0ab1: \***    INTERNAL SUBPROGRAMS - LOW LEVEL
+1299: 0ab1: \***    PSB9900 subroutines transferred to PSB9902
+1300: 0ab1: \***
+1301: 0ab1: \***...........................................................................
+1302: 0ab1: 
+1303: 0ab1: 
+1304: 0ab1: \******************************************************************************
+1305: 0ab1: \***                                                                          *
+1306: 0ab1: \***    SUBROUTINE      :       SB.FILE.UTILS                                 *
+1307: 0ab1: \***                                                                          *
+1308: 0ab1: \******************************************************************************
+1309: 0ab1: \***                                                                          *
+1310: 0ab1: \***      Allocate/report/de-allocate a file session number                   *
+1311: 0ab1: \***                                                                          *
+1312: 0ab1: \******************************************************************************
+1313: 0ab1: \***                                                                          *
+1314: 0ab1: \***      Parameters : 2 or 3 (depending on action)                           *
+1315: 0ab1: \***                                                                          *
+1316: 0ab1: \***         SB.ACTION$  = "O" for allocate file session number               *
+1317: 0ab1: \***                       "R" for report file session number                 *
+1318: 0ab1: \***                       "C" for de-allocate file session number            *
+1319: 0ab1: \***                                                                          *
+1320: 0ab1: \***         SB.INTEGER% = file reporting number for action "O" or            *
+1321: 0ab1: \***                       file session number for actions "R" or "C"         *
+1322: 0ab1: \***                                                                          *
+1323: 0ab1: \***         SB.STRING$  = logical file name for action "O" or                *
+1324: 0ab1: \***                       null ("") for action "R" and "C"                   *
+1325: 0ab1: \***                                                                          *
+1326: 0ab1: \***      Output : 1 or 2 (depending on action)                               *
+1327: 0ab1: \***                                                                          *
+1328: 0ab1: \***         SB.FILE.NAME$     = logical file name for action "R"             *
+1329: 0ab1: \***                                                                          *
+1330: 0ab1: \***         SB.FILE.SESS.NUM% = file session number for action "O" or        *
+1331: 0ab1: \***                             undefined for action "C"                     *
+1332: 0ab1: \***         OR                                                               *
+1333: 0ab1: \***         SB.FILE.REP.NUM%  = file reporting number for action "R" or      *
+1334: 0ab1: \***                             undefined for action "C"                     *
+1335: 0ab1: \***                                                                          *
+1336: 0ab1: \******************************************************************************
+1337: 0ab1: 
+1338: 0ab1: SUB     SB.FILE.UTILS PUBLIC                                           ! 1.0 RC
+1339: 0ad5: 
+1340: 0ad5:         CALL SESS.NUM.UTILITY(SB.ACTION$,                              \
+1341: 0b02:                               SB.INTEGER%,                             \
+1342: 0b02:                               SB.STRING$)
+1343: 0b02: 
+1344: 0b02:         IF SB.ACTION$ = "O" THEN                                       \
+1345: 0b20:         BEGIN
+1346: 0b20:            SB.FILE.SESS.NUM% = F20.INTEGER.FILE.NO%
+1347: 0b38:         ENDIF                                                          \
+1348: 0b38:         ELSE                                                           \
+1349: 0b40:         IF SB.ACTION$ = "R" THEN                                       \
+1350: 0b5e:         BEGIN
+1351: 0b5e:            SB.FILE.REP.NUM% = F20.INTEGER.FILE.NO%
+1352: 0b74:            SB.FILE.NAME$ = F20.FILE.NAME$
+1353: 0b92:         ENDIF
+1354: 0b9a: 
+1355: 0b9a: END SUB                                                                ! 1.0 RC
+1356: 0bae: 
+1357: 0bae: 
+1358: 0bae: \******************************************************************************
+1359: 0bae: \***                                                                          *
+1360: 0bae: \***    ERROR ROUTINE   :       FILE.ERROR                                    *
+1361: 0bae: \***                                                                          *
+1362: 0bae: \******************************************************************************
+1363: 0bae: 
+1364: 0bae: SUB     FILE.ERROR ! Not PUBLIC as PSB9900 and PSB9902 each contain    ! 1.0 RC
+1365: 0bd2:                    ! their own FILE.ERROR routine
+1366: 0bd2: 
+1367: 0bd2:         EVENT.NO% = 106
+1368: 0be2: 
+1369: 0be2:         FILE.NO$ = CHR$(SHIFT(CURRENT.REPORT.NUM%,8)) +                \
+1370: 0c35:                    CHR$(SHIFT(CURRENT.REPORT.NUM%,0))
+1371: 0c35: 
+1372: 0c35:         IF FILE.OPERATION$ = "O" THEN                                  \
+1373: 0c53:         BEGIN
+1374: 0c53:            MESSAGE.NO%   = 501
+1375: 0c64:            VAR.STRING.2$ = RIGHT$("000" +                              \
+1376: 0cb1:                            STR$(CURRENT.REPORT.NUM%),3)
+1377: 0cb1:         ENDIF                                                          \
+1378: 0cb1:         ELSE                                                           \
+1379: 0cb9:         IF FILE.OPERATION$ = "R" THEN                                  \
+1380: 0cd7:         BEGIN
+1381: 0cd7:            MESSAGE.NO% = 508
+1382: 0ce8:            VAR.STRING.2$ = RIGHT$("000" +                              \
+1383: 0d4e:                            STR$(CURRENT.REPORT.NUM%),3) +              \
+1384: 0d4e:                            CURRENT.CODE$
+1385: 0d4e:         ENDIF                                                          \
+1386: 0d4e:         ELSE                                                           \
+1387: 0d56:         IF FILE.OPERATION$ = "W" THEN                                  \
+1388: 0d74:         BEGIN
+1389: 0d74:            MESSAGE.NO% = 509
+1390: 0d85:            VAR.STRING.2$ = RIGHT$("000" +                              \
+1391: 0dcf:                            STR$(CURRENT.REPORT.NUM%),3)
+1392: 0dcf:         ENDIF
+1393: 0dd7: 
+1394: 0dd7:         VAR.STRING.1$ = FILE.OPERATION$ +                              \
+1395: 0e13:                         FILE.NO$ +                                     \
+1396: 0e13:                         PACK$(STRING$(12,"0"))
+1397: 0e13: 
+1398: 0e13:         CALL APPLICATION.LOG(MESSAGE.NO%,                              \
+1399: 0e49:                              VAR.STRING.1$,                            \
+1400: 0e49:                              VAR.STRING.2$,                            \
+1401: 0e49:                              EVENT.NO%)
+1402: 0e49: 
+1403: 0e49: END SUB                                                                ! 1.0 RC
+1404: 0e5d: 
+1405: 0e5d: 
+1406: 0e5d: 
+1407: 0e5d: 
+1408: 0e5d: \******************************************************************************
+1409: 0e5d: \***
+1410: 0e5d: \***    INTERNAL SUBPROGRAMS - DISPLAY MANAGER ETC
+1411: 0e5d: \***    PSB9900 subroutines transferred to PSB9902
+1412: 0e5d: \***
+1413: 0e5d: \***...........................................................................
+1414: 0e5d: 
+1415: 0e5d: 
+1416: 0e5d: \******************************************************************************
+1417: 0e5d: \***                                                                          *
+1418: 0e5d: \***    SUBROUTINE      :       GET.INPUT                                     *
+1419: 0e5d: \***                                                                          *
+1420: 0e5d: \******************************************************************************
+1421: 0e5d: \***                                                                          *
+1422: 0e5d: \***    Get input from the keyboard                                           *
+1423: 0e5d: \***                                                                          *
+1424: 0e5d: \******************************************************************************
+1425: 0e5d: 
+1426: 0e5d: SUB     GET.INPUT PUBLIC                                               ! 1.0 RC
+1427: 0e81: 
+1428: 0e81:         STRING.DATA$ = "3113333333311333"
+1429: 0e98:         CALL SETF(STRING.DATA$)
+1430: 0eb3: 
+1431: 0eb3:         STRING.DATA$ = ""
+1432: 0eca:         INTEGER.DATA% = 0
+1433: 0edb: 
+1434: 0edb:         CALL DM.UPDF(STRING.DATA$,                                     \
+1435: 0efd:                      INTEGER.DATA%)
+1436: 0efd: 
+1437: 0efd:         STRING.DATA$ = "3303333333303333"
+1438: 0f14:         CALL SETF(STRING.DATA$)
+1439: 0f2f: 
+1440: 0f2f:         FUNCTION.KEY% = F03.RETURNED.INTEGER%
+1441: 0f45: 
+1442: 0f45: END SUB                                                                ! 1.0 RC
+1443: 0f59: 
+1444: 0f59: 
+1445: 0f59: \******************************************************************************
+1446: 0f59: \***                                                                          *
+1447: 0f59: \***    SUBROUTINE      :       PUT.CURSOR.IN.FIELD                           *
+1448: 0f59: \***                                                                          *
+1449: 0f59: \******************************************************************************
+1450: 0f59: \***                                                                          *
+1451: 0f59: \***    Position cursor in selected input field                               *
+1452: 0f59: \***                                                                          *
+1453: 0f59: \******************************************************************************
+1454: 0f59: 
+1455: 0f59: SUB     PUT.CURSOR.IN.FIELD PUBLIC                                     ! 1.0 RC
+1456: 0f7d: 
+1457: 0f7d:         STRING.DATA$ = ""
+1458: 0f94: 
+1459: 0f94:         INTEGER.DATA% = CURSOR.POSITION%
+1460: 0faa: 
+1461: 0faa:         CALL DM.POSF(STRING.DATA$,                                      \
+1462: 0fcc:                      INTEGER.DATA%)
+1463: 0fcc: 
+1464: 0fcc: END SUB                                                                ! 1.0 RC
+1465: 0fe0: 
+1466: 0fe0: 
+1467: 0fe0: \******************************************************************************
+1468: 0fe0: \***                                                                          *
+1469: 0fe0: \***    SUBROUTINE      :       RESUME.INPUT                                  *
+1470: 0fe0: \***                                                                          *
+1471: 0fe0: \******************************************************************************
+1472: 0fe0: \***                                                                          *
+1473: 0fe0: \***    Get input from the keyboard after an interrupt                        *
+1474: 0fe0: \***                                                                          *
+1475: 0fe0: \******************************************************************************
+1476: 0fe0: 
+1477: 0fe0: SUB     RESUME.INPUT PUBLIC                                            ! 1.0 RC
+1478: 1004: 
+1479: 1004:         STRING.DATA$ = "3113333333311333"
+1480: 101b:         CALL SETF(STRING.DATA$)
+1481: 1036: 
+1482: 1036:         STRING.DATA$ = ""
+1483: 104d:         INTEGER.DATA% = 0
+1484: 105e: 
+1485: 105e:         CALL DM.RESF(STRING.DATA$,                                     \
+1486: 1080:                      INTEGER.DATA%)
+1487: 1080: 
+1488: 1080:         STRING.DATA$ = "3303333333303333"
+1489: 1097:         CALL SETF(STRING.DATA$)
+1490: 10b2: 
+1491: 10b2:         FUNCTION.KEY% = F03.RETURNED.INTEGER%
+1492: 10c8: 
+1493: 10c8: END SUB                                                                ! 1.0 RC
+1494: 10dc: 
+1495: 10dc: 
+1496: 10dc: \******************************************************************************
+1497: 10dc: \***                                                                          *
+1498: 10dc: \***    SUBROUTINE      :       SET.CURSOR.STATE                              *
+1499: 10dc: \***                                                                          *
+1500: 10dc: \******************************************************************************
+1501: 10dc: \***                                                                          *
+1502: 10dc: \***    Shows or hides the cursor                                             *
+1503: 10dc: \***                                                                          *
+1504: 10dc: \******************************************************************************
+1505: 10dc: 
+1506: 10dc: SUB     SET.CURSOR.STATE PUBLIC                                        ! 1.0 RC
+1507: 1100: 
+1508: 1100:         STRING.DATA$  = CURSOR.STATE$
+1509: 111e:         INTEGER.DATA% = 0
+1510: 112f: 
+1511: 112f:         CALL DM.CURS(STRING.DATA$,                                     \
+1512: 1151:                      INTEGER.DATA%)
+1513: 1151: 
+1514: 1151: END SUB                                                                ! 1.0 RC
+1515: 1165: 
+1516: 1165: 
+1517: 1165: \******************************************************************************
+1518: 1165: \***                                                                          *
+1519: 1165: \***    SUBROUTINE      :       SET.FIELD                                     *
+1520: 1165: \***                                                                          *
+1521: 1165: \******************************************************************************
+1522: 1165: \***                                                                          *
+1523: 1165: \***    Set the selected field with the data provided                         *
+1524: 1165: \***                                                                          *
+1525: 1165: \******************************************************************************
+1526: 1165: 
+1527: 1165: SUB     SET.FIELD PUBLIC                                               ! 1.0 RC
+1528: 1189: 
+1529: 1189:         INTEGER.DATA% = 0
+1530: 119a: 
+1531: 119a:         CALL DM.PUTF(STRING.DATA$,                                     \
+1532: 11bc:                      INTEGER.DATA%)
+1533: 11bc: 
+1534: 11bc: END SUB                                                                ! 1.0 RC
+1535: 11d0: 
+1536: 11d0: 
+1537: 11d0: \******************************************************************************
+1538: 11d0: \***                                                                          *
+1539: 11d0: \***    SUBROUTINE      :       SET.FIELD.ATTRIBUTES                          *
+1540: 11d0: \***                                                                          *
+1541: 11d0: \******************************************************************************
+1542: 11d0: \***                                                                          *
+1543: 11d0: \***    Redefine the specified field attributes                               *
+1544: 11d0: \***                                                                          *
+1545: 11d0: \******************************************************************************
+1546: 11d0: 
+1547: 11d0: SUB     SET.FIELD.ATTRIBUTES PUBLIC                                    ! 1.0 RC
+1548: 11f4: 
+1549: 11f4:         INTEGER.DATA% = 0
+1550: 1205: 
+1551: 1205:         CALL DM.SETF(STRING.DATA$,                                     \
+1552: 1227:                      INTEGER.DATA%)
+1553: 1227: 
+1554: 1227: END SUB                                                                ! 1.0 RC
+1555: 123b: 
+1556: 123b: 
+1557: 123b: \******************************************************************************
+1558: 123b: \***                                                                          *
+1559: 123b: \***    SUBROUTINE      :       CLEAR.MESSAGE                                 *
+1560: 123b: \***                                                                          *
+1561: 123b: \******************************************************************************
+1562: 123b: \***                                                                          *
+1563: 123b: \***    Clear the current BEMF error message                                  *
+1564: 123b: \***                                                                          *
+1565: 123b: \******************************************************************************
+1566: 123b: 
+1567: 123b: SUB     CLEAR.MESSAGE PUBLIC                                           ! 1.0 RC
+1568: 125f: 
+1569: 125f:         OLD.POSITION% = CURSOR.POSITION%
+1570: 1275: 
+1571: 1275:         CURSOR.POSITION% = 1
+1572: 1286:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1573: 1292: 
+1574: 1292:         STRING.DATA$ = ""
+1575: 12a9:         CALL SET.FIELD                                                 ! 1.0 RC
+1576: 12b5: 
+1577: 12b5:         CURSOR.POSITION% = OLD.POSITION%
+1578: 12cb: 
+1579: 12cb:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1580: 12d7: 
+1581: 12d7: END SUB                                                                ! 1.0 RC
+1582: 12eb: 
+1583: 12eb: 
+1584: 12eb: \******************************************************************************
+1585: 12eb: \***                                                                          *
+1586: 12eb: \***    SUBROUTINE      :       DISPLAY.MESSAGE                               *
+1587: 12eb: \***                                                                          *
+1588: 12eb: \******************************************************************************
+1589: 12eb: \***                                                                          *
+1590: 12eb: \***    Display a new BEMF error message                                      *
+1591: 12eb: \***                                                                          *
+1592: 12eb: \******************************************************************************
+1593: 12eb: 
+1594: 12eb: SUB     DISPLAY.MESSAGE PUBLIC                                         ! 1.0 RC
+1595: 130f: 
+1596: 130f:         CURSOR.STATE$ = INVISIBLE$
+1597: 132d:         CALL SET.CURSOR.STATE                                          ! 1.0 RC
+1598: 1339: 
+1599: 1339:         STRING.DATA$ = ""
+1600: 1350:         OLD.POSITION% = CURSOR.POSITION%
+1601: 1366:         CURSOR.POSITION% = 1
+1602: 1377: 
+1603: 1377:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1604: 1383: 
+1605: 1383:         STRING.DATA$ = "31"
+1606: 139a:         CALL SET.FIELD.ATTRIBUTES                                      ! 1.0 RC
+1607: 13a6: 
+1608: 13a6:         MESSAGE.NO% = DISPLAY.MESSAGE.NUMBER%
+1609: 13bc:         STRING.DATA$ = DISPLAY.MESSAGE.TEXT$
+1610: 13da:         RETURN.FIELD% = 1
+1611: 13eb: 
+1612: 13eb:         CALL EXTERNAL.MESSAGE(MESSAGE.NO%,                             \
+1613: 1414:                               STRING.DATA$,                            \
+1614: 1414:                               RETURN.FIELD%)
+1615: 1414: 
+1616: 1414:         CURSOR.POSITION% = OLD.POSITION%
+1617: 142a: 
+1618: 142a:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1619: 1436: 
+1620: 1436:         CURSOR.STATE$ = VISIBLE$
+1621: 1454:         CALL SET.CURSOR.STATE                                          ! 1.0 RC
+1622: 1460: 
+1623: 1460: END SUB                                                                ! 1.0 RC
+1624: 1474: 
+1625: 1474: 
+1626: 1474: \******************************************************************************
+1627: 1474: \***                                                                          *
+1628: 1474: \***    SUBROUTINE      :       WAIT.MESSAGE                                  *
+1629: 1474: \***                                                                          *
+1630: 1474: \******************************************************************************
+1631: 1474: \***                                                                          *
+1632: 1474: \***    Display a wait message to the screen                                  *
+1633: 1474: \***                                                                          *
+1634: 1474: \******************************************************************************
+1635: 1474: 
+1636: 1474: SUB     WAIT.MESSAGE PUBLIC                                            ! 1.0 RC
+1637: 1498: 
+1638: 1498:         ! B251 Processing - Please Wait .....
+1639: 1498:         DISPLAY.MESSAGE.NUMBER% = 251
+1640: 14a9:         CALL DISPLAY.MESSAGE                                           ! 1.0 RC
+1641: 14b5: 
+1642: 14b5:         CURSOR.POSITION% = INVISIBLE.FIELD%
+1643: 14cb:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1644: 14d7: 
+1645: 14d7: END SUB                                                                ! 1.0 RC
+1646: 14eb: 
+1647: 14eb: 
+1648: 14eb: \******************************************************************************
+1649: 14eb: \***
+1650: 14eb: \***    INTERNAL SUBPROGRAMS - STANDARD ROITINES ALSO CALLED BY PSB9900
+1651: 14eb: \***    PSB9900 subroutines transferred to PSB9902
+1652: 14eb: \***
+1653: 14eb: \***...........................................................................
+1654: 14eb: 
+1655: 14eb: 
+1656: 14eb: \******************************************************************************
+1657: 14eb: \***                                                                          *
+1658: 14eb: \***    SUBROUTINE      :       CHAIN.TO.CALLER                               *
+1659: 14eb: \***                                                                          *
+1660: 14eb: \******************************************************************************
+1661: 14eb: \***                                                                          *
+1662: 14eb: \***    CHAIN back to the required screen program                             *
+1663: 14eb: \***                                                                          *
+1664: 14eb: \******************************************************************************
+1665: 14eb: 
+1666: 14eb: SUB     CHAIN.TO.CALLER PUBLIC                                         ! 1.0 RC
+1667: 150f: 
+1668: 150f:         CALL WAIT.MESSAGE                                              ! 1.0 RC
+1669: 151b: 
+1670: 151b:         PSBCHN.PRG = "C:\ADX_UPGM\" + CHAIN.TO.PROG$ + ".286"
+1671: 1544:         PSBCHN.APP = "C:\ADX_UPGM\PSB99.286"
+1672: 155b: 
+1673: 155b:         %INCLUDE PSBCHNE.J86
+1674: 155b: \/*********************************************************************/ PSBCHNE
+1675: 155b: \/*                                                                   */ PSBCHNE
+1676: 155b: \/*      PSBCHNE.J86  -  Chain to PSB Application Program             */ PSBCHNE
+1677: 155b: \/*      ------------------------------------------------             */ PSBCHNE
+1678: 155b: \/*                                                                   */ PSBCHNE
+1679: 155b: \/*********************************************************************/ PSBCHNE
+1680: 155b:                                                                        ! PSBCHNE
+1681: 155b:         CHAIN  PSBCHN.PRG , PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON ,   \ PSBCHNE
+1682: 15db:                             PSBCHN.U1 , PSBCHN.U2  , PSBCHN.U3         ! PSBCHNE
+1683: 15db:                                                                        ! PSBCHNE
+1684: 15db: 
+1685: 15db:         STOP
+1686: 15e8: 
+1687: 15e8: END SUB                                                                ! 1.0 RC
+1688: 15fc: 
+1689: 15fc: 
+1690: 15fc: \******************************************************************************
+1691: 15fc: \***                                                                          *
+1692: 15fc: \***    SUBROUTINE      :       CLEAR.MODEL.FLAGS                             *
+1693: 15fc: \***                                                                          *
+1694: 15fc: \******************************************************************************
+1695: 15fc: \***                                                                          *
+1696: 15fc: \***    Clear till and controller model fields                                *
+1697: 15fc: \***                                                                          *
+1698: 15fc: \******************************************************************************
+1699: 15fc: 
+1700: 15fc: SUB     CLEAR.MODEL.FLAGS PUBLIC                                       ! 1.0 RC
+1701: 1620: 
+1702: 1620:         FOR I% = 1 TO MAX.TILL.PTR%
+1703: 1634: 
+1704: 1634:             IF TILL.MODEL.FLAG$(I%) <> MODEL.FLAG$ THEN                \
+1705: 166a:             BEGIN
+1706: 166a:                CURSOR.POSITION% = S2.TILL.MODEL.FLAG%(I%)
+1707: 1691:                CALL PUT.CURSOR.IN.FIELD                                ! 1.0 RC
+1708: 169d: 
+1709: 169d:                STRING.DATA$ = MODEL.FLAG$
+1710: 16bb:                CALL SET.FIELD                                          ! 1.0 RC
+1711: 16c7:             ENDIF
+1712: 16cf: 
+1713: 16cf:         NEXT I%
+1714: 16f9: 
+1715: 16f9:         FOR I% = 1 TO MAX.CTLR.PTR%
+1716: 170d: 
+1717: 170d:             IF CTLR.MODEL.FLAG$(I%) <> MODEL.FLAG$ THEN                \
+1718: 1743:             BEGIN
+1719: 1743:                CURSOR.POSITION% = S2.CTLR.MODEL.FLAG%(I%)
+1720: 176a:                CALL PUT.CURSOR.IN.FIELD                                ! 1.0 RC
+1721: 1776: 
+1722: 1776:                STRING.DATA$ = MODEL.FLAG$
+1723: 1794:                CALL SET.FIELD                                          ! 1.0 RC
+1724: 17a0:             ENDIF
+1725: 17a8: 
+1726: 17a8:         NEXT I%
+1727: 17d2: 
+1728: 17d2: END SUB                                                                ! 1.0 RC
+1729: 17e6: 
+1730: 17e6: 
+1731: 17e6: \******************************************************************************
+1732: 17e6: \***                                                                          *
+1733: 17e6: \***    SUBROUTINE      :       DISPLAY.FORMATTED.DATE                        *
+1734: 17e6: \***                                                                          *
+1735: 17e6: \******************************************************************************
+1736: 17e6: \***                                                                          *
+1737: 17e6: \***    Display the date on the screen                                        *
+1738: 17e6: \***                                                                          *
+1739: 17e6: \******************************************************************************
+1740: 17e6: 
+1741: 17e6: SUB     DISPLAY.FORMATTED.DATE PUBLIC                                  ! 1.0 RC
+1742: 180a: 
+1743: 180a:         CURSOR.POSITION% = S1.DATE%
+1744: 1820:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1745: 182c: 
+1746: 182c:         STRING.DATA$ = DISPLAY.DATE$
+1747: 184a:         CALL SET.FIELD                                                 ! 1.0 RC
+1748: 1856: 
+1749: 1856: END SUB                                                                ! 1.0 RC
+1750: 186a: 
+1751: 186a: 
+1752: 186a: \******************************************************************************
+1753: 186a: \***                                                                          *
+1754: 186a: \***    SUBROUTINE      :       GET.CSOUF.RECORD                              *
+1755: 186a: \***                                                                          *
+1756: 186a: \******************************************************************************
+1757: 186a: \***                                                                          *
+1758: 186a: \***    Find the a record on the ADXCSOUF file                                *
+1759: 186a: \***                                                                          *
+1760: 186a: \******************************************************************************
+1761: 186a: 
+1762: 186a: SUB     GET.CSOUF.RECORD PUBLIC                                        ! 1.0 RC
+1763: 188e: 
+1764: 188e:         CSOUF.REC.NUM% = 0
+1765: 18a5: 
+1766: 18a5:         CSOUF.RECORD.FOUND = FALSE
+1767: 18bb: 
+1768: 18bb:         WHILE NOT CSOUF.RECORD.FOUND
+1769: 18c6: 
+1770: 18c6:               CSOUF.REC.NUM% = CSOUF.REC.NUM% + 1
+1771: 18df: 
+1772: 18df:               IF READ.CSOUF.RECORD = 0 THEN                            \
+1773: 18f3:               BEGIN
+1774: 18f3:                  IF CSOUF.OP.ID$ = LEFT$(CSOUF.RECORD$,8) OR           \
+1775: 1995:                     (LEFT$(CSOUF.RECORD$,1) = CHR$(0) AND              \
+1776: 1995:                     CSOUF.OPERATION$ = "ADD") THEN                     \
+1777: 1995:                  BEGIN
+1778: 1995:                     CSOUF.RECORD.FOUND = TRUE
+1779: 19ab:                  ENDIF
+1780: 19b5:               ENDIF                                                    \
+1781: 19b5:               ELSE                                                     \
+1782: 19bd:               BEGIN
+1783: 19bd:                  CSOUF.RECORD.FOUND = TRUE
+1784: 19d3:               ENDIF
+1785: 19db: 
+1786: 19db:         WEND
+1787: 19f0: 
+1788: 19f0: END SUB                                                                ! 1.0 RC
+1789: 1a04: 
+1790: 1a04: 
+1791: 1a04: \******************************************************************************
+1792: 1a04: \***                                                                          *
+1793: 1a04: \***    SUBROUTINE      :       GET.OPERATOR.DETAILS                          *
+1794: 1a04: \***                                                                          *
+1795: 1a04: \******************************************************************************
+1796: 1a04: \***                                                                          *
+1797: 1a04: \***    Get operator details from the EALAUTH file                            *
+1798: 1a04: \***                                                                          *
+1799: 1a04: \******************************************************************************
+1800: 1a04: 
+1801: 1a04: SUB     GET.OPERATOR.DETAILS PUBLIC                                    ! 1.0 RC
+1802: 1a28: 
+1803: 1a28:         OPERATOR.NAME$     = UCASE$(AF.OPERATOR.NAME$)
+1804: 1a4b: 
+1805: 1a4b:         IF AF.PASSWORD$ = STRING$(4,CHR$(255)) THEN                    \
+1806: 1a77:         BEGIN
+1807: 1a77:            AF.PASSWORD$ = PACK$("00000905")
+1808: 1a93:         ENDIF
+1809: 1a9b: 
+1810: 1a9b:         CALL SET.STAFF.NO.FROM.AF  ! Sets STAFF.NO$ from               ! 1.1 RC
+1811: 1ab5:                                    ! Authorisation File                ! 1.1 RC
+1812: 1ab5:         
+1813: 1ab5:         RECEIPT.NAME$ = AF.RECEIPT.NAME$                               !
+1814: 1ad3: 
+1815: 1ad3:         IF AF.EMPLOYEE.FLAG$ = PACK$("00") THEN BEGIN
+1816: 1af9:            EMPLOYEE.FLG$ = "Y"
+1817: 1b12:         ENDIF ELSE BEGIN
+1818: 1b1a:            EMPLOYEE.FLG$ = "N"
+1819: 1b31:         ENDIF
+1820: 1b39: 
+1821: 1b39:         CALL SET.BIRTH.DATE.FROM.AF ! Sets BIRTH.DATE$ (CCYYMMDD form) ! 1.1 RC
+1822: 1b53:                                     ! from Authorisation File          ! 1.1 RC
+1823: 1b53:         
+1824: 1b53:         GROUP.CODE$ = UNPACK$(AF.GROUP.CODE$)                          !
+1825: 1b76: 
+1826: 1b76:         OPERATOR.PASSWORD$ = STR$(VAL(UNPACK$(AF.PASSWORD$)))
+1827: 1bb3: 
+1828: 1bb3:         FOR I% = 1 TO MAX.TILL.PTR%
+1829: 1bc7: 
+1830: 1bc7:             TILL.INDEX% = VAL(UNPACK$(MID$(                            \
+1831: 1c0a:                           TILL.MODEL.RECORD$(I%),2,1)))
+1832: 1c0a: 
+1833: 1c0a:             BIT.MASK% = 2 ^ (TILL.INDEX% - 1)
+1834: 1c35: 
+1835: 1c35:             IF (AF.MODEL.FLAGS.1% AND BIT.MASK%) > 0 THEN              \
+1836: 1c6f:             BEGIN
+1837: 1c6f:                TILL.MODEL.FLAG$(I%) = "Y"
+1838: 1c99:             ENDIF                                                      \
+1839: 1c99:             ELSE                                                       \
+1840: 1ca1:             BEGIN
+1841: 1ca1:                TILL.MODEL.FLAG$(I%) = "N"
+1842: 1cc9:             ENDIF
+1843: 1cd1: 
+1844: 1cd1:         NEXT I%
+1845: 1cfb: 
+1846: 1cfb:         FOR I% = 1 TO MAX.CTLR.PTR%
+1847: 1d0f: 
+1848: 1d0f:             CTLR.INDEX% = VAL(UNPACK$(MID$(                            \
+1849: 1d52:                           CTLR.MODEL.RECORD$(I%),2,1)))
+1850: 1d52: 
+1851: 1d52:             BIT.MASK% = 2 ^ (CTLR.INDEX% - 1)
+1852: 1d7d: 
+1853: 1d7d:             IF (AF.MODEL.FLAGS.2% AND BIT.MASK%) > 0 THEN              \
+1854: 1db7:             BEGIN
+1855: 1db7:                CTLR.MODEL.FLAG$(I%) = "Y"
+1856: 1de1:             ENDIF                                                      \
+1857: 1de1:             ELSE                                                       \
+1858: 1de9:             BEGIN
+1859: 1de9:                CTLR.MODEL.FLAG$(I%) = "N"
+1860: 1e11:             ENDIF
+1861: 1e19: 
+1862: 1e19:         NEXT I%
+1863: 1e43: 
+1864: 1e43: END SUB                                                                ! 1.0 RC
+1865: 1e57: 
+1866: 1e57: 
+1867: 1e57: \******************************************************************************
+1868: 1e57: \***                                                                          *
+1869: 1e57: \***    SUBROUTINE      :       HIDE.CONFIRM.MESSAGE                          *
+1870: 1e57: \***                                                                          *
+1871: 1e57: \******************************************************************************
+1872: 1e57: \***                                                                          *
+1873: 1e57: \***    Reveal the confirmational message                                     *
+1874: 1e57: \***                                                                          *
+1875: 1e57: \******************************************************************************
+1876: 1e57: 
+1877: 1e57: SUB     HIDE.CONFIRM.MESSAGE PUBLIC                                    ! 1.0 RC
+1878: 1e7b: 
+1879: 1e7b:         CURSOR.POSITION% = S2.CONFIRM.TEXT%
+1880: 1e91:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1881: 1e9d: 
+1882: 1e9d:         STRING.DATA$ = INVISIBLE$
+1883: 1ebb:         CALL SET.FIELD.ATTRIBUTES                                      ! 1.0 RC
+1884: 1ec7: 
+1885: 1ec7:         CURSOR.POSITION% = S2.CONFIRM%
+1886: 1edd:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+1887: 1ee9: 
+1888: 1ee9:         STRING.DATA$ = INVISIBLE$
+1889: 1f07:         CALL SET.FIELD.ATTRIBUTES                                      ! 1.0 RC
+1890: 1f13: 
+1891: 1f13: END SUB                                                                ! 1.0 RC
+1892: 1f27: 
+1893: 1f27: 
+1894: 1f27: \******************************************************************************
+1895: 1f27: \***                                                                          *
+1896: 1f27: \***    SUBROUTINE      :       RESTORE.MODEL.FLAGS                           *
+1897: 1f27: \***                                                                          *
+1898: 1f27: \******************************************************************************
+1899: 1f27: \***                                                                          *
+1900: 1f27: \***    Redisplay till and controller model fields                            *
+1901: 1f27: \***                                                                          *
+1902: 1f27: \******************************************************************************
+1903: 1f27: 
+1904: 1f27: SUB     RESTORE.MODEL.FLAGS PUBLIC                                     ! 1.0 RC
+1905: 1f4b: 
+1906: 1f4b:         FOR I% = 1 TO MAX.TILL.PTR%
+1907: 1f5f: 
+1908: 1f5f:             CURSOR.POSITION% = S2.TILL.MODEL.TEXT%(I%)
+1909: 1f86:             CALL PUT.CURSOR.IN.FIELD                                   ! 1.0 RC
+1910: 1f92: 
+1911: 1f92:             STRING.DATA$ = TILL.MODEL.NAME$(I%)
+1912: 1fc1:             CALL SET.FIELD                                             ! 1.0 RC
+1913: 1fcd: 
+1914: 1fcd:             CURSOR.POSITION% = S2.TILL.MODEL.FLAG%(I%)
+1915: 1ff4:             CALL PUT.CURSOR.IN.FIELD                                   ! 1.0 RC
+1916: 2000: 
+1917: 2000:             STRING.DATA$ = TILL.MODEL.FLAG$(I%)
+1918: 202f:             CALL SET.FIELD                                             ! 1.0 RC
+1919: 203b: 
+1920: 203b:         NEXT I%
+1921: 2065: 
+1922: 2065:         FOR I% = 1 TO MAX.CTLR.PTR%
+1923: 2079: 
+1924: 2079:             CURSOR.POSITION% = S2.CTLR.MODEL.TEXT%(I%)
+1925: 20a0:             CALL PUT.CURSOR.IN.FIELD                                   ! 1.0 RC
+1926: 20ac: 
+1927: 20ac:             STRING.DATA$ = CTLR.MODEL.NAME$(I%)
+1928: 20db:             CALL SET.FIELD                                             ! 1.0 RC
+1929: 20e7: 
+1930: 20e7:             CURSOR.POSITION% = S2.CTLR.MODEL.FLAG%(I%)
+1931: 210e:             CALL PUT.CURSOR.IN.FIELD                                   ! 1.0 RC
+1932: 211a: 
+1933: 211a:             STRING.DATA$ = CTLR.MODEL.FLAG$(I%)
+1934: 2149:             CALL SET.FIELD                                             ! 1.0 RC
+1935: 2155: 
+1936: 2155:         NEXT I%
+1937: 217f: 
+1938: 217f: END SUB                                                                ! 1.0 RC
+1939: 2193: 
+1940: 2193: 
+1941: 2193: \******************************************************************************
+1942: 2193: \***                                                                          *
+1943: 2193: \***    SUBROUTINE      :       RESET.MODEL.FLAGS                             *
+1944: 2193: \***                                                                          *
+1945: 2193: \******************************************************************************
+1946: 2193: \***                                                                          *
+1947: 2193: \***    Initialise the model flags                                            *
+1948: 2193: \***                                                                          *
+1949: 2193: \******************************************************************************
+1950: 2193: 
+1951: 2193: SUB     RESET.MODEL.FLAGS PUBLIC                                       ! 1.0 RC
+1952: 21b7: 
+1953: 21b7:         FOR I% = 1 TO MAX.TILL.MODELS%
+1954: 21cb: 
+1955: 21cb:              IF I% <= MAX.TILL.PTR% THEN                               \
+1956: 21e3:              BEGIN
+1957: 21e3:                 TILL.MODEL.FLAG$(I%) = MODEL.FLAG$
+1958: 2214:              ENDIF                                                     \
+1959: 2214:              ELSE                                                      \
+1960: 221c:              BEGIN
+1961: 221c:                 TILL.MODEL.FLAG$(I%) = " "
+1962: 2244:              ENDIF
+1963: 224c: 
+1964: 224c:         NEXT I%
+1965: 2276: 
+1966: 2276:         FOR I% = 1 TO MAX.CTLR.MODELS%
+1967: 228a: 
+1968: 228a:              IF I% <= MAX.CTLR.PTR% THEN                               \
+1969: 22a2:              BEGIN
+1970: 22a2:                 CTLR.MODEL.FLAG$(I%) = MODEL.FLAG$
+1971: 22d3:              ENDIF                                                     \
+1972: 22d3:              ELSE                                                      \
+1973: 22db:              BEGIN
+1974: 22db:                 CTLR.MODEL.FLAG$(I%) = " "
+1975: 2303:              ENDIF
+1976: 230b: 
+1977: 230b:         NEXT I%
+1978: 2335: 
+1979: 2335: END SUB                                                                ! 1.0 RC
+1980: 2349: 
+1981: 2349: SUB RESTORE.FIELDS.02 EXTERNAL ! PSB9900                               ! 1.0 RC
+1982: 2349: END SUB                                                                ! 1.0 RC
+1983: 2349: 
+1984: 2349: SUB RESTORE.FIELDS.04 EXTERNAL ! PSB9900                               ! 1.0 RC
+1985: 2349: END SUB                                                                ! 1.0 RC
+1986: 2349: 
+1987: 2349: SUB RESTORE.FIELDS.05 EXTERNAL ! PSB9900                               ! 1.0 RC
+1988: 2349: END SUB                                                                ! 1.0 RC
+1989: 2349: 
+1990: 2349: \******************************************************************************
+1991: 2349: \***                                                                          *
+1992: 2349: \***    SUBROUTINE      :       RESTORE.FIELDS.06                             *
+1993: 2349: \***                                                                          *
+1994: 2349: \******************************************************************************
+1995: 2349: \***                                                                          *
+1996: 2349: \***    Redisplay all fields for the delete an operator screen                *
+1997: 2349: \***                                                                          *
+1998: 2349: \******************************************************************************
+1999: 2349: 
+2000: 2349: SUB     RESTORE.FIELDS.06 PUBLIC                                       ! 1.0 RC
+2001: 236d: 
+2002: 236d:         CURSOR.STATE$ = CURSOR.OFF$
+2003: 238b:         CALL SET.CURSOR.STATE                                          ! 1.0 RC
+2004: 2397: 
+2005: 2397:         CALL DISPLAY.FORMATTED.DATE                                    ! 1.0 RC
+2006: 23a3: 
+2007: 23a3:         CURSOR.POSITION% = S6.OPERATOR.ID%
+2008: 23b9:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2009: 23c5: 
+2010: 23c5:         IF VAL(OPERATOR.ID$) > 0 THEN                                  \
+2011: 23fa:         BEGIN
+2012: 23fa:            OPERATOR.ID$ = STR$(VAL(OPERATOR.ID$))
+2013: 2429:         ENDIF                                                          \
+2014: 2429:         ELSE                                                           \
+2015: 2431:         BEGIN
+2016: 2431:            OPERATOR.ID$ = ""
+2017: 2448:         ENDIF
+2018: 2450: 
+2019: 2450:         STRING.DATA$ = OPERATOR.ID$
+2020: 246e:         CALL SET.FIELD                                                 ! 1.0 RC
+2021: 247a: 
+2022: 247a:         CURSOR.POSITION% = S6.NAME%
+2023: 2490:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2024: 249c: 
+2025: 249c:         STRING.DATA$ = OPERATOR.NAME$
+2026: 24ba:         CALL SET.FIELD                                                 ! 1.0 RC
+2027: 24c6: 
+2028: 24c6:         CURSOR.POSITION% = S6.STAFF.NO%
+2029: 24dc:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2030: 24e8: 
+2031: 24e8:         STRING.DATA$ = STAFF.NO$
+2032: 2506:         CALL SET.FIELD                                                 ! 1.0 RC
+2033: 2512: 
+2034: 2512:         CURSOR.POSITION% = S6.RECEIPT.NAME%
+2035: 2528:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2036: 2534: 
+2037: 2534:         STRING.DATA$ = RECEIPT.NAME$
+2038: 2552:         CALL SET.FIELD                                                 ! 1.0 RC
+2039: 255e: 
+2040: 255e:         CURSOR.POSITION% = S6.BIRTH.DATE%                              ! 1.1 RC
+2041: 2574:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.1 RC
+2042: 2580: 
+2043: 2580:         IF BIRTH.DATE$ <> "" THEN BEGIN \                              ! 1.1 RC
+2044: 259e:             STRING.DATA$ = MID$(BIRTH.DATE$,1,2) + "/" + \             ! 1.1 RC
+2045: 260e:                            MID$(BIRTH.DATE$,3,2) + "/" + \             ! 1.1 RC
+2046: 260e:                            MID$(BIRTH.DATE$,5,4)                       ! 1.1 RC
+2047: 260e:         ENDIF                                                          ! 1.1 RC
+2048: 2616:         CALL SET.FIELD                                                 ! 1.1 RC
+2049: 2622: 
+2050: 2622:         CURSOR.POSITION% = S6.GROUP.CODE%
+2051: 2638:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2052: 2644: 
+2053: 2644:         STRING.DATA$ = GROUP.CODE$
+2054: 2662:         CALL SET.FIELD                                                 ! 1.0 RC
+2055: 266e: 
+2056: 266e:         CURSOR.POSITION% = S6.EMPLOYEE.FLG%
+2057: 2684:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2058: 2690: 
+2059: 2690:         STRING.DATA$ = EMPLOYEE.FLG$
+2060: 26ae:         CALL SET.FIELD                                                 ! 1.0 RC
+2061: 26ba:         
+2062: 26ba:         CALL RESTORE.MODEL.FLAGS                                       ! 1.0 RC
+2063: 26c6: 
+2064: 26c6:         CURSOR.POSITION% = S2.CONFIRM%
+2065: 26dc:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2066: 26e8: 
+2067: 26e8:         STRING.DATA$ = CONFIRM$
+2068: 2706:         CALL SET.FIELD                                                 ! 1.0 RC
+2069: 2712: 
+2070: 2712:         CURSOR.STATE$ = CURSOR.ON$
+2071: 2730:         CALL SET.CURSOR.STATE                                          ! 1.0 RC
+2072: 273c: 
+2073: 273c: END SUB                                                                ! 1.0 RC
+2074: 2750: 
+2075: 2750: 
+2076: 2750: \******************************************************************************
+2077: 2750: \***                                                                          *
+2078: 2750: \***    SUBROUTINE      :       REVEAL.CONFIRM.MESSAGE                        *
+2079: 2750: \***                                                                          *
+2080: 2750: \******************************************************************************
+2081: 2750: \***                                                                          *
+2082: 2750: \***    Reveal the confirmational message                                     *
+2083: 2750: \***                                                                          *
+2084: 2750: \******************************************************************************
+2085: 2750: 
+2086: 2750: SUB     REVEAL.CONFIRM.MESSAGE PUBLIC                                  ! 1.0 RC
+2087: 2774: 
+2088: 2774:         CURSOR.POSITION% = S2.CONFIRM.TEXT%
+2089: 278a:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2090: 2796: 
+2091: 2796:         STRING.DATA$ = VISIBLE$
+2092: 27b4:         CALL SET.FIELD.ATTRIBUTES                                      ! 1.0 RC
+2093: 27c0: 
+2094: 27c0:         CURSOR.POSITION% = S2.CONFIRM%
+2095: 27d6:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2096: 27e2: 
+2097: 27e2:         STRING.DATA$ = VISIBLE$
+2098: 2800:         CALL SET.FIELD.ATTRIBUTES                                      ! 1.0 RC
+2099: 280c: 
+2100: 280c: END SUB                                                                ! 1.0 RC
+2101: 2820: 
+2102: 2820: 
+2103: 2820: \******************************************************************************
+2104: 2820: \***                                                                          *
+2105: 2820: \***    SUBROUTINE      :       SET.OLD.OPAUD.DETAILS                         *
+2106: 2820: \***                                                                          *
+2107: 2820: \******************************************************************************
+2108: 2820: \***                                                                          *
+2109: 2820: \***    Set the old OPAUD details                                             *
+2110: 2820: \***                                                                          *
+2111: 2820: \******************************************************************************
+2112: 2820: 
+2113: 2820: SUB     SET.OLD.OPAUD.DETAILS PUBLIC                                   ! 1.0 RC
+2114: 2844: 
+2115: 2844:         OPAUD.CHANGED.ID$ = RIGHT$("000" + UNPACK$(AF.OPERATOR.NO$),3)
+2116: 288f: 
+2117: 288f:         IF OPTION$ = "1" THEN                                          \
+2118: 28ad:         BEGIN
+2119: 28ad:            OPAUD.DETAILS.1$ = STRING$(27," ")
+2120: 28cb:            GOTO END.SET.OLD.OPAUD.DETAILS
+2121: 28d6:         ENDIF
+2122: 28de: 
+2123: 28de:         OPAUD.DETAILS.1$ = RIGHT$("000" + UNPACK$(AF.PASSWORD$),3)
+2124: 2929: 
+2125: 2929:         FOR I% = 1 TO MAX.TILL.MODELS%
+2126: 293d: 
+2127: 293d:             IF TILL.MODEL.FLAG$(I%) = "Y" OR                           \
+2128: 29b1:                TILL.MODEL.FLAG$(I%) = "N" THEN                         \
+2129: 29b1:             BEGIN
+2130: 29b1:                OPAUD.DETAILS.1$ = OPAUD.DETAILS.1$ +                   \
+2131: 29f0:                                   TILL.MODEL.FLAG$(I%)
+2132: 29f0:             ENDIF                                                      \
+2133: 29f0:             ELSE                                                       \
+2134: 29f8:             BEGIN
+2135: 29f8:                OPAUD.DETAILS.1$ = OPAUD.DETAILS.1$ + " "
+2136: 2a1d:             ENDIF
+2137: 2a25: 
+2138: 2a25:         NEXT I%
+2139: 2a4f: 
+2140: 2a4f:         FOR I% = 1 TO MAX.CTLR.MODELS%
+2141: 2a63: 
+2142: 2a63:             IF CTLR.MODEL.FLAG$(I%) = "Y" OR                           \
+2143: 2ad7:                CTLR.MODEL.FLAG$(I%) = "N" THEN                         \
+2144: 2ad7:             BEGIN
+2145: 2ad7:                OPAUD.DETAILS.1$ = OPAUD.DETAILS.1$ +                   \
+2146: 2b16:                                   CTLR.MODEL.FLAG$(I%)
+2147: 2b16:             ENDIF                                                      \
+2148: 2b16:             ELSE                                                       \
+2149: 2b1e:             BEGIN
+2150: 2b1e:                OPAUD.DETAILS.1$ = OPAUD.DETAILS.1$ + " "
+2151: 2b43:             ENDIF
+2152: 2b4b: 
+2153: 2b4b:         NEXT I%
+2154: 2b75: 
+2155: 2b75:         END.SET.OLD.OPAUD.DETAILS:
+2156: 2b85: 
+2157: 2b85: END SUB                                                                ! 1.0 RC
+2158: 2b99: 
+2159: 2b99: 
+2160: 2b99: \******************************************************************************
+2161: 2b99: \***                                                                          *
+2162: 2b99: \***    SUBROUTINE      :       SET.NEW.OPAUD.DETAILS                         *
+2163: 2b99: \***                                                                          *
+2164: 2b99: \******************************************************************************
+2165: 2b99: \***                                                                          *
+2166: 2b99: \***    Set the new OPAUD details                                             *
+2167: 2b99: \***                                                                          *
+2168: 2b99: \******************************************************************************
+2169: 2b99: 
+2170: 2b99: SUB     SET.NEW.OPAUD.DETAILS PUBLIC                                   ! 1.0 RC
+2171: 2bbd: 
+2172: 2bbd:         OPAUD.DATE$   = TODAYS.DATE$
+2173: 2bdb:         OPAUD.TIME$   = LEFT$(TIME$,4)
+2174: 2c07:         OPAUD.OPTION$ = OPTION$
+2175: 2c25:         OPAUD.FILLER$ = STRING$(7," ")
+2176: 2c43:         OPAUD.CRLF$   = CHR$(0DH) + CHR$(0AH)
+2177: 2c72: 
+2178: 2c72:         OPAUD.CHANGED.ID$ = RIGHT$("000" + UNPACK$(AF.OPERATOR.NO$),3)
+2179: 2cbd: 
+2180: 2cbd:         IF OPTION$ = "5" then                                          \
+2181: 2cdb:         BEGIN
+2182: 2cdb:            OPAUD.DETAILS.2$ = STRING$(27," ")
+2183: 2cf9:            GOTO END.SET.NEW.OPAUD.DETAILS
+2184: 2d04:         ENDIF
+2185: 2d0c: 
+2186: 2d0c:         OPAUD.DETAILS.2$  = RIGHT$("000" + UNPACK$(AF.PASSWORD$),3)
+2187: 2d57: 
+2188: 2d57:         FOR I% = 1 TO MAX.TILL.MODELS%
+2189: 2d6b: 
+2190: 2d6b:             IF TILL.MODEL.FLAG$(I%) = "Y" OR                           \
+2191: 2ddf:                TILL.MODEL.FLAG$(I%) = "N" THEN                         \
+2192: 2ddf:             BEGIN
+2193: 2ddf:                OPAUD.DETAILS.2$ = OPAUD.DETAILS.2$ +                   \
+2194: 2e1e:                                   TILL.MODEL.FLAG$(I%)
+2195: 2e1e:             ENDIF                                                      \
+2196: 2e1e:             ELSE                                                       \
+2197: 2e26:             BEGIN
+2198: 2e26:                OPAUD.DETAILS.2$ = OPAUD.DETAILS.2$ + " "
+2199: 2e4b:             ENDIF
+2200: 2e53: 
+2201: 2e53:         NEXT I%
+2202: 2e7d: 
+2203: 2e7d:         FOR I% = 1 TO MAX.CTLR.MODELS%
+2204: 2e91: 
+2205: 2e91:             IF CTLR.MODEL.FLAG$(I%) = "Y" OR                           \
+2206: 2f05:                CTLR.MODEL.FLAG$(I%) = "N" THEN                         \
+2207: 2f05:             BEGIN
+2208: 2f05:                OPAUD.DETAILS.2$ = OPAUD.DETAILS.2$ +                   \
+2209: 2f44:                                   CTLR.MODEL.FLAG$(I%)
+2210: 2f44:             ENDIF                                                      \
+2211: 2f44:             ELSE                                                       \
+2212: 2f4c:             BEGIN
+2213: 2f4c:                OPAUD.DETAILS.2$ = OPAUD.DETAILS.2$ + " "
+2214: 2f71:             ENDIF
+2215: 2f79: 
+2216: 2f79:         NEXT I%
+2217: 2fa3: 
+2218: 2fa3:         END.SET.NEW.OPAUD.DETAILS:
+2219: 2fb3: 
+2220: 2fb3: END SUB                                                                ! 1.0 RC
+2221: 2fc7: 
+2222: 2fc7: 
+2223: 2fc7: \******************************************************************************
+2224: 2fc7: \***                                                                          *
+2225: 2fc7: \***    SUBROUTINE      :       WRITE.OPAUD.RECORDS                           *
+2226: 2fc7: \***                                                                          *
+2227: 2fc7: \******************************************************************************
+2228: 2fc7: \***                                                                          *
+2229: 2fc7: \***    Log the current operator action to the audit file                     *
+2230: 2fc7: \***                                                                          *
+2231: 2fc7: \******************************************************************************
+2232: 2fc7: 
+2233: 2fc7: SUB     WRITE.OPAUD.RECORDS PUBLIC                                     ! 1.0 RC
+2234: 2feb: 
+2235: 2feb:         IF WRITE.OPAUD = 0 THEN                                        \
+2236: 3000:         BEGIN
+2237: 3000:            SAVED.OPAUD.REC.NUM% = OPAUD.REC.NUM%
+2238: 3016: 
+2239: 3016:            OPAUD.REC.NUM% = 1
+2240: 3027: 
+2241: 3027:            OPAUD.LAST.REC.UPDATED$ = RIGHT$("0000" +                   \
+2242: 3071:                                      STR$(SAVED.OPAUD.REC.NUM%),4)
+2243: 3071: 
+2244: 3071:            OPAUD.FILLER$           = STRING$(70," ")
+2245: 308f: 
+2246: 308f:            IF WRITE.OPAUD <> 0 THEN                                    \
+2247: 30a1:            BEGIN
+2248: 30a1:               CALL FILE.ERROR                                          ! 1.0 RC
+2249: 30ad:            ENDIF
+2250: 30b5: 
+2251: 30b5:            OPAUD.REC.NUM% = SAVED.OPAUD.REC.NUM% + 1
+2252: 30cc: 
+2253: 30cc:            IF OPAUD.REC.NUM% > VAL(OPAUD.FILE.SIZE$) THEN              \
+2254: 3101:            BEGIN
+2255: 3101:               OPAUD.REC.NUM% = 2
+2256: 3112:            ENDIF
+2257: 311c: 
+2258: 311c:         ENDIF                                                          \
+2259: 311c:         ELSE                                                           \
+2260: 3124:         BEGIN
+2261: 3124:            CALL FILE.ERROR                                             ! 1.0 RC
+2262: 3130:         ENDIF
+2263: 3138: 
+2264: 3138: END SUB                                                                ! 1.0 RC
+2265: 314c: 
+2266: 314c: 
+2267: 314c: 
+2268: 314c: \******************************************************************************
+2269: 314c: \***
+2270: 314c: \***    INTERNAL SUBPROGRAMS - DEPENDANT ON OTHERS
+2271: 314c: \***    PSB9900 subroutines transferred to PSB9902
+2272: 314c: \***    Dependant on one or more previously defined subprograms
+2273: 314c: \***
+2274: 314c: \***...........................................................................
+2275: 314c: 
+2276: 314c: 
+2277: 314c: \******************************************************************************
+2278: 314c: \***                                                                          *
+2279: 314c: \***    SUBROUTINE      :       GET.QUIT.CONFIRM                              *
+2280: 314c: \***                                                                          *
+2281: 314c: \******************************************************************************
+2282: 314c: \***                                                                          *
+2283: 314c: \***    Control routine for confirmation of the quit key                      *
+2284: 314c: \***                                                                          *
+2285: 314c: \******************************************************************************
+2286: 314c: 
+2287: 314c: SUB     GET.QUIT.CONFIRM PUBLIC                                        ! 1.0 RC
+2288: 3170: 
+2289: 3170:         ! B182 Data already keyed will be lost - press F3 to QUIT
+2290: 3170:         DISPLAY.MESSAGE.NUMBER% = 182
+2291: 3181:         CALL DISPLAY.MESSAGE                                           ! 1.0 RC
+2292: 318d: 
+2293: 318d:         SAVED.POSITION% = CURSOR.POSITION%
+2294: 31a3: 
+2295: 31a3:         CURSOR.POSITION% = INVISIBLE.FIELD%
+2296: 31b9:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2297: 31c5: 
+2298: 31c5:         CALL GET.INPUT                                                 ! 1.0 RC
+2299: 31d1: 
+2300: 31d1:         CURSOR.POSITION% = SAVED.POSITION%
+2301: 31e7:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2302: 31f3: 
+2303: 31f3:         IF FUNCTION.KEY% = QUIT.KEY% THEN                              \
+2304: 320b:         BEGIN
+2305: 320b:            EXIT.KEY.PRESSED(S%) = TRUE
+2306: 3238:            CONFIRM$ EQ "N"                                             !
+2307: 3251:         ENDIF                                                          \
+2308: 3251:         ELSE                                                           \
+2309: 3259:         IF FUNCTION.KEY% = ESC.KEY% THEN                               \
+2310: 3271:         BEGIN
+2311: 3271:            CHAIN.TO.PROG$ = "PSB50"
+2312: 3288:            PSBCHN.MENCON  = "000000"
+2313: 329f:            CALL CHAIN.TO.CALLER                                        ! 1.0 RC
+2314: 32ad:         ENDIF                                                          \
+2315: 32ad:         ELSE                                                           \
+2316: 32b5:         BEGIN
+2317: 32b5:            CALL GET.INPUT                                              ! 1.0 RC
+2318: 32c1:         ENDIF
+2319: 32c9: 
+2320: 32c9: END SUB                                                                ! 1.0 RC
+2321: 32dd: 
+2322: 32dd: 
+2323: 32dd: \******************************************************************************
+2324: 32dd: \***                                                                          *
+2325: 32dd: \***    SUBROUTINE      :       GET.CONFIRM                                   *
+2326: 32dd: \***                                                                          *
+2327: 32dd: \******************************************************************************
+2328: 32dd: \***                                                                          *
+2329: 32dd: \***    Input routine for confirming an action                                *
+2330: 32dd: \***                                                                          *
+2331: 32dd: \******************************************************************************
+2332: 32dd: 
+2333: 32dd: SUB     GET.CONFIRM PUBLIC                                             ! 1.0 RC
+2334: 3301: 
+2335: 3301:         CURSOR.POSITION% = S2.CONFIRM%
+2336: 3317:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2337: 3323: 
+2338: 3323:         EXIT.KEY.PRESSED(S%) = FALSE
+2339: 3350:         VALID.CONFIRM.FOUND  = FALSE
+2340: 3366: 
+2341: 3366:         CALL GET.INPUT                                                 ! 1.0 RC
+2342: 3372: 
+2343: 3372:         WHILE NOT (EXIT.KEY.PRESSED(S%) OR                             \
+2344: 337d:                   VALID.CONFIRM.FOUND)
+2345: 337d: 
+2346: 337d:               CONFIRM$ = UCASE$(F03.RETURNED.STRING$)
+2347: 33a0: 
+2348: 33a0:               IF NOT (FUNCTION.KEY% = ENTER.KEY% OR                    \
+2349: 3400:                  FUNCTION.KEY% = HELP.KEY% OR                          \
+2350: 3400:                  FUNCTION.KEY% = QUIT.KEY% OR                          \
+2351: 3400:                  FUNCTION.KEY% = ESC.KEY%) THEN                        \
+2352: 3400:               BEGIN
+2353: 3400:                  DISPLAY.MESSAGE.NUMBER% = 1
+2354: 3411:                  CALL DISPLAY.MESSAGE                                  ! 1.0 RC
+2355: 341d:                  CALL RESUME.INPUT                                     ! 1.0 RC
+2356: 342c:               ENDIF                                                    \
+2357: 342c:               ELSE                                                     \
+2358: 3434:               IF FUNCTION.KEY% = QUIT.KEY% THEN                        \
+2359: 344c:               BEGIN
+2360: 344c:                  CALL GET.QUIT.CONFIRM                                 ! 1.0 RC
+2361: 345b:               ENDIF                                                    \
+2362: 345b:               ELSE                                                     \
+2363: 3463:               IF FUNCTION.KEY% = ESC.KEY% THEN                         \
+2364: 347b:               BEGIN
+2365: 347b:                  CHAIN.TO.PROG$ = "PSB50"
+2366: 3492:                  PSBCHN.MENCON  = "000000"
+2367: 34a9:                  CALL CHAIN.TO.CALLER                                  ! 1.0 RC
+2368: 34b8:               ENDIF                                                    \
+2369: 34b8:               ELSE                                                     \
+2370: 34c0:               IF FUNCTION.KEY% = HELP.KEY% THEN                        \
+2371: 34db:               BEGIN
+2372: 34db:                  CALL SCREEN.HELP(S%)
+2373: 34ff: 
+2374: 34ff:                  IF S% = 2 THEN                                        \
+2375: 3511:                  BEGIN
+2376: 3511:                     CALL RESTORE.FIELDS.02                             ! 1.0 RC
+2377: 3521:                  ENDIF                                                 \
+2378: 3521:                  ELSE                                                  \
+2379: 3529:                  IF S% = 4 THEN                                        \
+2380: 353b:                  BEGIN
+2381: 353b:                     CALL RESTORE.FIELDS.04                             ! 1.0 RC
+2382: 354a:                  ENDIF                                                 \
+2383: 354a:                  ELSE                                                  \
+2384: 3552:                  IF S% = 5 THEN                                        \
+2385: 3564:                  BEGIN
+2386: 3564:                     CALL RESTORE.FIELDS.05                             ! 1.0 RC
+2387: 3573:                  ENDIF                                                 \
+2388: 3573:                  ELSE                                                  \
+2389: 357b:                  IF S% = 6 THEN                                        \
+2390: 358d:                  BEGIN
+2391: 358d:                     CALL RESTORE.FIELDS.06                             ! 1.0 RC
+2392: 3599:                  ENDIF                                                 \
+2393: 3599: 
+2394: 35a1:                  CALL REVEAL.CONFIRM.MESSAGE                           ! 1.0 RC
+2395: 35ad: 
+2396: 35ad:                  CURSOR.POSITION% = S2.CONFIRM%
+2397: 35c3:                  CALL PUT.CURSOR.IN.FIELD                              ! 1.0 RC
+2398: 35cf: 
+2399: 35cf:                  CALL GET.INPUT                                        ! 1.0 RC
+2400: 35dd:               ENDIF                                                    \
+2401: 35dd:               ELSE                                                     \
+2402: 35e5:               BEGIN
+2403: 35e5:                  IF VALID.CONFIRM THEN                                 \
+2404: 35f6:                     VALID.CONFIRM.FOUND = TRUE                         \
+2405: 360e:                  ELSE                                                  \
+2406: 3616:                  BEGIN
+2407: 3616:                     ! B064 You must only type 'N' or 'Y'
+2408: 3616:                     DISPLAY.MESSAGE.NUMBER% = 64
+2409: 3627:                     CALL DISPLAY.MESSAGE                               ! 1.0 RC
+2410: 3633:                     CALL RESUME.INPUT                                  ! 1.0 RC
+2411: 363f:                  ENDIF
+2412: 3647:               ENDIF
+2413: 364f:         WEND
+2414: 367b: 
+2415: 367b:         IF VALID.CONFIRM.FOUND AND                                     \
+2416: 36a8:            NOT EXIT.KEY.PRESSED(S%) THEN                               \
+2417: 36a8:         BEGIN
+2418: 36a8:            CALL CLEAR.MESSAGE                                          ! 1.0 RC
+2419: 36b4: 
+2420: 36b4:            STRING.DATA$ = CONFIRM$
+2421: 36d2:            CALL SET.FIELD                                              ! 1.0 RC
+2422: 36de:         ENDIF
+2423: 36e6: 
+2424: 36e6: END SUB                                                                ! 1.0 RC
+2425: 36fa: 
+2426: 36fa: 
+2427: 36fa: \******************************************************************************
+2428: 36fa: \***                                                                          *
+2429: 36fa: \***    SUBROUTINE      :       GET.QUIT.KEY                                  *
+2430: 36fa: \***                                                                          *
+2431: 36fa: \******************************************************************************
+2432: 36fa: \***                                                                          *
+2433: 36fa: \***    Control routine for the input of quit key                             *
+2434: 36fa: \***                                                                          *
+2435: 36fa: \******************************************************************************
+2436: 36fa: 
+2437: 36fa: SUB     GET.QUIT.KEY PUBLIC                                            ! 1.0 RC
+2438: 371e: 
+2439: 371e:         CURSOR.POSITION% = INVISIBLE.FIELD%
+2440: 3734:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2441: 3740: 
+2442: 3740:         EXIT.KEY.PRESSED(S%) = FALSE
+2443: 376d: 
+2444: 376d:         WHILE NOT EXIT.KEY.PRESSED(S%)
+2445: 3778: 
+2446: 3778:               CALL GET.INPUT                                           ! 1.0 RC
+2447: 3784: 
+2448: 3784:               IF FUNCTION.KEY% = QUIT.KEY% THEN                        \
+2449: 379c:               BEGIN
+2450: 379c:                  EXIT.KEY.PRESSED(S%) = TRUE
+2451: 37cc:               ENDIF                                                    \
+2452: 37cc:               ELSE                                                     \
+2453: 37d4:               IF FUNCTION.KEY% = HELP.KEY% THEN                        \
+2454: 37ef:               BEGIN
+2455: 37ef:                  CALL SCREEN.HELP(S%)
+2456: 3813: 
+2457: 3813:                  IF S% = 2 THEN                                        \
+2458: 3825:                  BEGIN
+2459: 3825:                     CALL RESTORE.FIELDS.02                             ! 1.0 RC
+2460: 3835:                  ENDIF                                                 \
+2461: 3835:                  ELSE                                                  \
+2462: 383d:                  IF S% = 4 THEN                                        \
+2463: 384f:                  BEGIN
+2464: 384f:                     CALL RESTORE.FIELDS.04                             ! 1.0 RC
+2465: 385e:                  ENDIF                                                 \
+2466: 385e:                  ELSE                                                  \
+2467: 3866:                  IF S% = 5 THEN                                        \
+2468: 3878:                  BEGIN
+2469: 3878:                     CALL RESTORE.FIELDS.05                             ! 1.0 RC
+2470: 3887:                  ENDIF                                                 \
+2471: 3887:                  ELSE                                                  \
+2472: 388f:                  IF S% = 6 THEN                                        \
+2473: 38a1:                  BEGIN
+2474: 38a1:                     CALL RESTORE.FIELDS.06                             ! 1.0 RC
+2475: 38ad:                  ENDIF                                                 \
+2476: 38ad: 
+2477: 38b5:                  CURSOR.POSITION% = INVISIBLE.FIELD%
+2478: 38cb:                  CALL PUT.CURSOR.IN.FIELD                              ! 1.0 RC
+2479: 38da:               ENDIF                                                    \
+2480: 38da:               ELSE                                                     \
+2481: 38e2:               IF FUNCTION.KEY% = ESC.KEY% THEN                         \
+2482: 38fa:               BEGIN
+2483: 38fa:                  CHAIN.TO.PROG$ = "PSB50"
+2484: 3911:                  PSBCHN.MENCON  = "000000"
+2485: 3928:                  CALL CHAIN.TO.CALLER                                  ! 1.0 RC
+2486: 3936:               ENDIF                                                    \
+2487: 3936:               ELSE                                                     \
+2488: 393e:               BEGIN
+2489: 393e:                  DISPLAY.MESSAGE.NUMBER% = 1
+2490: 394f:                  CALL DISPLAY.MESSAGE                                  ! 1.0 RC
+2491: 395b:               ENDIF
+2492: 3963: 
+2493: 3963:         WEND
+2494: 3989: 
+2495: 3989: END SUB                                                                ! 1.0 RC
+2496: 399d: 
+2497: 399d: 
+2498: 399d: 
+2499: 399d: \******************************************************************************
+2500: 399d: \***
+2501: 399d: \***    INTERNAL SUBPROGRAMS - PSB9902 SPECIFIC
+2502: 399d: \***    PSB9900 subroutines transferred to PSB9902
+2503: 399d: \***    Specific to the main PROCESS.SCREEN.06 process
+2504: 399d: \***
+2505: 399d: \***...........................................................................
+2506: 399d: 
+2507: 399d: 
+2508: 399d: \******************************************************************************
+2509: 399d: \***                                                                          *
+2510: 399d: \***    SUBROUTINE      :       CLEAR.FIELDS.06                               *
+2511: 399d: \***                                                                          *
+2512: 399d: \******************************************************************************
+2513: 399d: \***                                                                          *
+2514: 399d: \***    Clear all fields for the delete operator screen                       *
+2515: 399d: \***                                                                          *
+2516: 399d: \******************************************************************************
+2517: 399d: 
+2518: 399d: SUB     CLEAR.FIELDS.06                                                ! 1.0 RC
+2519: 39c1: 
+2520: 39c1:         CURSOR.STATE$ = CURSOR.OFF$
+2521: 39df:         CALL SET.CURSOR.STATE                                          ! 1.0 RC
+2522: 39eb: 
+2523: 39eb:         IF OPERATOR.NAME$ <> "" THEN                                   \
+2524: 3a09:         BEGIN
+2525: 3a09:            CURSOR.POSITION% = S6.NAME%
+2526: 3a1f:            CALL PUT.CURSOR.IN.FIELD                                    ! 1.0 RC
+2527: 3a2b: 
+2528: 3a2b:            STRING.DATA$ = ""
+2529: 3a42:            CALL SET.FIELD                                              ! 1.0 RC
+2530: 3a4e:         ENDIF
+2531: 3a56: 
+2532: 3a56:         IF STAFF.NO$ <> "" THEN BEGIN
+2533: 3a74:            CURSOR.POSITION% = S6.STAFF.NO%
+2534: 3a8a:            CALL PUT.CURSOR.IN.FIELD                                    ! 1.0 RC
+2535: 3a96: 
+2536: 3a96:            STRING.DATA$ = ""
+2537: 3aad:            CALL SET.FIELD                                              ! 1.0 RC
+2538: 3ab9:         ENDIF
+2539: 3ac1: 
+2540: 3ac1:         IF BIRTH.DATE$ <> "" THEN BEGIN                                ! 1.1 RC
+2541: 3adf:            CURSOR.POSITION% = S6.BIRTH.DATE%                           ! 1.1 RC
+2542: 3af5:            CALL PUT.CURSOR.IN.FIELD                                    ! 1.1 RC
+2543: 3b01:            STRING.DATA$ = ""                                           ! 1.1 RC
+2544: 3b18:            CALL SET.FIELD                                              ! 1.1 RC
+2545: 3b24:         ENDIF                                                          ! 1.1 RC
+2546: 3b2c: 
+2547: 3b2c:         IF RECEIPT.NAME$ <> "" THEN                                   \
+2548: 3b4a:         BEGIN
+2549: 3b4a:            CURSOR.POSITION% = S6.RECEIPT.NAME%
+2550: 3b60:            CALL PUT.CURSOR.IN.FIELD                                    ! 1.0 RC
+2551: 3b6c: 
+2552: 3b6c:            STRING.DATA$ = ""
+2553: 3b83:            CALL SET.FIELD                                              ! 1.0 RC
+2554: 3b8f:         ENDIF
+2555: 3b97: 
+2556: 3b97:         IF GROUP.CODE$ <> "" THEN                                     \
+2557: 3bb5:         BEGIN
+2558: 3bb5:            CURSOR.POSITION% = S6.GROUP.CODE%
+2559: 3bcb:            CALL PUT.CURSOR.IN.FIELD                                    ! 1.0 RC
+2560: 3bd7: 
+2561: 3bd7:            STRING.DATA$ = ""
+2562: 3bee:            CALL SET.FIELD                                              ! 1.0 RC
+2563: 3bfa:         ENDIF
+2564: 3c02: 
+2565: 3c02:         IF EMPLOYEE.FLG$ <> "" THEN BEGIN
+2566: 3c20:            CURSOR.POSITION% = S6.EMPLOYEE.FLG%
+2567: 3c36:            CALL PUT.CURSOR.IN.FIELD                                    ! 1.0 RC
+2568: 3c42: 
+2569: 3c42:            STRING.DATA$ = ""
+2570: 3c59:            CALL SET.FIELD                                              ! 1.0 RC
+2571: 3c65:         ENDIF
+2572: 3c6d:         
+2573: 3c6d:         MODEL.FLAG$ = ""
+2574: 3c84: 
+2575: 3c84:         CALL CLEAR.MODEL.FLAGS                                         ! 1.0 RC
+2576: 3c90: 
+2577: 3c90:         CURSOR.STATE$ = CURSOR.ON$
+2578: 3cae:         CALL SET.CURSOR.STATE                                          ! 1.0 RC
+2579: 3cba: 
+2580: 3cba: END SUB                                                                ! 1.0 RC
+2581: 3cce: 
+2582: 3cce: 
+2583: 3cce: \******************************************************************************
+2584: 3cce: \***                                                                          *
+2585: 3cce: \***    SUBROUTINE      :       DELETE.AUTH.RECORDS                           *
+2586: 3cce: \***                                                                          *
+2587: 3cce: \******************************************************************************
+2588: 3cce: \***                                                                          *
+2589: 3cce: \***    Delete authorisation records from the EALAUTH and ADXCSOUF files      *
+2590: 3cce: \***                                                                          *
+2591: 3cce: \******************************************************************************
+2592: 3cce: 
+2593: 3cce: SUB     DELETE.AUTH.RECORDS                                            ! 1.0 RC
+2594: 3cf2: 
+2595: 3cf2:         AF.OPERATOR.NO$ = PACK$(RIGHT$(STRING$(8,"0") +                \
+2596: 3d44:                           OPERATOR.ID$,8))
+2597: 3d44: 
+2598: 3d44:         CSOUF.OP.ID$ = LEFT$(OPERATOR.ID$ +                            \
+2599: 3d93:                        STRING$(8," "),8)
+2600: 3d93: 
+2601: 3d93:         CALL GET.CSOUF.RECORD                                          ! 1.0 RC
+2602: 3d9f: 
+2603: 3d9f:         CSOUF.RECORD$ = PACK$(STRING$(68,"0"))
+2604: 3dc2: 
+2605: 3dc2:         IF DELETE.CSOUF.RECORD = 0 THEN                                \
+2606: 3dd3:         BEGIN
+2607: 3dd3:            DELREC AF.SESS.NUM%; AF.OPERATOR.NO$
+2608: 3df2: 
+2609: 3df2:            CALL SET.NEW.OPAUD.DETAILS                                  ! 1.0 RC
+2610: 3dfe:            CALL WRITE.OPAUD.RECORDS                                    ! 1.0 RC
+2611: 3e0a: 
+2612: 3e0a:            ! B180 Operator successfully deleted
+2613: 3e0a:            DISPLAY.MESSAGE.NUMBER% = 180
+2614: 3e1b:            CALL DISPLAY.MESSAGE                                        ! 1.0 RC
+2615: 3e29:         ENDIF                                                          \
+2616: 3e29:         ELSE                                                           \
+2617: 3e31:         BEGIN
+2618: 3e31:            CALL FILE.ERROR                                             ! 1.0 RC
+2619: 3e3d:         ENDIF
+2620: 3e45: 
+2621: 3e45:         CALL GET.QUIT.KEY                                              ! 1.0 RC
+2622: 3e51: 
+2623: 3e51: END SUB                                                                ! 1.0 RC
+2624: 3e65: 
+2625: 3e65: 
+2626: 3e65: \******************************************************************************
+2627: 3e65: \***                                                                          *
+2628: 3e65: \***    SUBROUTINE      :       DELETE.AN.OPERATOR                            *
+2629: 3e65: \***                                                                          *
+2630: 3e65: \******************************************************************************
+2631: 3e65: \***                                                                          *
+2632: 3e65: \***    Delete an operator from the authorisation files                       *
+2633: 3e65: \***                                                                          *
+2634: 3e65: \******************************************************************************
+2635: 3e65: 
+2636: 3e65: SUB     DELETE.AN.OPERATOR                                             ! 1.0 RC
+2637: 3e89: 
+2638: 3e89:         CSOUF.OPERATION$ = "DELETE"
+2639: 3ea0: 
+2640: 3ea0:         CALL REVEAL.CONFIRM.MESSAGE                                    ! 1.0 RC
+2641: 3eac: 
+2642: 3eac:         CALL GET.CONFIRM                                               ! 1.0 RC
+2643: 3eb8: 
+2644: 3eb8:         CALL HIDE.CONFIRM.MESSAGE                                      ! 1.0 RC
+2645: 3ec4: 
+2646: 3ec4:         IF CONFIRM$ = "Y" THEN                                         \
+2647: 3ee2:         BEGIN
+2648: 3ee2:            CALL WAIT.MESSAGE                                           ! 1.0 RC
+2649: 3eee:            CALL DELETE.AUTH.RECORDS                                    ! 1.0 RC
+2650: 3efa:         ENDIF
+2651: 3f02: 
+2652: 3f02: END SUB                                                                ! 1.0 RC
+2653: 3f16: 
+2654: 3f16: 
+2655: 3f16: \******************************************************************************
+2656: 3f16: \***                                                                          *
+2657: 3f16: \***    SUBROUTINE      :       GET.OPERATOR.ID.06                            *
+2658: 3f16: \***                                                                          *
+2659: 3f16: \******************************************************************************
+2660: 3f16: \***                                                                          *
+2661: 3f16: \***    Input routine for the operator ID on the delete an operator screen    *
+2662: 3f16: \***                                                                          *
+2663: 3f16: \******************************************************************************
+2664: 3f16: 
+2665: 3f16: SUB     GET.OPERATOR.ID.06                                             ! 1.0 RC
+2666: 3f3a: 
+2667: 3f3a:         CURSOR.POSITION% = S6.OPERATOR.ID%
+2668: 3f50:         CALL PUT.CURSOR.IN.FIELD                                       ! 1.0 RC
+2669: 3f5c: 
+2670: 3f5c:         EXIT.KEY.PRESSED(6)     = FALSE
+2671: 3f84:         VALID.OPERATOR.ID.FOUND = FALSE
+2672: 3f9a: 
+2673: 3f9a:         CALL GET.INPUT                                                 ! 1.0 RC
+2674: 3fa6: 
+2675: 3fa6:         WHILE NOT (EXIT.KEY.PRESSED(6) OR                              \
+2676: 3fb1:                   VALID.OPERATOR.ID.FOUND)
+2677: 3fb1: 
+2678: 3fb1:               OPERATOR.ID$ = RIGHT$(STRING$(3,"0") +                   \
+2679: 4018:                              STR$(VAL(F03.RETURNED.STRING$)),3)
+2680: 4018: 
+2681: 4018:               IF NOT (FUNCTION.KEY% = ENTER.KEY% OR                    \
+2682: 4078:                  FUNCTION.KEY% = HELP.KEY% OR                          \
+2683: 4078:                  FUNCTION.KEY% = QUIT.KEY% OR                          \
+2684: 4078:                  FUNCTION.KEY% = ESC.KEY%) THEN                        \
+2685: 4078:               BEGIN
+2686: 4078:                  DISPLAY.MESSAGE.NUMBER% = 1
+2687: 4089:                  CALL DISPLAY.MESSAGE                                  ! 1.0 RC
+2688: 4095:                  CALL RESUME.INPUT                                     ! 1.0 RC
+2689: 40a4:               ENDIF                                                    \
+2690: 40a4:               ELSE                                                     \
+2691: 40ac:               IF FUNCTION.KEY% = QUIT.KEY% THEN                        \
+2692: 40c4:               BEGIN
+2693: 40c4:                  EXIT.KEY.PRESSED(S%) = TRUE
+2694: 40f4:               ENDIF                                                    \
+2695: 40f4:               ELSE                                                     \
+2696: 40fc:               IF FUNCTION.KEY% = ESC.KEY% THEN                         \
+2697: 4114:               BEGIN
+2698: 4114:                  CHAIN.TO.PROG$ = "PSB50"
+2699: 412b:                  PSBCHN.MENCON  = "000000"
+2700: 4142:                  CALL CHAIN.TO.CALLER                                  ! 1.0 RC
+2701: 4151:               ENDIF                                                    \
+2702: 4151:               ELSE                                                     \
+2703: 4159:               IF FUNCTION.KEY% = HELP.KEY% THEN                        \
+2704: 4171:               BEGIN
+2705: 4171:                  CALL SCREEN.HELP(6)
+2706: 4190:                  CALL RESTORE.FIELDS.06                                ! 1.0 RC
+2707: 419c: 
+2708: 419c:                  CURSOR.POSITION% = S6.OPERATOR.ID%
+2709: 41b2:                  CALL PUT.CURSOR.IN.FIELD                              ! 1.0 RC
+2710: 41be: 
+2711: 41be:                  CALL GET.INPUT                                        ! 1.0 RC
+2712: 41cc:               ENDIF                                                    \
+2713: 41cc:               ELSE                                                     \
+2714: 41d4:               BEGIN
+2715: 41d4:                  IF VALID.OPERATOR.ID THEN                             \
+2716: 41e5:                     VALID.OPERATOR.ID.FOUND = TRUE                     \
+2717: 41fd:                  ELSE                                                  \
+2718: 4205:                  BEGIN
+2719: 4205:                     ! B058 Invalid operator ID
+2720: 4205:                     DISPLAY.MESSAGE.NUMBER% = 58
+2721: 4216:                     CALL DISPLAY.MESSAGE                               ! 1.0 RC
+2722: 4222:                     CALL RESUME.INPUT                                  ! 1.0 RC
+2723: 422e:                  ENDIF
+2724: 4236:               ENDIF
+2725: 423e:         WEND
+2726: 4265: 
+2727: 4265:         IF VALID.OPERATOR.ID.FOUND AND                                 \
+2728: 4290:            NOT EXIT.KEY.PRESSED(6) THEN                                \
+2729: 4290:         BEGIN
+2730: 4290:            CALL CLEAR.MESSAGE                                          ! 1.0 RC
+2731: 429c: 
+2732: 429c:            STRING.DATA$ = OPERATOR.ID$
+2733: 42ba:            CALL SET.FIELD                                              ! 1.0 RC
+2734: 42c6: 
+2735: 42c6:            IF FUNCTION.KEY% = ENTER.KEY% THEN                          \
+2736: 42e1:            BEGIN
+2737: 42e1:               IF VAL(OPERATOR.ID$) = 905 THEN                          \
+2738: 4316:               BEGIN
+2739: 4316:                  OLD.OPERATOR.ID$ = ""
+2740: 432d: 
+2741: 432d:                  CALL CLEAR.FIELDS.06                                  ! 1.0 RC
+2742: 4339: 
+2743: 4339:                  DISPLAY.MESSAGE.NUMBER% = 362
+2744: 434a:                  CALL DISPLAY.MESSAGE                                  ! 1.0 RC
+2745: 4359:               ENDIF                                                    \
+2746: 4359:               ELSE                                                     \
+2747: 4361:               IF VAL(OPERATOR.NUMBER$) = VAL(OPERATOR.ID$) THEN        \
+2748: 439a:               BEGIN
+2749: 439a:                  OLD.OPERATOR.ID$ = ""
+2750: 43b1: 
+2751: 43b1:                  CALL CLEAR.FIELDS.06                                  ! 1.0 RC
+2752: 43bd: 
+2753: 43bd:                  ! B060 An operator cannot delete themselves
+2754: 43bd:                  DISPLAY.MESSAGE.NUMBER% = 60
+2755: 43ce:                  CALL DISPLAY.MESSAGE                                  ! 1.0 RC
+2756: 43dd:               ENDIF                                                    \
+2757: 43dd:               ELSE                                                     \
+2758: 43e5:               IF OLD.OPERATOR.ID$ <> OPERATOR.ID$ THEN                 \
+2759: 440d:               BEGIN
+2760: 440d:                  AF.OPERATOR.NO$ = PACK$(RIGHT$(STRING$(8,"0") +       \
+2761: 445f:                                    OPERATOR.ID$,8))
+2762: 445f: 
+2763: 445f:                  IF READ.AF.ABREV = 0 THEN                             \
+2764: 4471:                  BEGIN
+2765: 4471:                     OLD.OPERATOR.ID$ = OPERATOR.ID$
+2766: 448f: 
+2767: 448f:                     CALL GET.OPERATOR.DETAILS                          ! 1.0 RC
+2768: 449b:                     CALL SET.OLD.OPAUD.DETAILS                         ! 1.0 RC
+2769: 44a7:                     CALL RESTORE.FIELDS.06                             ! 1.0 RC
+2770: 44b3: 
+2771: 44b3: !                   CALL CHECK.FIELDS.06     ! Will only ever execute  ! 1.0 RC
+2772: 44b3:                     CALL DELETE.AN.OPERATOR  ! DELETE.AN.OPERATOR path ! 1.0 RC
+2773: 44c1:                  ENDIF                                                 \
+2774: 44c1:                  ELSE                                                  \
+2775: 44c9:                  BEGIN
+2776: 44c9:                     OLD.OPERATOR.ID$ = ""
+2777: 44e0: 
+2778: 44e0:                     CALL CLEAR.FIELDS.06                               ! 1.0 RC
+2779: 44ec: 
+2780: 44ec:                     ! B171 Operator ID not currently in use
+2781: 44ec:                     DISPLAY.MESSAGE.NUMBER% = 171
+2782: 44fd:                     CALL DISPLAY.MESSAGE                               ! 1.0 RC
+2783: 4509:                  ENDIF
+2784: 4511:               ENDIF
+2785: 4519:            ENDIF
+2786: 4521:         ENDIF
+2787: 4529: 
+2788: 4529: END SUB                                                                ! 1.0 RC
+2789: 453d: 
+2790: 453d: 
+2791: 453d: \******************************************************************************
+2792: 453d: \***                                                                          *
+2793: 453d: \***    SUBROUTINE      :       PROCESS.SCREEN.06                             *
+2794: 453d: \***                                                                          *
+2795: 453d: \******************************************************************************
+2796: 453d: \***                                                                          *
+2797: 453d: \***    Control routine for the delete an operator screen                     *
+2798: 453d: \***                                                                          *
+2799: 453d: \******************************************************************************
+2800: 453d: 
+2801: 453d: SUB     PROCESS.SCREEN.06 ! Main process separated from module PSB9900 ! 1.0 RC
+2802: 4561:                           ! Not PUBLIC as name also used in PSB9900    ! 1.0 RC
+2803: 4561:         S% = 6
+2804: 4572: 
+2805: 4572:         CALL DISPLAY.SCREEN(6)
+2806: 4591: 
+2807: 4591:         OLD.OPERATOR.ID$   = ""
+2808: 45a8:         OPERATOR.ID$       = ""
+2809: 45bf:         OPERATOR.NAME$     = ""
+2810: 45d6:         OPERATOR.PASSWORD$ = ""
+2811: 45ed:         STAFF.NO$          = ""
+2812: 4604:         RECEIPT.NAME$      = ""
+2813: 461b:         EMPLOYEE.FLG$      = ""
+2814: 4632:         BIRTH.DATE$        = ""                                        ! 1.1 RC
+2815: 4649:         GROUP.CODE$        = ""
+2816: 4660:         MODEL.FLAG$        = ""
+2817: 4677: 
+2818: 4677:         CALL RESET.MODEL.FLAGS                                         ! 1.0 RC
+2819: 4683: 
+2820: 4683:         CALL RESTORE.FIELDS.06                                         ! 1.0 RC
+2821: 468f: 
+2822: 468f:         EXIT.KEY.PRESSED(6) = FALSE
+2823: 46b7: 
+2824: 46b7:         WHILE NOT EXIT.KEY.PRESSED(6)
+2825: 46c1:               CALL GET.OPERATOR.ID.06                                  ! 1.0 RC
+2826: 46cd:         WEND
+2827: 46eb: 
+2828: 46eb: END SUB                                                                ! 1.0 RC
+2829: 46ff: 
+2830: 46ff: 
+2831: 46ff: 
+2832: 46ff: \******************************************************************************
+2833: 46ff: \******************************************************************************
+2834: 46ff: \***                                                                          *
+2835: 46ff: \***    S T A R T  O F  M A I N L I N E  C O D E                              *
+2836: 46ff: \***                                                                          *
+2837: 46ff: \******************************************************************************
+2838: 46ff: \******************************************************************************
+2839: 46ff: 
+2840: 46ff: 
+2841: 46ff: SUB PSB9902 PUBLIC
+2842: 4723: 
+2843: 4723:     ON ERROR GOTO ERROR.DETECTED
+2844: 4738: 
+2845: 4738:     CALL PROCESS.SCREEN.06
+2846: 4744: 
+2847: 4744:     EXIT SUB
+2848: 474f: 
+2849: 474f: 
+2850: 474f: STOP.PROGRAM:
+2851: 475f:     
+2852: 475f:     STOP
+2853: 476c: 
+2854: 476c: 
+2855: 476c: \******************************************************************************
+2856: 476c: \***
+2857: 476c: \***    ERROR.DETECTED:
+2858: 476c: \***
+2859: 476c: \******************************************************************************
+2860: 476c: 
+2861: 476c: \*****************************************************************************
+2862: 476c: \***
+2863: 476c: \***    ERROR.DETECTED:
+2864: 476c: \***    Increments ERROR.COUNT% by one and tests it against values greater 
+2865: 476c: \***    than one before any other commands executed.
+2866: 476c: \***    Further errors within ERROR.DETECTED causing control to be passed here
+2867: 476c: \***    again result in this test being failed and the immediate diversion of
+2868: 476c: \***    program control to STOP.PROGRAM.
+2869: 476c: \***    Calls STANDARD.ERROR.DETECTED to log Event 101 and display message B550.
+2870: 476c: \***    Chains to calling program PSB50
+2871: 476c: \***
+2872: 476c: \***..........................................................................
+2873: 476c: 
+2874: 476c: 
+2875: 476c: ERROR.DETECTED:
+2876: 477c: 
+2877: 477c: !   PRINT "ERROR DETECTED"
+2878: 477c:     ERROR.COUNT% = ERROR.COUNT% + 1
+2879: 4795: 
+2880: 4795:     IF ERROR.COUNT% = 1 THEN \
+2881: 47b0:         BEGIN
+2882: 47b0:         RESUME STOP.PROGRAM
+2883: 47c7:         ENDIF
+2884: 47cf: 
+2885: 47cf: !   PRINT "MAIN: ERROR.DETECTED at " + \
+2886: 47cf: !      MID$(TIME$,1,2) + ":" + MID$(TIME$,3,2) + ":" + MID$(TIME$,5,2)
+2887: 47cf: !   PRINT "ERRN .... " + ERRNH ! Function call to translate ERRN
+2888: 47cf: !   PRINT "ERRF% ... " + STR$(ERRF%)
+2889: 47cf: !   PRINT "ERR ..... " + ERR
+2890: 47cf: !   PRINT "ERRL .... " + STR$(ERRL)
+2891: 47cf: 
+2892: 47cf:     CALL STANDARD.ERROR.DETECTED (ERRN, ERRF%, ERRL, ERR)
+2893: 47fc:  
+2894: 47fc:     CHAIN.TO.PROG$ = "PSB50"
+2895: 4813:     CALL CHAIN.TO.CALLER
+2896: 481f: 
+2897: 481f:     RESUME STOP.PROGRAM
+2898: 4836: 
+2899: 4836: END SUB ! Corresponding to SUB PSB9902
+2900: 484a: 
+2901: 484a: 
+2902: 484a: \*****************************************************************************
+2903: 484a: \*****************************************************************************
+2904: 484a: \***
+2905: 484a: \***    End of module PSB9902
+2906: 484a: \***
+2907: 484a: \*****************************************************************************
+2908: 484a: \*****************************************************************************
+2909: 484a: 
+2910: 484a: 
+2911: 484a: End of Compilation

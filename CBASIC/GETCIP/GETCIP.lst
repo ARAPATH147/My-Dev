@@ -1,0 +1,884 @@
+   1: 0000: \************************************************************************
+   2: 0000: \***
+   3: 0000: \***    GETCIP            Ranjith Gopalankutty          05/02/2019        
+   4: 0000: \***                                                                     
+   5: 0000: \***    This utility is written to read IDF completely and write all  
+   6: 0000: \***    the item codes which has mark down set on, tried to use 
+   7: 0000: \***    existing programs, there isn't any and IDFPM is extremely   
+   8: 0000: \***    time consuming, hence new program.
+   9: 0000:     
+  10: 0000: 
+  11: 0000: \*********************************************************************** 
+  12: 0000:      
+  13: 0000: %INCLUDE BEMFDEC.J86
+  14: 0000: \******************************************************************************
+  15: 0000: \***
+  16: 0000: \***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+  17: 0000: \***                                             - FILE REFERENCE PARAMETERS
+  18: 0000: \***
+  19: 0000: \***                         FILE TYPE : Direct
+  20: 0000: \***
+  21: 0000: \***                         REFERENCE : BEMFDEC
+  22: 0000: \***
+  23: 0000: \***	Version A               Mark Walker                  1st November 1993
+  24: 0000: \***
+  25: 0000: \******************************************************************************
+  26: 0000: 
+  27: 0000: 	STRING GLOBAL			BEMF.MESSAGE$,			\
+  28: 0000: 					BEMF.FILE.NAME$
+  29: 0000: 
+  30: 0000: 	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+  31: 0000: 					BEMF.REPORT.NUM%,		\
+  32: 0000: 					BEMF.SESS.NUM%
+  33: 0000: 
+  34: 0000: 	INTEGER*4 GLOBAL		BEMF.REC.NO%
+  35: 0000: %INCLUDE BOOTSDEC.J86
+  36: 0000: \******************************************************************************
+  37: 0000: \******************************************************************************
+  38: 0000: \***
+  39: 0000: \***
+  40: 0000: \***
+  41: 0000: \******************************************************************************
+  42: 0000: 
+  43: 0000: 
+  44: 0000: %INCLUDE PSBF01G.J86
+  45: 0000: REM \
+  46: 0000: \*******************************************************************************
+  47: 0000: \*******************************************************************************
+  48: 0000: \***
+  49: 0000: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+  50: 0000: \***
+  51: 0000: \***                FUNCTION NUMBER    : PSBF01
+  52: 0000: \***
+  53: 0000: \***                REFERENCE          : PSBF01G.J86
+  54: 0000: \***
+  55: 0000: \***                DATE OF LAST AMENDMENT  - 27/2/86
+  56: 0000: \***
+  57: 0000: \***
+  58: 0000: \*******************************************************************************
+  59: 0000: 
+  60: 0000:       INTEGER GLOBAL  F01.RETURN.CODE%
+  61: 0000: 
+  62: 0000: 
+  63: 0000: %INCLUDE PSBF20G.J86
+  64: 0000: REM\
+  65: 0000: \*******************************************************************************
+  66: 0000: \*******************************************************************************
+  67: 0000: \***
+  68: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+  69: 0000: \***
+  70: 0000: \***                       REFERENCE     : PSBF20G.J86
+  71: 0000: \*** 
+  72: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+  73: 0000: \*** 
+  74: 0000: \***     Version B              Robert Cowey                   7th May 1991
+  75: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+  76: 0000: \***     to two byte integer.
+  77: 0000: \***
+  78: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+  79: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+  80: 0000: \***
+  81: 0000: \*******************************************************************************
+  82: 0000: \*******************************************************************************
+  83: 0000: 
+  84: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+  85: 0000:                        F20.STRING.FILE.NO$,                            \
+  86: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+  87: 0000:                        SESS.NUM.TABLE$(1)
+  88: 0000: 
+  89: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+  90: 0000: 
+  91: 0000:       ! 1 line deleted from here                                       ! DAW 
+  92: 0000: 
+  93: 0000: %INCLUDE IDFDEC.J86
+  94: 0000: REM \
+  95: 0000: \******************************************************************************
+  96: 0000: \******************************************************************************
+  97: 0000: \***
+  98: 0000: \***         %INCLUDE FOR ITEM DATA FILE - FIELD DECLARATIONS
+  99: 0000: \***                                       FILE REFERENCE PARAMETERS
+ 100: 0000: \***
+ 101: 0000: \***                  FILE TYPE    : Keyed
+ 102: 0000: \***
+ 103: 0000: \***                  REFERENCE    : IDFDEC.J86
+ 104: 0000: \***
+ 105: 0000: \***         VERSION A : Andrew Wedgeworth  29th June 1992    
+ 106: 0000: \***
+ 107: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 108: 0000: \***    Replaced un-used RANK$ with BSNS.CNTR$ and FILLER$.
+ 109: 0000: \***
+ 110: 0000: \***    VERSION D.              Andrew Wedgeworth               15th March 1995
+ 111: 0000: \***    Comments updated to reflect the fact that some bits on the file are
+ 112: 0000: \***    no longer used.
+ 113: 0000: \***
+ 114: 0000: \*******************************************************************************
+ 115: 0000: \*******************************************************************************
+ 116: 0000: 
+ 117: 0000:   STRING GLOBAL           \
+ 118: 0000:     IDF.FILE.NAME$,       \  
+ 119: 0000:     IDF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+ 120: 0000:     IDF.FIRST.BAR.CODE$,  \ 6 byte UPD without check digit
+ 121: 0000:     IDF.SECOND.BAR.CODE$, \ 6 byte UPD without check digit
+ 122: 0000:     IDF.NO.OF.BAR.CODES$, \ 2 byte UPD. Total number of bar codes for this item
+ 123: 0000:     IDF.PRODUCT.GRP$,     \ 3 byte UPD. The first two digits are the concept
+ 124: 0000:                           \ group and the last four the concept sequence
+ 125: 0000:     IDF.STNDRD.DESC$,     \ 24 bytes
+ 126: 0000:     IDF.STATUS.1$,        \ 1 byte, values B,C,D,P,X,Z and blank
+ 127: 0000:     IDF.INTRO.DATE$,      \ 3 byte UPD YYMMDD. Date first added to this file
+ 128: 0000:     IDF.BSNS.CNTR$,       \ 1 byte ASC. Business Centre ID letter      ! CRC
+ 129: 0000:     IDF.FILLER$,          \ 1 byte un-used                             ! CRC
+ 130: 0000:     IDF.PARENT.CODE$,     \ 4 byte UPD with check digit ; may be zero if no
+ 131: 0000:                           \ flashpacks, current IDF.BOOTS.CODE$ if parent line
+ 132: 0000:                           \ or Boots Code of parent line if a flashpack.
+ 133: 0000:     IDF.DATE.OF.LAST.SALE$! 3 byte UPD. Date of last sale.
+ 134: 0000: 
+ 135: 0000:   INTEGER*1 GLOBAL        \
+ 136: 0000:     IDF.BIT.FLAGS.1%,     \ 1 byte - bit values
+ 137: 0000:                           \ X"80"  - Group code flag
+ 138: 0000:                           \ X"40"  - Keylines flag
+ 139: 0000:                           \ X"20"  - Markdown flag
+ 140: 0000:                           \ X"10"  - Warehouse flag
+ 141: 0000:                           \ X"08"  - CSR flag
+ 142: 0000:                           \ X"04"  - Directs A flag
+ 143: 0000:                           \ X"02"  - Directs B flag
+ 144: 0000:                           \ X"01"  - Directs C flag
+ 145: 0000:     IDF.BIT.FLAGS.2%      \ 1 byte - bit values
+ 146: 0000:                           \ X"80"  - Own brand line flag
+ 147: 0000:                           \ X"40"  - Exclusive line flag
+ 148: 0000:                           \ X"20"  - Unused 
+ 149: 0000:                           \ X"10"  - Unused
+ 150: 0000:                           \ X"08"  - Stock system flag
+ 151: 0000:                           \ X"04"  - Pending count flag
+ 152: 0000:                           \ X"02"  - Reserved
+ 153: 0000:                           ! X"01"  - Reserved
+ 154: 0000: 
+ 155: 0000:   INTEGER*2 GLOBAL        \
+ 156: 0000:     IDF.RECL%,            \  
+ 157: 0000:     IDF.REPORT.NUM%,      \ 
+ 158: 0000:     IDF.SESS.NUM%
+ 159: 0000:  
+ 160: 0000: \***********************************************************************
+ 161: 0000: \*
+ 162: 0000: \*    Global variable definitions
+ 163: 0000: \*
+ 164: 0000: \***********************************************************************
+ 165: 0000: 
+ 166: 0000: STRING     GLOBAL        \
+ 167: 0000:      FILE.OPERATION$,    \
+ 168: 0000:      PINFO.TABLE$,       \
+ 169: 0000:      PASSED.STRING$,     \
+ 170: 0000:      SVC.PARAM$          
+ 171: 0000: 
+ 172: 0000: INTEGER*4  GLOBAL        \
+ 173: 0000:    ADX.FUNCTION%,        \
+ 174: 0000:    ADX.PARAM%,           \
+ 175: 0000:    CURRENT.REPORT.NUM%,  \
+ 176: 0000:    EVENT.NO%,            \
+ 177: 0000:    PASSED.INTEGER%,      \
+ 178: 0000:    RC%
+ 179: 0000:  
+ 180: 0000: STRING                  \
+ 181: 0000:     GETCIP.LOG.NAME$,   \
+ 182: 0000:     GETCIP.OK.NAME$,    \
+ 183: 0000:     FUNCTION.FLAG$,     \
+ 184: 0000:     FILE.NAME$,         \
+ 185: 0000:     PATTERN$,           \
+ 186: 0000:     FILE.RECORD$
+ 187: 0000: 
+ 188: 0000: INTEGER*4               \
+ 189: 0000:     CIPVALUE%,         \ 
+ 190: 0000:     GETCIP.OK.SESS%,    \
+ 191: 0000:     GETCIP.SESS.NUM%,   \
+ 192: 0000:     FILE.RECL%,         \
+ 193: 0000:     OPTIONS%,           \
+ 194: 0000:     OFFSET%,            \
+ 195: 0000:     MODE%,              \
+ 196: 0000:     FID%,               \
+ 197: 0000:     RECORD.COUNT%,      \
+ 198: 0000:     READKF.RC%,         \
+ 199: 0000:     TERMKF.RC%
+ 200: 0000:  
+ 201: 0000: INTEGER*1              \
+ 202: 0000:    END.OF.FILE%,       \
+ 203: 0000:    ERROR.COUNT%
+ 204: 0000: 
+ 205: 0000: \***********************************************************************
+ 206: 0000: \*
+ 207: 0000: \*    Included code defining external Boots functions
+ 208: 0000: \*
+ 209: 0000: \***********************************************************************
+ 210: 0000: 
+ 211: 0000: %INCLUDE PSBF01E.J86 
+ 212: 0000: REM \
+ 213: 0000: \*******************************************************************************
+ 214: 0000: \*******************************************************************************
+ 215: 0000: \***
+ 216: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 217: 0000: \***
+ 218: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 219: 0000: \***
+ 220: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 221: 0000: \*** 
+ 222: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 223: 0000: \***      Three parameters which passed to the function have been removed.
+ 224: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 225: 0000: \***      return code).
+ 226: 0000: \***
+ 227: 0000: \*******************************************************************************
+ 228: 0000: 
+ 229: 0000: 
+ 230: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 231: 0000:                              VAR.STRING.1$,                                   \
+ 232: 0000:                              VAR.STRING.2$,                                   \
+ 233: 0000:                              EVENT.NO%)  EXTERNAL
+ 234: 0000: 
+ 235: 0000:       INTEGER*1 EVENT.NO%
+ 236: 0000: 
+ 237: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 238: 0000:                 MESSAGE.NO%
+ 239: 0000: 
+ 240: 0000:       STRING VAR.STRING.1$,                                            \
+ 241: 0000:              VAR.STRING.2$
+ 242: 0000: 
+ 243: 0000:    END FUNCTION
+ 244: 0000: 
+ 245: 0000: \*******************************************************************************
+ 246: 0000: %INCLUDE PSBF20E.J86 
+ 247: 0000: REM\
+ 248: 0000: \*******************************************************************************
+ 249: 0000: \*******************************************************************************
+ 250: 0000: \***
+ 251: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 252: 0000: \***
+ 253: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 254: 0000: \***
+ 255: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 256: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 257: 0000: \***     128 files.
+ 258: 0000: \***
+ 259: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 260: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 261: 0000: \***     as a variable.  This new variable contains the function's return
+ 262: 0000: \***     code.
+ 263: 0000: \***
+ 264: 0000: \*******************************************************************************
+ 265: 0000: \*******************************************************************************
+ 266: 0000: 
+ 267: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 268: 0000:                               PASSED.INTEGER%,                         \
+ 269: 0000:                               PASSED.STRING$)                          \
+ 270: 0000:    EXTERNAL
+ 271: 0000: 
+ 272: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 273: 0000:              PASSED.STRING$
+ 274: 0000:    ! 3 variables removed from here                                     ! CAW
+ 275: 0000: 
+ 276: 0000: 
+ 277: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 278: 0000:              PASSED.INTEGER%				               ! CJAS
+ 279: 0000: 
+ 280: 0000:    END FUNCTION
+ 281: 0000: 
+ 282: 0000: %INCLUDE PSBF24E.J86
+ 283: 0000: REM \
+ 284: 0000: \*******************************************************************************
+ 285: 0000: \*******************************************************************************
+ 286: 0000: \***
+ 287: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 288: 0000: \***
+ 289: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 290: 0000: \***
+ 291: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 292: 0000: \***
+ 293: 0000: \*******************************************************************************
+ 294: 0000: \*******************************************************************************
+ 295: 0000: 
+ 296: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 297: 0000: 				    ERRFILE%,              \
+ 298: 0000: 				    ERRL%,                 \
+ 299: 0000: 				    ERR$)        EXTERNAL
+ 300: 0000: 				    
+ 301: 0000:           STRING    ERR$
+ 302: 0000: 
+ 303: 0000:           INTEGER*2 ERRFILE%,              \
+ 304: 0000: 	            ERRL%,                 \
+ 305: 0000: 		    STANDARD.ERROR.DETECTED
+ 306: 0000: 		    
+ 307: 0000:           INTEGER*4 ERRN%
+ 308: 0000: 	  		    
+ 309: 0000:    END FUNCTION
+ 310: 0000: 
+ 311: 0000: 
+ 312: 0000: %INCLUDE BEMFEXT.J86 
+ 313: 0000: \******************************************************************************
+ 314: 0000: \***
+ 315: 0000: \***        EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FILE
+ 316: 0000: \***                                                            
+ 317: 0000: \***                        REFERENCE : BEMFEXT
+ 318: 0000: \***
+ 319: 0000: \***    Version A               Mark Walker                   1st November 1993
+ 320: 0000: \***
+ 321: 0000: \***    Version B       Stuart William McConnachie          25th September 2000
+ 322: 0000: \***    READ.BEMF function has got lost!
+ 323: 0000: \***
+ 324: 0000: \******************************************************************************
+ 325: 0000: 
+ 326: 0000:     FUNCTION BEMF.SET EXTERNAL
+ 327: 0000:     END FUNCTION
+ 328: 0000:     
+ 329: 0000:     FUNCTION READ.BEMF EXTERNAL
+ 330: 0000:     INTEGER*1 READ.BEMF
+ 331: 0000:     END FUNCTION
+ 332: 0000:     
+ 333: 0000:     
+ 334: 0000: %INCLUDE BOOTSEXT.J86
+ 335: 0000: \******************************************************************************
+ 336: 0000: \******************************************************************************
+ 337: 0000: SUB LOG.ERROR(F.1$) EXTERNAL
+ 338: 0000:     STRING  F.1$
+ 339: 0000: END SUB
+ 340: 0000: 
+ 341: 0000: \******************************************************************************
+ 342: 0000: \******************************************************************************
+ 343: 0000: FUNCTION FORCE.CASE$(DATA$,TYPE%) EXTERNAL
+ 344: 0000:     STRING      FORCE.CASE$
+ 345: 0000:     STRING      DATA$
+ 346: 0000:     INTEGER*2   TYPE%
+ 347: 0000:     STRING      IN$, OUT$
+ 348: 0000:     STRING      LWR$, UPR$
+ 349: 0000: END FUNCTION
+ 350: 0000: 
+ 351: 0000: \******************************************************************************
+ 352: 0000: \******************************************************************************
+ 353: 0000: FUNCTION REMOVE.CHARACTER$(DATA$,F.CHR$) EXTERNAL
+ 354: 0000:     STRING      DATA$
+ 355: 0000:     STRING      F.CHR$
+ 356: 0000:     STRING      REMOVE.CHARACTER$
+ 357: 0000:     INTEGER*2   START%
+ 358: 0000:     INTEGER*2   END%
+ 359: 0000:     INTEGER*2   POS%
+ 360: 0000:     INTEGER*2   F.LEN%
+ 361: 0000: END FUNCTION
+ 362: 0000: 
+ 363: 0000: \******************************************************************************
+ 364: 0000: \******************************************************************************
+ 365: 0000: FUNCTION REMOVE.SPACES$(DATA$) EXTERNAL
+ 366: 0000:     STRING      DATA$
+ 367: 0000:     STRING      REMOVE.SPACES$
+ 368: 0000:     INTEGER*2   START%
+ 369: 0000:     INTEGER*2   END%
+ 370: 0000:     INTEGER*2   POS%
+ 371: 0000: END FUNCTION
+ 372: 0000: 
+ 373: 0000: \*******************************************************************************
+ 374: 0000: \***
+ 375: 0000: \***    FUNCTION     :    TIME.STAMP$
+ 376: 0000: \***    
+ 377: 0000: \***    Returns a string with formatted date and/or time detail
+ 378: 0000: \***                 Passed values are 1 = Date, 2 = Time
+ 379: 0000: \*******************************************************************************
+ 380: 0000: FUNCTION TIME.STAMP$(F.TYPE%) EXTERNAL
+ 381: 0000:     STRING      TIME.STAMP$
+ 382: 0000:     INTEGER*2   F.TYPE%
+ 383: 0000:     STRING      F.DT$
+ 384: 0000:     STRING      F.RET$
+ 385: 0000: END FUNCTION
+ 386: 0000: \*******************************************************************************
+ 387: 0000: 
+ 388: 0000: 
+ 389: 0000: \*******************************************************************************
+ 390: 0000: \*******************************************************************************
+ 391: 0000: FUNCTION PRINT.MSG$(MSG$,F%,L%) EXTERNAL
+ 392: 0000: STRING      PRINT.MSG$
+ 393: 0000: STRING      MSG$
+ 394: 0000: INTEGER*2   F%
+ 395: 0000: INTEGER*2   L%
+ 396: 0000: STRING      IN$
+ 397: 0000: STRING      F.FORM$
+ 398: 0000: END FUNCTION
+ 399: 0000: \*******************************************************************************
+ 400: 0000: 
+ 401: 0000: \*******************************************************************************
+ 402: 0000: \***
+ 403: 0000: \***    SUBROUTINE     :    BACKGROUND.MSG(B.MSG$)
+ 404: 0000: \***    
+ 405: 0000: \***    Displays passed message to the background message.
+ 406: 0000: \*******************************************************************************
+ 407: 0000: SUB BACKGROUND.MSG(B.MSG$) EXTERNAL
+ 408: 0000:     STRING      B.MSG$
+ 409: 0000:     INTEGER*4   B.RET%
+ 410: 0000: END SUB
+ 411: 0000: \*******************************************************************************
+ 412: 0000: 
+ 413: 0000: !*****************************************************************************!
+ 414: 0000: !***                                                                          !
+ 415: 0000: !*** SUBROUTINE :   NO.OPEN.FILE                                              !
+ 416: 0000: !***                    F.REPORT%       - Passed report number for logging    !
+ 417: 0000: !***                    F.OPEN.FLAG$    - Returned flag for not-opened        !
+ 418: 0000: !***                                                                          !
+ 419: 0000: !*** This subroutine logs an application 106 error with the passed report     !
+ 420: 0000: !*** number. It also sets a return variable to "N" to flag that the file is   !
+ 421: 0000: !*** not Open because of the failure.                                         !
+ 422: 0000: !***                                                                          !
+ 423: 0000: !*****************************************************************************!
+ 424: 0000: SUB NO.OPEN.FILE(F.REPORT%,F.OPEN.FLAG$) EXTERNAL                                      
+ 425: 0000:     INTEGER*2   F.REPORT%                                                         
+ 426: 0000:     STRING      F.OPEN.FLAG$                                                      
+ 427: 0000:     STRING      F.1$, F.2$
+ 428: 0000:     INTEGER*2   F.EVENT%
+ 429: 0000: END SUB                                                                       
+ 430: 0000: !*****************************************************************************!
+ 431: 0000: 
+ 432: 0000: 
+ 433: 0000: FUNCTION NUMBER.OF.DAYS%(START$,END$) EXTERNAL
+ 434: 0000: INTEGER*2   NUMBER.OF.DAYS%
+ 435: 0000: STRING      START$
+ 436: 0000: STRING      END$
+ 437: 0000: INTEGER*2   F.DAYS%
+ 438: 0000: INTEGER*4   S.DAYS%
+ 439: 0000: INTEGER*4   E.DAYS%
+ 440: 0000: END FUNCTION
+ 441: 0000: 
+ 442: 0000: FUNCTION HEX.FORMAT$(F.DATA$) EXTERNAL
+ 443: 0000: STRING  HEX.FORMAT$
+ 444: 0000: STRING  F.DATA$
+ 445: 0000: STRING      F.RET$
+ 446: 0000: INTEGER*2   F.LEN%
+ 447: 0000: STRING      F.TMP$(2)
+ 448: 0000: STRING      F.FORM$
+ 449: 0000: STRING      F.ASCII$
+ 450: 0000: STRING      F.ASC$
+ 451: 0000: STRING      F.HEX$
+ 452: 0000: STRING      F.WORK$, F.W2$
+ 453: 0000: INTEGER*2   F.LOOP%, F.L2%
+ 454: 0000: END FUNCTION
+ 455: 0000: 
+ 456: 0000: FUNCTION FORMAT.NUMBER$(F.NUM$,F.DEC%) EXTERNAL
+ 457: 0000: STRING      FORMAT.NUMBER$
+ 458: 0000: STRING      F.NUM$
+ 459: 0000: INTEGER*2   F.DEC%
+ 460: 0000: INTEGER*4   F.NUM%
+ 461: 0000: END FUNCTION
+ 462: 0000: 
+ 463: 0000: \*******************************************************************************
+ 464: 0000: FUNCTION FORMAT.BOOTS.CODE$(F.CODE$) EXTERNAL
+ 465: 0000: STRING  FORMAT.BOOTS.CODE$
+ 466: 0000: STRING  F.CODE$
+ 467: 0000: END FUNCTION
+ 468: 0000: 
+ 469: 0000: FUNCTION FORMAT.STRING$(F.STRING$,F.L%,F.P$,F.J%) EXTERNAL
+ 470: 0000: STRING    FORMAT.STRING$
+ 471: 0000: STRING    F.STRING$
+ 472: 0000: INTEGER*2 F.L%
+ 473: 0000: STRING    F.P$
+ 474: 0000: INTEGER*2 F.J%
+ 475: 0000: END FUNCTION
+ 476: 0000: 
+ 477: 0000: SUB GET.BLOCK.SIZE(F.BLOCK.SIZE%,F.FILENAME$,F.SIZE%) EXTERNAL
+ 478: 0000: INTEGER*4   F.BLOCK.SIZE%
+ 479: 0000: STRING      F.FILENAME$
+ 480: 0000: INTEGER*4   F.SIZE%
+ 481: 0000: INTEGER*4   F.BLOCK%
+ 482: 0000: INTEGER*2   F.SECTOR%
+ 483: 0000: INTEGER*2   F.LOOP%
+ 484: 0000: STRING      F.BLOCK.LENGTH$
+ 485: 0000: END SUB
+ 486: 0000: %INCLUDE KFASMEXT.J86
+ 487: 0000: \*******************************************************************************
+ 488: 0000: \*******************************************************************************
+ 489: 0000: \***
+ 490: 0000: \***   EXTERNAL FUNCTION DEFINITIONS FOR KEYED FILE ASSEMBLER FUNCTIONS
+ 491: 0000: \***
+ 492: 0000: \*******************************************************************************
+ 493: 0000: \*******************************************************************************
+ 494: 0000: 
+ 495: 0000: \*******************************************************************************
+ 496: 0000: \*******************************************************************************
+ 497: 0000: \***
+ 498: 0000: \***    Version A.              Mark Walker                      5th Feb 1998
+ 499: 0000: \***    Initial version.
+ 500: 0000: \***
+ 501: 0000: \***    Version B.              Mark Walker                     30th Jan 2014
+ 502: 0000: \***    Added new WRITEKF routine.
+ 503: 0000: \***
+ 504: 0000: \***    Version C.              Mark Walker                     21st May 2014
+ 505: 0000: \***    Extended READKF interface to include a mode flag.
+ 506: 0000: \***
+ 507: 0000: \***    Version D.              Mark Walker                      9th Jan 2017
+ 508: 0000: \***    Added new RECLKF routine.
+ 509: 0000: \***
+ 510: 0000: \*******************************************************************************
+ 511: 0000: \*******************************************************************************
+ 512: 0000: 
+ 513: 0000: \*******************************************************************************
+ 514: 0000: \***
+ 515: 0000: \***    FUNCTION        :       INITKF
+ 516: 0000: \***
+ 517: 0000: \******************************************************************************* 
+ 518: 0000: \***
+ 519: 0000: \***    Assembler function that initialises a keyed file for processing
+ 520: 0000: \***
+ 521: 0000: \******************************************************************************* 
+ 522: 0000: 
+ 523: 0000:     FUNCTION INITKF(FILE.NAME$,OPTIONS%) EXTERNAL
+ 524: 0000:     INTEGER*2       OPTIONS%
+ 525: 0000:     INTEGER*4       INITKF
+ 526: 0000:     STRING          FILE.NAME$
+ 527: 0000:     END FUNCTION      
+ 528: 0000: 
+ 529: 0000: \*******************************************************************************
+ 530: 0000: \***
+ 531: 0000: \***    FUNCTION        :       TERMKF
+ 532: 0000: \***
+ 533: 0000: \******************************************************************************* 
+ 534: 0000: \***
+ 535: 0000: \***    Assembler function that closes a file
+ 536: 0000: \***
+ 537: 0000: \******************************************************************************* 
+ 538: 0000: 
+ 539: 0000:     FUNCTION TERMKF(FID%) EXTERNAL
+ 540: 0000:     INTEGER*4       TERMKF
+ 541: 0000:     INTEGER*4       FID%
+ 542: 0000:     END FUNCTION      
+ 543: 0000: 
+ 544: 0000: \*******************************************************************************
+ 545: 0000: \***
+ 546: 0000: \***    FUNCTION        :       READKF
+ 547: 0000: \***
+ 548: 0000: \******************************************************************************* 
+ 549: 0000: \***
+ 550: 0000: \***    Assembler function that reads records from a keyed file that contain
+ 551: 0000: \***    a pattern string at a specified offset within the record
+ 552: 0000: \***
+ 553: 0000: \******************************************************************************* 
+ 554: 0000: 
+ 555: 0000:     FUNCTION READKF(RECORD$,PATTERN$,OFFSET%,MODE%) EXTERNAL            !CMW
+ 556: 0000:     INTEGER*2       MODE%                                               !CMW
+ 557: 0000:     INTEGER*4       OFFSET%
+ 558: 0000:     INTEGER*4       READKF
+ 559: 0000:     STRING          RECORD$
+ 560: 0000:     STRING          PATTERN$
+ 561: 0000:     END FUNCTION       
+ 562: 0000: 
+ 563: 0000: \***********************************************************************!BMW
+ 564: 0000: \***                                                                    !BMW
+ 565: 0000: \***    FUNCTION        :       WRITEKF                                 !BMW
+ 566: 0000: \***                                                                    !BMW
+ 567: 0000: \***********************************************************************!BMW
+ 568: 0000: \***                                                                    !BMW
+ 569: 0000: \***    Assembler function that updates records in a keyed file.        !BMW
+ 570: 0000: \***                                                                    !BMW
+ 571: 0000: \***********************************************************************!BMW
+ 572: 0000:                                                                         !BMW
+ 573: 0000:     FUNCTION WRITEKF(RECORD$) EXTERNAL                                  !BMW
+ 574: 0000:     INTEGER*4       WRITEKF                                             !BMW
+ 575: 0000:     STRING          RECORD$                                             !BMW
+ 576: 0000:     END FUNCTION                                                        !BMW
+ 577: 0000: 
+ 578: 0000: \***********************************************************************!DMW
+ 579: 0000: \***                                                                    !DMW
+ 580: 0000: \***   FUNCTION        :       RECLKF                                   !DMW
+ 581: 0000: \***                                                                    !DMW
+ 582: 0000: \***********************************************************************!DMW
+ 583: 0000: \***                                                                    !DMW
+ 584: 0000: \***   Assembler function that returns record length of a keyed file.   !DMW
+ 585: 0000: \***                                                                    !DMW
+ 586: 0000: \***********************************************************************!DMW
+ 587: 0000:                                                                         !DMW
+ 588: 0000:     FUNCTION RECLKF(FILE.NAME$) EXTERNAL                                !DMW
+ 589: 0000:     INTEGER*2 RECLKF                                                    !DMW
+ 590: 0000:     STRING FILE.NAME$                                                   !DMW
+ 591: 0000:     END FUNCTION                                                        !DMW
+ 592: 0000: 
+ 593: 0000: %INCLUDE BTCMEM.J86
+ 594: 0000: !********************************************************************
+ 595: 0000: !***
+ 596: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+ 597: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 598: 0000: !***    DATE:           26th February 2006
+ 599: 0000: !***
+ 600: 0000: !********************************************************************
+ 601: 0000: !***
+ 602: 0000: !***    Controller CBASIC Memory Functions
+ 603: 0000: !***
+ 604: 0000: !********************************************************************
+ 605: 0000: 
+ 606: 0000: !Get a single byte integer from a string offset
+ 607: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 608: 0000:     STRING S$
+ 609: 0000:     INTEGER*2 P%
+ 610: 0000:     INTEGER*2 GETN1
+ 611: 0000: END FUNCTION
+ 612: 0000: 
+ 613: 0000: !Get a two byte integer from a string offset
+ 614: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 615: 0000:     STRING S$
+ 616: 0000:     INTEGER*2 P%
+ 617: 0000:     INTEGER*2 GETN2
+ 618: 0000: END FUNCTION
+ 619: 0000: 
+ 620: 0000: !Get a four byte integer from a string offset
+ 621: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 622: 0000:     STRING S$
+ 623: 0000:     INTEGER*2 P%
+ 624: 0000:     INTEGER*4 GETN4
+ 625: 0000: END FUNCTION
+ 626: 0000: 
+ 627: 0000: !Get a 10 byte CBASIC real from a string offset
+ 628: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 629: 0000:     STRING S$
+ 630: 0000:     INTEGER*2 P%
+ 631: 0000:     REAL GETR10
+ 632: 0000: END FUNCTION
+ 633: 0000: 
+ 634: 0000: !Put a single byte integer into a string at offset
+ 635: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 636: 0000:     STRING S$
+ 637: 0000:     INTEGER*2 P%
+ 638: 0000:     INTEGER*1 N%
+ 639: 0000:     INTEGER*1 PUTN1
+ 640: 0000: END FUNCTION
+ 641: 0000: 
+ 642: 0000: !Put a two byte integer into a string at offset
+ 643: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 644: 0000:     STRING S$
+ 645: 0000:     INTEGER*2 P%
+ 646: 0000:     INTEGER*2 N%
+ 647: 0000:     INTEGER*1 PUTN2
+ 648: 0000: END FUNCTION
+ 649: 0000: 
+ 650: 0000: !Put a four byte integer into a string at offset
+ 651: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 652: 0000:     STRING S$
+ 653: 0000:     INTEGER*2 P%
+ 654: 0000:     INTEGER*4 N%
+ 655: 0000:     INTEGER*1 PUTN4
+ 656: 0000: END FUNCTION
+ 657: 0000: 
+ 658: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 659: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 660: 0000:     STRING S$
+ 661: 0000:     INTEGER*2 P%
+ 662: 0000:     REAL R
+ 663: 0000:     INTEGER*1 PUTR10
+ 664: 0000: END FUNCTION
+ 665: 0000: 
+ 666: 0000: !Peek a two byte integer from a memory address
+ 667: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 668: 0000:     INTEGER*4 A%
+ 669: 0000:     INTEGER*2 PEEKN2
+ 670: 0000: END FUNCTION
+ 671: 0000: 
+ 672: 0000: !Peek a four byte integer from a memory address
+ 673: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 674: 0000:     INTEGER*4 A%
+ 675: 0000:     INTEGER*4 PEEKN4
+ 676: 0000: END FUNCTION
+ 677: 0000: 
+ 678: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 679: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 680: 0000:     INTEGER*4 A%
+ 681: 0000:     REAL PEEKR10
+ 682: 0000: END FUNCTION
+ 683: 0000: 
+ 684: 0000: !Poke a two byte integer to a memory address
+ 685: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 686: 0000:     INTEGER*4 A%
+ 687: 0000:     INTEGER*2 N%
+ 688: 0000:     INTEGER*1 POKEN2
+ 689: 0000: END FUNCTION
+ 690: 0000: 
+ 691: 0000: !Poke a four byte integer to a memory address
+ 692: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 693: 0000:     INTEGER*4 A%
+ 694: 0000:     INTEGER*4 N%
+ 695: 0000:     INTEGER*1 POKEN4
+ 696: 0000: END FUNCTION
+ 697: 0000: 
+ 698: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 699: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 700: 0000:     INTEGER*4 A%
+ 701: 0000:     REAL R
+ 702: 0000:     INTEGER*1 POKER10
+ 703: 0000: END FUNCTION
+ 704: 0000: 
+ 705: 0000: %INCLUDE IDFEXT.J86
+ 706: 0000: \*******************************************************************************
+ 707: 0000: \***                                                                         ***
+ 708: 0000: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM DESCRIPTION FILE        ***
+ 709: 0000: \***                                                                         ***
+ 710: 0000: \***                       REFERENCE : IDFEXT.J86                            ***
+ 711: 0000: \***                                                                         ***
+ 712: 0000: \***      Version A           Andrew Wedgeworth         9th July 1992        ***
+ 713: 0000: \***
+ 714: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 715: 0000: \***    No changes to this file.
+ 716: 0000: \***
+ 717: 0000: \***   VERSION D               Nik Sen                 22nd December 1994
+ 718: 0000: \***   WRITE.IDF.HOLD added
+ 719: 0000: \***
+ 720: 0000: \*******************************************************************************
+ 721: 0000: 
+ 722: 0000:        FUNCTION IDF.SET EXTERNAL                                      
+ 723: 0000:        END FUNCTION                                                   
+ 724: 0000: 
+ 725: 0000: 
+ 726: 0000:        FUNCTION READ.IDF EXTERNAL                                     
+ 727: 0000:           INTEGER*2 READ.IDF                                          
+ 728: 0000:        END FUNCTION                                                   
+ 729: 0000: 
+ 730: 0000: 
+ 731: 0000:        FUNCTION READ.IDF.LOCK EXTERNAL                                
+ 732: 0000:           INTEGER*2 READ.IDF.LOCK                                     
+ 733: 0000:        END FUNCTION                                                   
+ 734: 0000: 
+ 735: 0000:        FUNCTION WRITE.IDF EXTERNAL
+ 736: 0000:           INTEGER*2 WRITE.IDF
+ 737: 0000:        END FUNCTION	       
+ 738: 0000: 
+ 739: 0000:        FUNCTION WRITE.IDF.HOLD EXTERNAL
+ 740: 0000:           INTEGER*2 WRITE.IDF.HOLD
+ 741: 0000:        END FUNCTION
+ 742: 0000: 
+ 743: 0000:        FUNCTION WRITE.IDF.UNLOCK EXTERNAL                                  
+ 744: 0000:           INTEGER*2 WRITE.IDF.UNLOCK                                      
+ 745: 0000:        END FUNCTION                                                   
+ 746: 0000: 
+ 747: 0000: ON ERROR GOTO ERROR.DETECTED
+ 748: 002f: 
+ 749: 002f:     PRINT  TIME.STAMP$(2)  + "-CIP check starts, hold your breath"	
+ 750: 005d:     GOSUB INITIALISATION 
+ 751: 006f:     PRINT #GETCIP.OK.SESS% ; TIME.STAMP$(2) + "-GETCIP check starts, hold your breath"    
+ 752: 00ac:     GOSUB IDFREADER
+ 753: 00be:     GOSUB TERMINATION
+ 754: 00d0:  
+ 755: 00d0: STOP.PROGRAM:
+ 756: 00d8:     STOP
+ 757: 00e5: 	
+ 758: 00e5: INITIALISATION:
+ 759: 00f5: 
+ 760: 00f5:     ERROR.COUNT% = 0
+ 761: 0102:     CALL IDF.SET
+ 762: 011d:     GETCIP.LOG.NAME$ 	= "ADXLXACN::D:ADX_UDT1/GETCIP.LOG"     
+ 763: 0132:     GETCIP.OK.NAME$ 	= "ADXLXACN::C:/GETCIP.ERR"
+ 764: 0147:     GETCIP.OK.SESS% = 101
+ 765: 015c: 	GETCIP.SESS.NUM% = 100
+ 766: 0171: 	
+ 767: 0171: 	 GOSUB ALLOCATE.SESSION.NUMBERS:
+ 768: 0183: 	
+ 769: 0183:     
+ 770: 0183: 	 
+ 771: 0183: 	CREATE POSFILE GETCIP.LOG.NAME$ AS GETCIP.SESS.NUM%
+ 772: 01a7:  
+ 773: 01a7: 	CREATE POSFILE GETCIP.OK.NAME$ AS GETCIP.OK.SESS%
+ 774: 01cb:     
+ 775: 01cb:  
+ 776: 01cb: RETURN
+ 777: 01db: 
+ 778: 01db: ALLOCATE.SESSION.NUMBERS:
+ 779: 01eb: 
+ 780: 01eb:     FUNCTION.FLAG$ EQ "O"
+ 781: 0200: 
+ 782: 0200:     PASSED.INTEGER% EQ 100
+ 783: 0217:     PASSED.STRING$ EQ GETCIP.LOG.NAME$
+ 784: 0232:     GOSUB CALL.F20.SESS.NUM.UTILITY
+ 785: 0244:     GETCIP.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+ 786: 025f: 	
+ 787: 025f:  
+ 788: 025f:     
+ 789: 025f:     PASSED.INTEGER% EQ 101
+ 790: 0276:     PASSED.STRING$ EQ GETCIP.OK.NAME$
+ 791: 0291:     GOSUB CALL.F20.SESS.NUM.UTILITY
+ 792: 02a3:     GETCIP.OK.SESS% EQ F20.INTEGER.FILE.NO%
+ 793: 02be: 	
+ 794: 02be:  
+ 795: 02be: 
+ 796: 02be: RETURN
+ 797: 02ce: 
+ 798: 02ce: CALL.F20.SESS.NUM.UTILITY: 
+ 799: 02de:         
+ 800: 02de:     FILE.OPERATION$ = FUNCTION.FLAG$
+ 801: 02f9:     CURRENT.REPORT.NUM% = PASSED.INTEGER%
+ 802: 0312:     RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+ 803: 034f:                                  PASSED.STRING$)
+ 804: 034f:     IF RC% <> 0 THEN GOTO ERROR.DETECTED
+ 805: 0371: 
+ 806: 0371: RETURN
+ 807: 0381: 
+ 808: 0381: IDFREADER:
+ 809: 0391: 
+ 810: 0391:     FILE.NAME$ = "IDF"
+ 811: 03a6:     FILE.RECL% = 60
+ 812: 03bb:     OPTIONS%   = 201AH
+ 813: 03d0:     PATTERN$   = ""
+ 814: 03e5:     OFFSET%    = 0
+ 815: 03fa:     MODE%      = 0
+ 816: 040f:  
+ 817: 040f:     FID% = INITKF(FILE.NAME$,OPTIONS%)
+ 818: 043c: 
+ 819: 043c:     ! Check for errors opening file
+ 820: 043c:     IF FID% <= 0 THEN BEGIN
+ 821: 0455:         PRINT #GETCIP.OK.SESS% ; "OPENING ERROR"
+ 822: 0475:         STOP
+ 823: 0482:     ENDIF
+ 824: 048a: 
+ 825: 048a:     RECORD.COUNT% = 0
+ 826: 049f: 
+ 827: 049f:     END.OF.FILE% = 0
+ 828: 04ac: 
+ 829: 04ac:     ! Continue until end of file reached
+ 830: 04ac:     WHILE NOT END.OF.FILE%
+ 831: 04b7: 
+ 832: 04b7:         FILE.RECORD$ = STRING$(FILE.RECL%,CHR$(0))
+ 833: 04dc: 
+ 834: 04dc:         READKF.RC% = READKF(FILE.RECORD$,PATTERN$,OFFSET%,MODE%)
+ 835: 0519: 
+ 836: 0519:         IF READKF.RC% = 0 THEN BEGIN
+ 837: 0537: 
+ 838: 0537:             IDF.BOOTS.CODE$        = LEFT$(FILE.RECORD$,4)		 
+ 839: 055b: 			IF UNPACK$(IDF.BOOTS.CODE$) <> "00000000" THEN BEGIN
+ 840: 058f: 			    CIPVALUE% = GETN1(FILE.RECORD$,51)				 
+ 841: 05b5: 				IF CIPVALUE%  = 48 THEN BEGIN
+ 842: 05d0: 				    PRINT #GETCIP.SESS.NUM%; UNPACK$(IDF.BOOTS.CODE$)
+ 843: 05ff: 				ENDIF  
+ 844: 0607: 			ENDIF 
+ 845: 0612:         ENDIF ELSE BEGIN 
+ 846: 061a:   
+ 847: 061a:             IF READKF.RC% = -1 THEN BEGIN
+ 848: 0635:                 END.OF.FILE% = -1
+ 849: 0644:             ENDIF ELSE BEGIN
+ 850: 064c:             ! Check whether an error has been returned
+ 851: 064c:                 IF READKF.RC% < -1 THEN BEGIN
+ 852: 0665:                     PRINT #GETCIP.OK.SESS% ; "IDF READ ERROR " 
+ 853: 0685:                     STOP
+ 854: 0692:                 ENDIF
+ 855: 069a:             ENDIF                                
+ 856: 06a2: 
+ 857: 06a2:         ENDIF
+ 858: 06aa: 
+ 859: 06aa:     WEND
+ 860: 06bc: 
+ 861: 06bc:     TERMKF.RC% = TERMKF(FID%)
+ 862: 06e1: 
+ 863: 06e1:     IF TERMKF.RC% < 0 THEN BEGIN
+ 864: 06fa:         PRINT #GETCIP.OK.SESS% ; "File close failed"
+ 865: 071a:     ENDIF
+ 866: 0722:  
+ 867: 0722: RETURN
+ 868: 0732: 
+ 869: 0732: TERMINATION:
+ 870: 0742: 
+ 871: 0742:     IF RECORD.COUNT% = 0 THEN BEGIN
+ 872: 075d:         PRINT #GETCIP.OK.SESS% ; TIME.STAMP$(2) + "-GETCIP completed successfully"
+ 873: 079a:     ENDIF      
+ 874: 07a2:      
+ 875: 07a2:  
+ 876: 07a2: RETURN
+ 877: 07b2: 
+ 878: 07b2: ERROR.DETECTED:
+ 879: 07c2: 
+ 880: 07c2:     ERROR.COUNT% = ERROR.COUNT%  + 1 
+ 881: 07ce:     PRINT #GETCIP.OK.SESS% ; ERR
+ 882: 07f2:     PRINT #GETCIP.OK.SESS% ; ERRF%
+ 883: 0814:     PRINT #GETCIP.OK.SESS% ; ERRL
+ 884: 083b: End of Compilation

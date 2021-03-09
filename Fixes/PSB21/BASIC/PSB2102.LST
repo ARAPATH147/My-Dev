@@ -1,0 +1,1325 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***
+   5: 0000: \***            PROGRAM         :       PSB21
+   6: 0000: \***            MODULE          :       PSB2102
+   7: 0000: \***            AUTHOR          :       Charles Skadorwa / Mark Walker / Mark Goode
+   8: 0000: \***            DATE WRITTEN    :       Sept 2011
+   9: 0000: \***
+  10: 0000: \*******************************************************************************
+  11: 0000: \***
+  12: 0000: \***    VERSION 1.0      Charles Skadorwa/Mark Walker/Mark Goode 30 SEP 2011
+  13: 0000: \***    Initial version.
+  14: 0000: \***
+  15: 0000: \***    VERSION 1.1.                ROBERT COWEY.                25 JAN 2012.
+  16: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.4.
+  17: 0000: \***    Defect 3569 (c).
+  18: 0000: \***    Modified PROCESS.PGF error handling
+  19: 0000: \***    If error occurs processing PGF only ...
+  20: 0000: \***      Program continues and relies on PGFDIR data
+  21: 0000: \***    If error occurs processing PGFDIR only ...
+  22: 0000: \***      Program continues and relies on successfully processed PGF data
+  23: 0000: \***    If error occurs processing BOTH the PGF and PGFDIR ...
+  24: 0000: \***      Program ends setting JOBOK flag to "X"
+  25: 0000: \***
+  26: 0000: \***    VERSION 1.2                Charles Skadorwa.             19 FEB 2012.
+  27: 0000: \***    Minor changes following code WPI's.
+  28: 0000: \***
+  29: 0000: \***    VERSION 1.3.                ROBERT COWEY.                22 FEB 2012.
+  30: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.6.
+  31: 0000: \***
+  32: 0000: \***    Defect 50 - Commented 1.3 RC (50).
+  33: 0000: \***    Shortened message text to fit 46 character background display.
+  34: 0000: \***
+  35: 0000: \***    Defect 103 - Commented 1.3 RC (103).
+  36: 0000: \***    When processing REFPGF data within PROCESS.KEYED.FILES ...
+  37: 0000: \***    Cater for non-Dispose return route of blank (ie, special instructions).
+  38: 0000: \***
+  39: 0000: \***    Review by Brian - Commanted 1.3 RC
+  40: 0000: \***    Changed SIZE.PLUS.FIFTY.PERCENT% from 1000 to 1500 records to cater
+  41: 0000: \***    for PGF containing close to 1000 records.
+  42: 0000: \***
+  43: 0000: \***    VERSION 1.4.                ROBERT COWEY.                22 MAY 2012.
+  44: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.18.
+  45: 0000: \***
+  46: 0000: \***    Pilot defect - Commented 1.4 RC (236)
+  47: 0000: \***    Modified PROCESS.PGF to set FILE.OPERATION$ "O" prior to PGFDIR opens.
+  48: 0000: \***
+  49: 0000: \***    VERSION 1.5.                ROBERT COWEY.                28 MAY 2012.
+  50: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.20.
+  51: 0000: \***
+  52: 0000: \***    Pilot defect - Commented 1.5 RC (240)
+  53: 0000: \***    Modified PROCESS.PGF to separate its ON ERROR routines call to
+  54: 0000: \***    PROGRAM.EXIT into a separate procedure CHECK.PROCESS.PGF.
+  55: 0000: \***    This ensures later errors within PROGRAM.EXIT are trapped by the main
+  56: 0000: \***    ERROR.DETECTED routine instead of the internal PROCESS.PGF ON ERROR 
+  57: 0000: \***    routine (which can cause looping).
+  58: 0000: \***
+  59: 0000: \***    VERSION A                   Mark Walker                 8th Jul 2014
+  60: 0000: \***    F353 Deal Limits Increase
+  61: 0000: \***    Removed DINF and NIADF file processing.
+  62: 0000: \***
+  63: 0000: \***--------------------------------------------------------------------------------
+  64: 0000: \***  IMPORTANT: When you change PSB21, please search for the line containing
+  65: 0000: \***------------        CALL DO.MESSAGE("PSB21 PROGRAM START
+  66: 0000: \***             in Module PSB2100 and wind the date and version on.
+  67: 0000: \***
+  68: 0000: \*******************************************************************************
+  69: 0000: \*******************************************************************************
+  70: 0000: 
+  71: 0000: \*******************************************************************************
+  72: 0000: \*******************************************************************************
+  73: 0000: \***
+  74: 0000: \***    Module Overview
+  75: 0000: \***    ----------------
+  76: 0000:  \***
+  77: 0000: \***    The purpose of this module is to remove old product groups from the PGF.
+  78: 0000: \***    It achieves this by reading the existing PGF into a table and reading
+  79: 0000: \***    through the PGFDIR. All PGFDIR records are written to a work file,
+  80: 0000: \***    however, its flags are updated if the product group exists on the PGF.
+  81: 0000: \***    At the end of processing, the PGF is replaced by the work file.
+  82: 0000: \***
+  83: 0000: \*******************************************************************************
+  84: 0000: \*******************************************************************************
+  85: 0000: 
+  86: 0000: \*******************************************************************************
+  87: 0000: \***
+  88: 0000: \***    Included code defining file related global variables
+  89: 0000: \***
+  90: 0000: \***............................................................................
+  91: 0000: !%INCLUDE DINFDEC.J86   ! Deal Item Inforformation File                     !AMW
+  92: 0000: %INCLUDE IUFDEC.J86     ! Item Update File
+  93: 0000: \REM
+  94: 0000: \*******************************************************************************
+  95: 0000: \*******************************************************************************
+  96: 0000: \***
+  97: 0000: \***    %INCLUDE FOR ITEM UPDATE FILES VARIABLE DECLARATIONS
+  98: 0000: \***
+  99: 0000: \***        REFERENCE   :   IUFDEC (J86)
+ 100: 0000: \***
+ 101: 0000: \***        FILE TYPE   :   Sequential
+ 102: 0000: \***
+ 103: 0000: \***    VERSION H.              ROBERT COWEY.                       24 AUG 1993.
+ 104: 0000: \***    Original version created by combining IUFFLDG and IUFNUMG.
+ 105: 0000: \***
+ 106: 0000: \***    VERSION I.              ROBERT COWEY.                       25 AUG 1993.
+ 107: 0000: \***    Added NEW.DEAL.COUNT$ and BC.LETTER$ to record type "001" (Item
+ 108: 0000: \***    reference).
+ 109: 0000: \***    Removed falconcraft detail variables (SALESPLAN.ID$, BUS.CENTRE$,
+ 110: 0000: \***    START.DATE$, END.DATE$, TICKET.TYPE$, GENOF.NUM$, GENOF.DESC$,
+ 111: 0000: \***    FOOTER.TYPE$) from record types "003" (Deal price) and "004" (Item
+ 112: 0000: \***    pending).
+ 113: 0000: \***    Defined record type "006" (Deals).
+ 114: 0000: \***
+ 115: 0000: \***    VERSION J.              Andrew Wedgeworth                13th March 1995
+ 116: 0000: \***    Focus flag, Price Pledge flag and ASCOTT/COMPASS flag replaced with
+ 117: 0000: \***    fields for the Staff Discount, Customer Loyalty and Give-away systems.
+ 118: 0000: \***
+ 119: 0000: \***    VERSION K               Rebecca Dakin                    28th June 1999
+ 120: 0000: \***
+ 121: 0000: \***    Version L        Andy Cotton & Amy Hoggard     29th Jan 2003
+ 122: 0000: \***    Change use and name of variable IUF.DEAL.PRICE.FLAG$ to IUF.KEYLINES.FLAG$
+ 123: 0000: \***
+ 124: 0000: \***    Version M               Brian Greenfield                 25th June 2004
+ 125: 0000: \***    Added new IUF.MARKDOWN$ tor use with SEL Markdown flagged items.
+ 126: 0000: \***
+ 127: 0000: \***    Version 1.6           Charles Skadorwa                 4th July 2011
+ 128: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+ 129: 0000: \***    Added new globals.
+ 130: 0000: \***
+ 131: 0000: \***    VERSION 1.7.                ROBERT COWEY.                07 FEB 2012.
+ 132: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+ 133: 0000: \***
+ 134: 0000: \***    Defect 21 - Commented 1.9 RC (21).
+ 135: 0000: \***    Commented real meaning of IUF.DISCOUNTABLE$ as Discount Exempt.
+ 136: 0000: \***
+ 137: 0000: \***    VERSION 1.8.                ROBERT COWEY.                20 FEB 2012.
+ 138: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.6.
+ 139: 0000: \***    Correction relating to transformation of legacy IUF data to Core R2 format
+ 140: 0000: \***
+ 141: 0000: \***    Defect 44 - Commented 1.11 RC (44).
+ 142: 0000: \***    Replaced variables HEALTH.CONCEPT.GROUPS$ and HEALTH.GROUP$ with more
+ 143: 0000: \***    meaningfully named single variable INSURE.CONCEPT.GROUPS$.
+ 144: 0000: \***
+ 145: 0000: \***    VERSION B               Rejiya Nair             13th May 2016
+ 146: 0000: \***    PRJ1452 Restricting Item Sales
+ 147: 0000: \***    - Declaration of two new variables (version tagged as !BRN)
+ 148: 0000: \***    - Removed the commented out code
+ 149: 0000: \***
+ 150: 0000: \*******************************************************************************
+ 151: 0000: \*******************************************************************************
+ 152: 0000: 
+ 153: 0000: 
+ 154: 0000: \*******************************************************************************
+ 155: 0000: \*******************************************************************************
+ 156: 0000: \***
+ 157: 0000: \***    RECORD LAYOUTS
+ 158: 0000: \***
+ 159: 0000: \***    HEADER RECORD
+ 160: 0000: \***
+ 161: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 162: 0000: \***     8  3  ASC  TRANS.TYPE$             "000" Header
+ 163: 0000: \***    11  4  ASC  IUF.BRANCH.NO$
+ 164: 0000: \***    15  5  ASC  IUF.SERIAL.NO$
+ 165: 0000: \***
+ 166: 0000: \***    ITEM REFERENCE RECORD
+ 167: 0000: \***
+ 168: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 169: 0000: \***     8  3  ASC  TRANS.TYPE$             "001" Item reference
+ 170: 0000: \***    11  1  ASC  IUF.GRP.CODE.FLAG$
+ 171: 0000: \***    12 24  ASC  IUF.STNDRD.DESC$
+ 172: 0000: \***    36 18  ASC  IUF.TILL.DESC$
+ 173: 0000: \***    54 45  ASC  IUF.S.E.DESC$
+ 174: 0000: \***    99  1  ASC  IUF.SUPPLY.ROUTE$
+ 175: 0000: \***   100  1  ASC  IUF.GIVEAWAY$
+ 176: 0000: \***   101  5  ASC  IUF.PROD.GRP$
+ 177: 0000: \***   106  1  ASC  IUF.GUARANTEE.CAT$          ! SBH CHANGED FROM ENF.QTY 31/1/96
+ 178: 0000: \***   107  1  ASC  IUF.ENF.PRICE.ENTRY$
+ 179: 0000: \***   108  1  ASC  IUF.LOYALTY.FLAG$
+ 180: 0000: \***   109  1  ASC  IUF.DISCOUNT.CAT$
+ 181: 0000: \***   110  1  ASC  IUF.OWN.BRAND$
+ 182: 0000: \***   111  1  ASC  IUF.DIRECT.PROC$
+ 183: 0000: \***   112  1  ASC  IUF.STATUS.1$
+ 184: 0000: \***   113  1  ASC  IUF.EANS.CHANGED$
+ 185: 0000: \***   114  3  ASC  IUF.NO.OF.EANS$
+ 186: 0000: \***   117  8  ASC  IUF.CURRENT.PRICE$      Price in pence
+ 187: 0000: \***   125  1  ASC  IUF.NO.OF.RPD.PRICES$
+ 188: 0000: \***   126  2  ASC  IUF.NO.OF.FLASHPACKS$
+ 189: 0000: \***   128  7  ASC  IUF.ORIGIN.CODE$
+ 190: 0000: \***   135  1  ASC  IUF.DEAL.PRICE.FLAG$    !L CHANGED TO IUF.KEYLINES.FLAG$
+ 191: 0000: \***   136  1  ASC  IUF.STOCK.SYSTEM.FLAG$  "Y" Stock system item
+ 192: 0000: \***                                        "N" Non stock system item
+ 193: 0000: \***   137  2  ASC  NEW.DEAL.COUNT$         Number of type 6 records
+ 194: 0000: \***   139  1  ASC  BC.LETTER$              Business centre letter
+ 195: 0000: \***
+ 196: 0000: \***    FLASHPACK RECORD
+ 197: 0000: \***
+ 198: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 199: 0000: \***     8  3  ASC  TRANS.TYPE$             "002" Flashpack
+ 200: 0000: \***    11  7  ASC  FLASH.PACK.CODE$
+ 201: 0000: \***    18  3  ASC  MULTIPLICATION.FACTOR$
+ 202: 0000: \***
+ 203: 0000: \***    DEAL PRICE RECORD
+ 204: 0000: \***
+ 205: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 206: 0000: \***     8  3  ASC  TRANS.TYPE$             "003" Deal price
+ 207: 0000: \***    11  1  ASC  DEAL.TYPE$
+ 208: 0000: \***    12  2  ASC  DEAL.QUANTITY$
+ 209: 0000: \***    14  5  ASC  SPECIAL.PRICE$          Price in pence
+ 210: 0000: \***    19  2  ASC  M.P.GROUP$
+ 211: 0000: \***    21  6  ASC  FIRST.DATE$             YYMMDD format
+ 212: 0000: \***    27  6  ASC  LAST.DATE$              YYMMDD format
+ 213: 0000: \***
+ 214: 0000: \***    ITEM PENDING PRICE RECORD
+ 215: 0000: \***
+ 216: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 217: 0000: \***     8  3  ASC  TRANS.TYPE$             "004" Item pending price
+ 218: 0000: \***    11  6  ASC  RPD.DATE$               YYMMDD format
+ 219: 0000: \***    17  8  ASC  NEW.PRICE$              Price in pance
+ 220: 0000: \***    25  5  ASC  RPD.NO$
+ 221: 0000: \***    30  1  ASC  MARKDOWN$               Markdown flag of "Y" or "N" !MBG
+ 222: 0000: \***
+ 223: 0000: \***    ITEM BARCODE RECORD
+ 224: 0000: \***
+ 225: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 226: 0000: \***     8  3  ASC  TRANS.TYPE$             "005" Item barcode
+ 227: 0000: \***    11 12  ASC  BAR.CODE$
+ 228: 0000: \***
+ 229: 0000: \***    DEALS RECORD (MULTI-BUY FORMAT)     Sorted by ...
+ 230: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 231: 0000: \***
+ 232: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 233: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 234: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 235: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 236: 0000: \***    23  1  ASC  DEAL.ID$                "M" Multi-Buy
+ 237: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      " " (not used for Multi-Buy)
+ 238: 0000: \***    25  1  ASC  3FOR2.FLAG$             "T" Three-For-Two type Multi-Buy
+ 239: 0000: \***    26  2  ASC  DEAL.LIMIT$             2 to 15 Qualifying purchases
+ 240: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 241: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 242: 0000: \***                                        zero if highest price purchased
+ 243: 0000: \***
+ 244: 0000: \***    DEALS RECORD (LINK-SAVE FORMAT)     Sorted by ...
+ 245: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 246: 0000: \***
+ 247: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 248: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 249: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 250: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 251: 0000: \***    23  1  ASC  DEAL.ID$                "A" "B" "X" Link-Save list ID
+ 252: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      "P" Pair, "T" Triplet
+ 253: 0000: \***    25  1  ASC  3FOR2.FLAG$             " " (not used for Link-Save)
+ 254: 0000: \***    26  2  ASC  DEAL.LIMIT$             1 to 15 Qualifying (list) purchases
+ 255: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 256: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 257: 0000: \***                                        zero if highest price purchased
+ 258: 0000: \***    TRAILER RECORD
+ 259: 0000: \***
+ 260: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 261: 0000: \***    ]8  3  ASC  TRANS.TYPE$             "999" Trailer
+ 262: 0000: \***    11  7  ASC  IUF.ITEM.COUNT$
+ 263: 0000: \***
+ 264: 0000: \*******************************************************************************
+ 265: 0000: \*******************************************************************************
+ 266: 0000: 
+ 267: 0000: 
+ 268: 0000:     STRING GLOBAL                                                       \
+ 269: 0000:         IUF.FILE.NAME$
+ 270: 0000: 
+ 271: 0000:     INTEGER*1 GLOBAL                                                    \ 1.6CSk
+ 272: 0000:         IUF.NEW.FORMAT                                                  ! 1.6CSk
+ 273: 0000: 
+ 274: 0000:     INTEGER*2 GLOBAL                                                    \
+ 275: 0000:         IUF.REPORT.NUM%,                                                \
+ 276: 0000:         IUF.SESS.NUM%,                                                  \ 1.6CSk
+ 277: 0000:         REFPGF.COUNT%,                                                  \ 1.6CSk
+ 278: 0000:         REFPGF.REPORT.NUM%,                                             \ 1.6CSk
+ 279: 0000:         REFPGF.SESS.NUM%                                                ! 1.6CSk
+ 280: 0000: 
+ 281: 0000:   STRING GLOBAL                                                         \
+ 282: 0000:         IUF.3FOR2.FLAG$,                                                \ IRC
+ 283: 0000:         IUF.BAR.CODE$,                                                  \
+ 284: 0000:         IUF.BC.LETTER$,                                                 \ IRC
+ 285: 0000:         IUF.BOOTS.CODE$,                                                \
+ 286: 0000:         IUF.BRANCH.NO$,                                                 \
+ 287: 0000:         IUF.CURRENT.PRICE$,                                             \
+ 288: 0000:         IUF.DEAL.ID$,                                                   \ IRC
+ 289: 0000:         IUF.DEAL.LIMIT$,                                                \ IRC
+ 290: 0000:         IUF.DEAL.NUMBER$,                                               \ IRC
+ 291: 0000:         IUF.KEYLINES.FLAG$,                                             \ LAC/AH
+ 292: 0000:         IUF.DEAL.QUANTITY$,                                             \
+ 293: 0000:         IUF.DEAL.TYPE$,                                                 \
+ 294: 0000:         IUF.DIRECT.PROC$,                                               \
+ 295: 0000:         IUF.DISCOUNT.CAT$,                                              \ JAW
+ 296: 0000:         IUF.EANS.CHANGED$,                                              \
+ 297: 0000:         IUF.END.DATE$,                                                  \
+ 298: 0000:         IUF.ENF.PRICE.ENTRY$,                                           \
+ 299: 0000:         IUF.GUARANTEE.CAT$,                                             \ SBH 31/1/96
+ 300: 0000:         IUF.FIRST.DATE$,                                                \
+ 301: 0000:         IUF.FLASH.PACK.CODE$,                                           \
+ 302: 0000:         IUF.GIVEAWAY$,                                                  \ JAW
+ 303: 0000:         IUF.GRP.NO$,                                                   \!BRN
+ 304: 0000:         IUF.GRP.CODE.FLAG$,                                             \
+ 305: 0000:         IUF.ITEM.COUNT$,                                                \
+ 306: 0000:         IUF.ITEM.QTY$,                                                  \ KRD
+ 307: 0000:         IUF.LAST.DATE$,                                                 \
+ 308: 0000:         IUF.LOYALTY.FLAG$,                                              \ JAW
+ 309: 0000:         IUF.M.P.GROUP$,                                                 \
+ 310: 0000:         IUF.MULTIPLICATION.FACTOR$,                                     \
+ 311: 0000:         IUF.NEW.DEAL.COUNT$,                                            \ IRC
+ 312: 0000:         IUF.NEW.PRICE$,                                                 \
+ 313: 0000:         IUF.NO.OF.EANS$,                                                \
+ 314: 0000:         IUF.NO.OF.RPD.PRICES$,                                          \
+ 315: 0000:         IUF.OWN.BRAND$,                                                 \
+ 316: 0000:         IUF.PAIR.TRIPLET.FLAG$,                                         \ IRC
+ 317: 0000:         IUF.PROD.GRP$,                                                  \
+ 318: 0000:         IUF.RECORD$,                                                    \
+ 319: 0000:         IUF.RESTRICT.SALES.FLAG$,                                      \!BRN
+ 320: 0000:         IUF.RPD.DATE$,                                                  \
+ 321: 0000:         IUF.RPD.NO$,                                                    \
+ 322: 0000:         IUF.S.E.DESC$,                                                  \
+ 323: 0000:         IUF.SAVED.AMOUNT$,                                              \ IRC
+ 324: 0000:         IUF.SERIAL.NO$,                                                 \
+ 325: 0000:         IUF.SPECIAL.PRICE$,                                             \
+ 326: 0000:         IUF.START.DATE$,                                                \ IRC
+ 327: 0000:         IUF.STATUS.1$,                                                  \
+ 328: 0000:         IUF.STNDRD.DESC$,                                               \
+ 329: 0000:         IUF.STOCK.SYSTEM.FLAG$,                                         \
+ 330: 0000:         IUF.SUPPLY.ROUTE$,                                              \
+ 331: 0000:         IUF.TILL.DESC$,                                                 \
+ 332: 0000:         IUF.TRANS.TYPE$,                                                \
+ 333: 0000:         IUF.UNIT.MEASUREMENT$,                                          \ KRD
+ 334: 0000:         IUF.UNIT.NAME$                                                  ! KRD
+ 335: 0000: 
+ 336: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+ 337: 0000:         AGES$(1),                                                       \ 1.6CSk
+ 338: 0000:         GIFTBRCD.TABLE$(1),                                             \ 1.6CSk
+ 339: 0000:         IUF.MATRIX$(1),                                                 \ 1.6CSk
+ 340: 0000:         MEDICINES.TABLE$(1),                                            \ 1.6CSk
+ 341: 0000:         REFPGF.RECORDS$(1)                                              ! 1.6CSk
+ 342: 0000: 
+ 343: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+ 344: 0000:         AGE$,                                                           \ 1.6CSk
+ 345: 0000:         AGE.RESTRICT$,                                                  \ 1.6CSk
+ 346: 0000:         ALCOHOL.PROD.GRP.LIST$,                                         \ 1.6CSk
+ 347: 0000:         ALL.MEDICINES$,                                                 \ 1.6CSk
+ 348: 0000:         ALREADY.IN.TABLE$,                                              \ 1.6CSk
+ 349: 0000:         ASPIRIN.RECORD$,                                                \ 1.6CSk
+ 350: 0000:         DOSAGE$,                                                        \ 1.6CSk
+ 351: 0000:         EPHED.TEMP$,                                                    \ 1.6CSk
+ 352: 0000:         GIFTRECORD$,                                                    \ 1.6CSk
+ 353: 0000:         INSURE.CONCEPT.GROUPS$, \ ! From BCF record 2                   \ 1.11 RC (44)
+ 354: 0000:         IBRUPROFEN.RECORD$,                                             \ 1.6CSk
+ 355: 0000:         IUF.AGE.RESTRICTION$,                                           \ 1.6CSk
+ 356: 0000:         IUF.BLOCKED.FROM.SALE$,                                         \ 1.6CSk
+ 357: 0000:         IUF.BOOTS.COM.EXTENDED$,                                        \ 1.6CSk
+ 358: 0000:         IUF.CONTAINS.ALCOHOL$,                                          \ 1.6CSk
+ 359: 0000:         IUF.CONTAINS.ASPIRIN$,                                          \ 1.6CSk
+ 360: 0000:         IUF.CONTAINS.EPHEDRINE$,                                        \ 1.6CSk
+ 361: 0000:         IUF.CONTAINS.IBUPROFEN$,                                        \ 1.6CSk
+ 362: 0000:         IUF.CONTAINS.NONSOLID.PAINKILLER$,                              \ 1.6CSk
+ 363: 0000:         IUF.CONTAINS.PARACETAMOL$,                                      \ 1.6CSk
+ 364: 0000:         IUF.CONTAINS.PSEUDOEPHEDRINE$,                                  \ 1.6CSk
+ 365: 0000:         IUF.DATE.SENSITIVE$,                                            \ 1.6CSk
+ 366: 0000:         IUF.DISCOUNTABLE$, \ ! Mis-leading variable name (should be Discount Exempt)  ! 1.9 RC (21)
+ 367: 0000:                            \ ! "Y" equates to IRF.INDICAT3% X'01' Discount Exempt ON  ! 1.9 RC (21)
+ 368: 0000:         IUF.EARN.POINTS$,                                               \ 1.6CSk
+ 369: 0000:         IUF.EFFERVESCENT$,                                              \ 1.6CSk
+ 370: 0000:         IUF.ETHICAL.ACTIVE$,                                            \ 1.6CSk
+ 371: 0000:         IUF.ETHICAL.CLASS$,                                             \ 1.6CSk
+ 372: 0000:         IUF.ETHICAL.DESCRIPTION$,                                       \ 1.6CSk
+ 373: 0000:         IUF.ETHICAL.PACK.SIZE$,                                         \ 1.6CSk
+ 374: 0000:         IUF.GIFTCARD$,                                                  \ 1.6CSk
+ 375: 0000:         IUF.GUARANTEE.LENGTH$,                                          \ 1.6CSk
+ 376: 0000:         IUF.INSURANCE$,                                                 \ 1.6CSk
+ 377: 0000:         IUF.INITIAL.LOAD$,                                              \ 1.6CSk
+ 378: 0000:         IUF.MARKDOWN$,                                                  \ 1.6CSk
+ 379: 0000:         IUF.PRIMARY.SUPPLIER$,                                          \ 1.6CSk
+ 380: 0000:         IUF.REC.COUNT$,                                                 \ 1.6CSk
+ 381: 0000:         IUF.REC.TYPE$,                                                  \ 1.6CSk
+ 382: 0000:         IUF.REDEEMABLE$,                                                \ 1.6CSk
+ 383: 0000:         IUF.RESALEABLE$,                                                \ 1.6CSk
+ 384: 0000:         IUF.RETURN.ROUTE$,                                              \ 1.6CSk
+ 385: 0000:         IUF.RETURNABLE$,                                                \ 1.6CSk
+ 386: 0000:         IUF.SPECIAL.INSTRUCTION$,                                       \ 1.6CSk
+ 387: 0000:         IUF.STORE.NUM$,                                                 \ 1.6CSk
+ 388: 0000:         IUF.TIME.STAMP$,                                                \ 1.6CSk
+ 389: 0000:         IUF.UNRESTRICTED.GROUP.CODE$,                                   \ 1.6CSk
+ 390: 0000:         PARACETAMOL.RECORD$,                                            \ 1.6CSk
+ 391: 0000:         PROD.GRP$                                                       ! 1.6CSk
+ 392: 0000: 
+ 393: 0000: 
+ 394: 0000: 
+ 395: 0000:   INTEGER*2 GLOBAL                                                      \ 1.6CSk
+ 396: 0000:         A%,                                                             \ 1.6CSk
+ 397: 0000:         J%,                                                             \ 1.6CSk
+ 398: 0000:         ADD.TO.TABLE%,                                                  \ 1.6CSk
+ 399: 0000:         AGE.POS%,                                                       \ 1.6CSk
+ 400: 0000:         GIFTBRCD.COUNT%,                                                \ 1.6CSk
+ 401: 0000:         HEALTH.INDEX%,                                                  \ 1.6CSk
+ 402: 0000:         MATCH.COMMA%,                                                   \ 1.6CSk
+ 403: 0000:         MATCH.POS1%,                                                    \ 1.6CSk
+ 404: 0000:         MATCH.POS2%,                                                    \ 1.6CSk
+ 405: 0000:         MEDICINES.IN.TABLE%,                                            \ 1.6CSk
+ 406: 0000:         NO.OF.AGES%,                                                    \ 1.6CSk
+ 407: 0000:         NO.OF.MEDICINES%,                                               \ 1.6CSk
+ 408: 0000:         PROD.GRP.NUM%,                                                  \ 1.6CSk
+ 409: 0000:         SPACE%                                                          ! 1.6CSk
+ 410: 0000: 
+ 411: 0000: !%INCLUDE NIADFDEC.J86  ! New Item Deal File                                !AMW
+ 412: 0000: %INCLUDE PGFDEC.J86     ! Product Group Description File
+ 413: 0000: 
+ 414: 0000: \REM
+ 415: 0000: \*******************************************************************************
+ 416: 0000: \*******************************************************************************
+ 417: 0000: \***
+ 418: 0000: \***    %INCLUDE FOR PRODUCT GROUP FILES VARIABLE DECLARATIONS
+ 419: 0000: \***
+ 420: 0000: \***        REFERENCE   :   PGFDEC (J86)
+ 421: 0000: \***
+ 422: 0000: \***        FILE TYPE   :   Direct (PGF and PGFD)
+ 423: 0000: \***                        Keyed (PGFO)
+ 424: 0000: \***
+ 425: 0000: \***    VERSION B.              ROBERT COWEY.                       30 SEP 1993.
+ 426: 0000: \***    Created by combining PGFDECA, PGFDFLDA, PGFOFLDA, PGFDNUMA and PGFONUMA.
+ 427: 0000: \***
+ 428: 0000: \***    REVISION 1.2.           ROBERT COWEY.                       27 OCT 2003.
+ 429: 0000: \***    Defined WRITE.PGF function.
+ 430: 0000: \***    No changes to this file.
+ 431: 0000: \***
+ 432: 0000: \***   Version C                Mark Goode                          21st December 2004
+ 433: 0000: \***   New field for Product groups marked as OSSR.
+ 434: 0000: \***   'Y' - OSSR Product group.
+ 435: 0000: \***   'N' - ' ' - Non-OSSR product group.
+ 436: 0000: \***
+ 437: 0000: \***    Version D               Tittoo Thomas                        2 SEP 2011
+ 438: 0000: \***    Changes to accomodate new csv format for PGDIR as part of
+ 439: 0000: \***    the Core Stores Release 2 project
+ 440: 0000: \***
+ 441: 0000: \*******************************************************************************
+ 442: 0000: \*******************************************************************************
+ 443: 0000: 
+ 444: 0000: 
+ 445: 0000: \*******************************************************************************
+ 446: 0000: \*******************************************************************************
+ 447: 0000: \***
+ 448: 0000: \***    OLD RECORD LAYOUT
+ 449: 0000: \***
+ 450: 0000: \***     1  3  UPD  PROD.GRP.NO$     Key
+ 451: 0000: \***     *  1  UPD  CON.GROUP$       Concept group
+ 452: 0000: \***     *  2  UPD  CON.SEQ$         Concept sequence
+ 453: 0000: \***     4 18  ASC  PROD.GRP.NAME$
+ 454: 0000: \***    22  1  ASC  SEL.FLAG$        "Y" Shelf edge labels not to be printed
+ 455: 0000: \***                                 "N" Shelf edge labels to be printed for
+ 456: 0000: \***                                     items in the product group
+ 457: 0000: \***    23  8  ASC  SPACE$
+ 458: 0000: \***
+ 459: 0000: \***    Record length 30
+ 460: 0000: \***
+ 461: 0000: \***    NEW CSV RECORD LAYOUT
+ 462: 0000: \***
+ 463: 0000: \***     1  ASC  REC.TYPE$        Hardcoded to 'P'
+ 464: 0000: \***     5  ASC  PROD.GRP.NO$     ccsss where,  cc is the Concept Group and
+ 465: 0000: \***                                            sss is the Sequence Number
+ 466: 0000: \***    18  ASC  PROD.GRP.NAME$
+ 467: 0000: \***     1  ASC  SEL.FLAG$        "Y" Shelf edge labels to be printed
+ 468: 0000: \***                              "N" Shelf edge labels not to be printed
+ 469: 0000: \***     1  UPD  OSSR.FLAG$       ALWAYS SET TO NULL - PLACEHOLDER ONLY
+ 470: 0000: \***
+ 471: 0000: \*******************************************************************************
+ 472: 0000: \*******************************************************************************
+ 473: 0000: \***
+ 474: 0000: \***    OTHER INFORMATION
+ 475: 0000: \***    Prefixes PGFDIR... and PGFO... are use for variables that are specific
+ 476: 0000: \***    to the direct (mainframe transmitted) of keyed (live store) usage of
+ 477: 0000: \***    the file.
+ 478: 0000: \***
+ 479: 0000: \*******************************************************************************
+ 480: 0000: \*******************************************************************************
+ 481: 0000: 
+ 482: 0000: 
+ 483: 0000:     STRING GLOBAL \
+ 484: 0000:         PGF.FILE.NAME$, \
+ 485: 0000:         PGF.PROD.GRP.NAME$, \
+ 486: 0000:         PGF.PROD.GRP.NO$, \
+ 487: 0000:         PGF.SEL.FLAG$, \
+ 488: 0000:         PGF.SPACE$, \
+ 489: 0000:         PGFDIR.FILE.NAME$, \
+ 490: 0000:         PGFDIR.REC.TYPE$, \                                             ! DTT
+ 491: 0000:         PGFO.FILE.NAME$,   \
+ 492: 0000:         PGF.OSSR.FLAG$
+ 493: 0000: 
+ 494: 0000:     INTEGER*2 GLOBAL \
+ 495: 0000:         PGF.RECL%, \
+ 496: 0000:         PGF.REPORT.NUM%, \
+ 497: 0000:         PGF.SESS.NUM%, \
+ 498: 0000:         PGFDIR.RECL%, \
+ 499: 0000:         PGFDIR.REPORT.NUM%, \
+ 500: 0000:         PGFDIR.SESS.NUM%, \
+ 501: 0000:         PGFO.RECL%, \
+ 502: 0000:         PGFO.REPORT.NUM%, \
+ 503: 0000:         PGFO.SESS.NUM%
+ 504: 0000: 
+ 505: 0000:     INTEGER*4 GLOBAL \
+ 506: 0000:         PGF.REC.NUM%, \
+ 507: 0000:         PGFDIR.REC.NO%
+ 508: 0000: 
+ 509: 0000: 
+ 510: 0000: 
+ 511: 0000: \*******************************************************************************
+ 512: 0000: \***
+ 513: 0000: \***    Included code defining function related global variables
+ 514: 0000: \***
+ 515: 0000: \***............................................................................
+ 516: 0000: %INCLUDE PSBF01G.J86    ! APPLICATION.LOG
+ 517: 0000: REM \
+ 518: 0000: \*******************************************************************************
+ 519: 0000: \*******************************************************************************
+ 520: 0000: \***
+ 521: 0000: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+ 522: 0000: \***
+ 523: 0000: \***                FUNCTION NUMBER    : PSBF01
+ 524: 0000: \***
+ 525: 0000: \***                REFERENCE          : PSBF01G.J86
+ 526: 0000: \***
+ 527: 0000: \***                DATE OF LAST AMENDMENT  - 27/2/86
+ 528: 0000: \***
+ 529: 0000: \***
+ 530: 0000: \*******************************************************************************
+ 531: 0000: 
+ 532: 0000:       INTEGER GLOBAL  F01.RETURN.CODE%
+ 533: 0000: 
+ 534: 0000: 
+ 535: 0000: %INCLUDE PSBF13G.J86    ! PSDATE
+ 536: 0000: REM\
+ 537: 0000: \*******************************************************************************
+ 538: 0000: \*******************************************************************************
+ 539: 0000: \***
+ 540: 0000: \***        INCLUDE       : PSDATE globals
+ 541: 0000: \***
+ 542: 0000: \***        REFERENCE     : PSBF13G.J86
+ 543: 0000: \***
+ 544: 0000: \***     VERSION A                                  Bruce Scriver  6th Mar 86             
+ 545: 0000: \***            
+ 546: 0000: \***     VERSION B                                  Janet Lawrence 17 Aug 90
+ 547: 0000: \***     Add global to be used to indicate whether or not the function should
+ 548: 0000: \***     log an event when an invalid date is passed to it.
+ 549: 0000: \***
+ 550: 0000: \***     VERSION C                               Andrew Wedgeworth 17 July 92
+ 551: 0000: \***     Return code removed as no longer required.
+ 552: 0000: \***
+ 553: 0000: \*******************************************************************************
+ 554: 0000: \*******************************************************************************
+ 555: 0000: 
+ 556: 0000:       STRING    GLOBAL F13.DAY$,			\
+ 557: 0000:                        F13.DISPLAY.MESSAGE$		! BJAL
+ 558: 0000: 
+ 559: 0000: 
+ 560: 0000: %INCLUDE PSBF20G.J86    ! Sess Num Utility
+ 561: 0000: REM\
+ 562: 0000: \*******************************************************************************
+ 563: 0000: \*******************************************************************************
+ 564: 0000: \***
+ 565: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 566: 0000: \***
+ 567: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 568: 0000: \*** 
+ 569: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 570: 0000: \*** 
+ 571: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 572: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 573: 0000: \***     to two byte integer.
+ 574: 0000: \***
+ 575: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 576: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 577: 0000: \***
+ 578: 0000: \*******************************************************************************
+ 579: 0000: \*******************************************************************************
+ 580: 0000: 
+ 581: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 582: 0000:                        F20.STRING.FILE.NO$,                            \
+ 583: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 584: 0000:                        SESS.NUM.TABLE$(1)
+ 585: 0000: 
+ 586: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 587: 0000: 
+ 588: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 589: 0000: 
+ 590: 0000: %INCLUDE PSBF42G.J86    ! Update Deal Files Function
+ 591: 0000: !******************************************************************************
+ 592: 0000: !******************************************************************************
+ 593: 0000: !***
+ 594: 0000: !***            PROGRAM         :       PSBF42G.J86
+ 595: 0000: !***
+ 596: 0000: !***            DESCRIPTION     :       Update deal information for an item
+ 597: 0000: !***
+ 598: 0000: !***            AUTHOR          :       Brian Greenfield
+ 599: 0000: !***            DATE WRITTEN    :       July 2002
+ 600: 0000: !***
+ 601: 0000: !***        Pass in the PACKED item code (3 bytes) in the PACKED.CODE$
+ 602: 0000: !***        variable and this function ensures that the deal data for that 
+ 603: 0000: !***        item contains only active deals and lists.
+ 604: 0000: !***        Pass in the processing date for the active deal test (in the
+ 605: 0000: !***        DATE$ format.)
+ 606: 0000: !***        The function then calls the UPDATE.IRF function in PSBF41.
+ 607: 0000: !***        You MUST have the DEAL, DINF, IRF, IDF, & IEF open when calling 
+ 608: 0000: !***        this function.
+ 609: 0000: !***
+ 610: 0000: !***        The Item Code should be passed as a packed 3 byte string.
+ 611: 0000: !***
+ 612: 0000: !***        WARNING! This function reloads deal data, save your values!
+ 613: 0000: !***
+ 614: 0000: !******************************************************************************
+ 615: 0000: !******************************************************************************
+ 616: 0000: 
+ 617: 0000: 
+ 618: 0000: 
+ 619: 0000: \*******************************************************************************
+ 620: 0000: \***    PSB2102 variables
+ 621: 0000: \***............................................................................
+ 622: 0000:     INTEGER*1 GLOBAL                        \
+ 623: 0000:         DINF.AVAILABLE,                     \
+ 624: 0000:         DO.PGF.FILE,                        \
+ 625: 0000:         FALSE,                              \
+ 626: 0000: \       PROCESS.NIADF,                      \                               !AMW
+ 627: 0000:         TRUE,                               \
+ 628: 0000:         WAITED.30.SECS                      !
+ 629: 0000: 
+ 630: 0000:     INTEGER*2 GLOBAL                        \
+ 631: 0000:         CURR.SESS.NUM%,                     \
+ 632: 0000:         CURRENT.REPORT.NUM%,                \
+ 633: 0000:         I%                                  !                               !AMW
+ 634: 0000: !       NIADF.BACKUP.SESS.NUM%              !                               !AMW
+ 635: 0000: 
+ 636: 0000:     INTEGER*4 GLOBAL                        \
+ 637: 0000:         PGFWRK.SESS.NUM%,                   \
+ 638: 0000:         PSBF30.RC%,                         \ ! 1.1 RC
+ 639: 0000:         RC%,                                \
+ 640: 0000:         SIZE.PLUS.FIFTY.PERCENT%,           \
+ 641: 0000:         TOTAL.PGF.RECS%                     !
+ 642: 0000: 
+ 643: 0000: 
+ 644: 0000:     STRING GLOBAL                           \
+ 645: 0000:         PGF.TABLE$(1)                       !
+ 646: 0000: 
+ 647: 0000:     STRING GLOBAL                           \
+ 648: 0000:         BACKUP.SOURCE.FILE$,                \
+ 649: 0000:         FILE.OPERATION$,                    \
+ 650: 0000:         JOBSOK.FLAG$,                       \
+ 651: 0000:         MODULE.NUMBER$,                     \ !1.2CSk
+ 652: 0000:         PGFDIR.BACKUP.NAME$,                \
+ 653: 0000:         PGFWRK.FILE.NAME$,                  \
+ 654: 0000:         VAR.STRING.1$,                      \
+ 655: 0000:         VAR.STRING.2$                       !
+ 656: 0000: 
+ 657: 0000: 
+ 658: 0000: \*******************************************************************************
+ 659: 0000: \***
+ 660: 0000: \***    External functions
+ 661: 0000: \***
+ 662: 0000: \***............................................................................
+ 663: 0000: %INCLUDE ADXCOPY.J86    ! I.B.M. system subroutine for copying files
+ 664: 0000: \******************************************************************************
+ 665: 0000: \******************************************************************************
+ 666: 0000: \***                                                                        ***
+ 667: 0000: \***    %INCLUDE FOR SUBROUTINE ADXCOPYF (an I.B.M. system subroutine)      ***
+ 668: 0000: \***                                                                        ***
+ 669: 0000: \***         DATE WRITTEN  :  13th May 1988                                 ***
+ 670: 0000: \***                                                                        ***
+ 671: 0000: \******************************************************************************
+ 672: 0000: \******************************************************************************
+ 673: 0000: 
+ 674: 0000:    SUB  ADXCOPYF (RETC, INFILE, OUTFILE, OPT0, OPT1, OPT2) EXTERNAL
+ 675: 0000: 
+ 676: 0000:       INTEGER*4   RETC
+ 677: 0000:       STRING      INFILE, OUTFILE
+ 678: 0000:       INTEGER*2   OPT0, OPT1, OPT2
+ 679: 0000: 
+ 680: 0000:    END  SUB
+ 681: 0000: 
+ 682: 0000: %INCLUDE CSORTDEC.J86   ! CSORT
+ 683: 0000: FUNCTION CSORT(ARPTR%, ELEMENTS%) EXTERNAL
+ 684: 0000:     INTEGER*4 ARPTR%, ELEMENTS%, CSORT
+ 685: 0000: END FUNCTION
+ 686: 0000: !%INCLUDE DINFEXT.J86                                                       !AMW
+ 687: 0000: %INCLUDE PGFEXT.J86
+ 688: 0000: 
+ 689: 0000: \REM
+ 690: 0000: \*******************************************************************************
+ 691: 0000: \*******************************************************************************
+ 692: 0000: \***
+ 693: 0000: \***    %INCLUDE FOR PRODUCT GROUP FILES EXTERNAL FUNCTIONS
+ 694: 0000: \***
+ 695: 0000: \***        REFERENCE   :   PGFDEC (J86)
+ 696: 0000: \***
+ 697: 0000: \***        FILE TYPE   :   Direct (PGF and PGFD)
+ 698: 0000: \***                        Keyed (PGFO)
+ 699: 0000: \***
+ 700: 0000: \***    VERSION B.              ROBERT COWEY.                       30 SEP 1993.
+ 701: 0000: \***    Created from PGFFUNB.
+ 702: 0000: \***
+ 703: 0000: \***    REVISION 1.2.           ROBERT COWEY.                       27 OCT 2003.
+ 704: 0000: \***    Defined WRITE.PGF function.
+ 705: 0000: \***
+ 706: 0000: \*******************************************************************************
+ 707: 0000: \*******************************************************************************
+ 708: 0000: 
+ 709: 0000: 
+ 710: 0000: FUNCTION PGF.SET EXTERNAL
+ 711: 0000:     INTEGER*2 PGF.SET
+ 712: 0000: END FUNCTION
+ 713: 0000: 
+ 714: 0000: FUNCTION READ.PGF EXTERNAL
+ 715: 0000:     INTEGER*2 READ.PGF
+ 716: 0000: END FUNCTION
+ 717: 0000: 
+ 718: 0000: FUNCTION WRITE.PGF EXTERNAL                                                ! 1.2 RC
+ 719: 0000:     INTEGER*2 WRITE.PGF                                                    ! 1.2 RC
+ 720: 0000: END FUNCTION                                                               ! 1.2 RC
+ 721: 0000: 
+ 722: 0000: FUNCTION READ.PGFDIR EXTERNAL
+ 723: 0000:     INTEGER*2 READ.PGFDIR
+ 724: 0000: END FUNCTION
+ 725: 0000: 
+ 726: 0000: FUNCTION WRITE.PGFDIR EXTERNAL
+ 727: 0000:     INTEGER*2 WRITE.PGFDIR
+ 728: 0000: END FUNCTION
+ 729: 0000: 
+ 730: 0000: FUNCTION READ.PGFO EXTERNAL
+ 731: 0000:     INTEGER*2 READ.PGFO
+ 732: 0000: END FUNCTION
+ 733: 0000: 
+ 734: 0000: FUNCTION WRITE.PGFO EXTERNAL
+ 735: 0000:     INTEGER*2 WRITE.PGFO
+ 736: 0000: END FUNCTION
+ 737: 0000: 
+ 738: 0000: 
+ 739: 0000: %INCLUDE PSBF01E.J86    ! APPLICATION.LOG
+ 740: 0000: REM \
+ 741: 0000: \*******************************************************************************
+ 742: 0000: \*******************************************************************************
+ 743: 0000: \***
+ 744: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 745: 0000: \***
+ 746: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 747: 0000: \***
+ 748: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 749: 0000: \*** 
+ 750: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 751: 0000: \***      Three parameters which passed to the function have been removed.
+ 752: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 753: 0000: \***      return code).
+ 754: 0000: \***
+ 755: 0000: \*******************************************************************************
+ 756: 0000: 
+ 757: 0000: 
+ 758: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 759: 0000:                              VAR.STRING.1$,                                   \
+ 760: 0000:                              VAR.STRING.2$,                                   \
+ 761: 0000:                              EVENT.NO%)  EXTERNAL
+ 762: 0000: 
+ 763: 0000:       INTEGER*1 EVENT.NO%
+ 764: 0000: 
+ 765: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 766: 0000:                 MESSAGE.NO%
+ 767: 0000: 
+ 768: 0000:       STRING VAR.STRING.1$,                                            \
+ 769: 0000:              VAR.STRING.2$
+ 770: 0000: 
+ 771: 0000:    END FUNCTION
+ 772: 0000: 
+ 773: 0000: \*******************************************************************************
+ 774: 0000: %INCLUDE PSBF13E.J86    ! PSDATE
+ 775: 0000: REM\
+ 776: 0000: \*******************************************************************************
+ 777: 0000: \*******************************************************************************
+ 778: 0000: \***
+ 779: 0000: \***        INCLUDE       : PSDATE external definition
+ 780: 0000: \***
+ 781: 0000: \***        REFERENCE     : PSBF13E.J86
+ 782: 0000: \***
+ 783: 0000: \***        Version A     Bruce Scriver                6th March 1986
+ 784: 0000: \*** 
+ 785: 0000: \***        Version B     Andrew Wedgeworth            17th July 1992  
+ 786: 0000: \***        Redundant parameters removed and PSDATE defined as a variable
+ 787: 0000: \***        to hold the return code. 
+ 788: 0000: \***
+ 789: 0000: \*******************************************************************************
+ 790: 0000: \*******************************************************************************
+ 791: 0000: 
+ 792: 0000:    FUNCTION PSDATE (INPUT.DATE$)                                               \
+ 793: 0000:    EXTERNAL
+ 794: 0000: 
+ 795: 0000:      STRING    INPUT.DATE$                                                   
+ 796: 0000:    
+ 797: 0000:      INTEGER*2 PSDATE 
+ 798: 0000: 
+ 799: 0000:    END FUNCTION
+ 800: 0000: 
+ 801: 0000: %INCLUDE PSBF20E.J86    ! SESSION NUMBER UTILITY
+ 802: 0000: REM\
+ 803: 0000: \*******************************************************************************
+ 804: 0000: \*******************************************************************************
+ 805: 0000: \***
+ 806: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 807: 0000: \***
+ 808: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 809: 0000: \***
+ 810: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 811: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 812: 0000: \***     128 files.
+ 813: 0000: \***
+ 814: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 815: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 816: 0000: \***     as a variable.  This new variable contains the function's return
+ 817: 0000: \***     code.
+ 818: 0000: \***
+ 819: 0000: \*******************************************************************************
+ 820: 0000: \*******************************************************************************
+ 821: 0000: 
+ 822: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 823: 0000:                               PASSED.INTEGER%,                         \
+ 824: 0000:                               PASSED.STRING$)                          \
+ 825: 0000:    EXTERNAL
+ 826: 0000: 
+ 827: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 828: 0000:              PASSED.STRING$
+ 829: 0000:    ! 3 variables removed from here                                     ! CAW
+ 830: 0000: 
+ 831: 0000: 
+ 832: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 833: 0000:              PASSED.INTEGER%				               ! CJAS
+ 834: 0000: 
+ 835: 0000:    END FUNCTION
+ 836: 0000: 
+ 837: 0000: %INCLUDE PSBF30E.J86    ! Process Keyed File Function
+ 838: 0000: \*****************************************************************************
+ 839: 0000: \*****************************************************************************
+ 840: 0000: \***
+ 841: 0000: \***                 EXTERNAL FUNCTION DEFINITION PSBF30
+ 842: 0000: \***
+ 843: 0000: \*****************************************************************************
+ 844: 0000: \*****************************************************************************
+ 845: 0000: 
+ 846: 0000: \*****************************************************************************
+ 847: 0000: \*****************************************************************************
+ 848: 0000: \***
+ 849: 0000: \***   Version 96A              Mark Walker                31st May 1995
+ 850: 0000: \***   Original version.
+ 851: 0000: \***
+ 852: 0000: \***   Version B                Andrew Wedgeworth          17th March 1997
+ 853: 0000: \***   Added READONLY$ variable.  This parameter may be used to specify 
+ 854: 0000: \***   whether the file is to be opened with the READONLY option.
+ 855: 0000: \***
+ 856: 0000: \*****************************************************************************
+ 857: 0000: \*****************************************************************************
+ 858: 0000:  
+ 859: 0000:        FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \ 
+ 860: 0000:                                    REPORT.NUM%,                        \  
+ 861: 0000:                                    READONLY$) EXTERNAL
+ 862: 0000: 
+ 863: 0000:        STRING FILE.NAME$,READONLY$
+ 864: 0000:        INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+ 865: 0000: 
+ 866: 0000:        END FUNCTION
+ 867: 0000: 
+ 868: 0000: %INCLUDE PSBF24E.J86    ! STANDARD ERROR DETECTED                ! 1.1 RC
+ 869: 0000: REM \
+ 870: 0000: \*******************************************************************************
+ 871: 0000: \*******************************************************************************
+ 872: 0000: \***
+ 873: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 874: 0000: \***
+ 875: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 876: 0000: \***
+ 877: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 878: 0000: \***
+ 879: 0000: \*******************************************************************************
+ 880: 0000: \*******************************************************************************
+ 881: 0000: 
+ 882: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 883: 0000: 				    ERRFILE%,              \
+ 884: 0000: 				    ERRL%,                 \
+ 885: 0000: 				    ERR$)        EXTERNAL
+ 886: 0000: 				    
+ 887: 0000:           STRING    ERR$
+ 888: 0000: 
+ 889: 0000:           INTEGER*2 ERRFILE%,              \
+ 890: 0000: 	            ERRL%,                 \
+ 891: 0000: 		    STANDARD.ERROR.DETECTED
+ 892: 0000: 		    
+ 893: 0000:           INTEGER*4 ERRN%
+ 894: 0000: 	  		    
+ 895: 0000:    END FUNCTION
+ 896: 0000: 
+ 897: 0000: 
+ 898: 0000: %INCLUDE PSBF42E.J86    ! Update Deal Files Function
+ 899: 0000: !******************************************************************************
+ 900: 0000: !******************************************************************************
+ 901: 0000: !***
+ 902: 0000: !***            PROGRAM         :       PSBF42E.J86
+ 903: 0000: !***
+ 904: 0000: !***            DESCRIPTION     :       Update deal information for an item
+ 905: 0000: !***
+ 906: 0000: !***            AUTHOR          :       Brian Greenfield
+ 907: 0000: !***            DATE WRITTEN    :       July 2002
+ 908: 0000: !***
+ 909: 0000: !***        Pass in the PACKED item code (3 bytes) in the PACKED.CODE$
+ 910: 0000: !***        variable and this function ensures that the deal data for that 
+ 911: 0000: !***        item contains only active deals and lists.
+ 912: 0000: !***        Pass in the processing date for the active deal test (in the
+ 913: 0000: !***        DATE$ format.)
+ 914: 0000: !***        The function then calls the UPDATE.IRF function in PSBF41.
+ 915: 0000: !***        You MUST have the DEAL, DINF, IRF, IDF, & IEF open when calling 
+ 916: 0000: !***        this function.
+ 917: 0000: !***
+ 918: 0000: !***        The Item Code should be passed as a packed 3 byte string.
+ 919: 0000: !***
+ 920: 0000: !***        WARNING! This function reloads deal data, save your values!
+ 921: 0000: !***
+ 922: 0000: !******************************************************************************
+ 923: 0000: !******************************************************************************
+ 924: 0000:     
+ 925: 0000: FUNCTION UPDATE.ITEM.DEAL.INFO(PACKED.CODE$, PROCESSING.DATE$) EXTERNAL
+ 926: 0000: 
+ 927: 0000:     STRING PACKED.CODE$
+ 928: 0000:     STRING PROCESSING.DATE$
+ 929: 0000:     INTEGER*1 UPDATE.ITEM.DEAL.INFO
+ 930: 0000:     
+ 931: 0000: END FUNCTION
+ 932: 0000: 
+ 933: 0000: 
+ 934: 0000: FUNCTION DECAPI.MSG(PAYLOAD.MSG$) EXTERNAL
+ 935: 0000: END FUNCTION
+ 936: 0000: 
+ 937: 0000: SUB DO.MESSAGE(MSG$, LOG%) EXTERNAL
+ 938: 0000: END SUB
+ 939: 0000: 
+ 940: 0000: SUB LOG.EVENT(EVENT.NO%) EXTERNAL
+ 941: 0000: END SUB
+ 942: 0000: 
+ 943: 0000: SUB PROGRAM.EXIT EXTERNAL                                        ! 1.1 RC
+ 944: 0000: END SUB                                                          ! 1.1 RC
+ 945: 0000: 
+ 946: 0000: \************************************************************************
+ 947: 0000: \***
+ 948: 0000: \***    PUTN1
+ 949: 0000: \***
+ 950: 0000: \***    These routine insert a one byte integer into a string.
+ 951: 0000: \***    POS% is the offset within the string and VALUE% is the source
+ 952: 0000: \***    integer represented as a two byte integer
+ 953: 0000: \***
+ 954: 0000: \***    NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+ 955: 0000: \***
+ 956: 0000: \************************************************************************
+ 957: 0000: 
+ 958: 0000: SUB PUTN1(DATA$, POS%, VALUE%)
+ 959: 0024:     STRING    DATA$
+ 960: 0024:     INTEGER*4 POS%
+ 961: 0024:     INTEGER*2 VALUE%
+ 962: 0024:     INTEGER*4 LOC%
+ 963: 0024: 
+ 964: 0024:     LOC% = SADD(DATA$) + POS% + 2  ! SADD returns the address of the
+ 965: 0051:                                    ! length field of the string; add
+ 966: 0051:                                    ! 2 to get the address of the data.
+ 967: 0051: 
+ 968: 0051:     POKE LOC%, VALUE%
+ 969: 006c: 
+ 970: 006c: END SUB
+ 971: 0080: 
+ 972: 0080: 
+ 973: 0080: \********************************************************************************
+ 974: 0080: \***                                                                            *
+ 975: 0080: \***      PROCESS.KEYED.RECORD$                                                 *
+ 976: 0080: \***                                                                            *
+ 977: 0080: \***      'User exit' for PROCESS.KEYED.FILE (PSBF30)                           *
+ 978: 0080: \***                                                                            *
+ 979: 0080: \********************************************************************************
+ 980: 0080: FUNCTION PROCESS.KEYED.RECORD$(RECORD$) PUBLIC
+ 981: 00a9: 
+ 982: 00a9:     STRING PROCESS.KEYED.RECORD$,  \
+ 983: 00a9:            RECORD$,                \
+ 984: 00a9:            RESALEABLE$,            \
+ 985: 00a9:            RETURN.LABEL.TYPE$,     \
+ 986: 00a9:            RETURN.ROUTE$,          \
+ 987: 00a9:            SPECIAL.INSTRUCTION$,   \
+ 988: 00a9:            WORK$                   !
+ 989: 00a9: 
+ 990: 00a9:     INTEGER*2 CGRP.NUM%,           \
+ 991: 00a9:               INDICAT%,            \
+ 992: 00a9:               PGRP.NUM%            !
+ 993: 00a9: 
+ 994: 00a9:     IF DO.PGF.FILE THEN BEGIN
+ 995: 00bb: 
+ 996: 00bb:         TOTAL.PGF.RECS% = TOTAL.PGF.RECS% + 1
+ 997: 00d4:         PGF.TABLE$(TOTAL.PGF.RECS%) = LEFT$(RECORD$, 23) ! Ignore Filler
+ 998: 010f: 
+ 999: 010f: !   ENDIF ELSE IF PROCESS.NIADF THEN BEGIN                                  !AMW
+1000: 010f: !                                                                           !AMW
+1001: 010f: !       WORK$           = LEFT$(RECORD$,3)                                  !AMW
+1002: 010f: !       FILE.OPERATION$ = "D"                                               !AMW
+1003: 010f: !                                                                           !AMW
+1004: 010f: !       !Check if item is on an active deal.                                !AMW
+1005: 010f: !       RC% = 0                                                             !AMW
+1006: 010f: !       IF DINF.AVAILABLE THEN BEGIN                                        !AMW
+1007: 010f: !           RC% = DINF.GET.FIRST.DEAL.ITEM (WORK$, 0)                       !AMW
+1008: 010f: !       ENDIF                                                               !AMW
+1009: 010f: !                                                                           !AMW
+1010: 010f: !       IF RC% = 0 THEN BEGIN                                               !AMW
+1011: 010f: !           RC% = UPDATE.ITEM.DEAL.INFO(WORK$, UNPACK$(RIGHT$(RECORD$,3)))  !AMW
+1012: 010f: !           IF RC% = 0 THEN BEGIN                                           !AMW
+1013: 010f: !                ! Successfully set appropriate deal fields on both the     !AMW
+1014: 010f: !                ! IRF and IRFDEX.                                          !AMW
+1015: 010f: !                ! Remove item from NIADF file                              !AMW
+1016: 010f: !                IF END # NIADF.BACKUP.SESS.NUM% THEN NIADF.DEL.ERROR       !AMW
+1017: 010f: !                DELREC NIADF.BACKUP.SESS.NUM%; WORK$                       !AMW
+1018: 010f: !           ENDIF                                                           !AMW
+1019: 010f: !       ENDIF ELSE BEGIN                                                    !AMW
+1020: 010f: !           !Not on NIADF remove from NIADF file                            !AMW
+1021: 010f: !           IF END # NIADF.BACKUP.SESS.NUM% THEN NIADF.DEL.ERROR            !AMW
+1022: 010f: !           DELREC NIADF.BACKUP.SESS.NUM%; WORK$                            !AMW
+1023: 010f: !       ENDIF                                                               !AMW
+1024: 010f: !                                                                           !AMW
+1025: 010f:     ENDIF ELSE BEGIN
+1026: 0117: 
+1027: 0117:         !--------------------------------------------------------------------------
+1028: 0117:         ! Store the REFPGF fields necessary for later processing of IRF in the
+1029: 0117:         ! array REFPGF.RECORD$. The offset of the array will be the concept
+1030: 0117:         ! group. Each element in the array is an array of 1000 elements 0f 2-bytes.
+1031: 0117:         ! denoting product group and flags.
+1032: 0117:         !--------------------------------------------------------------------------
+1033: 0117:         IF LEFT$(UNPACK$(RECORD$),2) = "00" THEN BEGIN
+1034: 015a:             ! Only extract Product Group info (ignore messages)
+1035: 015a:             REFPGF.COUNT% = REFPGF.COUNT% + 1
+1036: 0169: 
+1037: 0169:             CGRP.NUM%            = VAL(UNPACK$(MID$(RECORD$,2,1)))
+1038: 0192:             PGRP.NUM%            = VAL(UNPACK$(MID$(RECORD$,3,2)))
+1039: 01bb:             RESALEABLE$          = MID$(RECORD$,5,1) ! Items allowed to be resold (Y or N)
+1040: 01db:             RETURN.ROUTE$        = MID$(RECORD$,6,1) ! (D or R) Dispose or Return
+1041: 01fb:             SPECIAL.INSTRUCTION$ = UNPACK$(MID$(RECORD$,7,1)) ! EXCEPTION.NO 0 - 63
+1042: 0220:             RETURN.LABEL.TYPE$   = MID$(RECORD$,8,1) ! Use this to reference the "99" records (00 = no exception)
+1043: 0240:                                                      ! 9900 01 00 - need to stitch together the special ins.?
+1044: 0240: 
+1045: 0240:             IF REFPGF.RECORDS$(CGRP.NUM%) = "" THEN BEGIN
+1046: 026c:                 WORK$ = STRING$(2000,CHR$(0))
+1047: 028e:             ENDIF ELSE BEGIN
+1048: 0296:                 WORK$ = REFPGF.RECORDS$(CGRP.NUM%)
+1049: 02c0:             ENDIF
+1050: 02c8: 
+1051: 02c8: 
+1052: 02c8:             IF RETURN.ROUTE$ = "D" THEN BEGIN                 ! Dispose
+1053: 02e3:                 INDICAT% = 00H
+1054: 02f4:             ENDIF ELSE IF RETURN.LABEL.TYPE$ = "R" THEN BEGIN ! Return
+1055: 030f:                 INDICAT% = 40H
+1056: 0320:             ENDIF ELSE IF RETURN.LABEL.TYPE$ = "D" THEN BEGIN ! Direct
+1057: 033b:                 INDICAT% = 80H
+1058: 034b:             ENDIF ELSE IF RETURN.LABEL.TYPE$ = "S" THEN BEGIN ! Semi-Centralised
+1059: 0366:                 INDICAT% = 0C0H
+1060: 0376:             ENDIF ELSE IF RETURN.LABEL.TYPE$ = " " THEN BEGIN ! Special Instructions  ! 1.3 RC (103)
+1061: 0391:                 INDICAT% = 20H                                                        ! 1.3 RC (103)
+1062: 03a1:             ENDIF ELSE BEGIN
+1063: 03a9:                 !No return label
+1064: 03a9:                 INDICAT% = 00H
+1065: 03b7:             ENDIF
+1066: 03bf: 
+1067: 03bf:             CALL PUTN1(WORK$, PGRP.NUM% * 2, INDICAT%)
+1068: 03f9: 
+1069: 03f9:             INDICAT% = VAL(SPECIAL.INSTRUCTION$)
+1070: 0413:             IF RESALEABLE$ = "Y" THEN BEGIN
+1071: 042e:                 INDICAT% = INDICAT% OR 40H
+1072: 043f:             ENDIF
+1073: 0447:             CALL PUTN1(WORK$, PGRP.NUM% * 2 + 1, INDICAT%)
+1074: 0482: 
+1075: 0482:             REFPGF.RECORDS$(CGRP.NUM%) = WORK$
+1076: 04ab: 
+1077: 04ab:         ENDIF
+1078: 04b3: 
+1079: 04b3:     ENDIF
+1080: 04bb: 
+1081: 04bb:     PROCESS.KEYED.RECORD$ = RECORD$
+1082: 04d3: 
+1083: 04d3:     EXIT FUNCTION
+1084: 04dd: 
+1085: 04dd: !NIADF.DEL.ERROR:                                                           !AMW
+1086: 04dd: 
+1087: 04dd:     CALL LOG.EVENT(106)
+1088: 0503: 
+1089: 0503: END FUNCTION
+1090: 0521: 
+1091: 0521: 
+1092: 0521: 
+1093: 0521: \******************************************************************************
+1094: 0521: \***
+1095: 0521: \***    PROCESS.PGF
+1096: 0521: \***
+1097: 0521: \******************************************************************************
+1098: 0521: \***
+1099: 0521: \***    Creates a new PGF file using PGFDIR
+1100: 0521: \***
+1101: 0521: \******************************************************************************
+1102: 0521: SUB PROCESS.PGF PUBLIC
+1103: 0545: 
+1104: 0545:     MODULE.NUMBER$ = "2"                                                        !1.2CSk
+1105: 055c: 
+1106: 055c:     CALL DO.MESSAGE("PSB21 PGF PROCESSING", TRUE)
+1107: 059b:     CALL DO.MESSAGE("PSB21 PGF PROCESSING - PROCESS.PGF", TRUE)
+1108: 05da: 
+1109: 05da:     DIM PGF.TABLE$(1000)
+1110: 060a: 
+1111: 060a: 
+1112: 060a:     ON ERROR GOTO ERROR.PROCESS.PGF
+1113: 061f: 
+1114: 061f:     TOTAL.PGF.RECS% = 0
+1115: 0636:     DO.PGF.FILE     = TRUE
+1116: 064c: 
+1117: 064c:     CALL DO.MESSAGE("PSB21 PGF PROCESSING - Read PGF into table", TRUE)
+1118: 068b: 
+1119: 068b: !   Separate return code used to save any error associated with PGF   ! 1.1 RC
+1120: 068b: !   Missing PGF will cause PSBF30 to log an 00000052 SIZE error       ! 1.1 RC
+1121: 068b:     PSBF30.RC% = PROCESS.KEYED.FILE(PGF.FILE.NAME$, PGF.REPORT.NUM%,"Y") !  Y = Read PGF only ! 1.1 RC
+1122: 06bf: 
+1123: 06bf:     IF PSBF30.RC% <> 0 THEN BEGIN                                     ! 1.1 RC
+1124: 06de:          CALL DO.MESSAGE("PSB21 *** ERROR processing PGF", FALSE)     ! 1.1 RC
+1125: 071d: !        Allow program to continue and update PGF from PGFXX          ! 1.1 RC
+1126: 071d:     ENDIF                                                             ! 1.1 RC
+1127: 0725: 
+1128: 0725:     CALL DO.MESSAGE("PSB21 PGF PROCESSING - Creating PGFWRK", TRUE)
+1129: 0764:     !---------------------------------------------------------------------------
+1130: 0764:     ! Open the PGFDIR as a sequential file. Create a temporary work file PGFWRK.
+1131: 0764:     ! For each record on the PGFDIR add a keyed record to the PGFWRK file. If
+1132: 0764:     ! the Product Group from the PGFDIR record exists in the PGF array, set the
+1133: 0764:     ! fields PGF.SEL.FLAG$ and PGF.OSSR.FLAG$ to their corresponding values from
+1134: 0764:     ! the PGF array otherwise initialise the fields to "N".
+1135: 0764:     !---------------------------------------------------------------------------
+1136: 0764:     PGFWRK.FILE.NAME$ = "ADXLXACN::D:/ADX_UDT1/PGFWRK.TMP"
+1137: 077b:     CALL SESS.NUM.UTILITY("O", 426, PGFWRK.FILE.NAME$)   ! 426 = General Temp file Report Num
+1138: 079d:     PGFWRK.SESS.NUM% = F20.INTEGER.FILE.NO%
+1139: 07ba: 
+1140: 07ba:     IF TOTAL.PGF.RECS% < 1000 THEN BEGIN
+1141: 07d7:         SIZE.PLUS.FIFTY.PERCENT% = 1500                      ! Default size  ! 1.3 RC
+1142: 07f0:     ENDIF ELSE BEGIN
+1143: 07f8:         SIZE.PLUS.FIFTY.PERCENT% = TOTAL.PGF.RECS% * 1.5     ! Add 50% to size of keyed file
+1144: 0835:     ENDIF
+1145: 083d: 
+1146: 083d:     FILE.OPERATION$ = "C"
+1147: 0854:     CREATE POSFILE PGFWRK.FILE.NAME$ KEYED 3, , ,                       \
+1148: 0893:            SIZE.PLUS.FIFTY.PERCENT% RECL PGF.RECL% AS PGFWRK.SESS.NUM%  \
+1149: 0893:            LOCKED MIRRORED ATCLOSE
+1150: 0893: 
+1151: 0893:     CALL DO.MESSAGE("PSB21 PGF PROCESSING - Opening PGFDIR", TRUE) ! 1.1 RC
+1152: 08d2: 
+1153: 08d2:     CALL SESS.NUM.UTILITY("O", PGFDIR.REPORT.NUM%, PGFDIR.FILE.NAME$)
+1154: 08f8:     PGFDIR.SESS.NUM% = F20.INTEGER.FILE.NO%
+1155: 090e: 
+1156: 090e:     CURRENT.REPORT.NUM% = PGFDIR.REPORT.NUM%
+1157: 0924:     !If PGFDIR file exists open and process
+1158: 0924: !   If PGFDIR does not exist the IF END will execute so SIZE statement redundant  ! 1.1 RC
+1159: 0924: !   IF SIZE(PGFDIR.FILE.NAME$) > 0 THEN BEGIN                                     ! 1.1 RC
+1160: 0924: 
+1161: 0924: !       If PGFDIR missing then bypass rest of procedure as nothing to process     ! 1.1 RC
+1162: 0924:         FILE.OPERATION$ = "O"                                                     ! 1.4 RC (236)
+1163: 093b:         IF END # PGFDIR.SESS.NUM% THEN PGFDIR.FILE.ERROR
+1164: 0957:         OPEN PGFDIR.FILE.NAME$ AS PGFDIR.SESS.NUM% LOCKED NOWRITE NODEL
+1165: 097f: 
+1166: 097f:         RC% = READ.PGFDIR
+1167: 099a: 
+1168: 099a:         WHILE RC% = 0
+1169: 09a5: 
+1170: 09a5:             FOR I% = 1 TO TOTAL.PGF.RECS%
+1171: 09b9:                 IF PGF.PROD.GRP.NO$ = UNPACK$(LEFT$(PGF.TABLE$(I%),3)) THEN BEGIN
+1172: 0a03:                     PGF.SEL.FLAG$   = MID$(PGF.TABLE$(I%),22,1)
+1173: 0a3b:                     PGF.OSSR.FLAG$  = MID$(PGF.TABLE$(I%),23,1)
+1174: 0a73:                     I% = TOTAL.PGF.RECS% + 1  ! Found - Jump out
+1175: 0a91:                 ENDIF
+1176: 0a99:             NEXT I%
+1177: 0ac7: 
+1178: 0ac7:             PGF.PROD.GRP.NO$ = PACK$(RIGHT$(STRING$(6,"0") + PGF.PROD.GRP.NO$,6))
+1179: 0b19: 
+1180: 0b19:             WRITE FORM "C3,C18,2C1,C7"; \
+1181: 0b88:               # PGFWRK.SESS.NUM% ;      \
+1182: 0b88:                     PGF.PROD.GRP.NO$,   \
+1183: 0b88:                     PGF.PROD.GRP.NAME$, \
+1184: 0b88:                     PGF.SEL.FLAG$,      \
+1185: 0b88:                     PGF.OSSR.FLAG$,     \
+1186: 0b88:                     PGF.SPACE$
+1187: 0b88: 
+1188: 0b88:             RC% = READ.PGFDIR
+1189: 0ba3:         WEND
+1190: 0bc5: 
+1191: 0bc5:         CLOSE PGFDIR.SESS.NUM%
+1192: 0bd9: 
+1193: 0bd9:         CALL DO.MESSAGE("PSB21 PGF PROCESSING - Del PGF; Rename PGFWRK", TRUE) ! 1.3 RC (50)
+1194: 0c18: 
+1195: 0c18:         FILE.OPERATION$ = "O"
+1196: 0c2f:         IF END #PGF.SESS.NUM% THEN NO.PGF.FILE
+1197: 0c4b:         OPEN PGF.FILE.NAME$ AS PGF.SESS.NUM%
+1198: 0c72: 
+1199: 0c72:         FILE.OPERATION$ = "D"
+1200: 0c89:         DELETE PGF.SESS.NUM%
+1201: 0c9d: 
+1202: 0c9d:  NO.PGF.FILE:
+1203: 0cad: 
+1204: 0cad:         WAITED.30.SECS = FALSE
+1205: 0cc3: 
+1206: 0cc3:  TRY.RENAME.PGFWRK.AGAIN:
+1207: 0cd3: 
+1208: 0cd3:         RC% = RENAME(PGF.FILE.NAME$, PGFWRK.FILE.NAME$)
+1209: 0d04: 
+1210: 0d04:         IF RC% <> -1 THEN BEGIN
+1211: 0d26: 
+1212: 0d26:             IF NOT WAITED.30.SECS THEN BEGIN
+1213: 0d38:                 WAIT; 30000
+1214: 0d4f:                 WAITED.30.SECS = TRUE
+1215: 0d65:                 GOTO TRY.RENAME.PGFWRK.AGAIN
+1216: 0d73:             ENDIF ELSE BEGIN
+1217: 0d7b:                 CALL DO.MESSAGE("PSB21 *** ERROR renaming " + \
+1218: 0ddb:                      PGFWRK.FILE.NAME$ + " to "             + \
+1219: 0ddb:                      PGF.FILE.NAME$ + " after waiting 30 seconds", FALSE)
+1220: 0ddb:                 CALL LOG.EVENT(14)
+1221: 0e01: 
+1222: 0e01:                 EXIT SUB
+1223: 0e0c:             ENDIF
+1224: 0e14:         ENDIF
+1225: 0e1c: 
+1226: 0e1c:         IF RC% = 0 THEN BEGIN
+1227: 0e3b:             CALL DO.MESSAGE("PSB21 *** ERROR renaming " + \
+1228: 0e97:                             PGFWRK.FILE.NAME$ + " to "  + \
+1229: 0e97:                             PGF.FILE.NAME$, FALSE)
+1230: 0e97:             EXIT SUB
+1231: 0ea2:         ENDIF
+1232: 0eaa: 
+1233: 0eaa:         !----------------------------------------------------------------------
+1234: 0eaa:         ! Maintain seven days backups of PGFDIR files: PGFDIR.MON to PGFDIR.SUN
+1235: 0eaa:         !----------------------------------------------------------------------
+1236: 0eaa:         CALL DO.MESSAGE("PSB21 PGF PROCESSING - Backup to PGFDIR." + F13.DAY$, TRUE) ! 1.3 RC (50)
+1237: 0ef7: 
+1238: 0ef7:         PGFDIR.BACKUP.NAME$ = "ADXLXACN::D:\ADX_UDT1\PGFDIR." + F13.DAY$
+1239: 0f1c: 
+1240: 0f1c:         CALL ADXCOPYF(RC%, PGFDIR.FILE.NAME$, PGFDIR.BACKUP.NAME$,0,0,0)
+1241: 0f68: 
+1242: 0f68:         IF RC% <> 0 THEN BEGIN
+1243: 0f8a:             CALL DO.MESSAGE("PSB21 *** ERROR copying " + \
+1244: 0fe6:                             PGFDIR.FILE.NAME$ + " to " + \
+1245: 0fe6:                             PGFDIR.BACKUP.NAME$, FALSE)
+1246: 0fe6:             BACKUP.SOURCE.FILE$ = "PGFDIR  "
+1247: 0ffd:             CALL LOG.EVENT(57)
+1248: 1023:             EXIT SUB
+1249: 102e:         ENDIF
+1250: 1036: 
+1251: 1036:         ! Open and delete the PGFDIR file
+1252: 1036:         FILE.OPERATION$ = "O"                                                     ! 1.4 RC (236)
+1253: 104d:         IF END # PGFDIR.SESS.NUM% THEN PGFDIR.FILE.ERROR
+1254: 1069:         OPEN PGFDIR.FILE.NAME$ AS PGFDIR.SESS.NUM% LOCKED NOWRITE NODEL
+1255: 1091: 
+1256: 1091:         IF END # PGFDIR.SESS.NUM% THEN PGFDIR.FILE.ERROR
+1257: 10ad:         DELETE PGFDIR.SESS.NUM%
+1258: 10c1:         CALL DO.MESSAGE("PSB21 PGF PROCESSING - PGFDIR file deleted", TRUE)
+1259: 1100: 
+1260: 1100:         CALL DO.MESSAGE("PSB21 PGF PROCESSING - Completed", TRUE)      ! 1.3 RC (50)
+1261: 113f: 
+1262: 113f:         EXIT SUB
+1263: 114a: !   ENDIF                                                              ! 1.1 RC
+1264: 114a: 
+1265: 114a: 
+1266: 114a:  PGFDIR.FILE.ERROR: ! Moved prior to PROCESS.PGF's ON ERROR routine    ! 1.1 RC
+1267: 115a: 
+1268: 115a:    CALL DO.MESSAGE("PSB21 *** ERROR opening PGFXX file", FALSE)        ! 1.1 RC
+1269: 1199:    CALL LOG.EVENT(106)                                                 ! 1.1 RC
+1270: 11bf:    CLOSE PGFWRK.SESS.NUM% ! Will not now be used                       ! 1.1 RC
+1271: 11d8: 
+1272: 11d8:    IF PSBF30.RC% <> 0 THEN BEGIN                                       ! 1.1 RC
+1273: 11f7: !      Lines moved to CHECK.PROCESS.PGF                                ! 1.5 RC (240)
+1274: 11f7: !      Set JOBSOK.FLAG$ to indicate failure to PSB2100                 ! 1.5 RC (240)
+1275: 11f7:        JOBSOK.FLAG$ = "X"                                              ! 1.1 RC
+1276: 120e:    ENDIF                                                               ! 1.1 RC
+1277: 1216: 
+1278: 1216:    EXIT SUB ! PGFDIR cannot be processed so exit routine               ! 1.1 RC
+1279: 1221: 
+1280: 1221: 
+1281: 1221:  ERROR.PROCESS.PGF: ! PROCESS.PGF's general ON ERROR rouitine          ! 1.1 RC
+1282: 1231: 
+1283: 1231:    CALL DO.MESSAGE("PSB21 *** ERROR detected processing PGFXX etc", FALSE) ! 1.1 RC
+1284: 1270: 
+1285: 1270:    CALL STANDARD.ERROR.DETECTED(ERRN,  \                               ! 1.1 RC
+1286: 129d:                                  ERRF%, \                              ! 1.1 RC
+1287: 129d:                                  ERRL,  \                              ! 1.1 RC
+1288: 129d:                                  ERR)                                  ! 1.1 RC
+1289: 129d: 
+1290: 129d:    IF PSBF30.RC% <> 0 THEN BEGIN                                       ! 1.1 RC
+1291: 12bc: !      Lines moved to CHECK.PROCESS.PGF                                ! 1.5 RC (240)
+1292: 12bc: !      Set JOBSOK.FLAG$ to indicate failure to PSB2100                 ! 1.5 RC (240)
+1293: 12bc:        JOBSOK.FLAG$ = "X"                                              ! 1.1 RC
+1294: 12d3:        EXIT SUB                                                        ! 1.5 RC (240)
+1295: 12dd:    ENDIF                                                               ! 1.1 RC
+1296: 12e5: 
+1297: 12e5: END SUB
+1298: 12f9: 
+1299: 12f9: 
+1300: 12f9: \******************************************************************************
+1301: 12f9: \***
+1302: 12f9: \***    CHECK.PROCESS.PGF ! New procedure for Rv 1.5 RC          ! 1.5 RC (240)
+1303: 12f9: \***
+1304: 12f9: \******************************************************************************
+1305: 12f9: \***
+1306: 12f9: \***    Check for error within PROCESS.PGF.
+1307: 12f9: \***    Report any such error and call PROGRAM.EXIT.
+1308: 12f9: \***    PROGRAM.EXIT is called from outside PROCESS.PGF to ensure that any
+1309: 12f9: \***    general error within it is trapped by ERROR.DETECTED (rather than
+1310: 12f9: \***    by the PROCESS.PGF ON ERROR routine which can cause looping).
+1311: 12f9: \***
+1312: 12f9: \******************************************************************************
+1313: 12f9: 
+1314: 12f9: SUB CHECK.PROCESS.PGF PUBLIC ! New procedure for Rv 1.5 RC       ! 1.5 RC (240)
+1315: 131d: 
+1316: 131d:     IF JOBSOK.FLAG$ = "X" THEN BEGIN
+1317: 133e: !       Major problem occured processing PGF and/or PGFXX
+1318: 133e:         CALL DO.MESSAGE("PSB21 *** ERROR on PGF and/or PGFXX", FALSE)
+1319: 137d:         CALL DO.MESSAGE("PSB21 *** FATAL ERROR - ABORTING ***", FALSE)
+1320: 13bc:         CALL PROGRAM.EXIT
+1321: 13c9:     ENDIF
+1322: 13d1: 
+1323: 13d1: END SUB
+1324: 13e5: 
+1325: 13e5: End of Compilation

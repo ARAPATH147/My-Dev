@@ -1,0 +1,471 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   PPFFUN.bas  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.2  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: \******************************************************************************
+  10: 0000: \***
+  11: 0000: \***   $Log:   V:/Archive/Basarch/PPFFUN.bav  $
+  12: 0000: \***   
+  13: 0000: \***      Rev 1.2   08 Jul 2004 13:51:26   dev88ps
+  14: 0000: \***   Added MARKDOWN flag.
+  15: 0000: \***   
+  16: 0000: \***      Rev 1.1   07 Dec 1994 13:07:34   DEVMJPS
+  17: 0000: \***   Update INCLUDE code for PVCS
+  18: 0000: \***   
+  19: 0000: \******************************************************************************
+  20: 0000: \******************************************************************************
+  21: 0000: \REM
+  22: 0000: \*******************************************************************************
+  23: 0000: \*******************************************************************************
+  24: 0000: \***
+  25: 0000: \***    %INCLUDE FOR PENDING PRICES FILES PUBLIC FUNCTIONS
+  26: 0000: \***
+  27: 0000: \***        REFERENCE   :   PPFFUN (BAS)
+  28: 0000: \***
+  29: 0000: \***        FILE TYPE   :   Sequential
+  30: 0000: \***
+  31: 0000: \***    VERSION D.              ROBERT COWEY.                       23 AUG 1993.
+  32: 0000: \***    Original version created by combining PPFIFNSC, PPFOFNSC, PPFISETC, and 
+  33: 0000: \***    PPFOSETC.
+  34: 0000: \***
+  35: 0000: \***    VERSION E.              ROBERT COWEY and STEVE PERKINS.     22 OCT 1993.
+  36: 0000: \***    Removed SPLAN.ID$ from RPD and Deal records.
+  37: 0000: \***    Defined Link-Save Multi-Buy Deal record.
+  38: 0000: \***    Added two extra functions READ.PPFI.SHORT and PPFI.LOAD.DEAL.FIELDS
+  39: 0000: \***    to help when processing LODF and PPFI in parallel.
+  40: 0000: \***
+  41: 0000: \***    VERSION F               BRIAN GREENFIELD                    24 JUN 2004
+  42: 0000: \***    Added in PPF.MARKDOWN$ flag into the RPD record for mark-down items.
+  43: 0000: \***
+  44: 0000: \*******************************************************************************
+  45: 0000: \*******************************************************************************
+  46: 0000: 
+  47: 0000: 
+  48: 0000:     %INCLUDE PPFDEC.J86      ! PPF variable declarations                   ! ERC
+  49: 0000: 
+  50: 0000: \REM
+  51: 0000: \*******************************************************************************
+  52: 0000: \*******************************************************************************
+  53: 0000: \***
+  54: 0000: \***    %INCLUDE FOR PENDING PRICES FILES VARIABLE DECLARATIONS
+  55: 0000: \***
+  56: 0000: \***        REFERENCE   :   PPFDEC (J86)
+  57: 0000: \***
+  58: 0000: \***        FILE TYPE   :   Sequential
+  59: 0000: \***
+  60: 0000: \***    VERSION D.              ROBERT COWEY.                       23 AUG 1993.
+  61: 0000: \***    Original version created by combining PPFFLDC, PPFINUMC and PPFONUMC.
+  62: 0000: \***
+  63: 0000: \***    VERSION E.              ROBERT COWEY.                       26 OCT 1993.
+  64: 0000: \***    Removed SPLAN.ID$ from RPD and Deal records.
+  65: 0000: \***    Defined Link-Save Multi-Buy Deal record.
+  66: 0000: \***
+  67: 0000: \***    VERSION F               BRIAN GREENFIELD                    24 JUN 2004.
+  68: 0000: \***    Added Markdown variables to RPD record.
+  69: 0000: \***    
+  70: 0000: \*******************************************************************************
+  71: 0000: \*******************************************************************************
+  72: 0000: 
+  73: 0000: 
+  74: 0000: \*******************************************************************************
+  75: 0000: \*******************************************************************************
+  76: 0000: \***
+  77: 0000: \***    RECORD LAYOUTS
+  78: 0000: \***
+  79: 0000: \***    TRAILER RECORD
+  80: 0000: \***
+  81: 0000: \***     1  7  ASC  BOOTS.CODE$     "99999999"
+  82: 0000: \***     8  1  ASC  REC.TYPE.FLAG$  "T" Trailer
+  83: 0000: \***     9  5  ASC  REC.COUNT$
+  84: 0000: \***
+  85: 0000: \***    RPD RECORD
+  86: 0000: \***
+  87: 0000: \***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+  88: 0000: \***     8  1  ASC  REC.TYPE.FLAG$    "R" RPD
+  89: 0000: \***     9  6  ASC  DATE.DUE$         YYMMDD
+  90: 0000: \***    15  5  ASC  RPD.NO$
+  91: 0000: \***    20  1  ASC  STATUS.FLAG$      "S" label printed but price not effected
+  92: 0000: \***                                  "L" Locally priced - No label printed
+  93: 0000: \***                                  "D" Deal priced - No label printed
+  94: 0000: \***                                  " " Yet to be processed
+  95: 0000: \***    21  1  ASC  INC.DEC.FLAG$     "D", "I", (" " if no change or deal price)
+  96: 0000: \***    22  8  ASC  PRICE$
+  97: 0000: \***    30  1  ASC  MARKDOWN$         Mark-down "Y" or "N"               ! FBG
+  98: 0000: \***
+  99: 0000: \***    DEAL PRICE RECORD
+ 100: 0000: \***
+ 101: 0000: \***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+ 102: 0000: \***     8  1  ASC  REC.TYPE.FLAG$    "D" Deal price
+ 103: 0000: \***     9  1  ASC  DEAL.TYPE$        "0", "1", "2", "3"
+ 104: 0000: \***    10  2  ASC  DEAL.QUANTITY$
+ 105: 0000: \***    12  5  ASC  SPECIAL.PRICE$
+ 106: 0000: \***    17  2  ASC  M.P.GROUP$
+ 107: 0000: \***    19  6  ASC  FIRST.DATE$       YYMMDD
+ 108: 0000: \***    25  6  ASC  LAST.DATE$        YYMMDD
+ 109: 0000: \***    31  1  ASC  EFFECT.FLAG$
+ 110: 0000: \***
+ 111: 0000: \***    LINK-SAVE MULTI-BUY DEAL RECORD
+ 112: 0000: \***
+ 113: 0000: \***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+ 114: 0000: \***     8  1  ASC  REC.TYPE.FLAG$    "B" Link-Save Multi-Buy deal record
+ 115: 0000: \***     9  1  ASC  DEAL.ID$          "M", "A", "B", "X"
+ 116: 0000: \***    10  1  ASC  PAIR.TRIP.FLAG$   "P", "T", " "
+ 117: 0000: \***    11  1  ASC  3FOR2.FLAG$       "T", " "
+ 118: 0000: \***    12  2  ASC  DEAL.LIMIT$       1 to 15
+ 119: 0000: \***    14  4  ASC  DEAL.NUM$         1 to 9999
+ 120: 0000: \***    18  4  ASC  SAVED.AMOUNT$     0 to 9999
+ 121: 0000: \***    22  6  ASC  DEAL.DATE.START$  YYMMDD of deal start
+ 122: 0000: \***    28  6  ASC  DEAL.DATE.FINISH$ YYMMDD of deal finish
+ 123: 0000: \***    34  1  ASC  ACTIVE.FLAG$      "Y", "N"
+ 124: 0000: \***
+ 125: 0000: \*******************************************************************************
+ 126: 0000: \*******************************************************************************
+ 127: 0000: \***
+ 128: 0000: \***    OTHER INFORMATION
+ 129: 0000: \***
+ 130: 0000: \***    Prefixes PPFI... and PPFO... are used for variables that are specific
+ 131: 0000: \***    to the INPUT or OUTPUT usage of the file.
+ 132: 0000: \***
+ 133: 0000: \*******************************************************************************
+ 134: 0000: \*******************************************************************************
+ 135: 0000: 
+ 136: 0000:  
+ 137: 0000:     STRING GLOBAL \
+ 138: 0000:         PPF.3FOR2.FLAG$, \                                             ! ERC
+ 139: 0000:         PPF.ACTIVE.FLAG$, \                                            ! ERC
+ 140: 0000:         PPF.BOOTS.CODE$, \
+ 141: 0000:         PPF.DATE.DUE$, \
+ 142: 0000:         PPF.DEAL.DATE.FINISH$, \                                       ! ERC
+ 143: 0000:         PPF.DEAL.DATE.START$, \                                        ! ERC
+ 144: 0000:         PPF.DEAL.ID$, \                                                ! ERC
+ 145: 0000:         PPF.DEAL.LIMIT$, \                                             ! ERC
+ 146: 0000:         PPF.DEAL.NUM$, \                                               ! ERC
+ 147: 0000:         PPF.DEAL.QUANTITY$, \
+ 148: 0000:         PPF.DEAL.TYPE$, \
+ 149: 0000:         PPF.EFFECT.FLAG$, \
+ 150: 0000:         PPF.FIRST.DATE$, \
+ 151: 0000:         PPF.INC.DEC.FLAG$, \
+ 152: 0000:         PPF.LAST.DATE$, \
+ 153: 0000:         PPF.MARKDOWN$, \                                               ! FBG
+ 154: 0000:         PPF.M.P.GROUP$, \
+ 155: 0000:         PPF.PAIR.TRIP.FLAG$, \                                         ! ERC
+ 156: 0000:         PPF.PRICE$, \
+ 157: 0000:         PPF.REC.COUNT$, \
+ 158: 0000:         PPF.REC.TYPE.FLAG$, \
+ 159: 0000:         PPF.RECORD$, \
+ 160: 0000:         PPF.RPD.NO$, \
+ 161: 0000:         PPF.SAVED.AMOUNT$, \                                           ! ERC
+ 162: 0000:         PPF.SPECIAL.PRICE$, \
+ 163: 0000:         PPF.STATUS.FLAG$, \
+ 164: 0000:         PPFI.3FOR2.FLAG$, \                                            ! ERC
+ 165: 0000:         PPFI.ACTIVE.FLAG$, \                                           ! ERC
+ 166: 0000:         PPFI.BOOTS.CODE$, \
+ 167: 0000:         PPFI.DATE.DUE$, \
+ 168: 0000:         PPFI.DEAL.DATE.FINISH$, \                                      ! ERC
+ 169: 0000:         PPFI.DEAL.DATE.START$, \                                       ! ERC
+ 170: 0000:         PPFI.DEAL.ID$, \                                               ! ERC
+ 171: 0000:         PPFI.DEAL.LIMIT$, \                                            ! ERC
+ 172: 0000:         PPFI.DEAL.NUM$, \                                              ! ERC
+ 173: 0000:         PPFI.DEAL.QUANTITY$, \
+ 174: 0000:         PPFI.DEAL.TYPE$, \
+ 175: 0000:         PPFI.EFFECT.FLAG$, \
+ 176: 0000:         PPFI.FILE.NAME$, \
+ 177: 0000:         PPFI.FIRST.DATE$, \
+ 178: 0000:         PPFI.INC.DEC.FLAG$, \
+ 179: 0000:         PPFI.LAST.DATE$, \
+ 180: 0000:         PPFI.MARKDOWN$, \                                               ! FBG
+ 181: 0000:         PPFI.M.P.GROUP$, \
+ 182: 0000:         PPFI.PAIR.TRIP.FLAG$, \                                        ! ERC
+ 183: 0000:         PPFI.PRICE$, \
+ 184: 0000:         PPFI.REC.COUNT$, \
+ 185: 0000:         PPFI.REC.TYPE.FLAG$, \
+ 186: 0000:         PPFI.RECORD$, \
+ 187: 0000:         PPFI.RPD.NO$, \
+ 188: 0000:         PPFI.SAVED.AMOUNT$, \                                          ! ERC
+ 189: 0000:         PPFI.SPECIAL.PRICE$, \
+ 190: 0000:         PPFI.STATUS.FLAG$, \
+ 191: 0000:         PPFO.FILE.NAME$
+ 192: 0000: 
+ 193: 0000:     INTEGER*2 GLOBAL \
+ 194: 0000:         PPFI.REPORT.NUM%, \
+ 195: 0000:         PPFO.REPORT.NUM%, \
+ 196: 0000:         PPFI.SESS.NUM%, \
+ 197: 0000:         PPFO.SESS.NUM%
+ 198: 0000: 
+ 199: 0000: 
+ 200: 0000:     STRING GLOBAL \
+ 201: 0000:         CURRENT.CODE$, \
+ 202: 0000:         FILE.OPERATION$
+ 203: 0000: 
+ 204: 0000:     INTEGER*2 GLOBAL \
+ 205: 0000:         CURRENT.REPORT.NUM%
+ 206: 0000: 
+ 207: 0000: 
+ 208: 0000: FUNCTION PPFI.SET PUBLIC
+ 209: 0014: 
+ 210: 0014:     INTEGER*2 PPFI.SET
+ 211: 0014:     PPFI.SET EQ 1
+ 212: 0019: 
+ 213: 0019:     PPFI.FILE.NAME$  EQ "PPFI"
+ 214: 0028:     PPFI.REPORT.NUM% EQ  12
+ 215: 0031: 
+ 216: 0031:     PPFI.SET EQ 0
+ 217: 0036: 
+ 218: 0036: END FUNCTION
+ 219: 0045: 
+ 220: 0045: 
+ 221: 0045: FUNCTION PPFO.SET PUBLIC
+ 222: 0059: 
+ 223: 0059:     INTEGER*2 PPFO.SET
+ 224: 0059:     PPFO.SET EQ 1
+ 225: 005e: 
+ 226: 005e:     PPFO.FILE.NAME$  EQ "PPFO"
+ 227: 006d:     PPFO.REPORT.NUM% EQ  13
+ 228: 0076: 
+ 229: 0076:     PPFO.SET EQ 0
+ 230: 007b: 
+ 231: 007b: END FUNCTION
+ 232: 008a: 
+ 233: 008a: 
+ 234: 008a: FUNCTION READ.PPFI PUBLIC
+ 235: 009e: 
+ 236: 009e:     INTEGER*2 READ.PPFI
+ 237: 009e:     READ.PPFI EQ 1
+ 238: 00a3: 
+ 239: 00a3:     CURRENT.CODE$ EQ MID$(PPF.RECORD$,1,10)
+ 240: 00c2: 
+ 241: 00c2:     IF END # PPFI.SESS.NUM% THEN READ.PPFI.IF.END
+ 242: 00d6:     READ # PPFI.SESS.NUM%; PPF.RECORD$
+ 243: 00f4: 
+ 244: 00f4:     PPF.BOOTS.CODE$    EQ MID$(PPF.RECORD$,1,7)
+ 245: 0113:     PPF.REC.TYPE.FLAG$ EQ MID$(PPF.RECORD$,8,1)
+ 246: 0132: 
+ 247: 0132:     IF PPF.REC.TYPE.FLAG$ EQ "R" THEN \ ! RPD record
+ 248: 014b:         BEGIN
+ 249: 014b:         IF LEN(PPF.RECORD$) = 29 THEN PPF.RECORD$ = PPF.RECORD$ + "N"  ! FBG
+ 250: 017e:         PPF.DATE.DUE$     EQ  MID$(PPF.RECORD$,9,6)
+ 251: 019d:         PPF.RPD.NO$       EQ  MID$(PPF.RECORD$,15,5)
+ 252: 01bc:         PPF.STATUS.FLAG$  EQ  MID$(PPF.RECORD$,20,1)
+ 253: 01db:         PPF.INC.DEC.FLAG$ EQ  MID$(PPF.RECORD$,21,1)
+ 254: 01fa:         PPF.PRICE$        EQ  MID$(PPF.RECORD$,22,8)                   
+ 255: 0219:         PPF.MARKDOWN$     EQ  MID$(PPF.RECORD$,30,1)                   !FBG
+ 256: 0238: !   Line deleted                                                       ! ERC
+ 257: 0238:         GOTO READ.PPFI.OKAY
+ 258: 023b:         ENDIF
+ 259: 023b: 
+ 260: 023b:     IF PPF.REC.TYPE.FLAG$ EQ "D" THEN \ ! Deal record
+ 261: 0254:         BEGIN
+ 262: 0254:         PPF.DEAL.TYPE$     EQ  MID$(PPF.RECORD$,9,1)
+ 263: 0273:         PPF.DEAL.QUANTITY$ EQ  MID$(PPF.RECORD$,10,2)
+ 264: 0292:         PPF.SPECIAL.PRICE$ EQ  MID$(PPF.RECORD$,12,5)
+ 265: 02b1:         PPF.M.P.GROUP$     EQ  MID$(PPF.RECORD$,17,2)
+ 266: 02d0:         PPF.FIRST.DATE$    EQ  MID$(PPF.RECORD$,19,6)
+ 267: 02ef:         PPF.LAST.DATE$     EQ  MID$(PPF.RECORD$,25,6)
+ 268: 030e:         PPF.EFFECT.FLAG$   EQ  MID$(PPF.RECORD$,31,1)
+ 269: 032d: !   Line deleted                                                       ! ERC
+ 270: 032d:         GOTO READ.PPFI.OKAY
+ 271: 0330:         ENDIF
+ 272: 0330: 
+ 273: 0330:     IF PPF.REC.TYPE.FLAG$ EQ "B" THEN \ ! Link-Save Multi-Buy          ! ERC
+ 274: 0349:         BEGIN                           ! Deal record                  ! ERC
+ 275: 0349:         PPF.DEAL.ID$          EQ  MID$(PPF.RECORD$,9,1)                ! ERC
+ 276: 0368:         PPF.PAIR.TRIP.FLAG$   EQ  MID$(PPF.RECORD$,10,1)               ! ERC
+ 277: 0387:         PPF.3FOR2.FLAG$       EQ  MID$(PPF.RECORD$,11,1)               ! ERC
+ 278: 03a6:         PPF.DEAL.LIMIT$       EQ  MID$(PPF.RECORD$,12,2)               ! ERC
+ 279: 03c5:         PPF.DEAL.NUM$         EQ  MID$(PPF.RECORD$,14,4)               ! ERC
+ 280: 03e4:         PPF.SAVED.AMOUNT$     EQ  MID$(PPF.RECORD$,18,4)               ! ERC
+ 281: 0403:         PPF.DEAL.DATE.START$  EQ  MID$(PPF.RECORD$,22,6)               ! ERC
+ 282: 0422:         PPF.DEAL.DATE.FINISH$ EQ  MID$(PPF.RECORD$,28,6)               ! ERC
+ 283: 0441:         PPF.ACTIVE.FLAG$      EQ  MID$(PPF.RECORD$,34,1)               ! ERC
+ 284: 0460:         GOTO READ.PPFI.OKAY                                            ! ERC
+ 285: 0462:         ENDIF                                                          ! ERC
+ 286: 0462: 
+ 287: 0462:     IF PPF.BOOTS.CODE$ EQ "9999999" THEN \ ! Trailer record
+ 288: 0478:         BEGIN
+ 289: 0478:         PPF.REC.COUNT$ EQ MID$(PPF.RECORD$,9,5)
+ 290: 0497:         GOTO READ.PPFI.OKAY
+ 291: 0499:         ENDIF
+ 292: 0499: 
+ 293: 0499: READ.PPFI.OKAY:
+ 294: 0499: 
+ 295: 0499:     READ.PPFI EQ 0
+ 296: 049e:     EXIT FUNCTION
+ 297: 04a0: 
+ 298: 04a0: READ.PPFI.IF.END:
+ 299: 04a0: 
+ 300: 04a0:     FILE.OPERATION$     EQ "R"
+ 301: 04af:     CURRENT.REPORT.NUM% EQ  PPFI.REPORT.NUM%
+ 302: 04bd:     CURRENT.CODE$       EQ  CURRENT.CODE$ ! Previous successful read (if any)
+ 303: 04d3: 
+ 304: 04d3:     EXIT FUNCTION
+ 305: 04d5:  
+ 306: 04d5: END FUNCTION  
+ 307: 04e4: 
+ 308: 04e4: 
+ 309: 04e4: FUNCTION WRITE.PPFO PUBLIC
+ 310: 04f8: 
+ 311: 04f8:     INTEGER*2 WRITE.PPFO
+ 312: 04f8:     WRITE.PPFO EQ 1
+ 313: 04fd: 
+ 314: 04fd:     IF END # PPFO.SESS.NUM% THEN WRITE.PPFO.IF.END
+ 315: 0511: 
+ 316: 0511:     IF PPF.REC.TYPE.FLAG$ EQ "R" THEN \ ! RPD record
+ 317: 052a:         BEGIN
+ 318: 052a:         PPF.RECORD$ EQ \
+ 319: 0590:       PPF.BOOTS.CODE$ + \
+ 320: 0590:           PPF.REC.TYPE.FLAG$ + \
+ 321: 0590:           PPF.DATE.DUE$ + \
+ 322: 0590:           PPF.RPD.NO$ + \
+ 323: 0590:           PPF.STATUS.FLAG$ + \
+ 324: 0590:           PPF.INC.DEC.FLAG$ + \
+ 325: 0590:           PPF.PRICE$ + \                                        
+ 326: 0590:           PPF.MARKDOWN$                                                ! FBG
+ 327: 0590: !   Line deleted                                                       ! ERC
+ 328: 0590:         WRITE # PPFO.SESS.NUM%; PPF.RECORD$
+ 329: 05ae:         GOTO WRITE.PPFO.OKAY
+ 330: 05b1:         ENDIF
+ 331: 05b1: 
+ 332: 05b1:     IF PPF.REC.TYPE.FLAG$ EQ "D" THEN \ ! Deal price
+ 333: 05ca:         BEGIN
+ 334: 05ca:         PPF.RECORD$ EQ \
+ 335: 063b:           PPF.BOOTS.CODE$ + \
+ 336: 063b:           PPF.REC.TYPE.FLAG$ + \
+ 337: 063b:           PPF.DEAL.TYPE$ + \
+ 338: 063b:           PPF.DEAL.QUANTITY$ +  \
+ 339: 063b:           PPF.SPECIAL.PRICE$ + \
+ 340: 063b:           PPF.M.P.GROUP$ + \
+ 341: 063b:           PPF.FIRST.DATE$ + \
+ 342: 063b:           PPF.LAST.DATE$ + \
+ 343: 063b:           PPF.EFFECT.FLAG$
+ 344: 063b: !   Line deleted                                                       ! ERC
+ 345: 063b:         WRITE # PPFO.SESS.NUM%; PPF.RECORD$
+ 346: 0659:         GOTO WRITE.PPFO.OKAY
+ 347: 065c:         ENDIF
+ 348: 065c: 
+ 349: 065c:     IF PPF.REC.TYPE.FLAG$ EQ "B" THEN \ ! Link-Save Multi-Buy          ! ERC
+ 350: 0675:         BEGIN                           ! Deal record                  ! ERC
+ 351: 0675:         PPF.RECORD$ EQ \                                               ! ERC
+ 352: 06fc:           PPF.BOOTS.CODE$ + \                                          ! ERC
+ 353: 06fc:           PPF.REC.TYPE.FLAG$ + \                                       ! ERC
+ 354: 06fc:           PPF.DEAL.ID$ + \                                             ! ERC
+ 355: 06fc:           PPF.PAIR.TRIP.FLAG$ + \                                      ! ERC
+ 356: 06fc:           PPF.3FOR2.FLAG$ + \                                          ! ERC
+ 357: 06fc:           PPF.DEAL.LIMIT$ + \                                          ! ERC
+ 358: 06fc:           PPF.DEAL.NUM$ + \                                            ! ERC
+ 359: 06fc:           PPF.SAVED.AMOUNT$ + \                                        ! ERC
+ 360: 06fc:           PPF.DEAL.DATE.START$ + \                                     ! ERC
+ 361: 06fc:           PPF.DEAL.DATE.FINISH$ + \                                    ! ERC
+ 362: 06fc:           PPF.ACTIVE.FLAG$                                             ! ERC
+ 363: 06fc:         WRITE # PPFO.SESS.NUM%; PPF.RECORD$                            ! ERC
+ 364: 071a:         GOTO WRITE.PPFO.OKAY                                           ! ERC
+ 365: 071c:         ENDIF                                                          ! ERC
+ 366: 071c: 
+ 367: 071c:     IF PPF.BOOTS.CODE$ EQ "9999999" THEN \ ! Trailer record
+ 368: 0732:         BEGIN
+ 369: 0732:         PPF.RECORD$ EQ \
+ 370: 0761:           PPF.BOOTS.CODE$ + \
+ 371: 0761:           PPF.REC.TYPE.FLAG$ + \
+ 372: 0761:           PPF.REC.COUNT$
+ 373: 0761:         WRITE # PPFO.SESS.NUM%; PPF.RECORD$
+ 374: 077f:         GOTO WRITE.PPFO.OKAY
+ 375: 0781:         ENDIF
+ 376: 0781: 
+ 377: 0781: WRITE.PPFO.OKAY:
+ 378: 0781: 
+ 379: 0781:     WRITE.PPFO EQ 0
+ 380: 0786:     EXIT FUNCTION
+ 381: 0788: 
+ 382: 0788: WRITE.PPFO.IF.END:
+ 383: 0788: 
+ 384: 0788:     FILE.OPERATION$     EQ "W"
+ 385: 0797:     CURRENT.REPORT.NUM% EQ  PPFO.REPORT.NUM%
+ 386: 07a5:     CURRENT.CODE$       EQ  RIGHT$(PPF.RECORD$,10) ! Current write
+ 387: 07c2: 
+ 388: 07c2:     EXIT FUNCTION
+ 389: 07c4: 
+ 390: 07c4: END FUNCTION
+ 391: 07d3: 
+ 392: 07d3: 
+ 393: 07d3: FUNCTION READ.PPFI.SHORT PUBLIC                                        ! ESP
+ 394: 07e7:                                                                        ! ESP
+ 395: 07e7:     INTEGER*2 READ.PPFI.SHORT                                          ! ESP
+ 396: 07e7:     READ.PPFI.SHORT EQ 1                                               ! ESP
+ 397: 07ec:                                                                        ! ESP
+ 398: 07ec:     CURRENT.CODE$ EQ MID$(PPF.RECORD$,1,10)                            ! ESP
+ 399: 080b:                                                                        ! ESP
+ 400: 080b:     IF END # PPFI.SESS.NUM% THEN READ.PPFI.IF.END                      ! ESP
+ 401: 081f:     READ # PPFI.SESS.NUM%; PPF.RECORD$                                 ! ESP
+ 402: 083d:                                                                        ! ESP
+ 403: 083d:     READ.PPFI.SHORT EQ 0                                               ! ESP
+ 404: 0842:     EXIT FUNCTION                                                      ! ESP
+ 405: 0844:                                                                        ! ESP
+ 406: 0844: READ.PPFI.IF.END:                                                      ! ESP
+ 407: 0844:                                                                        ! ESP
+ 408: 0844:     FILE.OPERATION$     EQ "R"                                         ! ESP
+ 409: 0853:     CURRENT.REPORT.NUM% EQ  PPFI.REPORT.NUM%                           ! ESP
+ 410: 0861:     CURRENT.CODE$       EQ  CURRENT.CODE$ ! Previous successful read (if any)
+ 411: 0877:                                                                        ! ESP
+ 412: 0877:     EXIT FUNCTION                                                      ! ESP
+ 413: 0879:                                                                        ! ESP
+ 414: 0879: END FUNCTION                                                           ! ESP
+ 415: 0888: 
+ 416: 0888: 
+ 417: 0888: FUNCTION PPFI.LOAD.FIELDS(TEMP.PPFI.RECORD$) PUBLIC                    ! ESP
+ 418: 08a1:                                                                        ! ESP
+ 419: 08a1: STRING  TEMP.PPFI.RECORD$                                              ! ESP
+ 420: 08a1:                                                                        ! ESP
+ 421: 08a1:     PPF.BOOTS.CODE$    EQ MID$(TEMP.PPFI.RECORD$,1,7)                  ! ESP
+ 422: 08bb:     PPF.REC.TYPE.FLAG$ EQ MID$(TEMP.PPFI.RECORD$,8,1)                  ! ESP
+ 423: 08d5:                                                                        ! ESP
+ 424: 08d5:     IF PPF.REC.TYPE.FLAG$ EQ "R" THEN \ ! RPD record                   ! ESP
+ 425: 08ee:         BEGIN                                                          ! ESP
+ 426: 08ee:         PPF.DATE.DUE$     EQ  MID$(TEMP.PPFI.RECORD$,9,6)              ! ESP
+ 427: 0908:         PPF.RPD.NO$       EQ  MID$(TEMP.PPFI.RECORD$,15,5)             ! ESP
+ 428: 0922:         PPF.STATUS.FLAG$  EQ  MID$(TEMP.PPFI.RECORD$,20,1)             ! ESP
+ 429: 093c:         PPF.INC.DEC.FLAG$ EQ  MID$(TEMP.PPFI.RECORD$,21,1)             ! ESP
+ 430: 0956:         PPF.PRICE$        EQ  MID$(TEMP.PPFI.RECORD$,22,8)             ! ESP
+ 431: 0970:         PPF.MARKDOWN$     EQ  MID$(TEMP.PPFI.RECORD$,30,1)             ! FBG
+ 432: 098a:         GOTO EXIT.FUNCTION                                             ! ESP
+ 433: 098d:         ENDIF                                                          ! ESP
+ 434: 098d:                                                                        ! ESP
+ 435: 098d:     IF PPF.REC.TYPE.FLAG$ EQ "D" THEN \ ! Deal record                  ! ESP
+ 436: 09a6:         BEGIN                                                          ! ESP
+ 437: 09a6:         PPF.DEAL.TYPE$     EQ  MID$(TEMP.PPFI.RECORD$,9,1)             ! ESP
+ 438: 09c0:         PPF.DEAL.QUANTITY$ EQ  MID$(TEMP.PPFI.RECORD$,10,2)            ! ESP
+ 439: 09da:         PPF.SPECIAL.PRICE$ EQ  MID$(TEMP.PPFI.RECORD$,12,5)            ! ESP
+ 440: 09f4:         PPF.M.P.GROUP$     EQ  MID$(TEMP.PPFI.RECORD$,17,2)            ! ESP
+ 441: 0a0e:         PPF.FIRST.DATE$    EQ  MID$(TEMP.PPFI.RECORD$,19,6)            ! ESP
+ 442: 0a28:         PPF.LAST.DATE$     EQ  MID$(TEMP.PPFI.RECORD$,25,6)            ! ESP
+ 443: 0a42:         PPF.EFFECT.FLAG$   EQ  MID$(TEMP.PPFI.RECORD$,31,1)            ! ESP
+ 444: 0a5c:         GOTO EXIT.FUNCTION                                             ! ESP
+ 445: 0a5f:         ENDIF                                                          ! ESP
+ 446: 0a5f:                                                                        ! ESP
+ 447: 0a5f:     IF PPF.REC.TYPE.FLAG$ EQ "B" THEN \ ! Link-Save Multi-Buy          ! ESP
+ 448: 0a78:         BEGIN                           ! Deal record                  ! ESP
+ 449: 0a78:         PPF.DEAL.ID$          EQ  MID$(TEMP.PPFI.RECORD$,9,1)          ! ESP
+ 450: 0a92:         PPF.PAIR.TRIP.FLAG$   EQ  MID$(TEMP.PPFI.RECORD$,10,1)         ! ESP
+ 451: 0aac:         PPF.3FOR2.FLAG$       EQ  MID$(TEMP.PPFI.RECORD$,11,1)         ! ESP
+ 452: 0ac6:         PPF.DEAL.LIMIT$       EQ  MID$(TEMP.PPFI.RECORD$,12,2)         ! ESP
+ 453: 0ae0:         PPF.DEAL.NUM$         EQ  MID$(TEMP.PPFI.RECORD$,14,4)         ! ESP
+ 454: 0afa:         PPF.SAVED.AMOUNT$     EQ  MID$(TEMP.PPFI.RECORD$,18,4)         ! ESP
+ 455: 0b14:         PPF.DEAL.DATE.START$  EQ  MID$(TEMP.PPFI.RECORD$,22,6)         ! ESP
+ 456: 0b2e:         PPF.DEAL.DATE.FINISH$ EQ  MID$(TEMP.PPFI.RECORD$,28,6)         ! ESP
+ 457: 0b48:         PPF.ACTIVE.FLAG$      EQ  MID$(TEMP.PPFI.RECORD$,34,1)         ! ESP
+ 458: 0b62:         GOTO EXIT.FUNCTION                                             ! ESP
+ 459: 0b64:         ENDIF                                                          ! ESP
+ 460: 0b64:                                                                        ! ESP
+ 461: 0b64:     IF PPF.BOOTS.CODE$ EQ "9999999" THEN \ ! Trailer record            ! ESP
+ 462: 0b7a:         BEGIN                                                          ! ESP
+ 463: 0b7a:         PPF.REC.COUNT$ EQ MID$(TEMP.PPFI.RECORD$,9,5)                  ! ESP
+ 464: 0b94:         GOTO EXIT.FUNCTION                                             ! ESP
+ 465: 0b96:         ENDIF                                                          ! ESP
+ 466: 0b96:                                                                        ! ESP
+ 467: 0b96:     EXIT.FUNCTION:                                                     ! ESP
+ 468: 0b96:                                                                        ! ESP
+ 469: 0b96: END FUNCTION                                                           ! ESP
+ 470: 0ba7:                                                                        
+ 471: 0ba7: End of Compilation

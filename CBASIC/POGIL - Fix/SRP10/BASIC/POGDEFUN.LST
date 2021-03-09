@@ -1,0 +1,197 @@
+   1: 0000: \********************************************************************
+   2: 0000: \***      ADCS POG Delta File (POGDE)
+   3: 0000: \***      Version A           Neil Bennett          6th June 2006
+   4: 0000: \***
+   5: 0000: \....................................................................
+   6: 0000: 
+   7: 0000:   INTEGER*2 GLOBAL                   \
+   8: 0000:       CURRENT.REPORT.NUM%
+   9: 0000: 
+  10: 0000:   STRING GLOBAL                      \
+  11: 0000:       CURRENT.CODE$,                 \
+  12: 0000:       FILE.OPERATION$,               \
+  13: 0000:       POGDE.BLOCK$
+  14: 0000: 
+  15: 0000:   INTEGER*4 GLOBAL                   \
+  16: 0000:       POGDE.CTR%
+  17: 0000: 
+  18: 0000:   %INCLUDE POGDEDEC.J86
+  19: 0000: \********************************************************************
+  20: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE POGDE FILE
+  21: 0000: \***      REFERENCE : POGOKDEC.J86
+  22: 0000: \***      Version A           Neil Bennett            6th June 2006
+  23: 0000: \***
+  24: 0000: \********************************************************************
+  25: 0000: 
+  26: 0000:   INTEGER*2 GLOBAL                \
+  27: 0000:     POGDE.SESS.NUM%,              \
+  28: 0000:     POGDE.REPORT.NUM%             !
+  29: 0000: 
+  30: 0000:   STRING GLOBAL                   \
+  31: 0000:     POGDE.COPY.NAME$,             \
+  32: 0000:     POGDE.FILE.NAME$,             \
+  33: 0000:     POGDE.RCD$                    !
+  34: 0000: 
+  35: 0000: \--------------------------------------------------------------------
+  36: 0000: 
+  37: 0000:   FUNCTION INSTR(patt$,dest$,strt%)
+  38: 001e: 
+  39: 001e:    INTEGER*4 a%, INSTR, strt%
+  40: 001e:    STRING    patt$, dest$
+  41: 001e: 
+  42: 001e:    IF (strt% = 0) THEN BEGIN
+  43: 0030:       INSTR = 0
+  44: 003e:       EXIT FUNCTION
+  45: 0041:    ENDIF
+  46: 0041: 
+  47: 0041:    IF (LEN(patt$) > LEN(dest$)) THEN BEGIN
+  48: 0061:       INSTR = 0
+  49: 006f:       EXIT FUNCTION
+  50: 0072:    ENDIF
+  51: 0072: 
+  52: 0072:    patt$ = UCASE$(patt$)
+  53: 0087:    dest$ = UCASE$(dest$)
+  54: 009c: 
+  55: 009c:    FOR a% = strt% TO LEN(dest$) - LEN(patt$)
+  56: 00ac:       IF (MID$(dest$,a%,LEN(patt$)) = patt$) THEN BEGIN
+  57: 00e7:          INSTR = a%
+  58: 00f5:          EXIT FUNCTION
+  59: 00f7:       ENDIF
+  60: 00f7:    NEXT a%
+  61: 0136: 
+  62: 0136:    INSTR = 0
+  63: 0144:    EXIT FUNCTION
+  64: 0146: 
+  65: 0146:   END FUNCTION
+  66: 0162: 
+  67: 0162: \--------------------------------------------------------------------
+  68: 0162: 
+  69: 0162:   FUNCTION POGDE.SET PUBLIC
+  70: 0176: 
+  71: 0176:    POGDE.REPORT.NUM% = 716
+  72: 017f:    POGDE.FILE.NAME$  = "POGDE"
+  73: 018e:    POGDE.COPY.NAME$  = "ADXLXACN::D:\ADX_UDT3\POGDELTA.BAK"
+  74: 019d: 
+  75: 019d:   END FUNCTION
+  76: 01a9: 
+  77: 01a9: \--------------------------------------------------------------------
+  78: 01a9: \- Due to a problem encountered during testing where the READ#LINE
+  79: 01a9: \- command was incorrectly recognising '0A2C' as an end of record,
+  80: 01a9: \- the read was changed to the following where the file is read a
+  81: 01a9: \- 1024 byte block ata a time and then parsed into records.
+  82: 01a9: \-                                                   NWB 29/08/06
+  83: 01a9: \--------------------------------------------------------------------
+  84: 01a9: \- As it is possible to have 0D0Ah in the transmitted data stream
+  85: 01a9: \- where this is not at the end of a record, a further length check
+  86: 01a9: \- by record type has been added to allow this. Any unrecognised
+  87: 01a9: \- record type is ignored.
+  88: 01a9: \-                                                   NWB 17/01/07
+  89: 01a9: \--------------------------------------------------------------------
+  90: 01a9: 
+  91: 01a9:   FUNCTION READ.POGDE PUBLIC
+  92: 01bd: 
+  93: 01bd:    INTEGER*2 READ.POGDE
+  94: 01bd:    INTEGER*1 end.loop%
+  95: 01bd:    INTEGER*2 i%
+  96: 01bd:    STRING    a$, crlf$
+  97: 01bd: 
+  98: 01bd:    INTEGER*2 r.len.00
+  99: 01bd:    INTEGER*2 r.len.01
+ 100: 01bd:    INTEGER*2 r.len.02
+ 101: 01bd:    INTEGER*2 r.len.03
+ 102: 01bd:    INTEGER*2 r.len.10
+ 103: 01bd:    INTEGER*2 r.len.21
+ 104: 01bd:    INTEGER*2 r.len.99
+ 105: 01bd: 
+ 106: 01bd:    READ.POGDE = 1
+ 107: 01c2: 
+ 108: 01c2:    POGDE.RCD$ = ""
+ 109: 01d1:    a$ = ""
+ 110: 01de:    crlf$ = CHR$(13) + CHR$(10)
+ 111: 0203:    end.loop% = 0
+ 112: 0208: 
+ 113: 0208:    ! Set up record lengths (incl CR/LF)
+ 114: 0208: 
+ 115: 0208:    r.len.00 =  14
+ 116: 020e:    r.len.01 = 233
+ 117: 0214:    r.len.02 =  15
+ 118: 021a:    r.len.03 = 233
+ 119: 0220:    r.len.10 =  48
+ 120: 0226:    r.len.21 =  19
+ 121: 022c:    r.len.99 =   7
+ 122: 0232: 
+ 123: 0232:    WHILE end.loop% = 0
+ 124: 0235:       i% = INSTR(crlf$, POGDE.BLOCK$, 1)
+ 125: 025c:       IF i% = 0 THEN BEGIN
+ 126: 0261:          IF LEN(POGDE.BLOCK$) < (16 * 1024) THEN BEGIN
+ 127: 0278:             GOSUB GET.BLOCK
+ 128: 0284:          ENDIF ELSE BEGIN
+ 129: 0284:             POGDE.BLOCK$ = ""
+ 130: 0293:             GOTO READ.POGDE.ERROR
+ 131: 0296:          ENDIF
+ 132: 0298:       ENDIF ELSE BEGIN
+ 133: 0298:          POGDE.RCD$   = POGDE.RCD$ + LEFT$(POGDE.BLOCK$, i% +1)
+ 134: 02c8:          POGDE.BLOCK$ = RIGHT$(POGDE.BLOCK$,                        \
+ 135: 02fb:                                LEN(POGDE.BLOCK$) -(i% +1))
+ 136: 02fb:       ENDIF
+ 137: 02fb:       IF UNPACK$(MID$(POGDE.RCD$, 1, 1)) = "00" THEN BEGIN
+ 138: 0338:          IF LEN(POGDE.RCD$) = r.len.00 THEN BEGIN
+ 139: 034f:             POGDE.RCD$ = LEFT$(POGDE.RCD$, r.len.00 -2)
+ 140: 0373:             end.loop% = -1
+ 141: 0378:          ENDIF
+ 142: 037b:       ENDIF ELSE IF UNPACK$(MID$(POGDE.RCD$, 1, 1)) = "01" THEN BEGIN
+ 143: 03b8:          IF LEN(POGDE.RCD$) = r.len.01 THEN BEGIN
+ 144: 03cf:             POGDE.RCD$ = LEFT$(POGDE.RCD$, r.len.01 -2)
+ 145: 03f3:             end.loop% = -1
+ 146: 03f8:          ENDIF
+ 147: 03fb:       ENDIF ELSE IF UNPACK$(MID$(POGDE.RCD$, 1, 1)) = "02" THEN BEGIN
+ 148: 0438:          IF LEN(POGDE.RCD$) = r.len.02 THEN BEGIN
+ 149: 044f:             POGDE.RCD$ = LEFT$(POGDE.RCD$, r.len.02 -2)
+ 150: 0473:             end.loop% = -1
+ 151: 0478:          ENDIF
+ 152: 047b:       ENDIF ELSE IF UNPACK$(MID$(POGDE.RCD$, 1, 1)) = "03" THEN BEGIN
+ 153: 04b8:          IF LEN(POGDE.RCD$) = r.len.03 THEN BEGIN
+ 154: 04cf:             POGDE.RCD$ = LEFT$(POGDE.RCD$, r.len.03 -2)
+ 155: 04f3:             end.loop% = -1
+ 156: 04f8:          ENDIF
+ 157: 04fb:       ENDIF ELSE IF UNPACK$(MID$(POGDE.RCD$, 1, 1)) = "10" THEN BEGIN
+ 158: 0538:          IF LEN(POGDE.RCD$) = r.len.10 THEN BEGIN
+ 159: 054f:             POGDE.RCD$ = LEFT$(POGDE.RCD$, r.len.10 -2)
+ 160: 0573:             end.loop% = -1
+ 161: 0578:          ENDIF
+ 162: 057b:       ENDIF ELSE IF UNPACK$(MID$(POGDE.RCD$, 1, 1)) = "21" THEN BEGIN
+ 163: 05b8:          IF LEN(POGDE.RCD$) = r.len.21 THEN BEGIN
+ 164: 05cf:             POGDE.RCD$ = LEFT$(POGDE.RCD$, r.len.21 -2)
+ 165: 05f3:             end.loop% = -1
+ 166: 05f8:          ENDIF
+ 167: 05fb:       ENDIF ELSE IF UNPACK$(MID$(POGDE.RCD$, 1, 1)) = "99" THEN BEGIN
+ 168: 0638:          IF LEN(POGDE.RCD$) = r.len.99 THEN BEGIN
+ 169: 064f:             POGDE.RCD$ = LEFT$(POGDE.RCD$, r.len.99 -2)
+ 170: 0673:             end.loop% = -1
+ 171: 0678:          ENDIF
+ 172: 067a:       ENDIF ELSE BEGIN
+ 173: 067a:          POGDE.RCD$ = ""                        ! Ignore record
+ 174: 0689:       ENDIF
+ 175: 0689:    WEND
+ 176: 0693: 
+ 177: 0693:    READ.POGDE = 0
+ 178: 0698:    EXIT FUNCTION
+ 179: 069b: 
+ 180: 069b: GET.BLOCK:
+ 181: 069b: 
+ 182: 069b:    IF END #POGDE.SESS.NUM% THEN READ.POGDE.ERROR
+ 183: 06af:    POGDE.CTR% = POGDE.CTR% +1
+ 184: 06c0:    READ FORM "C1024"; #POGDE.SESS.NUM%, POGDE.CTR%; a$
+ 185: 06f0:    POGDE.BLOCK$ = POGDE.BLOCK$ + a$
+ 186: 0711:    a$ = ""
+ 187: 071e: 
+ 188: 071e:    RETURN
+ 189: 0726: 
+ 190: 0726: READ.POGDE.ERROR:
+ 191: 0726: 
+ 192: 0726:    CURRENT.REPORT.NUM% = POGDE.REPORT.NUM%
+ 193: 0734:    FILE.OPERATION$ = "R"
+ 194: 0743:    CURRENT.CODE$ = ""
+ 195: 0752: 
+ 196: 0752:   END FUNCTION
+ 197: 0761: End of Compilation

@@ -1,0 +1,277 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***              INSTORE STOCK FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***               REFERENCE    : STOCKFUN.BAS
+   7: 0000: \***
+   8: 0000: \***         VERSION A            LES COOK         21/8/92
+   9: 0000: \***
+  10: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  11: 0000: \***    Corrected setting of FILE.OPERATION$ within WRITE functions.
+  12: 0000: \***
+  13: 0000: \***   VERSION C               Nik Sen                 14th December 1994
+  14: 0000: \***   WRITE.STOCK.HOLD added
+  15: 0000: \***
+  16: 0000: \*******************************************************************************
+  17: 0000: \*******************************************************************************
+  18: 0000: 
+  19: 0000:     INTEGER*2 GLOBAL                \
+  20: 0000:        CURRENT.REPORT.NUM%
+  21: 0000: 
+  22: 0000:     STRING GLOBAL                    \
+  23: 0000:        CURRENT.CODE$,                \
+  24: 0000:        FILE.OPERATION$
+  25: 0000: 
+  26: 0000:     %INCLUDE STOCKDEC.J86                                              ! BRC
+  27: 0000: \******************************************************************************
+  28: 0000: \******************************************************************************
+  29: 0000: \***
+  30: 0000: \***         %INCLUDE FOR INSTORE STOCK FILE FIELD DECLARATIONS
+  31: 0000: \***
+  32: 0000: \***               FILE TYPE    : KEYED
+  33: 0000: \***
+  34: 0000: \***               REFERENCE    : STOCKDEC.J86
+  35: 0000: \***
+  36: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  37: 0000: \***    No changes to this file.
+  38: 0000: \***
+  39: 0000: \*******************************************************************************
+  40: 0000: \*******************************************************************************
+  41: 0000: 
+  42: 0000: STRING GLOBAL                   \
+  43: 0000:    STOCK.FILE.NAME$,            \
+  44: 0000:    STOCK.BOOTS.CODE$,           \ 4 byte UPD  Boots item code
+  45: 0000:    STOCK.DATE.LAST.COUNT$,      \ 3 byte UPD  Date of the last count
+  46: 0000:    STOCK.DATE.LAST.MOVE$,       \ 3 byte UPD  Date of the last stock movement
+  47: 0000:    STOCK.DATE.LAST.REC$,        \ 3 byte UPD  Date of the last receipt
+  48: 0000:    STOCK.DATE.LAST.GAP$,        \ 3 byte UPD  Date of the last gap
+  49: 0000:    STOCK.FILLER$                ! 8 byte filler
+  50: 0000: 
+  51: 0000: INTEGER*2 GLOBAL                \
+  52: 0000:    STOCK.REPORT.NUM%,           \
+  53: 0000:    STOCK.SESS.NUM%,             \
+  54: 0000:    STOCK.STOCK.FIG%,            \ Stock figure
+  55: 0000:    STOCK.LAST.COUNT%,           \ Qty of last count
+  56: 0000:    STOCK.LAST.REC%              ! Qty of last receipt
+  57: 0000: 
+  58: 0000: INTEGER*1 GLOBAL                \
+  59: 0000:    STOCK.RECL%
+  60: 0000: 
+  61: 0000:   FUNCTION STOCK.SET PUBLIC
+  62: 0014: \***************************
+  63: 0014: 
+  64: 0014:     STOCK.REPORT.NUM% = 108
+  65: 001d:     STOCK.RECL%       = 30
+  66: 0025:     STOCK.FILE.NAME$  = "STOCK"
+  67: 0034: 
+  68: 0034:   END FUNCTION
+  69: 0040: 
+  70: 0040: \-----------------------------------------------------------------------------
+  71: 0040: 
+  72: 0040:   FUNCTION READ.STOCK PUBLIC
+  73: 0054: \****************************
+  74: 0054: 
+  75: 0054:     INTEGER*2 READ.STOCK
+  76: 0054: 
+  77: 0054:     READ.STOCK = 1
+  78: 0059: 
+  79: 0059:     IF END #STOCK.SESS.NUM% THEN READ.STOCK.ERROR
+  80: 006d:     READ FORM "T5,2I2,2C3,I2,2C3,C8"; #STOCK.SESS.NUM%          \
+  81: 00ec:          KEY    STOCK.BOOTS.CODE$;                              \
+  82: 00ec:                 STOCK.STOCK.FIG%,                               \
+  83: 00ec:                 STOCK.LAST.COUNT%,                              \
+  84: 00ec:                 STOCK.DATE.LAST.COUNT$,                         \
+  85: 00ec:                 STOCK.DATE.LAST.MOVE$,                          \
+  86: 00ec:                 STOCK.LAST.REC%,                                \
+  87: 00ec:                 STOCK.DATE.LAST.REC$,                           \
+  88: 00ec:                 STOCK.DATE.LAST.GAP$,                           \
+  89: 00ec:                 STOCK.FILLER$
+  90: 00ec:     READ.STOCK = 0
+  91: 00f1:     EXIT FUNCTION
+  92: 00f3: 
+  93: 00f3:     READ.STOCK.ERROR:
+  94: 00f3: 
+  95: 00f3:        CURRENT.CODE$ = STOCK.BOOTS.CODE$
+  96: 0109:        FILE.OPERATION$ = "R"
+  97: 0118:        CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+  98: 0126: 
+  99: 0126:        EXIT FUNCTION
+ 100: 0128: 
+ 101: 0128:   END FUNCTION
+ 102: 0137: 
+ 103: 0137: \-----------------------------------------------------------------------------
+ 104: 0137: 
+ 105: 0137: 
+ 106: 0137: 
+ 107: 0137:   FUNCTION WRITE.STOCK PUBLIC
+ 108: 014b: \*****************************
+ 109: 014b: 
+ 110: 014b:     INTEGER*2 WRITE.STOCK
+ 111: 014b: 
+ 112: 014b:     WRITE.STOCK = 1
+ 113: 0150: 
+ 114: 0150:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.ERROR
+ 115: 0164:     WRITE FORM "C4,2I2,2C3,I2,2C3,C8"; #STOCK.SESS.NUM%;        \
+ 116: 0202:                 STOCK.BOOTS.CODE$,                              \
+ 117: 0202:                 STOCK.STOCK.FIG%,                               \
+ 118: 0202:                 STOCK.LAST.COUNT%,                              \
+ 119: 0202:                 STOCK.DATE.LAST.COUNT$,                         \
+ 120: 0202:                 STOCK.DATE.LAST.MOVE$,                          \
+ 121: 0202:                 STOCK.LAST.REC%,                                \
+ 122: 0202:                 STOCK.DATE.LAST.REC$,                           \
+ 123: 0202:                 STOCK.DATE.LAST.GAP$,                           \
+ 124: 0202:                 PACK$(STRING$(8 * 2,"0"))
+ 125: 0202:    WRITE.STOCK = 0
+ 126: 0207:    EXIT FUNCTION
+ 127: 0209: 
+ 128: 0209:    WRITE.STOCK.ERROR:
+ 129: 0209: 
+ 130: 0209:       CURRENT.CODE$ = STOCK.BOOTS.CODE$
+ 131: 021f:       FILE.OPERATION$ = "W"                                            ! BRC
+ 132: 022e:       CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 133: 023c: 
+ 134: 023c:       EXIT FUNCTION
+ 135: 023e: 
+ 136: 023e:   END FUNCTION
+ 137: 024d: 
+ 138: 024d: 
+ 139: 024d: \-----------------------------------------------------------------------------
+ 140: 024d: 
+ 141: 024d: 
+ 142: 024d:   FUNCTION WRITE.STOCK.HOLD PUBLIC
+ 143: 0261: \*****************************
+ 144: 0261: 
+ 145: 0261:     INTEGER*2 WRITE.STOCK.HOLD
+ 146: 0261: 
+ 147: 0261:     WRITE.STOCK.HOLD = 1
+ 148: 0266: 
+ 149: 0266:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.HOLD.ERROR
+ 150: 027a:     WRITE FORM "C4,2I2,2C3,I2,2C3,C8"; HOLD #STOCK.SESS.NUM%;   \
+ 151: 0318:                 STOCK.BOOTS.CODE$,                              \
+ 152: 0318:                 STOCK.STOCK.FIG%,                               \
+ 153: 0318:                 STOCK.LAST.COUNT%,                              \
+ 154: 0318:                 STOCK.DATE.LAST.COUNT$,                         \
+ 155: 0318:                 STOCK.DATE.LAST.MOVE$,                          \
+ 156: 0318:                 STOCK.LAST.REC%,                                \
+ 157: 0318:                 STOCK.DATE.LAST.REC$,                           \
+ 158: 0318:                 STOCK.DATE.LAST.GAP$,                           \
+ 159: 0318:                 PACK$(STRING$(8 * 2,"0"))
+ 160: 0318:    WRITE.STOCK.HOLD = 0
+ 161: 031d:    EXIT FUNCTION
+ 162: 031f: 
+ 163: 031f:    WRITE.STOCK.HOLD.ERROR:
+ 164: 031f: 
+ 165: 031f:       CURRENT.CODE$ = STOCK.BOOTS.CODE$
+ 166: 0335:       FILE.OPERATION$ = "W"                                            ! BRC
+ 167: 0344:       CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 168: 0352: 
+ 169: 0352:       EXIT FUNCTION
+ 170: 0354: 
+ 171: 0354:   END FUNCTION
+ 172: 0363: 
+ 173: 0363: 
+ 174: 0363: \-----------------------------------------------------------------------------
+ 175: 0363: 
+ 176: 0363: 
+ 177: 0363:   FUNCTION READ.STOCK.LOCK PUBLIC
+ 178: 0377: \*********************************
+ 179: 0377: 
+ 180: 0377:     INTEGER*2 READ.STOCK.LOCK
+ 181: 0377: 
+ 182: 0377:     READ.STOCK.LOCK = 1
+ 183: 037c: 
+ 184: 037c:     IF END #STOCK.SESS.NUM% THEN READ.STOCK.LOCK.ERROR
+ 185: 0390:     READ FORM "T5,2I2,2C3,I2,2C3,C8"; #STOCK.SESS.NUM%          \
+ 186: 040f:         AUTOLOCK                                                \
+ 187: 040f:         KEY     STOCK.BOOTS.CODE$;                              \
+ 188: 040f:                 STOCK.STOCK.FIG%,                               \
+ 189: 040f:                 STOCK.LAST.COUNT%,                              \
+ 190: 040f:                 STOCK.DATE.LAST.COUNT$,                         \
+ 191: 040f:                 STOCK.DATE.LAST.MOVE$,                          \
+ 192: 040f:                 STOCK.LAST.REC%,                                \
+ 193: 040f:                 STOCK.DATE.LAST.REC$,                           \
+ 194: 040f:                 STOCK.DATE.LAST.GAP$,                           \
+ 195: 040f:                 STOCK.FILLER$
+ 196: 040f:     READ.STOCK.LOCK = 0
+ 197: 0414:     EXIT FUNCTION
+ 198: 0416: 
+ 199: 0416:     READ.STOCK.LOCK.ERROR:
+ 200: 0416: 
+ 201: 0416:        CURRENT.CODE$ = STOCK.BOOTS.CODE$
+ 202: 042c:        FILE.OPERATION$ = "R"
+ 203: 043b:        CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 204: 0449: 
+ 205: 0449:        EXIT FUNCTION
+ 206: 044b: 
+ 207: 044b:   END FUNCTION
+ 208: 045a: 
+ 209: 045a: \-----------------------------------------------------------------------------
+ 210: 045a: 
+ 211: 045a: 
+ 212: 045a: 
+ 213: 045a:   FUNCTION WRITE.STOCK.UNLOCK PUBLIC
+ 214: 046e: \************************************
+ 215: 046e: 
+ 216: 046e:     INTEGER*2 WRITE.STOCK.UNLOCK
+ 217: 046e: 
+ 218: 046e:     WRITE.STOCK.UNLOCK = 1
+ 219: 0473: 
+ 220: 0473:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.UNLOCK.ERROR
+ 221: 0487:     WRITE FORM "C4,2I2,2C3,I2,2C3,C8"; #STOCK.SESS.NUM%         \
+ 222: 0525:           AUTOUNLOCK ;                                          \
+ 223: 0525:                 STOCK.BOOTS.CODE$,                              \
+ 224: 0525:                 STOCK.STOCK.FIG%,                               \
+ 225: 0525:                 STOCK.LAST.COUNT%,                              \
+ 226: 0525:                 STOCK.DATE.LAST.COUNT$,                         \
+ 227: 0525:                 STOCK.DATE.LAST.MOVE$,                          \
+ 228: 0525:                 STOCK.LAST.REC%,                                \
+ 229: 0525:                 STOCK.DATE.LAST.REC$,                           \
+ 230: 0525:                 STOCK.DATE.LAST.GAP$,                           \
+ 231: 0525:                 PACK$(STRING$(8 * 2,"0"))
+ 232: 0525:     WRITE.STOCK.UNLOCK = 0
+ 233: 052a:     EXIT FUNCTION
+ 234: 052c: 
+ 235: 052c:     WRITE.STOCK.UNLOCK.ERROR:
+ 236: 052c: 
+ 237: 052c:     CURRENT.CODE$ = STOCK.BOOTS.CODE$
+ 238: 0542:     FILE.OPERATION$ = "W"                                              ! BRC
+ 239: 0551:     CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 240: 055f: 
+ 241: 055f:   END FUNCTION
+ 242: 056e: 
+ 243: 056e: \-----------------------------------------------------------------------------
+ 244: 056e: 
+ 245: 056e: 
+ 246: 056e:   FUNCTION WRITE.STOCK.UNLOCK.HOLD PUBLIC
+ 247: 0582: \*****************************************
+ 248: 0582: 
+ 249: 0582:     INTEGER*2 WRITE.STOCK.UNLOCK.HOLD
+ 250: 0582: 
+ 251: 0582:     WRITE.STOCK.UNLOCK.HOLD = 1
+ 252: 0587: 
+ 253: 0587:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.UNLOCK.HOLD.ERROR
+ 254: 059b:     WRITE FORM "C4,2I2,2C3,I2,2C3,C8"; HOLD #STOCK.SESS.NUM%    \
+ 255: 0639:           AUTOUNLOCK ;                                          \
+ 256: 0639:                 STOCK.BOOTS.CODE$,                              \
+ 257: 0639:                 STOCK.STOCK.FIG%,                               \
+ 258: 0639:                 STOCK.LAST.COUNT%,                              \
+ 259: 0639:                 STOCK.DATE.LAST.COUNT$,                         \
+ 260: 0639:                 STOCK.DATE.LAST.MOVE$,                          \
+ 261: 0639:                 STOCK.LAST.REC%,                                \
+ 262: 0639:                 STOCK.DATE.LAST.REC$,                           \
+ 263: 0639:                 STOCK.DATE.LAST.GAP$,                           \
+ 264: 0639:                 PACK$(STRING$(8 * 2,"0"))
+ 265: 0639:     WRITE.STOCK.UNLOCK.HOLD = 0
+ 266: 063e:     EXIT FUNCTION
+ 267: 0640: 
+ 268: 0640:     WRITE.STOCK.UNLOCK.HOLD.ERROR:
+ 269: 0640: 
+ 270: 0640:        CURRENT.CODE$ = STOCK.BOOTS.CODE$
+ 271: 0656:        FILE.OPERATION$ = "W"                                           ! BRC
+ 272: 0665:        CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 273: 0673: 
+ 274: 0673:        EXIT FUNCTION
+ 275: 0675: 
+ 276: 0675:   END FUNCTION
+ 277: 0684: End of Compilation

@@ -1,0 +1,145 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  KEYED
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  NLINEFUN.BAS
+  10: 0000: \***
+  11: 0000: \***               DESCRIPTION:  NEWLINES - NEWLINES REPORT INFORMATION
+  12: 0000: \***
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***      VERSION 1 : Julia Stones             7th July 2003
+  16: 0000: \***
+  17: 0000: \***      Version 1.1  Julia Stones            6th October 2003
+  18: 0000: \***      Added NEWLINES.COUNT% to hold number of new existing lines found
+  19: 0000: \***
+  20: 0000: \***    REVISION 1.2.                ROBERT COWEY.               05 DEC 2003.
+  21: 0000: \***    Changed NLINE reporting number from 660 to 670.
+  22: 0000: \***
+  23: 0000: \*****************************************************************************
+  24: 0000: \*****************************************************************************
+  25: 0000: 
+  26: 0000:   INTEGER*2 GLOBAL            \
+  27: 0000:          CURRENT.REPORT.NUM%
+  28: 0000: 
+  29: 0000:   STRING GLOBAL               \
+  30: 0000:          CURRENT.CODE$,       \
+  31: 0000:          FILE.OPERATION$
+  32: 0000: 
+  33: 0000:   %INCLUDE NLINEDEC.J86
+  34: 0000: 
+  35: 0000: \*****************************************************************************
+  36: 0000: \*****************************************************************************
+  37: 0000: \***
+  38: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  39: 0000: \***
+  40: 0000: \***                   FILE TYPE:  KEYED
+  41: 0000: \***
+  42: 0000: \***                   REFERENCE:  NLINEDEC.J86
+  43: 0000: \***
+  44: 0000: \***              DESCRIPTION:  NEWLINES - NEWLINES INFORMATION
+  45: 0000: \***
+  46: 0000: \***
+  47: 0000: \***
+  48: 0000: \***      VERSION 1 : Julia Stones             7th July 2003
+  49: 0000: \***
+  50: 0000: \***      Version 1.1   Julia Stones           6th October 2003
+  51: 0000: \***      Added Newlines count to hold value of last number of existing new
+  52: 0000: \***      lines added.
+  53: 0000: \***
+  54: 0000: \***    REVISION 1.2.                ROBERT COWEY.               05 DEC 2003.
+  55: 0000: \***    Changed NLINE reporting number from 660 to 670.
+  56: 0000: \***    No code changes to this file.
+  57: 0000: \***
+  58: 0000: \*****************************************************************************
+  59: 0000: \*****************************************************************************
+  60: 0000: 
+  61: 0000: STRING GLOBAL   \
+  62: 0000:    NEWLINES.FILE.NAME$,  \
+  63: 0000:    NEWLINES.BOOTS.CODE$,     \  4 byte UPD;  Record key
+  64: 0000:    NEWLINES.DATE.ADDED$,     \  4 byte UPD;  CCYYMMDD
+  65: 0000:    NEWLINES.FILLER$          !  6 bytes
+  66: 0000: 
+  67: 0000: INTEGER*2 GLOBAL  \
+  68: 0000:    NEWLINES.RECL%,   \
+  69: 0000:    NEWLINES.REPORT.NUM%,  \
+  70: 0000:    NEWLINES.COUNT%,       \
+  71: 0000:    NEWLINES.SESS.NUM%   !
+  72: 0000: 
+  73: 0000: 
+  74: 0000: 
+  75: 0000: 
+  76: 0000: 
+  77: 0000: 
+  78: 0000:   FUNCTION NEWLINES.SET PUBLIC
+  79: 0014: 
+  80: 0014:      INTEGER*2 NEWLINES.SET
+  81: 0014:      NEWLINES.SET = 1
+  82: 0019: 
+  83: 0019:        NEWLINES.REPORT.NUM% = 670
+  84: 0022:        NEWLINES.RECL%      = 16
+  85: 002b:        NEWLINES.FILE.NAME$ = "NEWLINES"
+  86: 003a: 
+  87: 003a:      NEWLINES.SET = 0
+  88: 003f: 
+  89: 003f:   END FUNCTION
+  90: 004e: 
+  91: 004e: 
+  92: 004e: 
+  93: 004e:   FUNCTION READ.NEWLINES PUBLIC
+  94: 0062: 
+  95: 0062:     INTEGER*2 READ.NEWLINES
+  96: 0062: 
+  97: 0062:     READ.NEWLINES = 1
+  98: 0067: 
+  99: 0067:     IF END #NEWLINES.SESS.NUM% THEN READ.ERROR
+ 100: 007b:     READ FORM "T5,C4,I2,C6";  \                                      ! 1.1JAS
+ 101: 00c3:             #NEWLINES.SESS.NUM% KEY NEWLINES.BOOTS.CODE$;   \
+ 102: 00c3:                              NEWLINES.DATE.ADDED$,    \
+ 103: 00c3:                              NEWLINES.COUNT%,         \              ! 1.1JAS
+ 104: 00c3:                              NEWLINES.FILLER$         !
+ 105: 00c3:        READ.NEWLINES = 0
+ 106: 00c8:        EXIT FUNCTION
+ 107: 00ca: 
+ 108: 00ca:     READ.ERROR:
+ 109: 00ca: 
+ 110: 00ca:        CURRENT.CODE$ = NEWLINES.BOOTS.CODE$
+ 111: 00e0:        FILE.OPERATION$ = "R"
+ 112: 00ef:        CURRENT.REPORT.NUM% = NEWLINES.REPORT.NUM%
+ 113: 00fd:  EXIT FUNCTION
+ 114: 00ff: 
+ 115: 00ff:   END FUNCTION
+ 116: 010e: 
+ 117: 010e: 
+ 118: 010e:   FUNCTION WRITE.NEWLINES PUBLIC
+ 119: 0122: 
+ 120: 0122:     INTEGER*2 WRITE.NEWLINES
+ 121: 0122: 
+ 122: 0122:     WRITE.NEWLINES = 1
+ 123: 0127: 
+ 124: 0127:     IF END #NEWLINES.SESS.NUM% THEN WRITE.ERROR
+ 125: 013b:     WRITE FORM "C4,C4,I2,C6";   \                               ! 1.1JAS
+ 126: 0189:         #NEWLINES.SESS.NUM%;            \
+ 127: 0189:                 NEWLINES.BOOTS.CODE$,      \
+ 128: 0189:                 NEWLINES.DATE.ADDED$,      \
+ 129: 0189:                 NEWLINES.COUNT%,           \                    !1.1JAS
+ 130: 0189:                 NEWLINES.FILLER$           !
+ 131: 0189: 
+ 132: 0189:        WRITE.NEWLINES = 0
+ 133: 018e:        EXIT FUNCTION
+ 134: 0190: 
+ 135: 0190:     WRITE.ERROR:
+ 136: 0190: 
+ 137: 0190:        FILE.OPERATION$ = "W"
+ 138: 019f:        CURRENT.REPORT.NUM% = NEWLINES.REPORT.NUM%
+ 139: 01ad:        CURRENT.CODE$ = NEWLINES.BOOTS.CODE$
+ 140: 01c3: 
+ 141: 01c3:        EXIT FUNCTION
+ 142: 01c5: 
+ 143: 01c5:   END FUNCTION
+ 144: 01d4: 
+ 145: 01d4: End of Compilation

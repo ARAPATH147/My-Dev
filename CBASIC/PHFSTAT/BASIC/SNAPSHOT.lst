@@ -1,0 +1,1617 @@
+   1: 0000: \************************************************************************
+   2: 0000: \***
+   3: 0000: \***    SNAPSHOT            Ranjith Gopalankutty           14/02/2018 
+   4: 0000: \***                                                                
+   5: 0000: \***    There was a defect with program SRP10. It supposed to house 
+   6: 0000: \***    keep the expired planner records from SRPOG,SRMOD,SRSXF     
+   7: 0000: \***    and SRPDF files. SRPOG is the master planner file SRMOD     
+   8: 0000: \***    is module,SRSXF is notch data and SRPDF is the planner      
+   9: 0000: \***    descriptor file.  SRMOD,SRPDF and SRSXF files depends on    
+  10: 0000: \***    the master planner file SRPOG to build the keys for them.   
+  11: 0000: \***                                                                
+  12: 0000:  
+  13: 0000: \***********************************************************************
+  14: 0000: \***
+  15: 0000: \***    Function globals
+  16: 0000: \***
+  17: 0000: \***********************************************************************
+  18: 0000: 
+  19: 0000: %INCLUDE BEMFDEC.J86  
+  20: 0000: \******************************************************************************
+  21: 0000: \***
+  22: 0000: \***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+  23: 0000: \***                                             - FILE REFERENCE PARAMETERS
+  24: 0000: \***
+  25: 0000: \***                         FILE TYPE : Direct
+  26: 0000: \***
+  27: 0000: \***                         REFERENCE : BEMFDEC
+  28: 0000: \***
+  29: 0000: \***	Version A               Mark Walker                  1st November 1993
+  30: 0000: \***
+  31: 0000: \******************************************************************************
+  32: 0000: 
+  33: 0000: 	STRING GLOBAL			BEMF.MESSAGE$,			\
+  34: 0000: 					BEMF.FILE.NAME$
+  35: 0000: 
+  36: 0000: 	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+  37: 0000: 					BEMF.REPORT.NUM%,		\
+  38: 0000: 					BEMF.SESS.NUM%
+  39: 0000: 
+  40: 0000: 	INTEGER*4 GLOBAL		BEMF.REC.NO%
+  41: 0000: %INCLUDE BOOTSDEC.J86  
+  42: 0000: \******************************************************************************
+  43: 0000: \******************************************************************************
+  44: 0000: \***
+  45: 0000: \***
+  46: 0000: \***
+  47: 0000: \******************************************************************************
+  48: 0000: 
+  49: 0000: 
+  50: 0000: %INCLUDE PSBF01G.J86  
+  51: 0000: REM \
+  52: 0000: \*******************************************************************************
+  53: 0000: \*******************************************************************************
+  54: 0000: \***
+  55: 0000: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+  56: 0000: \***
+  57: 0000: \***                FUNCTION NUMBER    : PSBF01
+  58: 0000: \***
+  59: 0000: \***                REFERENCE          : PSBF01G.J86
+  60: 0000: \***
+  61: 0000: \***                DATE OF LAST AMENDMENT  - 27/2/86
+  62: 0000: \***
+  63: 0000: \***
+  64: 0000: \*******************************************************************************
+  65: 0000: 
+  66: 0000:       INTEGER GLOBAL  F01.RETURN.CODE%
+  67: 0000: 
+  68: 0000: 
+  69: 0000: %INCLUDE PSBF20G.J86 
+  70: 0000: REM\
+  71: 0000: \*******************************************************************************
+  72: 0000: \*******************************************************************************
+  73: 0000: \***
+  74: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+  75: 0000: \***
+  76: 0000: \***                       REFERENCE     : PSBF20G.J86
+  77: 0000: \*** 
+  78: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+  79: 0000: \*** 
+  80: 0000: \***     Version B              Robert Cowey                   7th May 1991
+  81: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+  82: 0000: \***     to two byte integer.
+  83: 0000: \***
+  84: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+  85: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+  86: 0000: \***
+  87: 0000: \*******************************************************************************
+  88: 0000: \*******************************************************************************
+  89: 0000: 
+  90: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+  91: 0000:                        F20.STRING.FILE.NO$,                            \
+  92: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+  93: 0000:                        SESS.NUM.TABLE$(1)
+  94: 0000: 
+  95: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+  96: 0000: 
+  97: 0000:       ! 1 line deleted from here                                       ! DAW 
+  98: 0000: 
+  99: 0000: %INCLUDE SOFTSDEC.J86         ! SOFTS File Functions
+ 100: 0000: REM \
+ 101: 0000: \******************************************************************************
+ 102: 0000: \******************************************************************************
+ 103: 0000: \***
+ 104: 0000: \***                 %INCLUDE FOR THE SOFTWARE STATUS FILE
+ 105: 0000: \***   
+ 106: 0000: \***                      FILE TYPE  :   Direct
+ 107: 0000: \***
+ 108: 0000: \***                      REFERENCE  :   SOFTSDEC.J86
+ 109: 0000: \***
+ 110: 0000: \***	Version A	       Andrew Wedgeworth	      24th June 1992
+ 111: 0000: \***
+ 112: 0000: \******************************************************************************
+ 113: 0000: \*******************************************************************************
+ 114: 0000: 
+ 115: 0000:   STRING GLOBAL           \
+ 116: 0000:     SOFTS.RECORD$,        \           
+ 117: 0000:     SOFTS.SPACE$,         \           
+ 118: 0000:     SOFTS.FILE.NAME$    
+ 119: 0000:     
+ 120: 0000:   INTEGER*2 GLOBAL        \
+ 121: 0000:     SOFTS.RECL%,          \            
+ 122: 0000:     SOFTS.REPORT.NUM%,	  \      
+ 123: 0000:     SOFTS.SESS.NUM%
+ 124: 0000: 
+ 125: 0000:   INTEGER*4 GLOBAL        \
+ 126: 0000:     SOFTS.REC.NUM% 	         
+ 127: 0000: %INCLUDE RFSCFDEC.J86
+ 128: 0000: \******************************************************************************
+ 129: 0000: \******************************************************************************
+ 130: 0000: \***
+ 131: 0000: \***   $Workfile:   RFSCFDEC.J86  $
+ 132: 0000: \***
+ 133: 0000: \***   $Revision:   1.7  $
+ 134: 0000: \***
+ 135: 0000: \******************************************************************************
+ 136: 0000: \******************************************************************************
+ 137: 0000: \***
+ 138: 0000: \***
+ 139: 0000: \***
+ 140: 0000: \***
+ 141: 0000: \*****************************************************************************
+ 142: 0000: \*****************************************************************************
+ 143: 0000: \***
+ 144: 0000: \***               %INCLUDE FOR RFSCF - FIELD DECLARATIONS
+ 145: 0000: \***                                    FILE REFERENCE PARAMETERS
+ 146: 0000: \***
+ 147: 0000: \***                      FILE TYPE    : DIRECT
+ 148: 0000: \***
+ 149: 0000: \***                      REFERENCE    : RFSCFDEC
+ 150: 0000: \***
+ 151: 0000: \***           VERSION A : NIK SEN  5th October 1998
+ 152: 0000: \***
+ 153: 0000: \***
+ 154: 0000: \*******************************************************************************
+ 155: 0000: \*******************************************************************************
+ 156: 0000: \***           VERSIOB B       Mark Goode       23rd August 2004
+ 157: 0000: \***
+ 158: 0000: \***   Updated to reflect current RF version, also includes new fields for OSSR
+ 159: 0000: \*******************************************************************************
+ 160: 0000: \***           VERSION C       Jamie Thorpe      9th December 2004
+ 161: 0000: \***
+ 162: 0000: \***   Updated with record 3 variables.
+ 163: 0000: \*******************************************************************************
+ 164: 0000: \***           VERSION D       Jamie Thorpe     13th March 2006
+ 165: 0000: \***
+ 166: 0000: \***   Updated with record 1 variable.RFSCF.RECOUNT.DAYS.RETAIN%
+ 167: 0000: \*******************************************************************************
+ 168: 0000: \***           VERSION E       Peter Sserunkuma 28th September 2008
+ 169: 0000: \***
+ 170: 0000: \***   Added RFSCF.PLANNERS.ACTIVE$.  This was currently named
+ 171: 0000: \***   RFSCF.FILLER$ in record 1.
+ 172: 0000: \*******************************************************************************
+ 173: 0000: \***           VERSION F       Peter Sserunkuma   21st January 2009
+ 174: 0000: \***
+ 175: 0000: \***   Six new fields added to record 3 as part of SFSCF2 changes.
+ 176: 0000: \***   RFSCF.DIRECTS.ACTIVE$
+ 177: 0000: \***   RFSCF.ASN.ACTIVE$
+ 178: 0000: \***   RFSCF.POS.UOD.ACTIVE$
+ 179: 0000: \***   RFSCF.ONIGHT.DELIV$
+ 180: 0000: \***   RFSCF.ONIGHT.SCAN$
+ 181: 0000: \***   RFSCF.SCAN.BATCH$
+ 182: 0000: \*******************************************************************************
+ 183: 0000: \***           VERSION G       Tittoo Thomas          24th May 2012
+ 184: 0000: \***
+ 185: 0000: \***   Added RFSCF.PSP.LEAD.TIME$ in record 1, currently named RFSCF.FILLER$.
+ 186: 0000: \***   1 byte Packed and holds the number of days (usually 7 or 21 days). It
+ 187: 0000: \***   is used to indicate if a pending sales plan planner should be counted
+ 188: 0000: \***   if it becomes active in the next N days.
+ 189: 0000: \*******************************************************************************
+ 190: 0000: 
+ 191: 0000:   STRING GLOBAL                 \
+ 192: 0000:     RFSCF.ACTIVE$,              \ CJT
+ 193: 0000:     RFSCF.BCENTRES$,            \ CJT
+ 194: 0000:     RFSCF.CCHIST.NUM.DAYS$,     \CJT
+ 195: 0000:     RFSCF.FILE.NAME$,           \
+ 196: 0000:     RFSCF.FILLER$,              \
+ 197: 0000:     RFSCF.FILLER3$,             \ CJT
+ 198: 0000:     RFSCF.OSSRSTORE$,           \ BMG
+ 199: 0000:     RFSCF.PLANNERS.ACTIVE$,     \      !EPS
+ 200: 0000:     RFSCF.PSP.LEAD.TIME$,       \      !GTT
+ 201: 0000:     RFSCF.DIRECTS.ACTIVE$,      \      !FPS
+ 202: 0000:     RFSCF.ASN.ACTIVE$,          \      !FPS
+ 203: 0000:     RFSCF.POS.UOD.ACTIVE$,      \      !FPS
+ 204: 0000:     RFSCF.ONIGHT.DELIV$,        \      !FPS
+ 205: 0000:     RFSCF.ONIGHT.SCAN$,         \      !FPS
+ 206: 0000:     RFSCF.SCAN.BATCH.SIZE$             !FPS
+ 207: 0000: 
+ 208: 0000:   INTEGER*1 GLOBAL        \
+ 209: 0000:     RFSCF.ACTIVITY%,      \
+ 210: 0000:     RFSCF.EMUACTIVE%,     \
+ 211: 0000:     RFSCF.PRIMCURR%       ! BMG
+ 212: 0000: 
+ 213: 0000: 
+ 214: 0000:   INTEGER*2 GLOBAL        \
+ 215: 0000:     RFSCF.SESS.NUM%,      \
+ 216: 0000:     RFSCF.REPORT.NUM%,    \
+ 217: 0000:     RFSCF.RECL%,          \
+ 218: 0000:     RFSCF.PMEDTERM%,           \
+ 219: 0000:     RFSCF.QBUSTTERM%,          \
+ 220: 0000:     RFSCF.PMEDNEXTTXN%,        \
+ 221: 0000:     RFSCF.QBUSTNXTTXN%,        \
+ 222: 0000:     RFSCF.PCDATES%,            \
+ 223: 0000:     RFSCF.PCHKINC%,            \
+ 224: 0000:     RFSCF.HHTIPMIN%,           \
+ 225: 0000:     RFSCF.HHTIPMAX%,           \
+ 226: 0000:     RFSCF.RECOUNT.DAYS.RETAIN% ! DJT
+ 227: 0000: 
+ 228: 0000:   INTEGER*4 GLOBAL        \
+ 229: 0000:     RFSCF.REC.NUM%,       \
+ 230: 0000:     RFSCF.PMEDTXNCNT%,         \
+ 231: 0000:     RFSCF.PMEDQTY%,            \
+ 232: 0000:     RFSCF.QBUSTTXNCNT%,        \
+ 233: 0000:     RFSCF.QBUSTQTY%,           \
+ 234: 0000:     RFSCF.LDCPARM1%,           \
+ 235: 0000:     RFSCF.LDCPARM2%,           \
+ 236: 0000:     RFSCF.LDCPARM3%,           \
+ 237: 0000:     RFSCF.PCHKTARGET%,         \
+ 238: 0000:     RFSCF.CNTPCHK%,            \
+ 239: 0000:     RFSCF.PCHKUPPER%,          \
+ 240: 0000:     RFSCF.PCHKLOWER%,          \
+ 241: 0000:     RFSCF.PCHKDEFAULT%,        \
+ 242: 0000:     RFSCF.PCHKERRCNT%,         \
+ 243: 0000:     RFSCF.PCHKERRLST%,         \
+ 244: 0000:     RFSCF.EMUCNVFACT%          ! BMG
+ 245: 0000: 
+ 246: 0000: 
+ 247: 0000: 
+ 248: 0000: 
+ 249: 0000: 
+ 250: 0000: 
+ 251: 0000: 
+ 252: 0000: 
+ 253: 0000: 
+ 254: 0000: \***********************************************************************
+ 255: 0000: \*
+ 256: 0000: \*    Global variable definitions
+ 257: 0000: \*
+ 258: 0000: \***********************************************************************
+ 259: 0000: 
+ 260: 0000: STRING     GLOBAL        \     
+ 261: 0000:      FILE.OPERATION$,    \
+ 262: 0000:      PINFO.TABLE$,       \
+ 263: 0000:      PASSED.STRING$,     \	
+ 264: 0000:      STRING.RECORD$,     \	 
+ 265: 0000:      SVC.PARAM$          
+ 266: 0000: 
+ 267: 0000: INTEGER*4  GLOBAL        \
+ 268: 0000:    ADX.FUNCTION%,        \
+ 269: 0000:    ADXSERVE.RETURN.CODE%,\
+ 270: 0000:    ADX.PARAM%,           \
+ 271: 0000:    CURRENT.REPORT.NUM%,  \
+ 272: 0000:    EVENT.NO%,            \
+ 273: 0000:    MATCH%,               \
+ 274: 0000:    PASSED.INTEGER%,      \
+ 275: 0000:    RC%
+ 276: 0000:    
+ 277: 0000: \***********************************************************************
+ 278: 0000: \*
+ 279: 0000: \*    Local Variables
+ 280: 0000: \*
+ 281: 0000: \***********************************************************************
+ 282: 0000: 
+ 283: 0000: STRING                    \
+ 284: 0000:      ADX.COMMAND$,        \
+ 285: 0000: 	 ADXSERVE.DATA$,      \
+ 286: 0000:      COMM.TAIL$,          \
+ 287: 0000:      CURRENT.CODE$,       \
+ 288: 0000:      FLAG$,               \
+ 289: 0000:      FUNCTION.FLAG$,      \
+ 290: 0000:      OK.STRING$,          \
+ 291: 0000:      PROG.NAME$,          \    
+ 292: 0000:      RCD$,                \
+ 293: 0000:      SEC$,                \
+ 294: 0000:      SPACE$,              \ 
+ 295: 0000:      STORE.NUMBER$,       \     
+ 296: 0000:      VAR.STRING.1$,       \
+ 297: 0000:      VAR.STRING.2$
+ 298: 0000:                            
+ 299: 0000: INTEGER*4                 \
+ 300: 0000:      ADX.INTEGER%,        \
+ 301: 0000:      ARR.COUNT%,          \
+ 302: 0000:      I%,                  \
+ 303: 0000:      EOF%,                \
+ 304: 0000:      ERROR.CNT%,          \
+ 305: 0000:      K%,                  \
+ 306: 0000:      FOUND%,              \
+ 307: 0000:      FOUND1%,             \
+ 308: 0000:      J%,                  \
+ 309: 0000:      MESSAGE.NO%,         \      
+ 310: 0000:      TEMP.ARR%(1),         \
+ 311: 0000:      TEMP.COUNT%  
+ 312: 0000: 
+ 313: 0000: 
+ 314: 0000: 
+ 315: 0000: \***********************************************************************
+ 316: 0000: \*
+ 317: 0000: \*    Included code defining external Boots functions
+ 318: 0000: \*
+ 319: 0000: \***********************************************************************
+ 320: 0000:     
+ 321: 0000: %INCLUDE BEMFEXT.J86
+ 322: 0000: \******************************************************************************
+ 323: 0000: \***
+ 324: 0000: \***        EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FILE
+ 325: 0000: \***                                                            
+ 326: 0000: \***                        REFERENCE : BEMFEXT
+ 327: 0000: \***
+ 328: 0000: \***    Version A               Mark Walker                   1st November 1993
+ 329: 0000: \***
+ 330: 0000: \***    Version B       Stuart William McConnachie          25th September 2000
+ 331: 0000: \***    READ.BEMF function has got lost!
+ 332: 0000: \***
+ 333: 0000: \******************************************************************************
+ 334: 0000: 
+ 335: 0000:     FUNCTION BEMF.SET EXTERNAL
+ 336: 0000:     END FUNCTION
+ 337: 0000:     
+ 338: 0000:     FUNCTION READ.BEMF EXTERNAL
+ 339: 0000:     INTEGER*1 READ.BEMF
+ 340: 0000:     END FUNCTION
+ 341: 0000:     
+ 342: 0000:     
+ 343: 0000: %INCLUDE BASROUT.J86
+ 344: 0000: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+ 345: 0000: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+ 346: 0000: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+ 347: 0000: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+ 348: 0000: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+ 349: 0000: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+ 350: 0000: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+ 351: 0000: !   the BASROUT.OBJ routines.  These routines were written
+ 352: 0000: !  using Metaware C and are intended to provide functions which
+ 353: 0000: !         are either not available in 4680 CBASIC or which can be more
+ 354: 0000: !               efficiently handled by the C language.  Their usage is
+ 355: 0000: !  offered on an "AT YOUR OWN RISK" basis.
+ 356: 0000: !
+ 357: 0000: !               The insert/extract routines usefulness may not be immediately
+ 358: 0000: !               apparent.  Their intention is that they be used in conjunction
+ 359: 0000: !               with a read/write form command.  They can more efficiently
+ 360: 0000: !               parse a string into many different variables than can the
+ 361: 0000: !               read form statement.  So instead of a long list of data var's
+ 362: 0000: !               it may be more efficient to just read/write one long string
+ 363: 0000: !               and then use the insert/extract routines to parse out the
+ 364: 0000: !   data.
+ 365: 0000: 
+ 366: 0000: ! ******************* SUB PROCESS FUNCTIONS *********************************
+ 367: 0000: 
+ 368: 0000: function osshell(cmd.line$) external   ! routine to start
+ 369: 0000:        ! another program.
+ 370: 0000:            integer*4    osshell    ! Upon completion of
+ 371: 0000:            string       cmd.line$   ! program, control is
+ 372: 0000:        ! returned to calling
+ 373: 0000: end function      ! program.
+ 374: 0000: !
+ 375: 0000: ! NOTES:  Program must be a 286 type file.  This does not exclude
+ 376: 0000: !         the capability to execute a batch file however.  Simply pass the
+ 377: 0000: !         following:
+ 378: 0000: !              c:\adx_spgm\command.286 batfile
+ 379: 0000: !         where batfile is the name of the batch file to be executed.
+ 380: 0000: !
+ 381: 0000: ! IMPORTANT: When using osshell to execute a batch file as described above,
+ 382: 0000: !            the final command in the batch file must be "exit".  If not,
+ 383: 0000: !       control is never given back to the calling program.
+ 384: 0000: 
+ 385: 0000: ! ************************ MEMORY RELATED FUNCTIONS ************************
+ 386: 0000: 
+ 387: 0000: function memfree(choice) external   ! routine to que the
+ 388: 0000:        ! status of the
+ 389: 0000:  integer*4 memfree    ! machine's memory:
+ 390: 0000:  integer*2 choice    ! Options:
+ 391: 0000:        !    1 - free
+ 392: 0000: end function      !    2 - total
+ 393: 0000:        !    3 - system
+ 394: 0000: 
+ 395: 0000: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+ 396: 0000: 
+ 397: 0000: function timedate(choice) external   ! routine to que the
+ 398: 0000:        ! OS's timedate table
+ 399: 0000:  integer*4 timedate   ! Choices:
+ 400: 0000:  integer*2 choice    !    1 - millisec's
+ 401: 0000:        !        since midnight
+ 402: 0000: end function      !    2 - minutes from
+ 403: 0000:        !  UCT (timezone)
+ 404: 0000:        !    3 - day of week
+ 405: 0000:        !   0-Sunday
+ 406: 0000:        !  6-Saturday
+ 407: 0000: 
+ 408: 0000: function settime(msecs) external   ! routine to set the
+ 409: 0000:        ! time on the controller
+ 410: 0000:  integer*4  settime    ! msecs is the desired
+ 411: 0000:  integer*4 msecs    ! number of milliseconds
+ 412: 0000:        ! since midnight
+ 413: 0000: end function      ! Returns negative on
+ 414: 0000:        ! error
+ 415: 0000: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+ 416: 0000: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+ 417: 0000: ! At 1 AM the controller broadcasts the new time to all terminals.
+ 418: 0000: ! Insure this is taken into consideration when using this routine.
+ 419: 0000: 
+ 420: 0000: !******************** DISK FILE RELATED FUNCTIONS *************************
+ 421: 0000: 
+ 422: 0000: function truncate(name,length) external   ! routine to truncate
+ 423: 0000:        ! the specified file
+ 424: 0000:  integer*4 truncate   ! to a given length.
+ 425: 0000:  string  name
+ 426: 0000:  integer*4 length
+ 427: 0000: 
+ 428: 0000: end function
+ 429: 0000: 
+ 430: 0000: !******************** STRING VALUE RELATED FUNCTIONS **********************
+ 431: 0000: 
+ 432: 0000: function isalpha(bstrn) external   ! routine to identify
+ 433: 0000:        ! if the specified
+ 434: 0000:  integer*1 isalpha    ! string contains all
+ 435: 0000:  string  bstrn    ! alphabetic char's
+ 436: 0000:        ! Returns:
+ 437: 0000: end function      !     0 - all alpha
+ 438: 0000:        !     X - byte of 1st
+ 439: 0000:        !         non-alpha
+ 440: 0000:        !   char
+ 441: 0000: 
+ 442: 0000: function isdigit(bstrn) external   ! routine to identify
+ 443: 0000:        ! if the specified
+ 444: 0000:  integer*1 isdigit    ! string contains all
+ 445: 0000:  string  bstrn    ! numeric char's
+ 446: 0000:        ! Returns:
+ 447: 0000: end function      !     0 - all numeric
+ 448: 0000:        !     X - byte of 1st
+ 449: 0000:        !         non-numeric
+ 450: 0000:        !   char
+ 451: 0000: 
+ 452: 0000: function islower(bstrn) external   ! routine to identify
+ 453: 0000:        ! if the specified
+ 454: 0000:  integer*1 islower    ! string contains all
+ 455: 0000:  string  bstrn    ! lower case char's
+ 456: 0000:        ! Returns:
+ 457: 0000: end function      !     0 - all lowercase
+ 458: 0000:        !     X - byte of 1st
+ 459: 0000:        !         non-lowercase
+ 460: 0000:        !   char
+ 461: 0000: 
+ 462: 0000: function isupper(bstrn) external   ! routine to identify
+ 463: 0000:        ! if the specified
+ 464: 0000:  integer*1 isupper    ! string contains all
+ 465: 0000:  string  bstrn    ! upper case char's
+ 466: 0000:        ! Returns:
+ 467: 0000: end function      !     0 - all uppercase
+ 468: 0000:        !     X - byte of 1st
+ 469: 0000:        !         non-uppercase
+ 470: 0000:        !   char
+ 471: 0000: 
+ 472: 0000: function toalpha(bstrn) external   ! routine to convert
+ 473: 0000:        ! non-alpha or non-num
+ 474: 0000:    integer*2 toalpha    ! char's to spaces
+ 475: 0000:  string  bstrn    ! Returns:
+ 476: 0000: end function      !   x - no. of char's
+ 477: 0000:        !       changed
+ 478: 0000: 
+ 479: 0000: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+ 480: 0000: 
+ 481: 0000: function idlecount(choice) external   ! routine to either
+ 482: 0000:        ! set to zero or queue
+ 483: 0000:  integer*4 idlecount   ! the value of the
+ 484: 0000:  integer*1 choice    ! processor's idlecount
+ 485: 0000:        ! Choice:
+ 486: 0000: end function      !     0 - set to zero
+ 487: 0000: !       !     1 - get value
+ 488: 0000: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+ 489: 0000: ! TO WORK - This level is not available unless  !     X - idlecount
+ 490: 0000: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+ 491: 0000: ! is highly unrecommended.
+ 492: 0000: 
+ 493: 0000: function logical(actname,logname,choice) external ! routine to set a
+ 494: 0000:        ! a logical name.
+ 495: 0000:  integer*4 logical    ! parms are self
+ 496: 0000:         string  logname    ! explanatory except
+ 497: 0000:  string  actname    ! for choice:
+ 498: 0000:  integer*1 choice    !   0 - set process
+ 499: 0000:        !   1 - set system
+ 500: 0000: end function      !   2 - get process
+ 501: 0000:        !   3 - get system
+ 502: 0000: 
+ 503: 0000: ! NOTE:  Only the setting of a system level of logical name requires
+ 504: 0000: ! user/group zero level of authorization.  Any application may query any
+ 505: 0000: ! logical name.  Setting of a system logical name is only applicable until
+ 506: 0000: ! the system is IPL'd.  A process logical name is only active when that
+ 507: 0000: ! process is active.
+ 508: 0000: 
+ 509: 0000: !******************** STRING PARSING FUNCTIONS *****************************
+ 510: 0000: 
+ 511: 0000: function inserts(whole,part,offset) external  ! routine to insert a
+ 512: 0000:        ! string (part) into
+ 513: 0000:  integer*2 INSERTS    ! another string (whole)
+ 514: 0000:  string  whole    ! starting at specified
+ 515: 0000:  string  part    ! character (offset)
+ 516: 0000:  integer*2 offset
+ 517: 0000: 
+ 518: 0000: end function
+ 519: 0000: 
+ 520: 0000: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+ 521: 0000:        ! a 4-byte integer into
+ 522: 0000:  integer*1 cinsert4   ! a string starting at
+ 523: 0000:  integer*4 integer4   ! byte specified by
+ 524: 0000:  string  bstring    ! offset (1-based)
+ 525: 0000:  integer*2 offset    ! Returns:
+ 526: 0000:        !     0 - Success
+ 527: 0000: end function      !    -1 - String overrun
+ 528: 0000: 
+ 529: 0000: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+ 530: 0000:        ! a 2-byte integer into
+ 531: 0000:  integer*1 cinsert2   ! a string starting at
+ 532: 0000:  integer*2 integer2   ! byte specified by
+ 533: 0000:  string  bstring    ! offset (1-based)
+ 534: 0000:  integer*2 offset    ! Returns:
+ 535: 0000:        !     0 - Success
+ 536: 0000: end function      !    -1 - String overrun
+ 537: 0000: 
+ 538: 0000: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+ 539: 0000:        ! a 1-byte integer into
+ 540: 0000:  integer*1 cinsert1   ! a string starting at
+ 541: 0000:  integer*1 integer1   ! byte specified by
+ 542: 0000:  string  bstring    ! offset (1-based)
+ 543: 0000:  integer*2 offset    ! Returns:
+ 544: 0000:        !     0 - Success
+ 545: 0000: end function      !    -1 - String overrun
+ 546: 0000: 
+ 547: 0000: function extracts(whole,part,offset) external  ! routine to extract a
+ 548: 0000:        ! string (part) from
+ 549: 0000:  integer*2 EXTRACTS   ! another string (whole)
+ 550: 0000:  string  whole    ! starting at specified
+ 551: 0000:  string  part    ! character (offset)
+ 552: 0000:  integer*2 offset
+ 553: 0000: 
+ 554: 0000: end function
+ 555: 0000: 
+ 556: 0000: function cextract4(bstring,offset) external  ! routine to extract
+ 557: 0000:        ! a 4-byte integer from
+ 558: 0000:  integer*4 cextract4   ! a string starting at
+ 559: 0000:                        ! byte specified by
+ 560: 0000:  string  bstring    ! offset (1-based)
+ 561: 0000:  integer*2 offset    ! Returns:
+ 562: 0000:        !     X - 4 byte integer
+ 563: 0000: end function      !    -1 - String overrun
+ 564: 0000: 
+ 565: 0000: function cextract2(bstring,offset) external  ! routine to extract
+ 566: 0000:        ! a 2-byte integer from
+ 567: 0000:  integer*2 cextract2   ! a string starting at
+ 568: 0000:                        ! byte specified by
+ 569: 0000:  string  bstring    ! offset (1-based)
+ 570: 0000:  integer*2 offset    ! Returns:
+ 571: 0000:        !     X - 2 byte integer
+ 572: 0000: end function      !    -1 - String overrun
+ 573: 0000: 
+ 574: 0000: function cextract1(bstring,offset) external  ! routine to extract
+ 575: 0000:        ! a 1-byte integer from
+ 576: 0000:  integer*1 cextract1   ! a string starting at
+ 577: 0000:                        ! byte specified by
+ 578: 0000:  string  bstring    ! offset (1-based)
+ 579: 0000:  integer*2 offset    ! Returns:
+ 580: 0000:        !     X - 1 byte integer
+ 581: 0000: end function      !    -1 - String overrun
+ 582: 0000: 
+ 583: 0000: 
+ 584: 0000: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+ 585: 0000:        ! file names and sizes
+ 586: 0000:        ! Return values:
+ 587: 0000:        !    -1  no matches
+ 588: 0000:        !        found on first
+ 589: 0000:        !        call
+ 590: 0000:        !    0   no matches
+ 591: 0000:        !        found on sub-
+ 592: 0000:        !        sequent calls
+ 593: 0000:        !    Pos Success
+ 594: 0000:        !    Neg OS Rtn Code
+ 595: 0000: ! Usage Note:  If searching for all occurences of a particular file name,
+ 596: 0000: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+ 597: 0000: ! to srchdir.  If any matches are found, a positive value will be returned.
+ 598: 0000: ! To see if any more matches exist, just issue another call to srchdir without
+ 599: 0000: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+ 600: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 601: 0000: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+ 602: 0000: ! of this data is defined below.
+ 603: 0000: 
+ 604: 0000:  integer*4 srchdir
+ 605: 0000: 
+ 606: 0000:  string  file.name$   ! file name to start
+ 607: 0000:        ! search (18 bytes max)
+ 608: 0000:        ! Wild cards and logical
+ 609: 0000:        ! names supported.
+ 610: 0000: 
+ 611: 0000:  string  dtbl.buffer$   ! must be initialized
+ 612: 0000:        ! to 48 bytes.  Contains
+ 613: 0000:        ! all of directory info
+ 614: 0000:        ! Initialize to nulls
+ 615: 0000:        ! each time a new file
+ 616: 0000:        ! name is used.
+ 617: 0000: 
+ 618: 0000: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+ 619: 0000: !
+ 620: 0000: ! Offs  Type                    Description Notes
+ 621: 0000: !  0 integer*4  key  use extract4 to access
+ 622: 0000: !  4  string (18 bytes) file name
+ 623: 0000: ! 22 integer*2  attributes use extract2 to access
+ 624: 0000: !      0x01 - Read Only
+ 625: 0000: !      0x02 - Hidden
+ 626: 0000: !      0x04 - System
+ 627: 0000: !      0x08 - Volume Label
+ 628: 0000: !      0x10 - Subdirectory
+ 629: 0000: !      0x20 - Archive (Files)
+ 630: 0000: !      0x40 - Security enabled
+ 631: 0000: !      0x80 - Reserved
+ 632: 0000: !      0x0000 - Local
+ 633: 0000: !      0x4000 - Mirrored/Update
+ 634: 0000: !      0xC000 - Mirrored/Close
+ 635: 0000: !
+ 636: 0000: !      0x6000 - Compound/Update
+ 637: 0000: !      0xE000 - Compound/Close
+ 638: 0000: ! 24 integer*2  record size use extract2 to access
+ 639: 0000: ! 26 integer*1  User ID of Owner
+ 640: 0000: ! 27 integer*1  Group ID of Owner
+ 641: 0000: ! 28 integer*2  File Security
+ 642: 0000: ! 30 string (6 bytes) Reserved
+ 643: 0000: ! 36 integer*4  File Size use extract4 to access
+ 644: 0000: ! 40 integer*2  Year  use extract2 to access
+ 645: 0000: ! 42 integer*1  Month
+ 646: 0000: ! 43 integer*1  Day
+ 647: 0000: ! 44 integer*1  Hour
+ 648: 0000: ! 45 integer*1  Minute
+ 649: 0000: ! 46 integer*1  Second
+ 650: 0000: ! 47 integer*1  Reserved
+ 651: 0000: 
+ 652: 0000: end function
+ 653: 0000: 
+ 654: 0000: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+ 655: 0000:        ! process names and
+ 656: 0000:        ! status.  Handy to
+ 657: 0000:        ! determine if a
+ 658: 0000:        ! program is currently
+ 659: 0000:        ! running.
+ 660: 0000:        ! Return values:
+ 661: 0000:        !    -1  no matches
+ 662: 0000:        !        found on first
+ 663: 0000:        !        call
+ 664: 0000:        !    0   no matches
+ 665: 0000:        !        found on sub-
+ 666: 0000:        !        sequent calls
+ 667: 0000:        !    Pos Success
+ 668: 0000:        !    Neg Failure
+ 669: 0000:        !        OS Rtn Code
+ 670: 0000:        ! 80000001h - Insuff
+ 671: 0000:         !        ptbl buffer
+ 672: 0000:        !        Length
+ 673: 0000: ! Usage Note:  If searching for all occurences of a particular process name,
+ 674: 0000: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+ 675: 0000: ! to srchproc.  If any matches are found, a positive value will be returned.
+ 676: 0000: ! To see if any more matches exist, just issue another call to srchproc without
+ 677: 0000: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+ 678: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 679: 0000: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+ 680: 0000: ! of this data is defined as follows:
+ 681: 0000: !
+ 682: 0000: !       --------------------------------------------------------
+ 683: 0000: !   0   |                         PID                          |
+ 684: 0000: !       --------------------------------------------------------
+ 685: 0000: !   4   |           FID             |   CID        |   VCID    |
+ 686: 0000: !       --------------------------------------------------------
+ 687: 0000: !   8   |                         NAME                         |
+ 688: 0000: !       --------------------------------------------------------
+ 689: 0000: !  12   |                         NAME cont'd                  |
+ 690: 0000: !       --------------------------------------------------------
+ 691: 0000: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+ 692: 0000: !       --------------------------------------------------------
+ 693: 0000: !  20   |                         MAXMEM                       |
+ 694: 0000: !       --------------------------------------------------------
+ 695: 0000: !  24   |       FLAGS               |   USER        |  GROUP   |
+ 696: 0000: !       --------------------------------------------------------
+ 697: 0000: !  28   |                         PARENT                       |
+ 698: 0000: !       --------------------------------------------------------
+ 699: 0000: !  32   |                         EVENTS                       |
+ 700: 0000: !       --------------------------------------------------------
+ 701: 0000: !  36   |                         CODE                         |
+ 702: 0000: !       --------------------------------------------------------
+ 703: 0000: !  40   |                         CSIZE                        |
+ 704: 0000: !       --------------------------------------------------------
+ 705: 0000: !  44   |                         DATA                         |
+ 706: 0000: !       --------------------------------------------------------
+ 707: 0000: !  48   |                         DSIZE                        |
+ 708: 0000: !       --------------------------------------------------------
+ 709: 0000: !  52   |                         HEAP                         |
+ 710: 0000: !       --------------------------------------------------------
+ 711: 0000: !  56   |                         HSIZE                        |
+ 712: 0000: !       --------------------------------------------------------
+ 713: 0000: !
+ 714: 0000: !       PID   Process ID
+ 715: 0000: !       FID  Process's Family ID
+ 716: 0000: !       CID   Physical Console Device Number
+ 717: 0000: !       VCID  Process's Virtual Console Number
+ 718: 0000: !       NAME  Process Name (Application Running)
+ 719: 0000: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+ 720: 0000: ! PRIOR    Priority
+ 721: 0000: !       MAXMEM  Maximum Memory Allowed
+ 722: 0000: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+ 723: 0000: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+ 724: 0000: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+ 725: 0000: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+ 726: 0000: ! USER  User Number
+ 727: 0000: ! GROUP  Group Number
+ 728: 0000: !       PARENT   Parent Process ID
+ 729: 0000: !       EVENTS   Bit Map of events that have completed but not retrieved
+ 730: 0000: !       CODE  Start of code area in user space
+ 731: 0000: ! CSIZE  Size in bytes of code area
+ 732: 0000: !       DATA  Start of data area in user space
+ 733: 0000: ! DSIZE  Size in bytes of data area
+ 734: 0000: !       HEAP  Start of heap area in user space
+ 735: 0000: ! HSIZE  Size in bytes of heap area
+ 736: 0000: !
+ 737: 0000:  integer*4 srchproc
+ 738: 0000: 
+ 739: 0000:  string  proc.name$   ! process name to start
+ 740: 0000:        ! search (10 bytes max)
+ 741: 0000:        ! Wild cards and logical
+ 742: 0000:        ! names supported.
+ 743: 0000: 
+ 744: 0000:  string  ptbl.buffer$   ! must be initialized
+ 745: 0000:        ! to 60 bytes.  Contains
+ 746: 0000:        ! all of process info
+ 747: 0000:        ! Initialize to nulls
+ 748: 0000:        ! each time a new
+ 749: 0000:        ! process name is used.
+ 750: 0000: 
+ 751: 0000: end function
+ 752: 0000: 
+ 753: 0000: function cconstat(timeout) external       ! function similar
+ 754: 0000:                                               ! to BASIC constat%
+ 755: 0000:  integer*2 cconstat   ! waits for either a
+ 756: 0000:  integer*4 timeout    ! key being hit or
+ 757: 0000:        ! the timer expiring
+ 758: 0000:        ! before returning
+ 759: 0000:        ! returns:
+ 760: 0000:        !   -1 error
+ 761: 0000:        !    0 timer expired
+ 762: 0000:        !    x scan code of
+ 763: 0000:        !      key hit
+ 764: 0000: end function
+ 765: 0000: 
+ 766: 0000: function disksize(disk.name$) external   ! function to find
+ 767: 0000:        ! the total size of
+ 768: 0000:  integer*4 disksize   ! the specified disk
+ 769: 0000:  string  disk.name$   ! name (e.g. "h0:")
+ 770: 0000:        ! if return value is
+ 771: 0000:        ! negative, error
+ 772: 0000: end function      ! was received
+ 773: 0000: 
+ 774: 0000: 
+ 775: 0000: %INCLUDE BOOTSEXT.J86
+ 776: 0000: \******************************************************************************
+ 777: 0000: \******************************************************************************
+ 778: 0000: SUB LOG.ERROR(F.1$) EXTERNAL
+ 779: 0000:     STRING  F.1$
+ 780: 0000: END SUB
+ 781: 0000: 
+ 782: 0000: \******************************************************************************
+ 783: 0000: \******************************************************************************
+ 784: 0000: FUNCTION FORCE.CASE$(DATA$,TYPE%) EXTERNAL
+ 785: 0000:     STRING      FORCE.CASE$
+ 786: 0000:     STRING      DATA$
+ 787: 0000:     INTEGER*2   TYPE%
+ 788: 0000:     STRING      IN$, OUT$
+ 789: 0000:     STRING      LWR$, UPR$
+ 790: 0000: END FUNCTION
+ 791: 0000: 
+ 792: 0000: \******************************************************************************
+ 793: 0000: \******************************************************************************
+ 794: 0000: FUNCTION REMOVE.CHARACTER$(DATA$,F.CHR$) EXTERNAL
+ 795: 0000:     STRING      DATA$
+ 796: 0000:     STRING      F.CHR$
+ 797: 0000:     STRING      REMOVE.CHARACTER$
+ 798: 0000:     INTEGER*2   START%
+ 799: 0000:     INTEGER*2   END%
+ 800: 0000:     INTEGER*2   POS%
+ 801: 0000:     INTEGER*2   F.LEN%
+ 802: 0000: END FUNCTION
+ 803: 0000: 
+ 804: 0000: \******************************************************************************
+ 805: 0000: \******************************************************************************
+ 806: 0000: FUNCTION REMOVE.SPACES$(DATA$) EXTERNAL
+ 807: 0000:     STRING      DATA$
+ 808: 0000:     STRING      REMOVE.SPACES$
+ 809: 0000:     INTEGER*2   START%
+ 810: 0000:     INTEGER*2   END%
+ 811: 0000:     INTEGER*2   POS%
+ 812: 0000: END FUNCTION
+ 813: 0000: 
+ 814: 0000: \*******************************************************************************
+ 815: 0000: \***
+ 816: 0000: \***    FUNCTION     :    TIME.STAMP$
+ 817: 0000: \***    
+ 818: 0000: \***    Returns a string with formatted date and/or time detail
+ 819: 0000: \***                 Passed values are 1 = Date, 2 = Time
+ 820: 0000: \*******************************************************************************
+ 821: 0000: FUNCTION TIME.STAMP$(F.TYPE%) EXTERNAL
+ 822: 0000:     STRING      TIME.STAMP$
+ 823: 0000:     INTEGER*2   F.TYPE%
+ 824: 0000:     STRING      F.DT$
+ 825: 0000:     STRING      F.RET$
+ 826: 0000: END FUNCTION
+ 827: 0000: \*******************************************************************************
+ 828: 0000: 
+ 829: 0000: 
+ 830: 0000: \*******************************************************************************
+ 831: 0000: \*******************************************************************************
+ 832: 0000: FUNCTION PRINT.MSG$(MSG$,F%,L%) EXTERNAL
+ 833: 0000: STRING      PRINT.MSG$
+ 834: 0000: STRING      MSG$
+ 835: 0000: INTEGER*2   F%
+ 836: 0000: INTEGER*2   L%
+ 837: 0000: STRING      IN$
+ 838: 0000: STRING      F.FORM$
+ 839: 0000: END FUNCTION
+ 840: 0000: \*******************************************************************************
+ 841: 0000: 
+ 842: 0000: \*******************************************************************************
+ 843: 0000: \***
+ 844: 0000: \***    SUBROUTINE     :    BACKGROUND.MSG(B.MSG$)
+ 845: 0000: \***    
+ 846: 0000: \***    Displays passed message to the background message.
+ 847: 0000: \*******************************************************************************
+ 848: 0000: SUB BACKGROUND.MSG(B.MSG$) EXTERNAL
+ 849: 0000:     STRING      B.MSG$
+ 850: 0000:     INTEGER*4   B.RET%
+ 851: 0000: END SUB
+ 852: 0000: \*******************************************************************************
+ 853: 0000: 
+ 854: 0000: !*****************************************************************************!
+ 855: 0000: !***                                                                          !
+ 856: 0000: !*** SUBROUTINE :   NO.OPEN.FILE                                              !
+ 857: 0000: !***                    F.REPORT%       - Passed report number for logging    !
+ 858: 0000: !***                    F.OPEN.FLAG$    - Returned flag for not-opened        !
+ 859: 0000: !***                                                                          !
+ 860: 0000: !*** This subroutine logs an application 106 error with the passed report     !
+ 861: 0000: !*** number. It also sets a return variable to "N" to flag that the file is   !
+ 862: 0000: !*** not Open because of the failure.                                         !
+ 863: 0000: !***                                                                          !
+ 864: 0000: !*****************************************************************************!
+ 865: 0000: SUB NO.OPEN.FILE(F.REPORT%,F.OPEN.FLAG$) EXTERNAL                                      
+ 866: 0000:     INTEGER*2   F.REPORT%                                                         
+ 867: 0000:     STRING      F.OPEN.FLAG$                                                      
+ 868: 0000:     STRING      F.1$, F.2$
+ 869: 0000:     INTEGER*2   F.EVENT%
+ 870: 0000: END SUB                                                                       
+ 871: 0000: !*****************************************************************************!
+ 872: 0000: 
+ 873: 0000: 
+ 874: 0000: FUNCTION NUMBER.OF.DAYS%(START$,END$) EXTERNAL
+ 875: 0000: INTEGER*2   NUMBER.OF.DAYS%
+ 876: 0000: STRING      START$
+ 877: 0000: STRING      END$
+ 878: 0000: INTEGER*2   F.DAYS%
+ 879: 0000: INTEGER*4   S.DAYS%
+ 880: 0000: INTEGER*4   E.DAYS%
+ 881: 0000: END FUNCTION
+ 882: 0000: 
+ 883: 0000: FUNCTION HEX.FORMAT$(F.DATA$) EXTERNAL
+ 884: 0000: STRING  HEX.FORMAT$
+ 885: 0000: STRING  F.DATA$
+ 886: 0000: STRING      F.RET$
+ 887: 0000: INTEGER*2   F.LEN%
+ 888: 0000: STRING      F.TMP$(2)
+ 889: 0000: STRING      F.FORM$
+ 890: 0000: STRING      F.ASCII$
+ 891: 0000: STRING      F.ASC$
+ 892: 0000: STRING      F.HEX$
+ 893: 0000: STRING      F.WORK$, F.W2$
+ 894: 0000: INTEGER*2   F.LOOP%, F.L2%
+ 895: 0000: END FUNCTION
+ 896: 0000: 
+ 897: 0000: FUNCTION FORMAT.NUMBER$(F.NUM$,F.DEC%) EXTERNAL
+ 898: 0000: STRING      FORMAT.NUMBER$
+ 899: 0000: STRING      F.NUM$
+ 900: 0000: INTEGER*2   F.DEC%
+ 901: 0000: INTEGER*4   F.NUM%
+ 902: 0000: END FUNCTION
+ 903: 0000: 
+ 904: 0000: \*******************************************************************************
+ 905: 0000: FUNCTION FORMAT.BOOTS.CODE$(F.CODE$) EXTERNAL
+ 906: 0000: STRING  FORMAT.BOOTS.CODE$
+ 907: 0000: STRING  F.CODE$
+ 908: 0000: END FUNCTION
+ 909: 0000: 
+ 910: 0000: FUNCTION FORMAT.STRING$(F.STRING$,F.L%,F.P$,F.J%) EXTERNAL
+ 911: 0000: STRING    FORMAT.STRING$
+ 912: 0000: STRING    F.STRING$
+ 913: 0000: INTEGER*2 F.L%
+ 914: 0000: STRING    F.P$
+ 915: 0000: INTEGER*2 F.J%
+ 916: 0000: END FUNCTION
+ 917: 0000: 
+ 918: 0000: SUB GET.BLOCK.SIZE(F.BLOCK.SIZE%,F.FILENAME$,F.SIZE%) EXTERNAL
+ 919: 0000: INTEGER*4   F.BLOCK.SIZE%
+ 920: 0000: STRING      F.FILENAME$
+ 921: 0000: INTEGER*4   F.SIZE%
+ 922: 0000: INTEGER*4   F.BLOCK%
+ 923: 0000: INTEGER*2   F.SECTOR%
+ 924: 0000: INTEGER*2   F.LOOP%
+ 925: 0000: STRING      F.BLOCK.LENGTH$
+ 926: 0000: END SUB
+ 927: 0000: %INCLUDE BTCMEM.J86 
+ 928: 0000: !********************************************************************
+ 929: 0000: !***
+ 930: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+ 931: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 932: 0000: !***    DATE:           26th February 2006
+ 933: 0000: !***
+ 934: 0000: !********************************************************************
+ 935: 0000: !***
+ 936: 0000: !***    Controller CBASIC Memory Functions
+ 937: 0000: !***
+ 938: 0000: !********************************************************************
+ 939: 0000: 
+ 940: 0000: !Get a single byte integer from a string offset
+ 941: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 942: 0000:     STRING S$
+ 943: 0000:     INTEGER*2 P%
+ 944: 0000:     INTEGER*2 GETN1
+ 945: 0000: END FUNCTION
+ 946: 0000: 
+ 947: 0000: !Get a two byte integer from a string offset
+ 948: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 949: 0000:     STRING S$
+ 950: 0000:     INTEGER*2 P%
+ 951: 0000:     INTEGER*2 GETN2
+ 952: 0000: END FUNCTION
+ 953: 0000: 
+ 954: 0000: !Get a four byte integer from a string offset
+ 955: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 956: 0000:     STRING S$
+ 957: 0000:     INTEGER*2 P%
+ 958: 0000:     INTEGER*4 GETN4
+ 959: 0000: END FUNCTION
+ 960: 0000: 
+ 961: 0000: !Get a 10 byte CBASIC real from a string offset
+ 962: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 963: 0000:     STRING S$
+ 964: 0000:     INTEGER*2 P%
+ 965: 0000:     REAL GETR10
+ 966: 0000: END FUNCTION
+ 967: 0000: 
+ 968: 0000: !Put a single byte integer into a string at offset
+ 969: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 970: 0000:     STRING S$
+ 971: 0000:     INTEGER*2 P%
+ 972: 0000:     INTEGER*1 N%
+ 973: 0000:     INTEGER*1 PUTN1
+ 974: 0000: END FUNCTION
+ 975: 0000: 
+ 976: 0000: !Put a two byte integer into a string at offset
+ 977: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 978: 0000:     STRING S$
+ 979: 0000:     INTEGER*2 P%
+ 980: 0000:     INTEGER*2 N%
+ 981: 0000:     INTEGER*1 PUTN2
+ 982: 0000: END FUNCTION
+ 983: 0000: 
+ 984: 0000: !Put a four byte integer into a string at offset
+ 985: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 986: 0000:     STRING S$
+ 987: 0000:     INTEGER*2 P%
+ 988: 0000:     INTEGER*4 N%
+ 989: 0000:     INTEGER*1 PUTN4
+ 990: 0000: END FUNCTION
+ 991: 0000: 
+ 992: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 993: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 994: 0000:     STRING S$
+ 995: 0000:     INTEGER*2 P%
+ 996: 0000:     REAL R
+ 997: 0000:     INTEGER*1 PUTR10
+ 998: 0000: END FUNCTION
+ 999: 0000: 
+1000: 0000: !Peek a two byte integer from a memory address
+1001: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+1002: 0000:     INTEGER*4 A%
+1003: 0000:     INTEGER*2 PEEKN2
+1004: 0000: END FUNCTION
+1005: 0000: 
+1006: 0000: !Peek a four byte integer from a memory address
+1007: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+1008: 0000:     INTEGER*4 A%
+1009: 0000:     INTEGER*4 PEEKN4
+1010: 0000: END FUNCTION
+1011: 0000: 
+1012: 0000: !Peek a 10 byte CBASIC real from a memory address
+1013: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+1014: 0000:     INTEGER*4 A%
+1015: 0000:     REAL PEEKR10
+1016: 0000: END FUNCTION
+1017: 0000: 
+1018: 0000: !Poke a two byte integer to a memory address
+1019: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+1020: 0000:     INTEGER*4 A%
+1021: 0000:     INTEGER*2 N%
+1022: 0000:     INTEGER*1 POKEN2
+1023: 0000: END FUNCTION
+1024: 0000: 
+1025: 0000: !Poke a four byte integer to a memory address
+1026: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+1027: 0000:     INTEGER*4 A%
+1028: 0000:     INTEGER*4 N%
+1029: 0000:     INTEGER*1 POKEN4
+1030: 0000: END FUNCTION
+1031: 0000: 
+1032: 0000: !Poke a 10 byte CBASIC real to a memory address
+1033: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+1034: 0000:     INTEGER*4 A%
+1035: 0000:     REAL R
+1036: 0000:     INTEGER*1 POKER10
+1037: 0000: END FUNCTION
+1038: 0000: 
+1039: 0000: %INCLUDE PSBF01E.J86 
+1040: 0000: REM \
+1041: 0000: \*******************************************************************************
+1042: 0000: \*******************************************************************************
+1043: 0000: \***
+1044: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+1045: 0000: \***
+1046: 0000: \***                      FUNCTION NUMBER   : PSBF01
+1047: 0000: \***
+1048: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+1049: 0000: \*** 
+1050: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+1051: 0000: \***      Three parameters which passed to the function have been removed.
+1052: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+1053: 0000: \***      return code).
+1054: 0000: \***
+1055: 0000: \*******************************************************************************
+1056: 0000: 
+1057: 0000: 
+1058: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+1059: 0000:                              VAR.STRING.1$,                                   \
+1060: 0000:                              VAR.STRING.2$,                                   \
+1061: 0000:                              EVENT.NO%)  EXTERNAL
+1062: 0000: 
+1063: 0000:       INTEGER*1 EVENT.NO%
+1064: 0000: 
+1065: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+1066: 0000:                 MESSAGE.NO%
+1067: 0000: 
+1068: 0000:       STRING VAR.STRING.1$,                                            \
+1069: 0000:              VAR.STRING.2$
+1070: 0000: 
+1071: 0000:    END FUNCTION
+1072: 0000: 
+1073: 0000: \*******************************************************************************
+1074: 0000: %INCLUDE PSBF20E.J86 
+1075: 0000: REM\
+1076: 0000: \*******************************************************************************
+1077: 0000: \*******************************************************************************
+1078: 0000: \***
+1079: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+1080: 0000: \***
+1081: 0000: \***                  REFERENCE     : PSBF20E.J86
+1082: 0000: \***
+1083: 0000: \***     VERSION C            Janet Smith                13th May 1992
+1084: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+1085: 0000: \***     128 files.
+1086: 0000: \***
+1087: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+1088: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+1089: 0000: \***     as a variable.  This new variable contains the function's return
+1090: 0000: \***     code.
+1091: 0000: \***
+1092: 0000: \*******************************************************************************
+1093: 0000: \*******************************************************************************
+1094: 0000: 
+1095: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+1096: 0000:                               PASSED.INTEGER%,                         \
+1097: 0000:                               PASSED.STRING$)                          \
+1098: 0000:    EXTERNAL
+1099: 0000: 
+1100: 0000:    STRING    FUNCTION.FLAG$,                                           \
+1101: 0000:              PASSED.STRING$
+1102: 0000:    ! 3 variables removed from here                                     ! CAW
+1103: 0000: 
+1104: 0000: 
+1105: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+1106: 0000:              PASSED.INTEGER%				               ! CJAS
+1107: 0000: 
+1108: 0000:    END FUNCTION
+1109: 0000: 
+1110: 0000: %INCLUDE PSBF24E.J86
+1111: 0000: REM \
+1112: 0000: \*******************************************************************************
+1113: 0000: \*******************************************************************************
+1114: 0000: \***
+1115: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+1116: 0000: \***
+1117: 0000: \***                      REFERENCE     : PSBF24E.J86
+1118: 0000: \***
+1119: 0000: \***    Version A                 Janet Smith                  13th May 1992
+1120: 0000: \***
+1121: 0000: \*******************************************************************************
+1122: 0000: \*******************************************************************************
+1123: 0000: 
+1124: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+1125: 0000: 				    ERRFILE%,              \
+1126: 0000: 				    ERRL%,                 \
+1127: 0000: 				    ERR$)        EXTERNAL
+1128: 0000: 				    
+1129: 0000:           STRING    ERR$
+1130: 0000: 
+1131: 0000:           INTEGER*2 ERRFILE%,              \
+1132: 0000: 	            ERRL%,                 \
+1133: 0000: 		    STANDARD.ERROR.DETECTED
+1134: 0000: 		    
+1135: 0000:           INTEGER*4 ERRN%
+1136: 0000: 	  		    
+1137: 0000:    END FUNCTION
+1138: 0000: 
+1139: 0000: 
+1140: 0000: %INCLUDE SOFTSEXT.J86         ! SOFTS File Functions
+1141: 0000: \*******************************************************************************
+1142: 0000: \***                                                                         ***
+1143: 0000: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE SOFTWARE STATUS FILE         ***
+1144: 0000: \***                                                                         ***
+1145: 0000: \***                     REFERENCE : SOFTSEXT.J86                            ***
+1146: 0000: \***                                                                         ***
+1147: 0000: \***      Version A         Andrew Wedgeworth          1st July 1992         ***
+1148: 0000: \***
+1149: 0000: \***   Version B
+1150: 0000: \***                                                                      ***
+1151: 0000: \***      Version C         Steve Wright               3rd May 1996          ***
+1152: 0000: \***      Synchronise with function source.                                  ***
+1153: 0000: \*******************************************************************************
+1154: 0000: 
+1155: 0000:       FUNCTION SOFTS.SET EXTERNAL 
+1156: 0000:       END FUNCTION
+1157: 0000:       
+1158: 0000:       FUNCTION READ.SOFTS EXTERNAL
+1159: 0000:           INTEGER*2 I%, READ.SOFTS
+1160: 0000:       END FUNCTION	                   
+1161: 0000: 
+1162: 0000:       FUNCTION WRITE.SOFTS EXTERNAL
+1163: 0000:           INTEGER*2 I%, WRITE.SOFTS
+1164: 0000:       END FUNCTION
+1165: 0000: 
+1166: 0000: 
+1167: 0000: %INCLUDE RFSCFEXT.J86
+1168: 0000: \******************************************************************************
+1169: 0000: \******************************************************************************
+1170: 0000: \***
+1171: 0000: \***   $Workfile:   RFSCFEXT.J86  $
+1172: 0000: \***
+1173: 0000: \***   $Revision:   1.3  $
+1174: 0000: \***
+1175: 0000: \******************************************************************************
+1176: 0000: \******************************************************************************
+1177: 0000: \***
+1178: 0000: \***
+1179: 0000: \******************************************************************************
+1180: 0000: \******************************************************************************
+1181: 0000: \***
+1182: 0000: \***                  FUNCTION DEFINITIONS FOR RFSCF
+1183: 0000: \***
+1184: 0000: \***                      REFERENCE    : RFSCFEXT
+1185: 0000: \***
+1186: 0000: \***           VERSION A : NIK SEN  5th October 1998
+1187: 0000: \***
+1188: 0000: \***
+1189: 0000: \***   VERSION B             Mark Good
+1190: 0000: \***   Added WRITE.RFSCF1
+1191: 0000: \***
+1192: 0000: \***   VERSION C             Jamie Thorpe
+1193: 0000: \***   Added Read and Write dunctions for RFSCF record 3
+1194: 0000: \***
+1195: 0000: \***   VERSION D             Tittoo Thomas                         01 MAY 2013
+1196: 0000: \***   Fixed READ and WRITE for RFSCF record 1 to have a return type set.
+1197: 0000: \***
+1198: 0000: \*****************************************************************************
+1199: 0000: \*****************************************************************************
+1200: 0000: 
+1201: 0000:    FUNCTION RFSCF.SET EXTERNAL
+1202: 0000:    END FUNCTION
+1203: 0000: 
+1204: 0000:    FUNCTION READ.RFSCF1 EXTERNAL
+1205: 0000:       INTEGER*2 READ.RFSCF1            ! DTT
+1206: 0000:    END FUNCTION
+1207: 0000: 
+1208: 0000:    FUNCTION WRITE.RFSCF1 EXTERNAL      ! BMG
+1209: 0000:       INTEGER*2 WRITE.RFSCF1           ! DTT
+1210: 0000:    END FUNCTION                        ! BMG
+1211: 0000: 
+1212: 0000:    FUNCTION READ.RFSCF3 EXTERNAL       ! CJT
+1213: 0000:       INTEGER*2 READ.RFSCF3            ! CJT
+1214: 0000:    END FUNCTION                        ! CJT
+1215: 0000: 
+1216: 0000:    FUNCTION WRITE.RFSCF3 EXTERNAL      ! CJT
+1217: 0000:       INTEGER*2 WRITE.RFSCF3           ! CJT
+1218: 0000:    END FUNCTION                        ! CJT
+1219: 0000: 
+1220: 0000: %INCLUDE ADXSERVE.J86   !ADXSERVE
+1221: 0000: \******************************************************************************
+1222: 0000: \******************************************************************************
+1223: 0000: \***                                                                        ***
+1224: 0000: \***    %INCLUDE FOR FUNCTION ADXSERVE (an I.B.M. system function)          ***
+1225: 0000: \***                                                                        ***
+1226: 0000: \***         AUTHOR        :  Bruce Scriver                                 ***
+1227: 0000: \***                                                                        ***
+1228: 0000: \***         DATE WRITTEN  :  14th March 1986                               ***
+1229: 0000: \***                                                                        ***
+1230: 0000: \***         DATE OF LAST REVISION  - 14th March 1986                       ***
+1231: 0000: \***                                                                        ***
+1232: 0000: \***                                                                        ***
+1233: 0000: \******************************************************************************
+1234: 0000: \******************************************************************************
+1235: 0000: 
+1236: 0000:    SUB ADXSERVE (RETURN.CODE%,                                                \
+1237: 0000:                  ADX.FUNCTION%,                                               \
+1238: 0000:                  ADX.PARM.1%,                                                 \
+1239: 0000:                  ADX.PARM.2$)                                                 \
+1240: 0000:    EXTERNAL
+1241: 0000:   
+1242: 0000:       STRING     ADX.PARM.2$
+1243: 0000: 
+1244: 0000:       INTEGER*2  ADX.FUNCTION%,                                               \
+1245: 0000:                  ADX.PARM.1%
+1246: 0000: 
+1247: 0000:       INTEGER*4  RETURN.CODE%                                                 \
+1248: 0000: 
+1249: 0000:    END SUB     
+1250: 0000: 
+1251: 0000: 
+1252: 0000: \***********************************************************************
+1253: 0000: \*
+1254: 0000: \*    INITIALISATION : This Sub-routine does all the initial processing
+1255: 0000: \*                     before starting the main process
+1256: 0000: \*
+1257: 0000: \***********************************************************************
+1258: 0000: 
+1259: 0000: FUNCTION FLEXOSSVC(COMMAND%, PARAM$) EXTERNAL                           
+1260: 0000:                                                                         
+1261: 0000:       STRING PARAM$                                                     
+1262: 0000:       INTEGER*2 COMMAND%, FLEXOSSVC                                     
+1263: 0000:                                                                         
+1264: 0000: END FUNCTION                                                            
+1265: 0000: 
+1266: 0000: \**********************************************************************
+1267: 0000: \***
+1268: 0000: \***    ADXSERVE
+1269: 0000: \***    IBM routine to request Application Services.
+1270: 0000: \***
+1271: 0000: \**********************************************************************
+1272: 0000: 
+1273: 0000: !SUB ADXSERVE (RET, FUNC, PARM1, PARM2$) EXTERNAL
+1274: 0000: 
+1275: 0000: !    INTEGER*4  RET
+1276: 0000: !    INTEGER*2  FUNC,PARM1
+1277: 0000: !    STRING     PARM2$
+1278: 0000: 
+1279: 0000: !END SUB
+1280: 0000: 
+1281: 0000: \**********************************************************************
+1282: 0000: \***
+1283: 0000: \***    ADXCOPYF
+1284: 0000: \***    IBM routine to request Application Services.
+1285: 0000: \***
+1286: 0000: \**********************************************************************
+1287: 0000: 
+1288: 0000: SUB ADXCOPYF (RETC,INFILE,OUTFILE,OPT0,OPT1) EXTERNAL
+1289: 0000: 
+1290: 0000:     INTEGER*4 RETC
+1291: 0000:     STRING    INFILE,OUTFILE
+1292: 0000:     INTEGER*2 OPT0,OPT1
+1293: 0000: 
+1294: 0000: END SUB 
+1295: 0000: 
+1296: 0000: \***********************************************************************
+1297: 0000: \*                                                                     *
+1298: 0000: \*          S T A R T   O F   M A I N L I N E   C O D E                *
+1299: 0000: \*                                                                     *
+1300: 0000: \***********************************************************************
+1301: 0000: \***********************************************************************
+1302: 0000: 
+1303: 0000: ON ERROR GOTO ERROR.DETECTED       
+1304: 002f: 
+1305: 002f:     GOSUB INITIALISATION 
+1306: 0041:     GOSUB MAIN.PROCESSING
+1307: 0053:     GOSUB TERMINATION
+1308: 0065:  
+1309: 0065: STOP.PROGRAM:
+1310: 006d:     STOP 
+1311: 007a: 
+1312: 007a: \***********************************************************************
+1313: 007a: \*
+1314: 007a: \*    INITIALISE.VARIABLES :   
+1315: 007a: \*                
+1316: 007a: \*
+1317: 007a: \***********************************************************************
+1318: 007a: INITIALISATION: 
+1319: 008a:     
+1320: 008a:    CALL SOFTS.SET
+1321: 00a5:    CALL RFSCF.SET
+1322: 00c0:   ! CALL SOPTS.SET
+1323: 00c0:   ! CALL RFSCF.SET      
+1324: 00c0:    GOSUB ALLOCATE.SESSION.NUMBERS
+1325: 00d2:    
+1326: 00d2: RETURN 
+1327: 00e2: 
+1328: 00e2: \***********************************************************************
+1329: 00e2: \*
+1330: 00e2: \*    ALLOCATE.SESSION.NUMBERS:   
+1331: 00e2: \*                
+1332: 00e2: \*
+1333: 00e2: \***********************************************************************
+1334: 00e2: ALLOCATE.SESSION.NUMBERS:
+1335: 00f2: 
+1336: 00f2:     FUNCTION.FLAG$ = "O"  
+1337: 0107: 
+1338: 0107:     PASSED.INTEGER% = SOFTS.REPORT.NUM%                                  
+1339: 0124:     PASSED.STRING$  = SOFTS.FILE.NAME$                                   
+1340: 0142:     GOSUB CALL.F20.SESS.NUM.UTILITY                                      
+1341: 0154:     SOFTS.SESS.NUM% = F20.INTEGER.FILE.NO% 
+1342: 016a: 
+1343: 016a: 	PASSED.INTEGER% = RFSCF.REPORT.NUM%                                  
+1344: 0187:     PASSED.STRING$  = RFSCF.FILE.NAME$                                   
+1345: 01a5:     GOSUB CALL.F20.SESS.NUM.UTILITY                                      
+1346: 01b7:     RFSCF.SESS.NUM% = F20.INTEGER.FILE.NO% 	                             
+1347: 01cd:     	
+1348: 01cd:                              
+1349: 01cd: 
+1350: 01cd: RETURN
+1351: 01dd: 
+1352: 01dd: \***********************************************************************
+1353: 01dd: \*
+1354: 01dd: \*    CALL.F20.SESS.NUM.UTILITY:  
+1355: 01dd: \*                
+1356: 01dd: \*
+1357: 01dd: \***********************************************************************
+1358: 01dd: CALL.F20.SESS.NUM.UTILITY: 
+1359: 01ed:         
+1360: 01ed:    FILE.OPERATION$ = FUNCTION.FLAG$
+1361: 0208:    CURRENT.REPORT.NUM% = PASSED.INTEGER%
+1362: 0221:    RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+1363: 025e:                                  PASSED.STRING$)
+1364: 025e:    IF RC% <> 0 THEN GOTO ERROR.DETECTED
+1365: 0280: 
+1366: 0280: RETURN 
+1367: 0290: 
+1368: 0290:  
+1369: 0290:  
+1370: 0290: \***********************************************************************
+1371: 0290: \*
+1372: 0290: \*    MAIN.PROCESSING
+1373: 0290: \*
+1374: 0290: \***********************************************************************
+1375: 0290: MAIN.PROCESSING:       
+1376: 02a0: 
+1377: 02a0: GOSUB SOFTS.READ
+1378: 02b2: !GOSUB RFSCF.READ
+1379: 02b2: !GOSUB SOPTS.READ
+1380: 02b2: !GOSUB ENVOY.READ
+1381: 02b2: !GOSUB ADXSERVE.CHECKS
+1382: 02b2: 
+1383: 02b2: RETURN
+1384: 02c2: 
+1385: 02c2: \***********************************************************************
+1386: 02c2: \*
+1387: 02c2: \*    SOFTS.READ
+1388: 02c2: \*
+1389: 02c2: \***********************************************************************
+1390: 02c2: SOFTS.READ: 
+1391: 02d2: 
+1392: 02d2: 
+1393: 02d2:     CALL ADXSERVE (ADXSERVE.RETURN.CODE%,4,0,ADXSERVE.DATA$)
+1394: 030c:     IF ADXSERVE.RETURN.CODE% <> 0 THEN BEGIN    
+1395: 032b:         PRINT "Unable to get store number"      
+1396: 033c:         
+1397: 033c:        
+1398: 033c:     ENDIF
+1399: 0344: 	
+1400: 0344:     STORE.NUMBER$ = LEFT$(ADXSERVE.DATA$,4)
+1401: 0366: 	
+1402: 0366: 	PRINT "Store Number is " + STORE.NUMBER$
+1403: 038a: 
+1404: 038a:      IF END #SOFTS.SESS.NUM% THEN FILE.ERROR
+1405: 03a6:      OPEN SOFTS.FILE.NAME$ DIRECT RECL SOFTS.RECL%                   \
+1406: 03d3:                              AS SOFTS.SESS.NUM% NODEL
+1407: 03d3: 							 
+1408: 03d3: 	 OPEN RFSCF.FILE.NAME$ DIRECT RECL RFSCF.RECL%  AS RFSCF.SESS.NUM% NODEL
+1409: 0400: 	 
+1410: 0400: 	 !Take the value of RFSCF HTT configuration
+1411: 0400: 	 RC% = READ.RFSCF1	
+1412: 041b:       
+1413: 041b: 	 SOFTS.REC.NUM% = 1 
+1414: 0432:      RC% = READ.SOFTS
+1415: 044d:      IF RC% = 0 THEN BEGIN	 
+1416: 046c:          PRINT "Current build level is" + " " + MID$(SOFTS.RECORD$,28,3)	 
+1417: 04a0: 	 ENDIF 
+1418: 04a8: 
+1419: 04a8: 	 SOFTS.REC.NUM% = 19
+1420: 04bf:      RC% = READ.SOFTS	 
+1421: 04da: 	 IF RC% = 0 THEN BEGIN	    
+1422: 04f9: 		PRINT "Configured as " + LEFT$(SOFTS.RECORD$,3) + " " + "Store"		
+1423: 053c: 	 ENDIF
+1424: 0544: 
+1425: 0544: 	 SOFTS.REC.NUM% = 20
+1426: 055b: 	 RC% = READ.SOFTS
+1427: 0576: 	 IF RC% = 0 THEN BEGIN
+1428: 0598: 	 
+1429: 0598: 	    ! Check for specific HHT device type using RFSCF value as well
+1430: 0598: 		
+1431: 0598: 		 MATCH% = MATCH("RF IS ACTIVE",SOFTS.RECORD$,1)
+1432: 05c4: 		 
+1433: 05c4: 		  
+1434: 05c4: 		
+1435: 05c4: 		! Now confirm the device type
+1436: 05c4: 		 IF MATCH% > 0 THEN BEGIN
+1437: 05e0: 		
+1438: 05e0: 		      IF RFSCF.ACTIVITY% = 52 THEN BEGIN
+1439: 05f2: 			   
+1440: 05f2: 			     PRINT "Store has RF/PPC device configuration/MC55A"
+1441: 0605: 
+1442: 0605:               ENDIF ELSE BEGIN
+1443: 060d: 
+1444: 060d:                  PRINT "Store is set as RF in SOFTSTAT record but RFSCF value does not match, please correct the same"
+1445: 061e: 
+1446: 061e:               ENDIF				 
+1447: 0629: 		
+1448: 0629: 	     ENDIF ELSE BEGIN
+1449: 0631: 		
+1450: 0631: 			 MATCH% = MATCH(" RF IS INACTIVE   NETWORK PDT IS ACTIVE (PHASE TWO)",SOFTS.RECORD$,1)
+1451: 065d: 			 
+1452: 065d: 			 
+1453: 065d: 			 
+1454: 065d: 			 IF MATCH% > 0 THEN BEGIN
+1455: 0679: 			 
+1456: 0679: 			     IF RFSCF.ACTIVITY% = 53 THEN BEGIN
+1457: 068b: 				  
+1458: 068b: 				     PRINT "Store has batch/POD configuration - MC70/MC55BH "
+1459: 069e: 			
+1460: 069e: 				 ENDIF ELSE BEGIN	 
+1461: 06a6: 			 
+1462: 06a6: 			         PRINT "Store is set as batch in SOFTSTAT but RFSCF value does not match, please correct the same"
+1463: 06b7: 					  
+1464: 06b7: 				 ENDIF
+1465: 06c2: 		
+1466: 06c2: 			 ENDIF ELSE BEGIN
+1467: 06ca: 			 
+1468: 06ca: 				 MATCH% = MATCH("RF IS INACTIVE" ,SOFTS.RECORD$,1)			 
+1469: 06f6: 				  
+1470: 06f6: 			     
+1471: 06f6: 				 IF MATCH% > 0 THEN BEGIN
+1472: 0712: 				 
+1473: 0712: 					 IF RFSCF.ACTIVITY% = 48 THEN BEGIN					 
+1474: 0724: 				         PRINT("Store has PDT6100 configuration")
+1475: 0737:                      ENDIF ELSE BEGIN
+1476: 073f: 
+1477: 073f:                          PRINT ("Store is set as PDT but RFSCF value does not match, please correct the same")
+1478: 0750:                      ENDIF					  
+1479: 0758: 		  	 
+1480: 0758: 		         ENDIF 
+1481: 0760: 		     ENDIF
+1482: 0768: 		 
+1483: 0768: 	      ENDIF	 
+1484: 0770: 		    
+1485: 0770:      ENDIF
+1486: 0778: 	       
+1487: 0778:  
+1488: 0778: 
+1489: 0778: 	 SOFTS.REC.NUM% = 55
+1490: 078f: 	 RC% = READ.SOFTS
+1491: 07aa: 
+1492: 07aa: 	 MATCH% = MATCH("SINGLE",SOFTS.RECORD$,1)
+1493: 07d6: 	 
+1494: 07d6: 	     IF MATCH% > 0 THEN BEGIN 
+1495: 07f2: 	         SOFTS.REC.NUM% = 68
+1496: 0809: 	         RC% = READ.SOFTS
+1497: 0824: 			
+1498: 0824: 	         PRINT ("Set as single controller store with MCF PHASE") + MID$(SOFTS.RECORD$,11,1)
+1499: 0856: 		     
+1500: 0856: 		 ENDIF ELSE BEGIN
+1501: 085e: 		     SOFTS.REC.NUM% = 68
+1502: 0875: 	         RC% = READ.SOFTS
+1503: 0890: 			      PRINT ("Set as MCF store with MCF PHASE ") + MID$(SOFTS.RECORD$,11,2)
+1504: 08c0: 			  
+1505: 08c0: 		 ENDIF
+1506: 08c8: 
+1507: 08c8: RETURN
+1508: 08d8:   
+1509: 08d8: FILE.ERROR:
+1510: 08e8: 
+1511: 08e8: PRINT " NO FILE EXISTS"
+1512: 08f9: RETURN  
+1513: 0909: 
+1514: 0909: \***********************************************************************
+1515: 0909: \*
+1516: 0909: \*    TERMINATION
+1517: 0909: \*
+1518: 0909: \***********************************************************************
+1519: 0909:  
+1520: 0909: TERMINATION:    
+1521: 0919:  
+1522: 0919:    
+1523: 0919:    GOSUB DEALLOCATE.SESS.NUM
+1524: 092b:      
+1525: 092b: 
+1526: 092b: RETURN
+1527: 093b:  
+1528: 093b: 
+1529: 093b: \***********************************************************************
+1530: 093b: \*
+1531: 093b: \*    ERROR.LOG  
+1532: 093b: \*               
+1533: 093b: \*
+1534: 093b: \***********************************************************************
+1535: 093b: ERROR.LOG: 
+1536: 094b:         
+1537: 094b:          VAR.STRING.1$ = FILE.OPERATION$                     +          \
+1538: 09e1:                 CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +          \
+1539: 09e1:                 CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +          \
+1540: 09e1:                 CURRENT.CODE$
+1541: 09e1:          VAR.STRING.2$ = "PHKEEP"
+1542: 09f6:          MESSAGE.NO%   = 0
+1543: 0a0b:          EVENT.NO%     = 106
+1544: 0a22: 
+1545: 0a22:          RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,               \
+1546: 0a65: 		 VAR.STRING.2$,EVENT.NO%)
+1547: 0a65: 
+1548: 0a65:         
+1549: 0a65: 
+1550: 0a65:          GOTO END.PROGRAM
+1551: 0a70: 
+1552: 0a70: RETURN
+1553: 0a80: 
+1554: 0a80: \***********************************************************************
+1555: 0a80: \*
+1556: 0a80: \*    CLOSE.FILES:
+1557: 0a80: \*                
+1558: 0a80: \*
+1559: 0a80: \***********************************************************************
+1560: 0a80: 
+1561: 0a80: CLOSE.FILES:
+1562: 0a88:    
+1563: 0a88:     CLOSE SOFTS.SESS.NUM%
+1564: 0a9c:    
+1565: 0a9c: RETURN  
+1566: 0aac: \***********************************************************************
+1567: 0aac: \*
+1568: 0aac: \*    DEALLOCATE.SESS.NUM  
+1569: 0aac: \*                
+1570: 0aac: \*
+1571: 0aac: \***********************************************************************
+1572: 0aac: DEALLOCATE.SESS.NUM: 
+1573: 0abc: 
+1574: 0abc:     FUNCTION.FLAG$ = "C"   
+1575: 0ad1:     
+1576: 0ad1:     PASSED.INTEGER% = SOFTS.REPORT.NUM%                                
+1577: 0aee:     PASSED.STRING$  = SOFTS.FILE.NAME$                                 
+1578: 0b0c:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+1579: 0b1e:     SOFTS.SESS.NUM% = F20.INTEGER.FILE.NO%                           
+1580: 0b34: 
+1581: 0b34: 
+1582: 0b34: RETURN
+1583: 0b44: 
+1584: 0b44: \***********************************************************************
+1585: 0b44: \*
+1586: 0b44: \*    ERROR.DETECTED  
+1587: 0b44: \*              
+1588: 0b44: \*
+1589: 0b44: \***********************************************************************
+1590: 0b44: ERROR.DETECTED:     
+1591: 0b54: 
+1592: 0b54: print "erroring out"
+1593: 0b65: 
+1594: 0b65: print err
+1595: 0b7a: print errl
+1596: 0b8d: print errf%
+1597: 0ba0:         
+1598: 0ba0:      IF ERR = "OE" AND ERRF% =  SOFTS.SESS.NUM% THEN BEGIN          
+1599: 0bf0:      ENDIF    
+1600: 0bf8:    
+1601: 0bf8:      GOSUB ERROR.LOG
+1602: 0c0a:    
+1603: 0c0a: RETURN  
+1604: 0c1a: 
+1605: 0c1a: \***********************************************************************
+1606: 0c1a: \*
+1607: 0c1a: \*    END.PROGRAM 
+1608: 0c1a: \*              
+1609: 0c1a: \*
+1610: 0c1a: \***********************************************************************
+1611: 0c1a: 
+1612: 0c1a:    END.PROGRAM:
+1613: 0c2f: 
+1614: 0c2f:    END 
+1615: 0c2f:        
+1616: 0c2f: 
+1617: 0c2f: End of Compilation

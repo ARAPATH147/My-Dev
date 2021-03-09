@@ -1,0 +1,214 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***            ADXCSOUF.DAT       FILE FUNCTIONS 
+   5: 0000: \***
+   6: 0000: \***      Version A           Steve Windsor                     Nov 92    
+   7: 0000: \***
+   8: 0000: \*****************************************************************************
+   9: 0000: \*****************************************************************************
+  10: 0000: 
+  11: 0000: 
+  12: 0000:    INTEGER*2 GLOBAL                  \
+  13: 0000:       CURRENT.REPORT.NUM%
+  14: 0000: 
+  15: 0000:    STRING GLOBAL                     \
+  16: 0000:       CURRENT.CODE$,                 \
+  17: 0000:       FILE.OPERATION$
+  18: 0000: 
+  19: 0000:    %INCLUDE CSOUFDEC.J86
+  20: 0000: \*****************************************************************************
+  21: 0000: \*****************************************************************************
+  22: 0000: \***
+  23: 0000: \***               %INCLUDE FOR ADXCSOUF.DAT - FIELD DECLARATIONS
+  24: 0000: \***                                           FILE REFERENCE PARAMETERS
+  25: 0000: \***
+  26: 0000: \***                      FILE TYPE    : DIRECT
+  27: 0000: \***
+  28: 0000: \***                      REFERENCE    : CSOUFDEA.J86
+  29: 0000: \***
+  30: 0000: \***      Version A             Steve Windsor                 Nov 92      
+  31: 0000: \***
+  32: 0000: \*****************************************************************************
+  33: 0000: \*****************************************************************************
+  34: 0000: 
+  35: 0000: 
+  36: 0000: REM \
+  37: 0000: 
+  38: 0000: 
+  39: 0000:     STRING GLOBAL               \
+  40: 0000:         CSOUF.FILE.NAME$        \
+  41: 0000: 
+  42: 0000:     INTEGER*2 GLOBAL            \
+  43: 0000:         CSOUF.RECL%,            \
+  44: 0000:         CSOUF.REPORT.NUM%,      \
+  45: 0000:         CSOUF.SESS.NUM%
+  46: 0000: 
+  47: 0000:     INTEGER*4 GLOBAL            \
+  48: 0000:         CSOUF.REC.NUM%          \
+  49: 0000: 
+  50: 0000: 
+  51: 0000: REM \
+  52: 0000: 
+  53: 0000: 
+  54: 0000:     STRING GLOBAL               \
+  55: 0000:         CSOUF.REC$,             \ 34 bytes
+  56: 0000:         CSOUF.OP.ID$,           \  8 bytes 
+  57: 0000:         CSOUF.FILLER.01$,       \  1 byte
+  58: 0000:         CSOUF.PSWD$,            \  8 bytes
+  59: 0000:         CSOUF.FILLER.02$,       \  1 byte
+  60: 0000:         CSOUF.USER.ID$,         \  1 byte UPD
+  61: 0000:         CSOUF.GROUP.ID$,        \  1 byte UPD
+  62: 0000:         CSOUF.FLAGS$            ! 14 bytes
+  63: 0000: 
+  64: 0000: 
+  65: 0000: 
+  66: 0000:    FUNCTION CSOUF.SET PUBLIC
+  67: 0014: 
+  68: 0014: REM \
+  69: 0014: 
+  70: 0014: 
+  71: 0014:     CSOUF.FILE.NAME$  EQ "ADXCSOUF" ! I.B.M. logical file name
+  72: 0023:     CSOUF.REPORT.NUM% EQ  218
+  73: 002c:     CSOUF.RECL%       EQ  34
+  74: 0035: 
+  75: 0035: END FUNCTION
+  76: 0041: 
+  77: 0041: \----------------------------------------------------------------------------
+  78: 0041: 
+  79: 0041: 
+  80: 0041: REM \
+  81: 0041: 
+  82: 0041: 
+  83: 0041: FUNCTION READ.CSOUF.ABREV PUBLIC
+  84: 0055: 
+  85: 0055:    INTEGER*2 READ.CSOUF.ABREV
+  86: 0055: 
+  87: 0055:    READ.CSOUF.ABREV = 1
+  88: 005a: 
+  89: 005a:    IF END#CSOUF.SESS.NUM% THEN READ.CSOUF.ABREV.ERROR
+  90: 006e: 
+  91: 006e:     READ FORM "C8,C1,C8,C1,C1,C1,C14";              \
+  92: 00e2:         #CSOUF.SESS.NUM%,                           \
+  93: 00e2:         CSOUF.REC.NUM%;                             \
+  94: 00e2:             CSOUF.OP.ID$,                           \
+  95: 00e2:             CSOUF.FILLER.01$,                       \
+  96: 00e2:             CSOUF.PSWD$,                            \
+  97: 00e2:             CSOUF.FILLER.02$,                       \
+  98: 00e2:             CSOUF.USER.ID$,                         \
+  99: 00e2:             CSOUF.GROUP.ID$,                        \
+ 100: 00e2:             CSOUF.FLAGS$
+ 101: 00e2: 
+ 102: 00e2:    READ.CSOUF.ABREV = 0
+ 103: 00e7:    EXIT FUNCTION
+ 104: 00e9: 
+ 105: 00e9:    READ.CSOUF.ABREV.ERROR:
+ 106: 00e9: 
+ 107: 00e9:    CURRENT.REPORT.NUM% = CSOUF.REPORT.NUM%
+ 108: 00f7:    FILE.OPERATION$ = "R"
+ 109: 0106:    CURRENT.CODE$ = " "
+ 110: 0115: 
+ 111: 0115:    EXIT FUNCTION
+ 112: 0117:   END FUNCTION
+ 113: 0126: 
+ 114: 0126: 
+ 115: 0126: 
+ 116: 0126: FUNCTION READ.CSOUF.ABREV.LOCKED PUBLIC
+ 117: 013a: 
+ 118: 013a:    INTEGER*2 READ.CSOUF.ABREV.LOCKED
+ 119: 013a: 
+ 120: 013a:    READ.CSOUF.ABREV.LOCKED = 1
+ 121: 013f: 
+ 122: 013f:    IF END#CSOUF.SESS.NUM% THEN READ.CSOUF.ABREV.LOCKED.ERROR
+ 123: 0153: 
+ 124: 0153:     READ FORM "C8,C1,C8,C1,C1,C1,C14";              \
+ 125: 01c7:         #CSOUF.SESS.NUM% AUTOLOCK,                  \
+ 126: 01c7:         CSOUF.REC.NUM%;                             \
+ 127: 01c7:             CSOUF.OP.ID$,                           \
+ 128: 01c7:             CSOUF.FILLER.01$,                       \
+ 129: 01c7:             CSOUF.PSWD$,                            \
+ 130: 01c7:             CSOUF.FILLER.02$,                       \
+ 131: 01c7:             CSOUF.USER.ID$,                         \
+ 132: 01c7:             CSOUF.GROUP.ID$,                        \
+ 133: 01c7:             CSOUF.FLAGS$
+ 134: 01c7: 
+ 135: 01c7:    READ.CSOUF.ABREV.LOCKED = 0
+ 136: 01cc:    EXIT FUNCTION
+ 137: 01ce: 
+ 138: 01ce:    READ.CSOUF.ABREV.LOCKED.ERROR:
+ 139: 01ce: 
+ 140: 01ce:    CURRENT.REPORT.NUM% = CSOUF.REPORT.NUM%
+ 141: 01dc:    FILE.OPERATION$ = "R"
+ 142: 01eb:    CURRENT.CODE$ = " "
+ 143: 01fa: 
+ 144: 01fa:    EXIT FUNCTION
+ 145: 01fc:   END FUNCTION
+ 146: 020b: 
+ 147: 020b: 
+ 148: 020b: 
+ 149: 020b: FUNCTION WRITE.CSOUF.ABREV.UNLOCK PUBLIC
+ 150: 021f: 
+ 151: 021f:    INTEGER*2 WRITE.CSOUF.ABREV.UNLOCK
+ 152: 021f: 
+ 153: 021f:    WRITE.CSOUF.ABREV.UNLOCK = 1
+ 154: 0224: 
+ 155: 0224:    IF END#CSOUF.SESS.NUM% THEN WRITE.CSOUF.ABREV.UNLOCK.ERROR
+ 156: 0238: 
+ 157: 0238:     WRITE FORM "C8,C1,C8,C1,C1,C1,C14";             \
+ 158: 02ca:         #CSOUF.SESS.NUM% AUTOUNLOCK,                \
+ 159: 02ca:         CSOUF.REC.NUM%;                             \
+ 160: 02ca:             CSOUF.OP.ID$,                           \
+ 161: 02ca:             CSOUF.FILLER.01$,                       \
+ 162: 02ca:             CSOUF.PSWD$,                            \
+ 163: 02ca:             CSOUF.FILLER.02$,                       \
+ 164: 02ca:             CSOUF.USER.ID$,                         \
+ 165: 02ca:             CSOUF.GROUP.ID$,                        \
+ 166: 02ca:             CSOUF.FLAGS$
+ 167: 02ca: 
+ 168: 02ca:    WRITE.CSOUF.ABREV.UNLOCK = 0
+ 169: 02cf:    EXIT FUNCTION
+ 170: 02d1: 
+ 171: 02d1:    WRITE.CSOUF.ABREV.UNLOCK.ERROR:
+ 172: 02d1: 
+ 173: 02d1:    CURRENT.REPORT.NUM% = CSOUF.REPORT.NUM%
+ 174: 02df:    FILE.OPERATION$ = "W"
+ 175: 02ee:    CURRENT.CODE$ = " "
+ 176: 02fd: 
+ 177: 02fd:    EXIT FUNCTION
+ 178: 02ff:   END FUNCTION
+ 179: 030e: 
+ 180: 030e: 
+ 181: 030e: 
+ 182: 030e: FUNCTION WRITE.CSOUF.ABREV PUBLIC
+ 183: 0322: 
+ 184: 0322:    INTEGER*2 WRITE.CSOUF.ABREV
+ 185: 0322: 
+ 186: 0322:    WRITE.CSOUF.ABREV = 1
+ 187: 0327: 
+ 188: 0327:    IF END#CSOUF.SESS.NUM% THEN WRITE.CSOUF.ABREV.ERROR
+ 189: 033b: 
+ 190: 033b:     WRITE FORM "C8,C1,C8,C1,C1,C1,C14";             \
+ 191: 03cd:         # CSOUF.SESS.NUM%,                          \
+ 192: 03cd:         CSOUF.REC.NUM%;                             \
+ 193: 03cd:             CSOUF.OP.ID$,                           \
+ 194: 03cd:             CSOUF.FILLER.01$,                       \
+ 195: 03cd:             CSOUF.PSWD$,                            \
+ 196: 03cd:             CSOUF.FILLER.02$,                       \
+ 197: 03cd:             CSOUF.USER.ID$,                         \
+ 198: 03cd:             CSOUF.GROUP.ID$,                        \
+ 199: 03cd:             CSOUF.FLAGS$
+ 200: 03cd: 
+ 201: 03cd:    WRITE.CSOUF.ABREV = 0
+ 202: 03d2:    EXIT FUNCTION
+ 203: 03d4: 
+ 204: 03d4:    WRITE.CSOUF.ABREV.ERROR:
+ 205: 03d4: 
+ 206: 03d4:    CURRENT.REPORT.NUM% = CSOUF.REPORT.NUM%
+ 207: 03e2:    FILE.OPERATION$ = "W"
+ 208: 03f1:    CURRENT.CODE$ = " "
+ 209: 0400: 
+ 210: 0400:    EXIT FUNCTION
+ 211: 0402:   END FUNCTION
+ 212: 0411: 
+ 213: 0411: 
+ 214: 0411: End of Compilation

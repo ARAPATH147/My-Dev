@@ -1,0 +1,251 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* DELVINDX Log File Functions                                    */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : DELVIFUN.BAS                                     */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Stuart Highley          11 July 2008       */
+   8: 0000: \/*                                                                */
+   9: 0000: \/* VERSION B.          Stuart Highley           18 Dec 2008       */
+  10: 0000: \/* Make file fixed rec length                                     */
+  11: 0000: \/******************************************************************/
+  12: 0000: 
+  13: 0000:     STRING GLOBAL CURRENT.CODE$
+  14: 0000:     STRING GLOBAL FILE.OPERATION$
+  15: 0000:     INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  16: 0000: 
+  17: 0000:     STRING CRLF$, QUOTE$
+  18: 0000: 
+  19: 0000:     %INCLUDE DELVIDEC.J86
+  20: 0000: \/******************************************************************/
+  21: 0000: \/*                                                                */
+  22: 0000: \/* DELVINDX FILE GLOBAl VARIABLE DECLARATIONS                     */
+  23: 0000: \/*                                                                */
+  24: 0000: \/* REFERENCE   : DELVIDEC.J86                                     */
+  25: 0000: \/*                                                                */
+  26: 0000: \/* VERSION A.          Stuart Highley              14 July 2008   */
+  27: 0000: \/*                                                                */
+  28: 0000: \/* VERSION B.          Stuart Highley               18 Dec 2008   */
+  29: 0000: \/* Make file fixed rec length.                                    */
+  30: 0000: \/******************************************************************/
+  31: 0000: 
+  32: 0000:    STRING GLOBAL                    \
+  33: 0000:       DELVINDX.FILE.NAME$,          \
+  34: 0000:       DELVINDX.FILLER$,             \
+  35: 0000:       DELVINDX.ASN.NUM$,            \
+  36: 0000:       DELVINDX.ASN.CARTON.COUNT$,   \
+  37: 0000:       DELVINDX.UOD.LICENCE$,        \
+  38: 0000:       DELVINDX.UOD.DESPATCH.DATE$,  \
+  39: 0000:       DELVINDX.UOD.BOL.FLAG$,       \
+  40: 0000:       DELVINDX.UOD.SEQ$,            \
+  41: 0000:       DELVINDX.UOD.PARENT$,         \
+  42: 0000:       DELVINDX.UOD.TYPE$,           \
+  43: 0000:       DELVINDX.UOD.EXP.DEL.DATE$
+  44: 0000: 
+  45: 0000:    INTEGER*2 GLOBAL             \
+  46: 0000:       DELVINDX.REPORT.NUM%,     \
+  47: 0000:       DELVINDX.SESS.NUM%
+  48: 0000: 
+  49: 0000: \/******************************************************************/
+  50: 0000: 
+  51: 0000:     %INCLUDE BTCMEM.J86
+  52: 0000: !********************************************************************
+  53: 0000: !***
+  54: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+  55: 0000: !***    AUTHOR:         Stuart William McConnachie
+  56: 0000: !***    DATE:           26th February 2006
+  57: 0000: !***
+  58: 0000: !********************************************************************
+  59: 0000: !***
+  60: 0000: !***    Controller CBASIC Memory Functions
+  61: 0000: !***
+  62: 0000: !********************************************************************
+  63: 0000: 
+  64: 0000: !Get a single byte integer from a string offset
+  65: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+  66: 0000:     STRING S$
+  67: 0000:     INTEGER*2 P%
+  68: 0000:     INTEGER*2 GETN1
+  69: 0000: END FUNCTION
+  70: 0000: 
+  71: 0000: !Get a two byte integer from a string offset
+  72: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+  73: 0000:     STRING S$
+  74: 0000:     INTEGER*2 P%
+  75: 0000:     INTEGER*2 GETN2
+  76: 0000: END FUNCTION
+  77: 0000: 
+  78: 0000: !Get a four byte integer from a string offset
+  79: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+  80: 0000:     STRING S$
+  81: 0000:     INTEGER*2 P%
+  82: 0000:     INTEGER*4 GETN4
+  83: 0000: END FUNCTION
+  84: 0000: 
+  85: 0000: !Get a 10 byte CBASIC real from a string offset
+  86: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+  87: 0000:     STRING S$
+  88: 0000:     INTEGER*2 P%
+  89: 0000:     REAL GETR10
+  90: 0000: END FUNCTION
+  91: 0000: 
+  92: 0000: !Put a single byte integer into a string at offset
+  93: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+  94: 0000:     STRING S$
+  95: 0000:     INTEGER*2 P%
+  96: 0000:     INTEGER*1 N%
+  97: 0000:     INTEGER*1 PUTN1
+  98: 0000: END FUNCTION
+  99: 0000: 
+ 100: 0000: !Put a two byte integer into a string at offset
+ 101: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 102: 0000:     STRING S$
+ 103: 0000:     INTEGER*2 P%
+ 104: 0000:     INTEGER*2 N%
+ 105: 0000:     INTEGER*1 PUTN2
+ 106: 0000: END FUNCTION
+ 107: 0000: 
+ 108: 0000: !Put a four byte integer into a string at offset
+ 109: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 110: 0000:     STRING S$
+ 111: 0000:     INTEGER*2 P%
+ 112: 0000:     INTEGER*4 N%
+ 113: 0000:     INTEGER*1 PUTN4
+ 114: 0000: END FUNCTION
+ 115: 0000: 
+ 116: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 117: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 118: 0000:     STRING S$
+ 119: 0000:     INTEGER*2 P%
+ 120: 0000:     REAL R
+ 121: 0000:     INTEGER*1 PUTR10
+ 122: 0000: END FUNCTION
+ 123: 0000: 
+ 124: 0000: !Peek a two byte integer from a memory address
+ 125: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 126: 0000:     INTEGER*4 A%
+ 127: 0000:     INTEGER*2 PEEKN2
+ 128: 0000: END FUNCTION
+ 129: 0000: 
+ 130: 0000: !Peek a four byte integer from a memory address
+ 131: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 132: 0000:     INTEGER*4 A%
+ 133: 0000:     INTEGER*4 PEEKN4
+ 134: 0000: END FUNCTION
+ 135: 0000: 
+ 136: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 137: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 138: 0000:     INTEGER*4 A%
+ 139: 0000:     REAL PEEKR10
+ 140: 0000: END FUNCTION
+ 141: 0000: 
+ 142: 0000: !Poke a two byte integer to a memory address
+ 143: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 144: 0000:     INTEGER*4 A%
+ 145: 0000:     INTEGER*2 N%
+ 146: 0000:     INTEGER*1 POKEN2
+ 147: 0000: END FUNCTION
+ 148: 0000: 
+ 149: 0000: !Poke a four byte integer to a memory address
+ 150: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 151: 0000:     INTEGER*4 A%
+ 152: 0000:     INTEGER*4 N%
+ 153: 0000:     INTEGER*1 POKEN4
+ 154: 0000: END FUNCTION
+ 155: 0000: 
+ 156: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 157: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 158: 0000:     INTEGER*4 A%
+ 159: 0000:     REAL R
+ 160: 0000:     INTEGER*1 POKER10
+ 161: 0000: END FUNCTION
+ 162: 0000: 
+ 163: 0000: 
+ 164: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 165: 0000: \/* FUNCTION DELVINDX.SET                                          */
+ 166: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 167: 0000: 
+ 168: 0000:     FUNCTION DELVINDX.SET PUBLIC
+ 169: 0014: 
+ 170: 0014:         INTEGER*1 DELVINDX.SET
+ 171: 0014: 
+ 172: 0014:         DELVINDX.REPORT.NUM% = 768
+ 173: 001d:         DELVINDX.FILE.NAME$  = "DELVINDX"
+ 174: 002c:         CRLF$ = CHR$(0DH) + CHR$(0AH)
+ 175: 0051:         QUOTE$ = """"
+ 176: 005e: 
+ 177: 005e:     END FUNCTION
+ 178: 006d: 
+ 179: 006d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 180: 006d: \/* FUNCTION READ.DELVINDX                                         */
+ 181: 006d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 182: 006d: 
+ 183: 006d:     FUNCTION READ.DELVINDX PUBLIC
+ 184: 0081: 
+ 185: 0081:         STRING DELVINDX.REC$
+ 186: 0081:         INTEGER*2 READ.DELVINDX
+ 187: 0081: 
+ 188: 0081:         READ.DELVINDX = 1
+ 189: 0086: 
+ 190: 0086:         IF END #DELVINDX.SESS.NUM% THEN READ.ERROR
+ 191: 009a:         READ #DELVINDX.SESS.NUM%; DELVINDX.REC$                             !BSH
+ 192: 00b6: 
+ 193: 00b6:         DELVINDX.UOD.LICENCE$       = MID$(DELVINDX.REC$, 1, 10)            !BSH
+ 194: 00d2:         DELVINDX.UOD.SEQ$           = MID$(DELVINDX.REC$, 11, 5)            !BSH
+ 195: 00ee:         DELVINDX.UOD.DESPATCH.DATE$ = MID$(DELVINDX.REC$, 16, 6)            !BSH
+ 196: 010a:         DELVINDX.UOD.PARENT$        = MID$(DELVINDX.REC$, 22, 10)           !BSH
+ 197: 0126:         DELVINDX.UOD.TYPE$          = MID$(DELVINDX.REC$, 32, 1)            !BSH
+ 198: 0142:         DELVINDX.UOD.EXP.DEL.DATE$  = MID$(DELVINDX.REC$, 33, 6)            !BSH
+ 199: 015e:         DELVINDX.UOD.BOL.FLAG$      = MID$(DELVINDX.REC$, 39, 1)            !BSH
+ 200: 017a:         DELVINDX.FILLER$            = MID$(DELVINDX.REC$, 40, 32767)        !BSH
+ 201: 0197: 
+ 202: 0197:         READ.DELVINDX = 0
+ 203: 019c:         EXIT FUNCTION
+ 204: 019e: 
+ 205: 019e: READ.ERROR:
+ 206: 019e: 
+ 207: 019e:         FILE.OPERATION$     = "R"
+ 208: 01ad:         CURRENT.REPORT.NUM% = DELVINDX.REPORT.NUM%
+ 209: 01bb:         CURRENT.CODE$       = ""
+ 210: 01ca: 
+ 211: 01ca:     END FUNCTION
+ 212: 01d9: 
+ 213: 01d9: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 214: 01d9: \/* FUNCTION WRITE.DELVINDX                                        */
+ 215: 01d9: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 216: 01d9: 
+ 217: 01d9:     FUNCTION WRITE.DELVINDX PUBLIC
+ 218: 01ed: 
+ 219: 01ed:         INTEGER*2 WRITE.DELVINDX
+ 220: 01ed: 
+ 221: 01ed:         WRITE.DELVINDX = 1
+ 222: 01f2: 
+ 223: 01f2:         IF END #DELVINDX.SESS.NUM% THEN WRITE.ERROR
+ 224: 0206:         WRITE FORM "C1 C10 C5 C6 C10 C1 C6 C1 C5 C1 C2";        \
+ 225: 02bf:             #DELVINDX.SESS.NUM%;                                \
+ 226: 02bf:             QUOTE$,                                             \
+ 227: 02bf:             DELVINDX.UOD.LICENCE$,                              \
+ 228: 02bf:             DELVINDX.UOD.SEQ$,                                  \
+ 229: 02bf:             DELVINDX.UOD.DESPATCH.DATE$,                        \
+ 230: 02bf:             DELVINDX.UOD.PARENT$,                               \
+ 231: 02bf:             DELVINDX.UOD.TYPE$,                                 \
+ 232: 02bf:             DELVINDX.UOD.EXP.DEL.DATE$,                         \
+ 233: 02bf:             DELVINDX.UOD.BOL.FLAG$,                             \
+ 234: 02bf:             DELVINDX.FILLER$,                                   \
+ 235: 02bf:             QUOTE$,                                             \
+ 236: 02bf:             CRLF$
+ 237: 02bf:             
+ 238: 02bf:         WRITE.DELVINDX = 0
+ 239: 02c4:         EXIT FUNCTION
+ 240: 02c6: 
+ 241: 02c6: WRITE.ERROR:
+ 242: 02c6: 
+ 243: 02c6:         FILE.OPERATION$ = "W"
+ 244: 02d5:         CURRENT.REPORT.NUM% = DELVINDX.REPORT.NUM%
+ 245: 02e3:         CURRENT.CODE$ = ""
+ 246: 02f2: 
+ 247: 02f2:     END FUNCTION
+ 248: 0301: 
+ 249: 0301: \/******************************************************************/
+ 250: 0301: 
+ 251: 0301: End of Compilation

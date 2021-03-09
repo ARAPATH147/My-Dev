@@ -1,0 +1,201 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***                  LDTBF - LDT BUFFER FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***                      REFERENCE : LDTBFFUN.BAS
+   7: 0000: \*** 
+   8: 0000: \***            Author :  Mike Kelsall   -   12th October 1992
+   9: 0000: \***
+  10: 0000: \******************************************************************************
+  11: 0000: \***
+  12: 0000: \***    Version B                Stuart Highley               17-09-97
+  13: 0000: \***    Added new fields for GRBI changes.
+  14: 0000: \***
+  15: 0000: \******************************************************************************
+  16: 0000: 
+  17: 0000:   %INCLUDE LDTBFDEC.J86
+  18: 0000: \******************************************************************************
+  19: 0000: \***
+  20: 0000: \***           %INCLUDE FOR LDTBF - LDT STOCK BUFFER FILE
+  21: 0000: \***
+  22: 0000: \***                    - FIELD DECLARATIONS   
+  23: 0000: \***                    - FILE REFERENCE PARAMETERS  
+  24: 0000: \***  
+  25: 0000: \***                    REFERENCE: LDTBFDEC.J86
+  26: 0000: \***      
+  27: 0000: \******************************************************************************
+  28: 0000: \***
+  29: 0000: \***     Version A:      Mike Kelsall      12th October 1992
+  30: 0000: \***
+  31: 0000: \***     Each order in the LDTBF is recorded in the following format:
+  32: 0000: \***
+  33: 0000: \***         Order Header  -  Record Identifier   2  ASC  "OH"
+  34: 0000: \***                          Supplier Number     3  UPD
+  35: 0000: \***                          Order Number        2  UPD
+  36: 0000: \***                          Order Suffix        1  ASC   
+  37: 0000: \*** 
+  38: 0000: \***  (N x)  Order Record  -  Record Identifier   2  ASC  "OD"
+  39: 0000: \***                          Boots/Bar code      6  UPD
+  40: 0000: \***                          Damaged Quantity    2  INT
+  41: 0000: \***                          Stolen Quantity     2  INT
+  42: 0000: \*** 
+  43: 0000: \***         Order Trailer -  Record Identifier   2  ASC  "OT"
+  44: 0000: \***                          Number of items     2  INT 
+  45: 0000: \***
+  46: 0000: \***
+  47: 0000: \***     Version B.          Stuart Highley            8th August 1997
+  48: 0000: \***     Added fields: LDTBF.DATE$, LDTBF.START.TIME$, LDTBF.END.TIME$,
+  49: 0000: \***                   LDTBF.LOGGED.QTY%
+  50: 0000: \***
+  51: 0000: \******************************************************************************
+  52: 0000: 
+  53: 0000: INTEGER*1 GLOBAL                 \
+  54: 0000:                                  \
+  55: 0000:            LDTBF.SESS.NUM% 
+  56: 0000: 
+  57: 0000: 
+  58: 0000: INTEGER*2 GLOBAL                 \
+  59: 0000:                                  \
+  60: 0000:            LDTBF.RECL%,          \
+  61: 0000:            LDTBF.REPORT.NUM%,    \
+  62: 0000:                                  \
+  63: 0000:            LDTBF.LOGGED.QTY%,    \  2 byte INT - Already logged qty    ! BSH
+  64: 0000:            LDTBF.DAMAGED.QTY%,   \  2 byte INT - Damaged quantity, from LDT
+  65: 0000:            LDTBF.STOLEN.QTY%,    \  2 byte INT - Stolen quantity, from LDT
+  66: 0000:            LDTBF.GOOD.QTY%,      \  2 byte INT - Good quantity, from LDT
+  67: 0000:            LDTBF.ORDERED.QTY%,   \  2 byte INT - Ordered quantity
+  68: 0000:            LDTBF.NUM.OF.ITEMS%   !  2 byte INT - Number of items in order
+  69: 0000:      
+  70: 0000: 
+  71: 0000: STRING GLOBAL                    \
+  72: 0000:                                  \
+  73: 0000:            LDTBF.FILE.NAME$,     \
+  74: 0000:                                  \
+  75: 0000:            LDTBF.RECORD.ID$,     \  2 byte ASC - Record Identifier
+  76: 0000:            LDTBF.SUPPLIER.NUM$,  \  3 byte UPD - Supplier number, from LDT
+  77: 0000:            LDTBF.ORDER.NUM$,     \  2 byte UPD - Order number, from LDT 
+  78: 0000:            LDTBF.ORDER.SUFFIX$,  \  1 byte ASC - Order suffix, from LDT
+  79: 0000:            LDTBF.DATE$,          \  3 byte UPD - Date booked in        ! BSH
+  80: 0000:            LDTBF.START.TIME$,    \  2 byte UPD - Time started booking  ! BSH
+  81: 0000:            LDTBF.END.TIME$,      \  2 byte UPD - Time ended booking    ! BSH
+  82: 0000:            LDTBF.REF.CODE$       !  6 byte UPD - Boots/Bar code, from LDT
+  83: 0000: 
+  84: 0000:   INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  85: 0000:   
+  86: 0000:   STRING GLOBAL FILE.OPERATION$, CURRENT.CODE$
+  87: 0000:   
+  88: 0000: 
+  89: 0000:   FUNCTION LDTBF.SET PUBLIC
+  90: 0014: \***************************
+  91: 0014: 
+  92: 0014:      LDTBF.FILE.NAME$  = "LDTBF"
+  93: 0023:      LDTBF.REPORT.NUM% = 210
+  94: 002c:      LDTBF.RECL%       = 20
+  95: 0035:      
+  96: 0035:   END FUNCTION
+  97: 0041: \------------------------------------------------------------------------------
+  98: 0041: REM EJECT^L       
+  99: 0041: 
+ 100: 0041:   FUNCTION READ.LDTBF PUBLIC
+ 101: 0055: \****************************   
+ 102: 0055: 
+ 103: 0055:      INTEGER*2 READ.LDTBF
+ 104: 0055:      
+ 105: 0055:      READ.LDTBF = 1
+ 106: 005a:      
+ 107: 005a:      IF END #LDTBF.SESS.NUM% THEN READ.ERROR
+ 108: 0070:      READ #LDTBF.SESS.NUM% ;  LDTBF.RECORD.ID$
+ 109: 0090: 
+ 110: 0090:      IF LDTBF.RECORD.ID$ = "OH" THEN BEGIN
+ 111: 00a6:         READ #LDTBF.SESS.NUM% ; LDTBF.SUPPLIER.NUM$,                   \
+ 112: 010b:                                 LDTBF.ORDER.NUM$,                      \
+ 113: 010b:                                 LDTBF.ORDER.SUFFIX$,                   \
+ 114: 010b:                                 LDTBF.DATE$,                           \ BSH
+ 115: 010b:                                 LDTBF.START.TIME$,                     \ BSH
+ 116: 010b:                                 LDTBF.END.TIME$,                       \ BSH
+ 117: 010b:                                 LDTBF.LOGGED.QTY%                      ! BSH
+ 118: 010b:      ENDIF ELSE IF LDTBF.RECORD.ID$ = "OD" THEN BEGIN
+ 119: 0121:         READ #LDTBF.SESS.NUM% ; LDTBF.REF.CODE$,                       \
+ 120: 016f:                                 LDTBF.ORDERED.QTY%,                    \ BSH
+ 121: 016f:                                 LDTBF.GOOD.QTY%,                       \ BSH
+ 122: 016f:                                 LDTBF.DAMAGED.QTY%,                    \
+ 123: 016f:                                 LDTBF.STOLEN.QTY%
+ 124: 016f:      ENDIF ELSE IF LDTBF.RECORD.ID$ = "OT" THEN BEGIN
+ 125: 0185:         READ #LDTBF.SESS.NUM% ; LDTBF.NUM.OF.ITEMS%
+ 126: 01a7:      ENDIF ELSE BEGIN
+ 127: 01a7:         GOTO READ.ERROR
+ 128: 01a9:      ENDIF
+ 129: 01a9: 
+ 130: 01a9:      READ.LDTBF = 0
+ 131: 01ae:      EXIT FUNCTION
+ 132: 01b0:      
+ 133: 01b0:      
+ 134: 01b0:    READ.ERROR:
+ 135: 01b0:      
+ 136: 01b0:      FILE.OPERATION$     = "R"
+ 137: 01bf:      CURRENT.CODE$       = PACK$("0000000000000000")
+ 138: 01d3:      CURRENT.REPORT.NUM% = LDTBF.REPORT.NUM%
+ 139: 01e1:      
+ 140: 01e1:      EXIT FUNCTION          
+ 141: 01e3:      
+ 142: 01e3: 
+ 143: 01e3:   END FUNCTION
+ 144: 01f2: \------------------------------------------------------------------------------
+ 145: 01f2: 
+ 146: 01f2:   FUNCTION WRITE.LDTBF PUBLIC
+ 147: 0206: \*****************************
+ 148: 0206: 
+ 149: 0206:      INTEGER*2 WRITE.LDTBF
+ 150: 0206:      
+ 151: 0206:      WRITE.LDTBF = 1
+ 152: 020b:      
+ 153: 020b:      IF END #LDTBF.SESS.NUM% THEN WRITE.ERROR
+ 154: 0221:      WRITE #LDTBF.SESS.NUM%; LDTBF.RECORD.ID$
+ 155: 0241:      
+ 156: 0241:      IF LDTBF.RECORD.ID$ = "OH" THEN BEGIN
+ 157: 0257:         WRITE # LDTBF.SESS.NUM% ; LDTBF.SUPPLIER.NUM$,                 \
+ 158: 02d3:                                   LDTBF.ORDER.NUM$,                    \
+ 159: 02d3:                                   LDTBF.ORDER.SUFFIX$,                 \
+ 160: 02d3:                                   LDTBF.DATE$,                         \ BSH
+ 161: 02d3:                                   LDTBF.START.TIME$,                   \ BSH
+ 162: 02d3:                                   LDTBF.END.TIME$,                     \ BSH
+ 163: 02d3:                                   LDTBF.LOGGED.QTY%                    ! BSH
+ 164: 02d3:         GOTO WRITE.COMPLETE
+ 165: 02d6:      ENDIF 
+ 166: 02d6: 
+ 167: 02d6:      IF LDTBF.RECORD.ID$ = "OD" THEN BEGIN                        
+ 168: 02ec:         WRITE #LDTBF.SESS.NUM% ; LDTBF.REF.CODE$,                      \
+ 169: 033c:                                  LDTBF.ORDERED.QTY%,                   \ BSH
+ 170: 033c:                                  LDTBF.GOOD.QTY%,                      \ BSH
+ 171: 033c:                                  LDTBF.DAMAGED.QTY%,                   \
+ 172: 033c:                                  LDTBF.STOLEN.QTY%
+ 173: 033c:         GOTO WRITE.COMPLETE
+ 174: 033e:      ENDIF
+ 175: 033e: 
+ 176: 033e:      IF LDTBF.RECORD.ID$ = "OT" THEN BEGIN
+ 177: 0354:         WRITE #LDTBF.SESS.NUM% ; LDTBF.NUM.OF.ITEMS%
+ 178: 0370:         GOTO WRITE.COMPLETE
+ 179: 0372:      ENDIF
+ 180: 0372: 
+ 181: 0372:      GOTO WRITE.ERROR
+ 182: 0374: 
+ 183: 0374: 
+ 184: 0374:    WRITE.COMPLETE:
+ 185: 0374: 
+ 186: 0374:      WRITE.LDTBF = 0
+ 187: 0379:      EXIT FUNCTION
+ 188: 037b: 
+ 189: 037b: 
+ 190: 037b:    WRITE.ERROR:
+ 191: 037b: 
+ 192: 037b:      FILE.OPERATION$     = "W"
+ 193: 038a:      CURRENT.CODE$       = PACK$("0000000000000000")
+ 194: 039e:      CURRENT.REPORT.NUM% = LDTBF.REPORT.NUM%
+ 195: 03ac: 
+ 196: 03ac:      EXIT FUNCTION
+ 197: 03ae:      
+ 198: 03ae: 
+ 199: 03ae:   END FUNCTION
+ 200: 03bd: 
+ 201: 03bd: End of Compilation

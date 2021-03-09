@@ -1,0 +1,202 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***********************************************************************
+   3: 0000: \***
+   4: 0000: \***           FILE FUNCTIONS Boots.com Location File (BDCLOCON)
+   5: 0000: \***
+   6: 0000: \***           REFERENCE:   BDCLOFUN.BAS
+   7: 0000: \***
+   8: 0000: \***           VERSION A         Dave Constable        7th March 2016
+   9: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  10: 0000: \***           Initial version for User Story PMLA-17 & PMLA-58 to allow
+  11: 0000: \***           Location access for Parcels by controller and till for
+  12: 0000: \***           Boots.com/ie order parcels.
+  13: 0000: \***
+  14: 0000: \***           VERSION B         Lino Jacob           11th April 2016
+  15: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  16: 0000: \***           - User Story PMLA-16 : To disallow the deactivation of
+  17: 0000: \***             locations if there are parcels available at that
+  18: 0000: \***             location - Added a new field to hold count of parcels
+  19: 0000: \***
+  20: 0000: \***           VERSION c         Lino Jacob           18th April 2016
+  21: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  22: 0000: \***           - Added the node id to the file name to gain access from
+  23: 0000: \***             alternate controller.
+  24: 0000: \***
+  25: 0000: \***           VERSION D         Lino Jacob            8th Aug 2016
+  26: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  27: 0000: \***           - PMLA 213 - Changes to ULN of BDCLOCON
+  28: 0000: \***
+  29: 0000: \***           VERSION E         Dave Constable       15th Sep 2016
+  30: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  31: 0000: \***           Corrected ON ERROR for Read locon
+  32: 0000: \***
+  33: 0000: \***********************************************************************
+  34: 0000: \***********************************************************************
+  35: 0000: 
+  36: 0000: STRING GLOBAL CURRENT.CODE$
+  37: 0000: STRING GLOBAL FILE.OPERATION$
+  38: 0000: INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  39: 0000: 
+  40: 0000: %INCLUDE BDCLODEC.J86
+  41: 0000: \******************************************************************************
+  42: 0000: \******************************************************************************
+  43: 0000: \***
+  44: 0000: \***           FILE DECLARATIONS Boots.com Location File (BDCLOCON)
+  45: 0000: \***
+  46: 0000: \***           REFERENCE:   BDCLODEC.J86
+  47: 0000: \***
+  48: 0000: \***           VERSION A         Dave Constable        7th March 2016
+  49: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  50: 0000: \***           Initial version for User Story PMLA-17 & PMLA-58 to allow
+  51: 0000: \***           Location access for Parcels by controller and till for
+  52: 0000: \***           Boots.com/ie order parcels.
+  53: 0000: \***
+  54: 0000: \***           VERSION B         Lino Jacob           11th April 2016
+  55: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  56: 0000: \***           - User Story PMLA-16 : To disallow the deactivation of
+  57: 0000: \***             locations if there are parcels available at that
+  58: 0000: \***             location - Added a new field to hold count of parcels
+  59: 0000: \***
+  60: 0000: \*******************************************************************************
+  61: 0000: \*******************************************************************************
+  62: 0000: 
+  63: 0000: \********************************************************************
+  64: 0000: \*** file variables
+  65: 0000: \********************************************************************
+  66: 0000:     INTEGER*1   GLOBAL  BDCLOCON.OPEN
+  67: 0000: 
+  68: 0000:     INTEGER*2   GLOBAL  BDCLOCON.RECL%
+  69: 0000:     INTEGER*2   GLOBAL  BDCLOCON.REPORT.NUM%
+  70: 0000:     INTEGER*2   GLOBAL  BDCLOCON.SESS.NUM%
+  71: 0000: 
+  72: 0000:     INTEGER*4   GLOBAL  BDCLOCON.TOTAL.RECORDS%
+  73: 0000: 
+  74: 0000:     STRING      GLOBAL  BDCLOCON.FILE.NAME$
+  75: 0000:     STRING      GLOBAL  BDCLOCON.FILLER$
+  76: 0000:     STRING      GLOBAL  BDCLOCON.FORM$
+  77: 0000:     STRING      GLOBAL  BDCLOCON.LAST$
+  78: 0000:     STRING      GLOBAL  BDCLOCON.TEXT$
+  79: 0000: \********************************************************************
+  80: 0000: \*** record variables listed in field order
+  81: 0000: \********************************************************************
+  82: 0000:     INTEGER*2   GLOBAL  BDCLOCON.RECORD.NUM%    ! record number
+  83: 0000:     STRING      GLOBAL  BDCLOCON.LONG.NAME$     ! long location name
+  84: 0000:     STRING      GLOBAL  BDCLOCON.SHORT.NAME$    ! short location name
+  85: 0000:     STRING      GLOBAL  BDCLOCON.STATUS$        ! active or not
+  86: 0000:     INTEGER*2   GLOBAL  BDCLOCON.PARCEL.COUNT%  ! parcel count          !BLJ
+  87: 0000: 
+  88: 0000: 
+  89: 0000: 
+  90: 0000: !***********************************************************************
+  91: 0000: !***
+  92: 0000: !***    FUNCTION        BDCLOCON.SET
+  93: 0000: !***
+  94: 0000: !***    sets the global variables for the file.
+  95: 0000: !***
+  96: 0000: !***********************************************************************
+  97: 0000: FUNCTION BDCLOCON.SET PUBLIC
+  98: 0014: 
+  99: 0014:     BDCLOCON.FILE.NAME$     = "BDCLOCON"                                !DLJ
+ 100: 0023: !   BDCLOCON.FILE.NAME$     = "ADXLXACN::D:\ADX_UDT1\BDCLOCON.BIN"      !DLJ
+ 101: 0023:                                                                         !DLJ
+ 102: 0023:     BDCLOCON.FORM$          = "C1 C10 C20 I2 C13 C2"                    !BLJ
+ 103: 0032:     BDCLOCON.RECL%          = 48
+ 104: 003b:     BDCLOCON.REPORT.NUM%    = 892
+ 105: 0044: 
+ 106: 0044: END FUNCTION
+ 107: 0050: 
+ 108: 0050: !***********************************************************************
+ 109: 0050: !***
+ 110: 0050: !***    FUNCTION        READ.BDCLOCON
+ 111: 0050: !***
+ 112: 0050: !***    Read the Location file into Globals.
+ 113: 0050: !***    Local Error handling to cater for file and LAN errors
+ 114: 0050: !***
+ 115: 0050: !***********************************************************************
+ 116: 0050: FUNCTION READ.BDCLOCON PUBLIC
+ 117: 0064:     INTEGER*2   READ.BDCLOCON
+ 118: 0064:     STRING      F.CRLF$
+ 119: 0064: 
+ 120: 0064: ON ERROR GOTO READ.BDCLOCON.ERROR                                       !EDC
+ 121: 0071:     READ.BDCLOCON = 1
+ 122: 0076: 
+ 123: 0076: !    IF END #BDCLOCON.SESS.NUM% THEN READ.BDCLOCON.ERROR                !EDC
+ 124: 0076:     READ FORM BDCLOCON.FORM$;          \
+ 125: 00e3:        #BDCLOCON.SESS.NUM%,            \
+ 126: 00e3:        BDCLOCON.RECORD.NUM%;           \ record number
+ 127: 00e3:        BDCLOCON.STATUS$,               \ active?
+ 128: 00e3:        BDCLOCON.SHORT.NAME$,           \ short location name
+ 129: 00e3:        BDCLOCON.LONG.NAME$,            \ long location name
+ 130: 00e3:        BDCLOCON.PARCEL.COUNT%,         \ count of parcels               !BLJ
+ 131: 00e3:        BDCLOCON.FILLER$,               \ filler for future usage
+ 132: 00e3:        F.CRLF$                         ! CR & LF
+ 133: 00e3: 
+ 134: 00e3:     READ.BDCLOCON = 0
+ 135: 00e8: 
+ 136: 00e8: FUNC.EXIT:
+ 137: 00e8:     EXIT FUNCTION
+ 138: 00eb: 
+ 139: 00eb: READ.BDCLOCON.ERROR:
+ 140: 00eb: !***********************************************************************
+ 141: 00eb: !* Error Handling
+ 142: 00eb: !***********************************************************************
+ 143: 00eb: 
+ 144: 00eb:        FILE.OPERATION$ = "R"
+ 145: 00fa:        CURRENT.REPORT.NUM% = BDCLOCON.REPORT.NUM%
+ 146: 0108:        ! set defaults on fail
+ 147: 0108:        BDCLOCON.SHORT.NAME$ = \
+ 148: 0163:         "REC #"+RIGHT$(STRING$(5," ")+STR$(BDCLOCON.RECORD.NUM%),5)
+ 149: 0163:        BDCLOCON.LONG.NAME$  = "NO RECORD "+BDCLOCON.SHORT.NAME$
+ 150: 0180: 
+ 151: 0180:     RESUME FUNC.EXIT
+ 152: 018f: 
+ 153: 018f: END FUNCTION
+ 154: 019e: 
+ 155: 019e: !***********************************************************************
+ 156: 019e: !***
+ 157: 019e: !***    FUNCTION        WRITE.BDCLOCON
+ 158: 019e: !***
+ 159: 019e: !***    Write the Location file from Globals.
+ 160: 019e: !***    Local Error handling to cater for file and LAN errors
+ 161: 019e: !***
+ 162: 019e: !***********************************************************************
+ 163: 019e: FUNCTION WRITE.BDCLOCON PUBLIC
+ 164: 01b2:     INTEGER*2   WRITE.BDCLOCON
+ 165: 01b2:     STRING      F.CRLF$
+ 166: 01b2: 
+ 167: 01b2:     ON ERROR GOTO FUNC.ERR
+ 168: 01bf: 
+ 169: 01bf:     WRITE.BDCLOCON = 1
+ 170: 01c4: 
+ 171: 01c4:     F.CRLF$ = CHR$(0DH)+CHR$(0AH)
+ 172: 01e9: 
+ 173: 01e9:     WRITE FORM BDCLOCON.FORM$;          \
+ 174: 026a:        #BDCLOCON.SESS.NUM%,            \
+ 175: 026a:        BDCLOCON.RECORD.NUM%;           \ record number
+ 176: 026a:        BDCLOCON.STATUS$,               \ active?
+ 177: 026a:        BDCLOCON.SHORT.NAME$,           \ short location name
+ 178: 026a:        BDCLOCON.LONG.NAME$,            \ long location name
+ 179: 026a:        BDCLOCON.PARCEL.COUNT%,         \ count of parcels               !BLJ
+ 180: 026a:        BDCLOCON.FILLER$,               \ filler for future usage
+ 181: 026a:        F.CRLF$                         ! CR & LF
+ 182: 026a: 
+ 183: 026a:        WRITE.BDCLOCON = 0
+ 184: 026f: 
+ 185: 026f: FUNC.EXIT:
+ 186: 026f:     EXIT FUNCTION
+ 187: 0271: 
+ 188: 0271: FUNC.ERR:
+ 189: 0271: !***********************************************************************
+ 190: 0271: !* Error Handling
+ 191: 0271: !***********************************************************************
+ 192: 0271: 
+ 193: 0271:     FILE.OPERATION$ = "W"
+ 194: 0280:     CURRENT.REPORT.NUM% = BDCLOCON.REPORT.NUM%
+ 195: 028e: 
+ 196: 028e:     RESUME FUNC.EXIT
+ 197: 029d: 
+ 198: 029d: END FUNCTION
+ 199: 02ac: 
+ 200: 02ac: 
+ 201: 02ac: 
+ 202: 02ac: End of Compilation

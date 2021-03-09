@@ -1,0 +1,249 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  DIRECT
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  CCTRLFUN.BAS
+  10: 0000: \***
+  11: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***				   CREDIT CLAIMS CONTROL FILE
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***      VERSION A : Michael J. Kelsall      14th September 1993
+  16: 0000: \***
+  17: 0000: \***      VERSION B : Michael J. Kelsall      03rd March 1994
+  18: 0000: \***      Problem with stored negative numbers not passing through the
+  19: 0000: \***      UNPACK$ after being stored using PACK$.
+  20: 0000: \***
+  21: 0000: \***      Version C    Nik Sen                 14th February 1995
+  22: 0000: \***      Removed version letters from included code (not commented).
+  23: 0000: \***      
+  24: 0000: \*****************************************************************************
+  25: 0000: \*****************************************************************************
+  26: 0000: 
+  27: 0000:   INTEGER*2 GLOBAL            \
+  28: 0000:          CURRENT.REPORT.NUM% 
+  29: 0000: 	 
+  30: 0000:   STRING GLOBAL               \
+  31: 0000:          CURRENT.CODE$,       \
+  32: 0000:          FILE.OPERATION$     	   
+  33: 0000: 
+  34: 0000:   %INCLUDE CCTRLDEC.J86
+  35: 0000: 
+  36: 0000: \*****************************************************************************
+  37: 0000: \*****************************************************************************
+  38: 0000: \***
+  39: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  40: 0000: \***
+  41: 0000: \***                   FILE TYPE:  DIRECT
+  42: 0000: \***
+  43: 0000: \***                   REFERENCE:  CCTRLDEC.J86
+  44: 0000: \***
+  45: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  46: 0000: \***				   CREDIT CLAIMS CONTROL FILE
+  47: 0000: \***
+  48: 0000: \***
+  49: 0000: \***      VERSION A : Michael J. Kelsall      14th September 1993
+  50: 0000: \***      
+  51: 0000: \*****************************************************************************
+  52: 0000: \*****************************************************************************
+  53: 0000: 
+  54: 0000: STRING GLOBAL			\
+  55: 0000:    CCTRL.FILE.NAME$,		\
+  56: 0000:    CCTRL.RECORD$,		\
+  57: 0000:    CCTRL.CREDIT.CLAIM.NUM$,	\  4 byte UPD
+  58: 0000:    CCTRL.CREDIT.RPT.RUN.DATE$,	\  3 byte UPD
+  59: 0000:    CCTRL.UOD.RPT.RUN.DATE$,	\  3 byte UPD
+  60: 0000:    CCTRL.FILLER$		! 65 byte ASC;  Spaces
+  61: 0000:    
+  62: 0000: 
+  63: 0000: INTEGER*2 GLOBAL		\
+  64: 0000:    CCTRL.RECL%,			\
+  65: 0000:    CCTRL.REPORT.NUM%,		\
+  66: 0000:    CCTRL.SESS.NUM%,		\
+  67: 0000:    CCTRL.REC.NUM%
+  68: 0000: 
+  69: 0000: INTEGER*4 GLOBAL		\
+  70: 0000:    CCTRL.STAFF.SALES%		!  4 INT, total sales to store staff,
+  71: 0000:    				!  stored as 5 byte UPD on file
+  72: 0000: 
+  73: 0000: 
+  74: 0000: 
+  75: 0000: 
+  76: 0000:   FUNCTION CCTRL.SET PUBLIC
+  77: 0014: 
+  78: 0014:      INTEGER*2 CCTRL.SET
+  79: 0014:      CCTRL.SET = 1
+  80: 0019: 
+  81: 0019:        CCTRL.REPORT.NUM% = 320
+  82: 0022:        CCTRL.RECL%       = 80
+  83: 002b:        CCTRL.FILE.NAME$  = "CCTRL"
+  84: 003a:   
+  85: 003a:      CCTRL.SET = 0
+  86: 003f: 
+  87: 003f:   END FUNCTION
+  88: 004e: 
+  89: 004e: 
+  90: 004e: 
+  91: 004e:   FUNCTION READ.CCTRL PUBLIC
+  92: 0062: 
+  93: 0062:     INTEGER*2 READ.CCTRL
+  94: 0062:        READ.CCTRL = 1    
+  95: 0067:          IF END #CCTRL.SESS.NUM% THEN READ.ERROR   
+  96: 007b:          READ FORM "C4,C3,C3,I4,C66"; #CCTRL.SESS.NUM%, CCTRL.REC.NUM%; \BMJK
+  97: 00d8:             CCTRL.CREDIT.CLAIM.NUM$,					\BMJK
+  98: 00d8:             CCTRL.CREDIT.RPT.RUN.DATE$,					\BMJK
+  99: 00d8:             CCTRL.UOD.RPT.RUN.DATE$,					\BMJK
+ 100: 00d8:             CCTRL.STAFF.SALES%,						\BMJK
+ 101: 00d8:             CCTRL.FILLER$ 						!BMJK
+ 102: 00d8:        READ.CCTRL = 0
+ 103: 00dd:        EXIT FUNCTION     
+ 104: 00df: 
+ 105: 00df:     READ.ERROR:
+ 106: 00df:        CURRENT.CODE$ = CCTRL.CREDIT.CLAIM.NUM$
+ 107: 00f5:        FILE.OPERATION$ = "R"
+ 108: 0104:        CURRENT.REPORT.NUM% = CCTRL.REPORT.NUM%
+ 109: 0112:        EXIT FUNCTION
+ 110: 0114: 
+ 111: 0114:   END FUNCTION
+ 112: 0123:   
+ 113: 0123: 
+ 114: 0123: 
+ 115: 0123:   FUNCTION READ.CCTRL.LOCKED PUBLIC
+ 116: 0137: 
+ 117: 0137:     INTEGER*2 READ.CCTRL.LOCKED
+ 118: 0137:     
+ 119: 0137:        READ.CCTRL.LOCKED = 1    
+ 120: 013c:        IF END #CCTRL.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 121: 0150:        READ FORM "C4,C3,C3,I4,C66"; #CCTRL.SESS.NUM% AUTOLOCK, 		\BMJK
+ 122: 01ad:          CCTRL.REC.NUM%; 						\BMJK
+ 123: 01ad:            CCTRL.CREDIT.CLAIM.NUM$,					\BMJK
+ 124: 01ad:            CCTRL.CREDIT.RPT.RUN.DATE$,					\BMJK
+ 125: 01ad:            CCTRL.UOD.RPT.RUN.DATE$,					\BMJK
+ 126: 01ad:            CCTRL.STAFF.SALES%,						\BMJK
+ 127: 01ad:            CCTRL.FILLER$ 						!BMJK
+ 128: 01ad:        READ.CCTRL.LOCKED = 0
+ 129: 01b2:        EXIT FUNCTION     
+ 130: 01b4: 	
+ 131: 01b4:     READ.LOCKED.ERROR:
+ 132: 01b4: 
+ 133: 01b4:         CURRENT.CODE$ = CCTRL.CREDIT.CLAIM.NUM$
+ 134: 01ca: 	FILE.OPERATION$ = "R"
+ 135: 01d9: 	CURRENT.REPORT.NUM% = CCTRL.REPORT.NUM%
+ 136: 01e7: 	   
+ 137: 01e7: 	EXIT FUNCTION
+ 138: 01e9: 
+ 139: 01e9:   END FUNCTION  
+ 140: 01f8: 
+ 141: 01f8: 
+ 142: 01f8: 
+ 143: 01f8:   FUNCTION WRITE.HOLD.CCTRL PUBLIC
+ 144: 020c: 
+ 145: 020c:     INTEGER*2 WRITE.HOLD.CCTRL
+ 146: 020c:     
+ 147: 020c:        WRITE.HOLD.CCTRL = 1
+ 148: 0211: 
+ 149: 0211:          IF END #CCTRL.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 150: 0225:          WRITE FORM "C4,C3,C3,I4,C66"; HOLD #CCTRL.SESS.NUM%, 		\BMJK
+ 151: 0296: 	   CCTRL.REC.NUM%; 						\BMJK
+ 152: 0296:             CCTRL.CREDIT.CLAIM.NUM$,					\BMJK
+ 153: 0296:             CCTRL.CREDIT.RPT.RUN.DATE$,					\BMJK
+ 154: 0296:             CCTRL.UOD.RPT.RUN.DATE$,					\BMJK
+ 155: 0296:             CCTRL.STAFF.SALES%,						\BMJK
+ 156: 0296:             CCTRL.FILLER$ 						!BMJK
+ 157: 0296:        WRITE.HOLD.CCTRL = 0
+ 158: 029b:        EXIT FUNCTION	     
+ 159: 029d:      
+ 160: 029d:     WRITE.HOLD.ERROR:
+ 161: 029d:        FILE.OPERATION$ = "W"
+ 162: 02ac:        CURRENT.REPORT.NUM% = CCTRL.REPORT.NUM%
+ 163: 02ba:        CURRENT.CODE$ = CCTRL.CREDIT.CLAIM.NUM$
+ 164: 02d0:        EXIT FUNCTION    
+ 165: 02d2: 
+ 166: 02d2:   END FUNCTION
+ 167: 02e1: 
+ 168: 02e1: 
+ 169: 02e1: 
+ 170: 02e1:   FUNCTION WRITE.UNLOCK.CCTRL PUBLIC
+ 171: 02f5: 
+ 172: 02f5:     INTEGER*2 WRITE.UNLOCK.CCTRL
+ 173: 02f5:     
+ 174: 02f5:        WRITE.UNLOCK.CCTRL = 1
+ 175: 02fa: 
+ 176: 02fa:        IF END #CCTRL.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 177: 030e:        WRITE FORM "C4,C3,C3,I4,C66"; #CCTRL.SESS.NUM% AUTOUNLOCK,	\BMJK
+ 178: 037f:          CCTRL.REC.NUM%; 						\BMJK
+ 179: 037f:             CCTRL.CREDIT.CLAIM.NUM$,					\BMJK
+ 180: 037f:             CCTRL.CREDIT.RPT.RUN.DATE$,					\BMJK
+ 181: 037f:             CCTRL.UOD.RPT.RUN.DATE$,					\BMJK
+ 182: 037f:             CCTRL.STAFF.SALES%,						\BMJK
+ 183: 037f:             CCTRL.FILLER$ 						!BMJK
+ 184: 037f: 
+ 185: 037f:        WRITE.UNLOCK.CCTRL = 0
+ 186: 0384:        EXIT FUNCTION	     
+ 187: 0386:      
+ 188: 0386:     WRITE.UNLOCK.ERROR:
+ 189: 0386:        FILE.OPERATION$ = "W"
+ 190: 0395:        CURRENT.REPORT.NUM% = CCTRL.REPORT.NUM%
+ 191: 03a3:        CURRENT.CODE$ = CCTRL.CREDIT.CLAIM.NUM$
+ 192: 03b9:        EXIT FUNCTION    
+ 193: 03bb: 
+ 194: 03bb:   END FUNCTION
+ 195: 03ca: 
+ 196: 03ca: 
+ 197: 03ca: 
+ 198: 03ca:   FUNCTION WRITE.HOLD.UNLOCK.CCTRL PUBLIC
+ 199: 03de: 
+ 200: 03de:     INTEGER*2 WRITE.HOLD.UNLOCK.CCTRL
+ 201: 03de:     
+ 202: 03de:        WRITE.HOLD.UNLOCK.CCTRL = 1
+ 203: 03e3:        IF END #CCTRL.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 204: 03f7:        WRITE FORM "C4,C3,C3,I4,C66"; HOLD #CCTRL.SESS.NUM% AUTOUNLOCK,	\BMJK
+ 205: 0468:          CCTRL.REC.NUM%; 						\BMJK
+ 206: 0468:            CCTRL.CREDIT.CLAIM.NUM$,					\BMJK
+ 207: 0468:            CCTRL.CREDIT.RPT.RUN.DATE$,					\BMJK
+ 208: 0468:            CCTRL.UOD.RPT.RUN.DATE$,					\BMJK
+ 209: 0468:            CCTRL.STAFF.SALES%,						\BMJK
+ 210: 0468:            CCTRL.FILLER$ 						!BMJK
+ 211: 0468: 
+ 212: 0468:        WRITE.HOLD.UNLOCK.CCTRL = 0
+ 213: 046d:        EXIT FUNCTION	     
+ 214: 046f:      
+ 215: 046f:     WRITE.HOLD.UNLOCK.ERROR:
+ 216: 046f:        FILE.OPERATION$ = "W"
+ 217: 047e:        CURRENT.REPORT.NUM% = CCTRL.REPORT.NUM%
+ 218: 048c:        CURRENT.CODE$ = CCTRL.CREDIT.CLAIM.NUM$
+ 219: 04a2:        EXIT FUNCTION    
+ 220: 04a4: 
+ 221: 04a4:   END FUNCTION
+ 222: 04b3: 
+ 223: 04b3: 
+ 224: 04b3: 
+ 225: 04b3:   FUNCTION WRITE.CCTRL PUBLIC
+ 226: 04c7: 
+ 227: 04c7:     INTEGER*2 WRITE.CCTRL
+ 228: 04c7:        WRITE.CCTRL = 1
+ 229: 04cc: 
+ 230: 04cc:        IF END #CCTRL.SESS.NUM% THEN WRITE.ERROR
+ 231: 04e0:        WRITE FORM "C4,C3,C3,I4,C66";#CCTRL.SESS.NUM%,CCTRL.REC.NUM%;    \BMJK
+ 232: 0551:           CCTRL.CREDIT.CLAIM.NUM$,					\BMJK
+ 233: 0551:           CCTRL.CREDIT.RPT.RUN.DATE$,					\BMJK
+ 234: 0551:           CCTRL.UOD.RPT.RUN.DATE$,					\BMJK
+ 235: 0551:           CCTRL.STAFF.SALES%,						\BMJK
+ 236: 0551:           CCTRL.FILLER$ 						!BMJK
+ 237: 0551: 
+ 238: 0551:        WRITE.CCTRL = 0
+ 239: 0556:        EXIT FUNCTION	     
+ 240: 0558:      
+ 241: 0558:     WRITE.ERROR:
+ 242: 0558:        FILE.OPERATION$ = "W"
+ 243: 0567:        CURRENT.REPORT.NUM% = CCTRL.REPORT.NUM%
+ 244: 0575:        CURRENT.CODE$ = CCTRL.CREDIT.CLAIM.NUM$
+ 245: 058b:        EXIT FUNCTION    
+ 246: 058d: 
+ 247: 058d:   END FUNCTION
+ 248: 059c: 
+ 249: 059c: End of Compilation

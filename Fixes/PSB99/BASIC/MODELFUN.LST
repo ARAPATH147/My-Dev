@@ -1,0 +1,176 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***                                                                          *
+   4: 0000: \***             %INCLUDE FOR OPERATOR MODEL FILE FUNCTIONS                   *
+   5: 0000: \***                                                                          *
+   6: 0000: \***                       REFERENCE : MODELFUN                               *
+   7: 0000: \***                                                                          *
+   8: 0000: \***                       FILE TYPE : Keyed                                  *
+   9: 0000: \***                                                                          *
+  10: 0000: \***                                                                          *
+  11: 0000: \***    VERSION A.              Mark Walker                    7th March 1994 *
+  12: 0000: \***    Original version.                                                     *
+  13: 0000: \***                                                                          *
+  14: 0000: \******************************************************************************
+  15: 0000: \******************************************************************************
+  16: 0000: 
+  17: 0000:         %INCLUDE MODELDEC.J86
+  18: 0000: \*******************************************************************************
+  19: 0000: \*******************************************************************************
+  20: 0000: \***
+  21: 0000: \***          %INCLUDE FOR OPERATOR MODEL FILE VARIABLE DECLARATIONS
+  22: 0000: \***
+  23: 0000: \***                     REFERENCE : MODELDEC
+  24: 0000: \***
+  25: 0000: \***                     FILE TYPE : Keyed
+  26: 0000: \***
+  27: 0000: \***    VERSION A.               Mark Walker                     7th March 1994
+  28: 0000: \***    Original version.
+  29: 0000: \***
+  30: 0000: \*******************************************************************************
+  31: 0000: \*******************************************************************************
+  32: 0000: 
+  33: 0000: 
+  34: 0000: \*******************************************************************************
+  35: 0000: \*******************************************************************************
+  36: 0000: \***
+  37: 0000: \***    MODEL RECORD LAYOUT
+  38: 0000: \***
+  39: 0000: \***     1  2  ASC  KEY$                 Key (Model type and identifier)
+  40: 0000: \***     1  1  ASC  TYPE$                Model type (T)ill or (C)ontroller
+  41: 0000: \***     2  1  UPD  IDENTIFIER$          Model number '01' - '99'
+  42: 0000: \***     3 20  ASC  DESCRIPTION$         Model Description
+  43: 0000: \***    23  3  ASC  REPORT.DESC$         Report Description
+  44: 0000: \***    26  1  ASC  DISPLAY.FLAG$        Display on Auth Screen? (Y/N)
+  45: 0000: \***    27  1  ASC  EALAUTH.OPTIONSK$    EALAUTH files options key field
+  46: 0000: \***    28 19  ASC  EALAUTH.FLAGS$       EALAUTH files authorisation flags
+  47: 0000: \***    47  1  UPD  ADXCSOUF.USER.ID$    ADXCSOUF files user ID field
+  48: 0000: \***    48  1  UPD  ADXCSOUF.GROUP.ID$   ADXCSOUF files group ID field
+  49: 0000: \***    49 14  ASC  ADXCSOUF.FLAGS$      ADXCSOUF files authorisation flags
+  50: 0000: \***    63  3  ASC  MODEL.NUM$           OPMOD model number
+  51: 0000: \***                                       "901" Personal Service
+  52: 0000: \***                                       "904" Controller Clerk
+  53: 0000: \***                                       "905" Pharmacy
+  54: 0000: \***                                       "908" Management
+  55: 0000: \***                                       "909" Security Level One
+  56: 0000: \***    66  1  ASC  SUPERVISOR.FLAG$     Till Supervisor? (Y/N)
+  57: 0000: \***    67  6  ASC  FILLER$              
+  58: 0000: \***
+  59: 0000: \***    Record length 72
+  60: 0000: \***
+  61: 0000: \*******************************************************************************
+  62: 0000: \*******************************************************************************
+  63: 0000:  
+  64: 0000:         STRING GLOBAL                   MODEL.ADXCSOUF.FLAGS$,          \
+  65: 0000:                                         MODEL.ADXCSOUF.GROUP.ID$,       \
+  66: 0000:                                         MODEL.ADXCSOUF.USER.ID$,        \
+  67: 0000:                                         MODEL.DESCRIPTION$,             \
+  68: 0000:                                         MODEL.DISPLAY.FLAG$,            \
+  69: 0000:                                         MODEL.EALAUTH.FLAGS$,           \
+  70: 0000:                                         MODEL.EALAUTH.OPTIONSK$,        \
+  71: 0000:                                         MODEL.FILE.NAME$,               \
+  72: 0000:                                         MODEL.FILLER$,                  \
+  73: 0000:                                         MODEL.IDENTIFIER$,              \
+  74: 0000:                                         MODEL.KEY$,                     \
+  75: 0000:                                         MODEL.MODEL.NUM$,               \
+  76: 0000:                                         MODEL.RECORD$,                  \
+  77: 0000:                                         MODEL.REPORT.DESC$,             \
+  78: 0000:                                         MODEL.SUPERVISOR.FLAG$,         \
+  79: 0000:                                         MODEL.TYPE$
+  80: 0000: 
+  81: 0000: 
+  82: 0000:         INTEGER*2 GLOBAL                MODEL.RECL%,                    \
+  83: 0000:                                         MODEL.REPORT.NUM%,              \
+  84: 0000:                                         MODEL.SESS.NUM%
+  85: 0000: 
+  86: 0000:         STRING GLOBAL                   CURRENT.CODE$,                  \
+  87: 0000:                                         FILE.OPERATION$
+  88: 0000: 
+  89: 0000:         INTEGER*2 GLOBAL                CURRENT.REPORT.NUM%
+  90: 0000: 
+  91: 0000:         FUNCTION MODEL.SET PUBLIC
+  92: 0014: 
+  93: 0014:         INTEGER*2 MODEL.SET
+  94: 0014: 
+  95: 0014:         MODEL.SET = 1
+  96: 0019: 
+  97: 0019:         MODEL.FILE.NAME$  = "MODEL"
+  98: 0028:         MODEL.REPORT.NUM% = 386
+  99: 0031:         MODEL.RECL%       = 72
+ 100: 003a: 
+ 101: 003a:         MODEL.SET = 0
+ 102: 003f: 
+ 103: 003f:         END FUNCTION
+ 104: 004e: 
+ 105: 004e:         FUNCTION READ.MODEL PUBLIC
+ 106: 0062: 
+ 107: 0062:         INTEGER*2 READ.MODEL
+ 108: 0062: 
+ 109: 0062:         READ.MODEL = 1
+ 110: 0067: 
+ 111: 0067:         IF END # MODEL.SESS.NUM% THEN READ.ERROR
+ 112: 007b:         READ FORM "T3,C70"; # MODEL.SESS.NUM%                           \
+ 113: 00ad:              KEY MODEL.KEY$;                                            \
+ 114: 00ad:              MODEL.RECORD$
+ 115: 00ad: 
+ 116: 00ad:         MODEL.TYPE$              = MID$(MODEL.KEY$,1,1)
+ 117: 00cc:         MODEL.IDENTIFIER$        = MID$(MODEL.KEY$,2,1)
+ 118: 00eb:         MODEL.DESCRIPTION$       = MID$(MODEL.RECORD$,1,20)
+ 119: 010a:         MODEL.REPORT.DESC$       = MID$(MODEL.RECORD$,21,3)
+ 120: 0129:         MODEL.DISPLAY.FLAG$      = MID$(MODEL.RECORD$,24,1)
+ 121: 0148:         MODEL.EALAUTH.OPTIONSK$  = MID$(MODEL.RECORD$,25,1)
+ 122: 0167:         MODEL.EALAUTH.FLAGS$     = MID$(MODEL.RECORD$,26,19)
+ 123: 0186:         MODEL.ADXCSOUF.USER.ID$  = MID$(MODEL.RECORD$,45,1)
+ 124: 01a5:         MODEL.ADXCSOUF.GROUP.ID$ = MID$(MODEL.RECORD$,46,1)
+ 125: 01c4:         MODEL.ADXCSOUF.FLAGS$    = MID$(MODEL.RECORD$,47,14)
+ 126: 01e3:         MODEL.MODEL.NUM$         = MID$(MODEL.RECORD$,61,3)
+ 127: 0202:         MODEL.SUPERVISOR.FLAG$   = MID$(MODEL.RECORD$,64,1)
+ 128: 0221:         MODEL.FILLER$            = MID$(MODEL.RECORD$,65,6)
+ 129: 0240: 
+ 130: 0240:         READ.MODEL = 0
+ 131: 0245: 
+ 132: 0245:         EXIT FUNCTION
+ 133: 0247: 
+ 134: 0247:         READ.ERROR:
+ 135: 0247: 
+ 136: 0247:         FILE.OPERATION$     = "R"
+ 137: 0256:         CURRENT.REPORT.NUM% = MODEL.REPORT.NUM%
+ 138: 0264:         CURRENT.CODE$       = MODEL.KEY$
+ 139: 027a: 
+ 140: 027a:         END FUNCTION
+ 141: 0289: 
+ 142: 0289: !*********************************************************************************
+ 143: 0289:  
+ 144: 0289:         FUNCTION WRITE.MODEL PUBLIC
+ 145: 029d: 
+ 146: 029d:         INTEGER*2 WRITE.MODEL
+ 147: 029d: 
+ 148: 029d:         WRITE.MODEL = 1        
+ 149: 02a2:                                       
+ 150: 02a2:         MODEL.RECORD$ = MODEL.DESCRIPTION$              +  \
+ 151: 031e:                         MODEL.REPORT.DESC$              +  \
+ 152: 031e:                         MODEL.DISPLAY.FLAG$             +  \
+ 153: 031e:                         MODEL.EALAUTH.OPTIONSK$         +  \
+ 154: 031e:                         MODEL.EALAUTH.FLAGS$            +  \
+ 155: 031e:                         MODEL.ADXCSOUF.USER.ID$         +  \
+ 156: 031e:                         MODEL.ADXCSOUF.GROUP.ID$        +  \
+ 157: 031e:                         MODEL.ADXCSOUF.FLAGS$           +  \
+ 158: 031e:                         MODEL.MODEL.NUM$                +  \
+ 159: 031e:                         MODEL.SUPERVISOR.FLAG$ 
+ 160: 031e:                                    
+ 161: 031e:         IF END # MODEL.SESS.NUM% THEN WRITE.ERROR                              
+ 162: 0332:         WRITE FORM "C2 C70";                                   \
+ 163: 0364:           #MODEL.SESS.NUM%;                                    \ 
+ 164: 0364:              MODEL.KEY$,                                       \
+ 165: 0364:              MODEL.RECORD$     
+ 166: 0364:         
+ 167: 0364:         WRITE.MODEL = 0  
+ 168: 0369: 
+ 169: 0369:         WRITE.ERROR:
+ 170: 0369:         
+ 171: 0369:         FILE.OPERATION$     = "W"
+ 172: 0378:         CURRENT.REPORT.NUM% = MODEL.REPORT.NUM%
+ 173: 0386:         CURRENT.CODE$       = MODEL.KEY$
+ 174: 039c: 
+ 175: 039c:         END FUNCTION
+ 176: 03ab: End of Compilation

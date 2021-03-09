@@ -1,0 +1,703 @@
+   1: 0000: REM \
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***            STORE INVOCE FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***               REFERENCE       : INVCEFUN.BAS
+   7: 0000: \***
+   8: 0000: \***   Version A.  Stephen Kelsey (CTG)   6th October 1992
+   9: 0000: \***
+  10: 0000: \***   VERSION B               Sumitha Moorthy                14/04/2015
+  11: 0000: \***   FOD - 431 Dallas Positive Receiving
+  12: 0000: \***   Introduced a new variable INV.RECEIPT.STATUS$ to INVCE file to
+  13: 0000: \***   store invoice positive receipt flag.
+  14: 0000: \***
+  15: 0000: \*****************************************************************************
+  16: 0000: \*****************************************************************************
+  17: 0000: 
+  18: 0000:    INTEGER*2 GLOBAL                 \
+  19: 0000:        CURRENT.REPORT.NUM%
+  20: 0000: 
+  21: 0000:    STRING GLOBAL                    \
+  22: 0000:        CURRENT.CODE$,               \
+  23: 0000:        FILE.OPERATION$
+  24: 0000: 
+  25: 0000:    %INCLUDE INVCEDEC.J86
+  26: 0000: REM \
+  27: 0000: \******************************************************************************
+  28: 0000: \******************************************************************************
+  29: 0000: \***
+  30: 0000: \***     %INCLUDE FOR STORE INVOICE FILE FIELD DECLARATIONS
+  31: 0000: \***                                     REFERENCE PARAMETERS
+  32: 0000: \***
+  33: 0000: \***               FILE TYPE    : Keyed
+  34: 0000: \***
+  35: 0000: \***               REFERENCE    : INVCEDEC.J86
+  36: 0000: \***
+  37: 0000: \***     Version A.  Stephen Kelsey (CTG)  6th October 1992
+  38: 0000: \***
+  39: 0000: \***     Combined from INVCENUC.J86 and INVCEFLC.J86
+  40: 0000: \***
+  41: 0000: \***     VERSION B             Sumitha Moorthy                14/04/2015
+  42: 0000: \***     FOD - 431 Dallas Positive Receiving
+  43: 0000: \***     Introduced a new variable INV.RECEIPT.STATUS$ to INVCE file to
+  44: 0000: \***     store invoice positive receipt flag.
+  45: 0000: \***
+  46: 0000: \******************************************************************************
+  47: 0000: \******************************************************************************
+  48: 0000: 
+  49: 0000:   STRING GLOBAL           \
+  50: 0000:     INV.CONFIRM.DATE$,    \ 3 bytes UPD. YYMMDD - set to low values if confirm
+  51: 0000:                           \                       flag is blank
+  52: 0000:     INV.CONFIRM.FLAG$,    \ 1 byte ASCII. C=Complete, A=Amended,
+  53: 0000:                           \               blank = not confirmed
+  54: 0000:     INV.COUNT$,           \ 1 byte UPD count of no of item entries on invoice
+  55: 0000:     INV.DALLAS.MKR$,      \ 1 byte ASCII Y = DALLAS based invoice
+  56: 0000:     INV.DATE$,            \ 3 bytes UPD. YYMMDD as on invoice
+  57: 0000:     INV.EXP.DEL.DATE$,    \ 3 bytes UPD. YYMMDD
+  58: 0000:     INV.FILLER$,          \ 1 bytes ASCII set to low values             !BSM
+  59: 0000:     INV.FOLIO.MONTH$,     \ 1 byte UPD (key)
+  60: 0000:     INV.FOLIO.NUM$,       \ 2 bytes UPD (key)
+  61: 0000:     INV.FOLIO.YEAR$,      \ 1 byte UPD
+  62: 0000:     INV.FSI$,             \ 1 byte ASCII folio series identifier (key)
+  63: 0000:     INV.INSYST.FLAG$,     \ 1 byte ASCII. Y=in stock system N=not
+  64: 0000:     INV.ITEM.DETAILS$(2), \ 24 bytes containing the repeated item string
+  65: 0000:                           \ details. The first dimension has 17 elements
+  66: 0000:                           \ corresponding to lines on the invoice.  The
+  67: 0000:                           \ second dimension has 4 elements:-
+  68: 0000:                           \   1. Boots Code - 4 bytes UPD
+  69: 0000:                           \   2. Price      - 4 bytes UPD
+  70: 0000:                           \   3. CSR Marker - 1 byte UPD
+  71: 0000:                           \   3. Filler     - 15 bytes ASCII
+  72: 0000:                           \ Any unused entries are set to low values.
+  73: 0000:     INV.KEY.FILLER$,      \ 4 bytes ASCII set to spaces (key)
+  74: 0000:     INV.ORDER.SUFFIX$,    \ 1 byte ASCII - low values if not Direct Invioce
+  75: 0000:     INV.RECEIPT.STATUS$,  \ Invoice positive receipt flag               !BSM
+  76: 0000:     INV.RECKEY$,          \ 9 byte key which comprises the following fields
+  77: 0000:     INV.STORE.SUF$,       \ 1 byte ASCII store suffix letter (key)
+  78: 0000:     INV.SUPPLIER.NO$,     \ 3 bytes UPD - low values if not Direct Invioce
+  79: 0000:     INV.TYPE$,            \ 1 byte ASCII P = Pre processed
+  80: 0000:     INVCE.FILE.NAME$      !
+  81: 0000: 
+  82: 0000:     INTEGER*2 GLOBAL      \
+  83: 0000:       INV.ITEM.QTYS%(2),  \ contains the repeated item integer details. The
+  84: 0000:                           \ first dimension has 17 elements corresponding to
+  85: 0000:                           \ lines on the invoice.  The second dimension has 2
+  86: 0000:                           \ elements:-
+  87: 0000:                           \   1. Quantity expected from invoice
+  88: 0000:                           \   2. Quantity actually received
+  89: 0000:                           \ Any unused entries are set to low values.
+  90: 0000:      INVCE.RECL%,         \
+  91: 0000:      INVCE.REPORT.NUM%,   \
+  92: 0000:      INVCE.SESS.NUM%,     \
+  93: 0000:      INV.WHOUSE.AREA%
+  94: 0000: 
+  95: 0000: 
+  96: 0000:   FUNCTION INVCE.SET PUBLIC
+  97: 0014: \***************************
+  98: 0014: 
+  99: 0014:     INVCE.REPORT.NUM%  = 82
+ 100: 001d:     INVCE.RECL%      = 508
+ 101: 0026:     INVCE.FILE.NAME$ = "INVCE"
+ 102: 0035: 
+ 103: 0035:     DIM INV.ITEM.DETAILS$(17,4)
+ 104: 005e:     DIM INV.ITEM.QTYS%(17,2)
+ 105: 0087: 
+ 106: 0087:   END FUNCTION
+ 107: 0093: 
+ 108: 0093: \-----------------------------------------------------------------------------
+ 109: 0093: REM EJECT
+ 110: 0093: 
+ 111: 0093:   FUNCTION READ.INVCE.LOCK PUBLIC
+ 112: 00a7: \********************************
+ 113: 00a7: 
+ 114: 00a7:     INTEGER*2 READ.INVCE.LOCK
+ 115: 00a7: 
+ 116: 00a7:     STRING         FORMAT$
+ 117: 00a7: 
+ 118: 00a7:     READ.INVCE.LOCK = 1
+ 119: 00ac: 
+ 120: 00ac:     FORMAT$ = "T10,C1,C3,C1,C3,I2,C1,C1,C1,C1,C3,C3,C1,C1,C1" +       \ !BSM
+ 121: 00c7:           STRING$(17,",2C4,2I2,C1,C15")
+ 122: 00c7:     IF END #INVCE.SESS.NUM% THEN ERROR.READ.INVCE.LOCK
+ 123: 00db:     READ FORM FORMAT$; #INVCE.SESS.NUM% AUTOLOCK KEY INV.RECKEY$;     \
+ 124: 0b96:                     INV.FOLIO.YEAR$,                                  \
+ 125: 0b96:                     INV.DATE$,                                        \
+ 126: 0b96:                     INV.CONFIRM.FLAG$,                                \
+ 127: 0b96:                     INV.CONFIRM.DATE$,                                \
+ 128: 0b96:                     INV.WHOUSE.AREA%,                                 \
+ 129: 0b96:                     INV.INSYST.FLAG$,                                 \
+ 130: 0b96:                     INV.COUNT$,                                       \
+ 131: 0b96:                     INV.TYPE$,                                        \
+ 132: 0b96:                     INV.DALLAS.MKR$,                                  \
+ 133: 0b96:                     INV.EXP.DEL.DATE$,                                \
+ 134: 0b96:                     INV.SUPPLIER.NO$,                                 \
+ 135: 0b96:                     INV.ORDER.SUFFIX$,                                \
+ 136: 0b96:                     INV.FILLER$,                                      \
+ 137: 0b96:                     INV.RECEIPT.STATUS$,                              \ !BSM
+ 138: 0b96:                     INV.ITEM.DETAILS$(1,1),                           \
+ 139: 0b96:                     INV.ITEM.DETAILS$(1,2),                           \
+ 140: 0b96:                     INV.ITEM.QTYS%(1,1),                              \
+ 141: 0b96:                     INV.ITEM.QTYS%(1,2),                              \
+ 142: 0b96:                     INV.ITEM.DETAILS$(1,3),                           \
+ 143: 0b96:                     INV.ITEM.DETAILS$(1,4),                           \
+ 144: 0b96:                     INV.ITEM.DETAILS$(2,1),                           \
+ 145: 0b96:                     INV.ITEM.DETAILS$(2,2),                           \
+ 146: 0b96:                     INV.ITEM.QTYS%(2,1),                              \
+ 147: 0b96:                     INV.ITEM.QTYS%(2,2),                              \
+ 148: 0b96:                     INV.ITEM.DETAILS$(2,3),                           \
+ 149: 0b96:                     INV.ITEM.DETAILS$(2,4),                           \
+ 150: 0b96:                     INV.ITEM.DETAILS$(3,1),                           \
+ 151: 0b96:                     INV.ITEM.DETAILS$(3,2),                           \
+ 152: 0b96:                     INV.ITEM.QTYS%(3,1),                              \
+ 153: 0b96:                     INV.ITEM.QTYS%(3,2),                              \
+ 154: 0b96:                     INV.ITEM.DETAILS$(3,3),                           \
+ 155: 0b96:                     INV.ITEM.DETAILS$(3,4),                           \
+ 156: 0b96:                     INV.ITEM.DETAILS$(4,1),                           \
+ 157: 0b96:                     INV.ITEM.DETAILS$(4,2),                           \
+ 158: 0b96:                     INV.ITEM.QTYS%(4,1),                              \
+ 159: 0b96:                     INV.ITEM.QTYS%(4,2),                              \
+ 160: 0b96:                     INV.ITEM.DETAILS$(4,3),                           \
+ 161: 0b96:                     INV.ITEM.DETAILS$(4,4),                           \
+ 162: 0b96:                     INV.ITEM.DETAILS$(5,1),                           \
+ 163: 0b96:                     INV.ITEM.DETAILS$(5,2),                           \
+ 164: 0b96:                     INV.ITEM.QTYS%(5,1),                              \
+ 165: 0b96:                     INV.ITEM.QTYS%(5,2),                              \
+ 166: 0b96:                     INV.ITEM.DETAILS$(5,3),                           \
+ 167: 0b96:                     INV.ITEM.DETAILS$(5,4),                           \
+ 168: 0b96:                     INV.ITEM.DETAILS$(6,1),                           \
+ 169: 0b96:                     INV.ITEM.DETAILS$(6,2),                           \
+ 170: 0b96:                     INV.ITEM.QTYS%(6,1),                              \
+ 171: 0b96:                     INV.ITEM.QTYS%(6,2),                              \
+ 172: 0b96:                     INV.ITEM.DETAILS$(6,3),                           \
+ 173: 0b96:                     INV.ITEM.DETAILS$(6,4),                           \
+ 174: 0b96:                     INV.ITEM.DETAILS$(7,1),                           \
+ 175: 0b96:                     INV.ITEM.DETAILS$(7,2),                           \
+ 176: 0b96:                     INV.ITEM.QTYS%(7,1),                              \
+ 177: 0b96:                     INV.ITEM.QTYS%(7,2),                              \
+ 178: 0b96:                     INV.ITEM.DETAILS$(7,3),                           \
+ 179: 0b96:                     INV.ITEM.DETAILS$(7,4),                           \
+ 180: 0b96:                     INV.ITEM.DETAILS$(8,1),                           \
+ 181: 0b96:                     INV.ITEM.DETAILS$(8,2),                           \
+ 182: 0b96:                     INV.ITEM.QTYS%(8,1),                              \
+ 183: 0b96:                     INV.ITEM.QTYS%(8,2),                              \
+ 184: 0b96:                     INV.ITEM.DETAILS$(8,3),                           \
+ 185: 0b96:                     INV.ITEM.DETAILS$(8,4),                           \
+ 186: 0b96:                     INV.ITEM.DETAILS$(9,1),                           \
+ 187: 0b96:                     INV.ITEM.DETAILS$(9,2),                           \
+ 188: 0b96:                     INV.ITEM.QTYS%(9,1),                              \
+ 189: 0b96:                     INV.ITEM.QTYS%(9,2),                              \
+ 190: 0b96:                     INV.ITEM.DETAILS$(9,3),                           \
+ 191: 0b96:                     INV.ITEM.DETAILS$(9,4),                           \
+ 192: 0b96:                     INV.ITEM.DETAILS$(10,1),                          \
+ 193: 0b96:                     INV.ITEM.DETAILS$(10,2),                          \
+ 194: 0b96:                     INV.ITEM.QTYS%(10,1),                             \
+ 195: 0b96:                     INV.ITEM.QTYS%(10,2),                             \
+ 196: 0b96:                     INV.ITEM.DETAILS$(10,3),                          \
+ 197: 0b96:                     INV.ITEM.DETAILS$(10,4),                          \
+ 198: 0b96:                     INV.ITEM.DETAILS$(11,1),                          \
+ 199: 0b96:                     INV.ITEM.DETAILS$(11,2),                          \
+ 200: 0b96:                     INV.ITEM.QTYS%(11,1),                             \
+ 201: 0b96:                     INV.ITEM.QTYS%(11,2),                             \
+ 202: 0b96:                     INV.ITEM.DETAILS$(11,3),                          \
+ 203: 0b96:                     INV.ITEM.DETAILS$(11,4),                          \
+ 204: 0b96:                     INV.ITEM.DETAILS$(12,1),                          \
+ 205: 0b96:                     INV.ITEM.DETAILS$(12,2),                          \
+ 206: 0b96:                     INV.ITEM.QTYS%(12,1),                             \
+ 207: 0b96:                     INV.ITEM.QTYS%(12,2),                             \
+ 208: 0b96:                     INV.ITEM.DETAILS$(12,3),                          \
+ 209: 0b96:                     INV.ITEM.DETAILS$(12,4),                          \
+ 210: 0b96:                     INV.ITEM.DETAILS$(13,1),                          \
+ 211: 0b96:                     INV.ITEM.DETAILS$(13,2),                          \
+ 212: 0b96:                     INV.ITEM.QTYS%(13,1),                             \
+ 213: 0b96:                     INV.ITEM.QTYS%(13,2),                             \
+ 214: 0b96:                     INV.ITEM.DETAILS$(13,3),                          \
+ 215: 0b96:                     INV.ITEM.DETAILS$(13,4),                          \
+ 216: 0b96:                     INV.ITEM.DETAILS$(14,1),                          \
+ 217: 0b96:                     INV.ITEM.DETAILS$(14,2),                          \
+ 218: 0b96:                     INV.ITEM.QTYS%(14,1),                             \
+ 219: 0b96:                     INV.ITEM.QTYS%(14,2),                             \
+ 220: 0b96:                     INV.ITEM.DETAILS$(14,3),                          \
+ 221: 0b96:                     INV.ITEM.DETAILS$(14,4),                          \
+ 222: 0b96:                     INV.ITEM.DETAILS$(15,1),                          \
+ 223: 0b96:                     INV.ITEM.DETAILS$(15,2),                          \
+ 224: 0b96:                     INV.ITEM.QTYS%(15,1),                             \
+ 225: 0b96:                     INV.ITEM.QTYS%(15,2),                             \
+ 226: 0b96:                     INV.ITEM.DETAILS$(15,3),                          \
+ 227: 0b96:                     INV.ITEM.DETAILS$(15,4),                          \
+ 228: 0b96:                     INV.ITEM.DETAILS$(16,1),                          \
+ 229: 0b96:                     INV.ITEM.DETAILS$(16,2),                          \
+ 230: 0b96:                     INV.ITEM.QTYS%(16,1),                             \
+ 231: 0b96:                     INV.ITEM.QTYS%(16,2),                             \
+ 232: 0b96:                     INV.ITEM.DETAILS$(16,3),                          \
+ 233: 0b96:                     INV.ITEM.DETAILS$(16,4),                          \
+ 234: 0b96:                     INV.ITEM.DETAILS$(17,1),                          \
+ 235: 0b96:                     INV.ITEM.DETAILS$(17,2),                          \
+ 236: 0b96:                     INV.ITEM.QTYS%(17,1),                             \
+ 237: 0b96:                     INV.ITEM.QTYS%(17,2),                             \
+ 238: 0b96:                     INV.ITEM.DETAILS$(17,3),                          \
+ 239: 0b96:                     INV.ITEM.DETAILS$(17,4)
+ 240: 0b96: 
+ 241: 0b96:     READ.INVCE.LOCK = 0
+ 242: 0b9b:     EXIT FUNCTION
+ 243: 0b9d: 
+ 244: 0b9d: ERROR.READ.INVCE.LOCK:
+ 245: 0b9d: 
+ 246: 0b9d:     CURRENT.CODE$ = INV.RECKEY$
+ 247: 0bb3:     FILE.OPERATION$ = "R"
+ 248: 0bc2:     CURRENT.REPORT.NUM% = INVCE.REPORT.NUM%
+ 249: 0bd0: 
+ 250: 0bd0:     EXIT FUNCTION
+ 251: 0bd2: 
+ 252: 0bd2: 
+ 253: 0bd2: END FUNCTION
+ 254: 0be1: 
+ 255: 0be1: \-----------------------------------------------------------------------------
+ 256: 0be1: REM EJECT
+ 257: 0be1: 
+ 258: 0be1: 
+ 259: 0be1:   FUNCTION READ.INVCE PUBLIC
+ 260: 0bf5: \***************************
+ 261: 0bf5: 
+ 262: 0bf5:     INTEGER*2 READ.INVCE
+ 263: 0bf5: 
+ 264: 0bf5:     STRING    FORMAT$
+ 265: 0bf5: 
+ 266: 0bf5:     READ.INVCE = 1
+ 267: 0bfa: 
+ 268: 0bfa:     FORMAT$ = "T10,C1,C3,C1,C3,I2,C1,C1,C1,C1,C3,C3,C1,C1,C1" +       \ !BSM
+ 269: 0c15:           STRING$(17,",2C4,2I2,C1,C15")
+ 270: 0c15:     IF END #INVCE.SESS.NUM% THEN ERROR.READ.INVCE
+ 271: 0c29:     READ FORM FORMAT$; #INVCE.SESS.NUM% KEY INV.RECKEY$;              \
+ 272: 16e4:                     INV.FOLIO.YEAR$,                                  \
+ 273: 16e4:                     INV.DATE$,                                        \
+ 274: 16e4:                     INV.CONFIRM.FLAG$,                                \
+ 275: 16e4:                     INV.CONFIRM.DATE$,                                \
+ 276: 16e4:                     INV.WHOUSE.AREA%,                                 \
+ 277: 16e4:                     INV.INSYST.FLAG$,                                 \
+ 278: 16e4:                     INV.COUNT$,                                       \
+ 279: 16e4:                     INV.TYPE$,                                        \
+ 280: 16e4:                     INV.DALLAS.MKR$,                                  \
+ 281: 16e4:                     INV.EXP.DEL.DATE$,                                \
+ 282: 16e4:                     INV.SUPPLIER.NO$,                                 \
+ 283: 16e4:                     INV.ORDER.SUFFIX$,                                \
+ 284: 16e4:                     INV.FILLER$,                                      \
+ 285: 16e4:                     INV.RECEIPT.STATUS$,                              \ !BSM
+ 286: 16e4:                     INV.ITEM.DETAILS$(1,1),                           \
+ 287: 16e4:                     INV.ITEM.DETAILS$(1,2),                           \
+ 288: 16e4:                     INV.ITEM.QTYS%(1,1),                              \
+ 289: 16e4:                     INV.ITEM.QTYS%(1,2),                              \
+ 290: 16e4:                     INV.ITEM.DETAILS$(1,3),                           \
+ 291: 16e4:                     INV.ITEM.DETAILS$(1,4),                           \
+ 292: 16e4:                     INV.ITEM.DETAILS$(2,1),                           \
+ 293: 16e4:                     INV.ITEM.DETAILS$(2,2),                           \
+ 294: 16e4:                     INV.ITEM.QTYS%(2,1),                              \
+ 295: 16e4:                     INV.ITEM.QTYS%(2,2),                              \
+ 296: 16e4:                     INV.ITEM.DETAILS$(2,3),                           \
+ 297: 16e4:                     INV.ITEM.DETAILS$(2,4),                           \
+ 298: 16e4:                     INV.ITEM.DETAILS$(3,1),                           \
+ 299: 16e4:                     INV.ITEM.DETAILS$(3,2),                           \
+ 300: 16e4:                     INV.ITEM.QTYS%(3,1),                              \
+ 301: 16e4:                     INV.ITEM.QTYS%(3,2),                              \
+ 302: 16e4:                     INV.ITEM.DETAILS$(3,3),                           \
+ 303: 16e4:                     INV.ITEM.DETAILS$(3,4),                           \
+ 304: 16e4:                     INV.ITEM.DETAILS$(4,1),                           \
+ 305: 16e4:                     INV.ITEM.DETAILS$(4,2),                           \
+ 306: 16e4:                     INV.ITEM.QTYS%(4,1),                              \
+ 307: 16e4:                     INV.ITEM.QTYS%(4,2),                              \
+ 308: 16e4:                     INV.ITEM.DETAILS$(4,3),                           \
+ 309: 16e4:                     INV.ITEM.DETAILS$(4,4),                           \
+ 310: 16e4:                     INV.ITEM.DETAILS$(5,1),                           \
+ 311: 16e4:                     INV.ITEM.DETAILS$(5,2),                           \
+ 312: 16e4:                     INV.ITEM.QTYS%(5,1),                              \
+ 313: 16e4:                     INV.ITEM.QTYS%(5,2),                              \
+ 314: 16e4:                     INV.ITEM.DETAILS$(5,3),                           \
+ 315: 16e4:                     INV.ITEM.DETAILS$(5,4),                           \
+ 316: 16e4:                     INV.ITEM.DETAILS$(6,1),                           \
+ 317: 16e4:                     INV.ITEM.DETAILS$(6,2),                           \
+ 318: 16e4:                     INV.ITEM.QTYS%(6,1),                              \
+ 319: 16e4:                     INV.ITEM.QTYS%(6,2),                              \
+ 320: 16e4:                     INV.ITEM.DETAILS$(6,3),                           \
+ 321: 16e4:                     INV.ITEM.DETAILS$(6,4),                           \
+ 322: 16e4:                     INV.ITEM.DETAILS$(7,1),                           \
+ 323: 16e4:                     INV.ITEM.DETAILS$(7,2),                           \
+ 324: 16e4:                     INV.ITEM.QTYS%(7,1),                              \
+ 325: 16e4:                     INV.ITEM.QTYS%(7,2),                              \
+ 326: 16e4:                     INV.ITEM.DETAILS$(7,3),                           \
+ 327: 16e4:                     INV.ITEM.DETAILS$(7,4),                           \
+ 328: 16e4:                     INV.ITEM.DETAILS$(8,1),                           \
+ 329: 16e4:                     INV.ITEM.DETAILS$(8,2),                           \
+ 330: 16e4:                     INV.ITEM.QTYS%(8,1),                              \
+ 331: 16e4:                     INV.ITEM.QTYS%(8,2),                              \
+ 332: 16e4:                     INV.ITEM.DETAILS$(8,3),                           \
+ 333: 16e4:                     INV.ITEM.DETAILS$(8,4),                           \
+ 334: 16e4:                     INV.ITEM.DETAILS$(9,1),                           \
+ 335: 16e4:                     INV.ITEM.DETAILS$(9,2),                           \
+ 336: 16e4:                     INV.ITEM.QTYS%(9,1),                              \
+ 337: 16e4:                     INV.ITEM.QTYS%(9,2),                              \
+ 338: 16e4:                     INV.ITEM.DETAILS$(9,3),                           \
+ 339: 16e4:                     INV.ITEM.DETAILS$(9,4),                           \
+ 340: 16e4:                     INV.ITEM.DETAILS$(10,1),                          \
+ 341: 16e4:                     INV.ITEM.DETAILS$(10,2),                          \
+ 342: 16e4:                     INV.ITEM.QTYS%(10,1),                             \
+ 343: 16e4:                     INV.ITEM.QTYS%(10,2),                             \
+ 344: 16e4:                     INV.ITEM.DETAILS$(10,3),                          \
+ 345: 16e4:                     INV.ITEM.DETAILS$(10,4),                          \
+ 346: 16e4:                     INV.ITEM.DETAILS$(11,1),                          \
+ 347: 16e4:                     INV.ITEM.DETAILS$(11,2),                          \
+ 348: 16e4:                     INV.ITEM.QTYS%(11,1),                             \
+ 349: 16e4:                     INV.ITEM.QTYS%(11,2),                             \
+ 350: 16e4:                     INV.ITEM.DETAILS$(11,3),                          \
+ 351: 16e4:                     INV.ITEM.DETAILS$(11,4),                          \
+ 352: 16e4:                     INV.ITEM.DETAILS$(12,1),                          \
+ 353: 16e4:                     INV.ITEM.DETAILS$(12,2),                          \
+ 354: 16e4:                     INV.ITEM.QTYS%(12,1),                             \
+ 355: 16e4:                     INV.ITEM.QTYS%(12,2),                             \
+ 356: 16e4:                     INV.ITEM.DETAILS$(12,3),                          \
+ 357: 16e4:                     INV.ITEM.DETAILS$(12,4),                          \
+ 358: 16e4:                     INV.ITEM.DETAILS$(13,1),                          \
+ 359: 16e4:                     INV.ITEM.DETAILS$(13,2),                          \
+ 360: 16e4:                     INV.ITEM.QTYS%(13,1),                             \
+ 361: 16e4:                     INV.ITEM.QTYS%(13,2),                             \
+ 362: 16e4:                     INV.ITEM.DETAILS$(13,3),                          \
+ 363: 16e4:                     INV.ITEM.DETAILS$(13,4),                          \
+ 364: 16e4:                     INV.ITEM.DETAILS$(14,1),                          \
+ 365: 16e4:                     INV.ITEM.DETAILS$(14,2),                          \
+ 366: 16e4:                     INV.ITEM.QTYS%(14,1),                             \
+ 367: 16e4:                     INV.ITEM.QTYS%(14,2),                             \
+ 368: 16e4:                     INV.ITEM.DETAILS$(14,3),                          \
+ 369: 16e4:                     INV.ITEM.DETAILS$(14,4),                          \
+ 370: 16e4:                     INV.ITEM.DETAILS$(15,1),                          \
+ 371: 16e4:                     INV.ITEM.DETAILS$(15,2),                          \
+ 372: 16e4:                     INV.ITEM.QTYS%(15,1),                             \
+ 373: 16e4:                     INV.ITEM.QTYS%(15,2),                             \
+ 374: 16e4:                     INV.ITEM.DETAILS$(15,3),                          \
+ 375: 16e4:                     INV.ITEM.DETAILS$(15,4),                          \
+ 376: 16e4:                     INV.ITEM.DETAILS$(16,1),                          \
+ 377: 16e4:                     INV.ITEM.DETAILS$(16,2),                          \
+ 378: 16e4:                     INV.ITEM.QTYS%(16,1),                             \
+ 379: 16e4:                     INV.ITEM.QTYS%(16,2),                             \
+ 380: 16e4:                     INV.ITEM.DETAILS$(16,3),                          \
+ 381: 16e4:                     INV.ITEM.DETAILS$(16,4),                          \
+ 382: 16e4:                     INV.ITEM.DETAILS$(17,1),                          \
+ 383: 16e4:                     INV.ITEM.DETAILS$(17,2),                          \
+ 384: 16e4:                     INV.ITEM.QTYS%(17,1),                             \
+ 385: 16e4:                     INV.ITEM.QTYS%(17,2),                             \
+ 386: 16e4:                     INV.ITEM.DETAILS$(17,3),                          \
+ 387: 16e4:                     INV.ITEM.DETAILS$(17,4)
+ 388: 16e4: 
+ 389: 16e4:     READ.INVCE = 0
+ 390: 16e9: 
+ 391: 16e9:     EXIT FUNCTION
+ 392: 16eb: 
+ 393: 16eb: ERROR.READ.INVCE:
+ 394: 16eb: 
+ 395: 16eb:     CURRENT.CODE$ = INV.RECKEY$
+ 396: 1701:     FILE.OPERATION$ = "R"
+ 397: 1710:     CURRENT.REPORT.NUM% = INVCE.REPORT.NUM%
+ 398: 171e: 
+ 399: 171e:     EXIT FUNCTION
+ 400: 1720: 
+ 401: 1720: 
+ 402: 1720: END FUNCTION
+ 403: 172f: 
+ 404: 172f: \-----------------------------------------------------------------------------
+ 405: 172f: REM EJECT
+ 406: 172f: 
+ 407: 172f:   FUNCTION WRITE.INVCE.UNLOCK PUBLIC
+ 408: 1743: \***********************************
+ 409: 1743: 
+ 410: 1743: 
+ 411: 1743:     INTEGER*2 WRITE.INVCE.UNLOCK
+ 412: 1743: 
+ 413: 1743:     STRING    FORMAT$
+ 414: 1743: 
+ 415: 1743:     WRITE.INVCE.UNLOCK = 1
+ 416: 1748: 
+ 417: 1748:     FORMAT$ = "C9,C1,C3,C1,C3,I2,C1,C1,C1,C1,C3,C3,C1,C1,C1" +        \ !BSM
+ 418: 1763:           STRING$(17,",2C4,2I2,C1,C15")
+ 419: 1763:     IF END #INVCE.SESS.NUM% THEN ERROR.WRITE.INVCE.UNLOCK
+ 420: 1777:     WRITE FORM FORMAT$; #INVCE.SESS.NUM% AUTOUNLOCK;                  \
+ 421: 23e5:                     INV.RECKEY$,                                      \
+ 422: 23e5:                     INV.FOLIO.YEAR$,                                  \
+ 423: 23e5:                     INV.DATE$,                                        \
+ 424: 23e5:                     INV.CONFIRM.FLAG$,                                \
+ 425: 23e5:                     INV.CONFIRM.DATE$,                                \
+ 426: 23e5:                     INV.WHOUSE.AREA%,                                 \
+ 427: 23e5:                     INV.INSYST.FLAG$,                                 \
+ 428: 23e5:                     INV.COUNT$,                                       \
+ 429: 23e5:                     INV.TYPE$,                                        \
+ 430: 23e5:                     INV.DALLAS.MKR$,                                  \
+ 431: 23e5:                     INV.EXP.DEL.DATE$,                                \
+ 432: 23e5:                     INV.SUPPLIER.NO$,                                 \
+ 433: 23e5:                     INV.ORDER.SUFFIX$,                                \
+ 434: 23e5:                     INV.FILLER$,                                      \
+ 435: 23e5:                     INV.RECEIPT.STATUS$,                              \ !BSM
+ 436: 23e5:                     INV.ITEM.DETAILS$(1,1),                           \
+ 437: 23e5:                     INV.ITEM.DETAILS$(1,2),                           \
+ 438: 23e5:                     INV.ITEM.QTYS%(1,1),                              \
+ 439: 23e5:                     INV.ITEM.QTYS%(1,2),                              \
+ 440: 23e5:                     INV.ITEM.DETAILS$(1,3),                           \
+ 441: 23e5:                     INV.ITEM.DETAILS$(1,4),                           \
+ 442: 23e5:                     INV.ITEM.DETAILS$(2,1),                           \
+ 443: 23e5:                     INV.ITEM.DETAILS$(2,2),                           \
+ 444: 23e5:                     INV.ITEM.QTYS%(2,1),                              \
+ 445: 23e5:                     INV.ITEM.QTYS%(2,2),                              \
+ 446: 23e5:                     INV.ITEM.DETAILS$(2,3),                           \
+ 447: 23e5:                     INV.ITEM.DETAILS$(2,4),                           \
+ 448: 23e5:                     INV.ITEM.DETAILS$(3,1),                           \
+ 449: 23e5:                     INV.ITEM.DETAILS$(3,2),                           \
+ 450: 23e5:                     INV.ITEM.QTYS%(3,1),                              \
+ 451: 23e5:                     INV.ITEM.QTYS%(3,2),                              \
+ 452: 23e5:                     INV.ITEM.DETAILS$(3,3),                           \
+ 453: 23e5:                     INV.ITEM.DETAILS$(3,4),                           \
+ 454: 23e5:                     INV.ITEM.DETAILS$(4,1),                           \
+ 455: 23e5:                     INV.ITEM.DETAILS$(4,2),                           \
+ 456: 23e5:                     INV.ITEM.QTYS%(4,1),                              \
+ 457: 23e5:                     INV.ITEM.QTYS%(4,2),                              \
+ 458: 23e5:                     INV.ITEM.DETAILS$(4,3),                           \
+ 459: 23e5:                     INV.ITEM.DETAILS$(4,4),                           \
+ 460: 23e5:                     INV.ITEM.DETAILS$(5,1),                           \
+ 461: 23e5:                     INV.ITEM.DETAILS$(5,2),                           \
+ 462: 23e5:                     INV.ITEM.QTYS%(5,1),                              \
+ 463: 23e5:                     INV.ITEM.QTYS%(5,2),                              \
+ 464: 23e5:                     INV.ITEM.DETAILS$(5,3),                           \
+ 465: 23e5:                     INV.ITEM.DETAILS$(5,4),                           \
+ 466: 23e5:                     INV.ITEM.DETAILS$(6,1),                           \
+ 467: 23e5:                     INV.ITEM.DETAILS$(6,2),                           \
+ 468: 23e5:                     INV.ITEM.QTYS%(6,1),                              \
+ 469: 23e5:                     INV.ITEM.QTYS%(6,2),                              \
+ 470: 23e5:                     INV.ITEM.DETAILS$(6,3),                           \
+ 471: 23e5:                     INV.ITEM.DETAILS$(6,4),                           \
+ 472: 23e5:                     INV.ITEM.DETAILS$(7,1),                           \
+ 473: 23e5:                     INV.ITEM.DETAILS$(7,2),                           \
+ 474: 23e5:                     INV.ITEM.QTYS%(7,1),                              \
+ 475: 23e5:                     INV.ITEM.QTYS%(7,2),                              \
+ 476: 23e5:                     INV.ITEM.DETAILS$(7,3),                           \
+ 477: 23e5:                     INV.ITEM.DETAILS$(7,4),                           \
+ 478: 23e5:                     INV.ITEM.DETAILS$(8,1),                           \
+ 479: 23e5:                     INV.ITEM.DETAILS$(8,2),                           \
+ 480: 23e5:                     INV.ITEM.QTYS%(8,1),                              \
+ 481: 23e5:                     INV.ITEM.QTYS%(8,2),                              \
+ 482: 23e5:                     INV.ITEM.DETAILS$(8,3),                           \
+ 483: 23e5:                     INV.ITEM.DETAILS$(8,4),                           \
+ 484: 23e5:                     INV.ITEM.DETAILS$(9,1),                           \
+ 485: 23e5:                     INV.ITEM.DETAILS$(9,2),                           \
+ 486: 23e5:                     INV.ITEM.QTYS%(9,1),                              \
+ 487: 23e5:                     INV.ITEM.QTYS%(9,2),                              \
+ 488: 23e5:                     INV.ITEM.DETAILS$(9,3),                           \
+ 489: 23e5:                     INV.ITEM.DETAILS$(9,4),                           \
+ 490: 23e5:                     INV.ITEM.DETAILS$(10,1),                          \
+ 491: 23e5:                     INV.ITEM.DETAILS$(10,2),                          \
+ 492: 23e5:                     INV.ITEM.QTYS%(10,1),                             \
+ 493: 23e5:                     INV.ITEM.QTYS%(10,2),                             \
+ 494: 23e5:                     INV.ITEM.DETAILS$(10,3),                          \
+ 495: 23e5:                     INV.ITEM.DETAILS$(10,4),                          \
+ 496: 23e5:                     INV.ITEM.DETAILS$(11,1),                          \
+ 497: 23e5:                     INV.ITEM.DETAILS$(11,2),                          \
+ 498: 23e5:                     INV.ITEM.QTYS%(11,1),                             \
+ 499: 23e5:                     INV.ITEM.QTYS%(11,2),                             \
+ 500: 23e5:                     INV.ITEM.DETAILS$(11,3),                          \
+ 501: 23e5:                     INV.ITEM.DETAILS$(11,4),                          \
+ 502: 23e5:                     INV.ITEM.DETAILS$(12,1),                          \
+ 503: 23e5:                     INV.ITEM.DETAILS$(12,2),                          \
+ 504: 23e5:                     INV.ITEM.QTYS%(12,1),                             \
+ 505: 23e5:                     INV.ITEM.QTYS%(12,2),                             \
+ 506: 23e5:                     INV.ITEM.DETAILS$(12,3),                          \
+ 507: 23e5:                     INV.ITEM.DETAILS$(12,4),                          \
+ 508: 23e5:                     INV.ITEM.DETAILS$(13,1),                          \
+ 509: 23e5:                     INV.ITEM.DETAILS$(13,2),                          \
+ 510: 23e5:                     INV.ITEM.QTYS%(13,1),                             \
+ 511: 23e5:                     INV.ITEM.QTYS%(13,2),                             \
+ 512: 23e5:                     INV.ITEM.DETAILS$(13,3),                          \
+ 513: 23e5:                     INV.ITEM.DETAILS$(13,4),                          \
+ 514: 23e5:                     INV.ITEM.DETAILS$(14,1),                          \
+ 515: 23e5:                     INV.ITEM.DETAILS$(14,2),                          \
+ 516: 23e5:                     INV.ITEM.QTYS%(14,1),                             \
+ 517: 23e5:                     INV.ITEM.QTYS%(14,2),                             \
+ 518: 23e5:                     INV.ITEM.DETAILS$(14,3),                          \
+ 519: 23e5:                     INV.ITEM.DETAILS$(14,4),                          \
+ 520: 23e5:                     INV.ITEM.DETAILS$(15,1),                          \
+ 521: 23e5:                     INV.ITEM.DETAILS$(15,2),                          \
+ 522: 23e5:                     INV.ITEM.QTYS%(15,1),                             \
+ 523: 23e5:                     INV.ITEM.QTYS%(15,2),                             \
+ 524: 23e5:                     INV.ITEM.DETAILS$(15,3),                          \
+ 525: 23e5:                     INV.ITEM.DETAILS$(15,4),                          \
+ 526: 23e5:                     INV.ITEM.DETAILS$(16,1),                          \
+ 527: 23e5:                     INV.ITEM.DETAILS$(16,2),                          \
+ 528: 23e5:                     INV.ITEM.QTYS%(16,1),                             \
+ 529: 23e5:                     INV.ITEM.QTYS%(16,2),                             \
+ 530: 23e5:                     INV.ITEM.DETAILS$(16,3),                          \
+ 531: 23e5:                     INV.ITEM.DETAILS$(16,4),                          \
+ 532: 23e5:                     INV.ITEM.DETAILS$(17,1),                          \
+ 533: 23e5:                     INV.ITEM.DETAILS$(17,2),                          \
+ 534: 23e5:                     INV.ITEM.QTYS%(17,1),                             \
+ 535: 23e5:                     INV.ITEM.QTYS%(17,2),                             \
+ 536: 23e5:                     INV.ITEM.DETAILS$(17,3),                          \
+ 537: 23e5:                     INV.ITEM.DETAILS$(17,4)
+ 538: 23e5: 
+ 539: 23e5:     WRITE.INVCE.UNLOCK = 0
+ 540: 23ea:     EXIT FUNCTION
+ 541: 23ec: 
+ 542: 23ec: ERROR.WRITE.INVCE.UNLOCK:
+ 543: 23ec: 
+ 544: 23ec:     CURRENT.CODE$ = INV.RECKEY$
+ 545: 2402:     FILE.OPERATION$ = "W"
+ 546: 2411:     CURRENT.REPORT.NUM% = INVCE.REPORT.NUM%
+ 547: 241f: 
+ 548: 241f:     EXIT FUNCTION
+ 549: 2421: 
+ 550: 2421: END FUNCTION
+ 551: 2430: 
+ 552: 2430: \-----------------------------------------------------------------------------
+ 553: 2430: REM EJECT
+ 554: 2430: 
+ 555: 2430:   FUNCTION WRITE.INVCE PUBLIC
+ 556: 2444: \****************************
+ 557: 2444: 
+ 558: 2444:     INTEGER*2 WRITE.INVCE
+ 559: 2444: 
+ 560: 2444:     STRING    FORMAT$
+ 561: 2444: 
+ 562: 2444:     WRITE.INVCE = 1
+ 563: 2449: 
+ 564: 2449:     FORMAT$ = "C9,C1,C3,C1,C3,I2,C1,C1,C1,C1,C3,C3,C1,C1,C1" +        \ !BSM
+ 565: 2464:           STRING$(17,",2C4,2I2,C1,C15")
+ 566: 2464:     IF END #INVCE.SESS.NUM% THEN ERROR.WRITE.INVCE
+ 567: 2478:     WRITE FORM FORMAT$; #INVCE.SESS.NUM%;                             \
+ 568: 30e6:                     INV.RECKEY$,                                      \
+ 569: 30e6:                     INV.FOLIO.YEAR$,                                  \
+ 570: 30e6:                     INV.DATE$,                                        \
+ 571: 30e6:                     INV.CONFIRM.FLAG$,                                \
+ 572: 30e6:                     INV.CONFIRM.DATE$,                                \
+ 573: 30e6:                     INV.WHOUSE.AREA%,                                 \
+ 574: 30e6:                     INV.INSYST.FLAG$,                                 \
+ 575: 30e6:                     INV.COUNT$,                                       \
+ 576: 30e6:                     INV.TYPE$,                                        \
+ 577: 30e6:                     INV.DALLAS.MKR$,                                  \
+ 578: 30e6:                     INV.EXP.DEL.DATE$,                                \
+ 579: 30e6:                     INV.SUPPLIER.NO$,                                 \
+ 580: 30e6:                     INV.ORDER.SUFFIX$,                                \
+ 581: 30e6:                     INV.FILLER$,                                      \
+ 582: 30e6:                     INV.RECEIPT.STATUS$,                              \ !BSM
+ 583: 30e6:                     INV.ITEM.DETAILS$(1,1),                           \
+ 584: 30e6:                     INV.ITEM.DETAILS$(1,2),                           \
+ 585: 30e6:                     INV.ITEM.QTYS%(1,1),                              \
+ 586: 30e6:                     INV.ITEM.QTYS%(1,2),                              \
+ 587: 30e6:                     INV.ITEM.DETAILS$(1,3),                           \
+ 588: 30e6:                     INV.ITEM.DETAILS$(1,4),                           \
+ 589: 30e6:                     INV.ITEM.DETAILS$(2,1),                           \
+ 590: 30e6:                     INV.ITEM.DETAILS$(2,2),                           \
+ 591: 30e6:                     INV.ITEM.QTYS%(2,1),                              \
+ 592: 30e6:                     INV.ITEM.QTYS%(2,2),                              \
+ 593: 30e6:                     INV.ITEM.DETAILS$(2,3),                           \
+ 594: 30e6:                     INV.ITEM.DETAILS$(2,4),                           \
+ 595: 30e6:                     INV.ITEM.DETAILS$(3,1),                           \
+ 596: 30e6:                     INV.ITEM.DETAILS$(3,2),                           \
+ 597: 30e6:                     INV.ITEM.QTYS%(3,1),                              \
+ 598: 30e6:                     INV.ITEM.QTYS%(3,2),                              \
+ 599: 30e6:                     INV.ITEM.DETAILS$(3,3),                           \
+ 600: 30e6:                     INV.ITEM.DETAILS$(3,4),                           \
+ 601: 30e6:                     INV.ITEM.DETAILS$(4,1),                           \
+ 602: 30e6:                     INV.ITEM.DETAILS$(4,2),                           \
+ 603: 30e6:                     INV.ITEM.QTYS%(4,1),                              \
+ 604: 30e6:                     INV.ITEM.QTYS%(4,2),                              \
+ 605: 30e6:                     INV.ITEM.DETAILS$(4,3),                           \
+ 606: 30e6:                     INV.ITEM.DETAILS$(4,4),                           \
+ 607: 30e6:                     INV.ITEM.DETAILS$(5,1),                           \
+ 608: 30e6:                     INV.ITEM.DETAILS$(5,2),                           \
+ 609: 30e6:                     INV.ITEM.QTYS%(5,1),                              \
+ 610: 30e6:                     INV.ITEM.QTYS%(5,2),                              \
+ 611: 30e6:                     INV.ITEM.DETAILS$(5,3),                           \
+ 612: 30e6:                     INV.ITEM.DETAILS$(5,4),                           \
+ 613: 30e6:                     INV.ITEM.DETAILS$(6,1),                           \
+ 614: 30e6:                     INV.ITEM.DETAILS$(6,2),                           \
+ 615: 30e6:                     INV.ITEM.QTYS%(6,1),                              \
+ 616: 30e6:                     INV.ITEM.QTYS%(6,2),                              \
+ 617: 30e6:                     INV.ITEM.DETAILS$(6,3),                           \
+ 618: 30e6:                     INV.ITEM.DETAILS$(6,4),                           \
+ 619: 30e6:                     INV.ITEM.DETAILS$(7,1),                           \
+ 620: 30e6:                     INV.ITEM.DETAILS$(7,2),                           \
+ 621: 30e6:                     INV.ITEM.QTYS%(7,1),                              \
+ 622: 30e6:                     INV.ITEM.QTYS%(7,2),                              \
+ 623: 30e6:                     INV.ITEM.DETAILS$(7,3),                           \
+ 624: 30e6:                     INV.ITEM.DETAILS$(7,4),                           \
+ 625: 30e6:                     INV.ITEM.DETAILS$(8,1),                           \
+ 626: 30e6:                     INV.ITEM.DETAILS$(8,2),                           \
+ 627: 30e6:                     INV.ITEM.QTYS%(8,1),                              \
+ 628: 30e6:                     INV.ITEM.QTYS%(8,2),                              \
+ 629: 30e6:                     INV.ITEM.DETAILS$(8,3),                           \
+ 630: 30e6:                     INV.ITEM.DETAILS$(8,4),                           \
+ 631: 30e6:                     INV.ITEM.DETAILS$(9,1),                           \
+ 632: 30e6:                     INV.ITEM.DETAILS$(9,2),                           \
+ 633: 30e6:                     INV.ITEM.QTYS%(9,1),                              \
+ 634: 30e6:                     INV.ITEM.QTYS%(9,2),                              \
+ 635: 30e6:                     INV.ITEM.DETAILS$(9,3),                           \
+ 636: 30e6:                     INV.ITEM.DETAILS$(9,4),                           \
+ 637: 30e6:                     INV.ITEM.DETAILS$(10,1),                          \
+ 638: 30e6:                     INV.ITEM.DETAILS$(10,2),                          \
+ 639: 30e6:                     INV.ITEM.QTYS%(10,1),                             \
+ 640: 30e6:                     INV.ITEM.QTYS%(10,2),                             \
+ 641: 30e6:                     INV.ITEM.DETAILS$(10,3),                          \
+ 642: 30e6:                     INV.ITEM.DETAILS$(10,4),                          \
+ 643: 30e6:                     INV.ITEM.DETAILS$(11,1),                          \
+ 644: 30e6:                     INV.ITEM.DETAILS$(11,2),                          \
+ 645: 30e6:                     INV.ITEM.QTYS%(11,1),                             \
+ 646: 30e6:                     INV.ITEM.QTYS%(11,2),                             \
+ 647: 30e6:                     INV.ITEM.DETAILS$(11,3),                          \
+ 648: 30e6:                     INV.ITEM.DETAILS$(11,4),                          \
+ 649: 30e6:                     INV.ITEM.DETAILS$(12,1),                          \
+ 650: 30e6:                     INV.ITEM.DETAILS$(12,2),                          \
+ 651: 30e6:                     INV.ITEM.QTYS%(12,1),                             \
+ 652: 30e6:                     INV.ITEM.QTYS%(12,2),                             \
+ 653: 30e6:                     INV.ITEM.DETAILS$(12,3),                          \
+ 654: 30e6:                     INV.ITEM.DETAILS$(12,4),                          \
+ 655: 30e6:                     INV.ITEM.DETAILS$(13,1),                          \
+ 656: 30e6:                     INV.ITEM.DETAILS$(13,2),                          \
+ 657: 30e6:                     INV.ITEM.QTYS%(13,1),                             \
+ 658: 30e6:                     INV.ITEM.QTYS%(13,2),                             \
+ 659: 30e6:                     INV.ITEM.DETAILS$(13,3),                          \
+ 660: 30e6:                     INV.ITEM.DETAILS$(13,4),                          \
+ 661: 30e6:                     INV.ITEM.DETAILS$(14,1),                          \
+ 662: 30e6:                     INV.ITEM.DETAILS$(14,2),                          \
+ 663: 30e6:                     INV.ITEM.QTYS%(14,1),                             \
+ 664: 30e6:                     INV.ITEM.QTYS%(14,2),                             \
+ 665: 30e6:                     INV.ITEM.DETAILS$(14,3),                          \
+ 666: 30e6:                     INV.ITEM.DETAILS$(14,4),                          \
+ 667: 30e6:                     INV.ITEM.DETAILS$(15,1),                          \
+ 668: 30e6:                     INV.ITEM.DETAILS$(15,2),                          \
+ 669: 30e6:                     INV.ITEM.QTYS%(15,1),                             \
+ 670: 30e6:                     INV.ITEM.QTYS%(15,2),                             \
+ 671: 30e6:                     INV.ITEM.DETAILS$(15,3),                          \
+ 672: 30e6:                     INV.ITEM.DETAILS$(15,4),                          \
+ 673: 30e6:                     INV.ITEM.DETAILS$(16,1),                          \
+ 674: 30e6:                     INV.ITEM.DETAILS$(16,2),                          \
+ 675: 30e6:                     INV.ITEM.QTYS%(16,1),                             \
+ 676: 30e6:                     INV.ITEM.QTYS%(16,2),                             \
+ 677: 30e6:                     INV.ITEM.DETAILS$(16,3),                          \
+ 678: 30e6:                     INV.ITEM.DETAILS$(16,4),                          \
+ 679: 30e6:                     INV.ITEM.DETAILS$(17,1),                          \
+ 680: 30e6:                     INV.ITEM.DETAILS$(17,2),                          \
+ 681: 30e6:                     INV.ITEM.QTYS%(17,1),                             \
+ 682: 30e6:                     INV.ITEM.QTYS%(17,2),                             \
+ 683: 30e6:                     INV.ITEM.DETAILS$(17,3),                          \
+ 684: 30e6:                     INV.ITEM.DETAILS$(17,4)
+ 685: 30e6: 
+ 686: 30e6:     WRITE.INVCE = 0
+ 687: 30eb:     EXIT FUNCTION
+ 688: 30ed: 
+ 689: 30ed: ERROR.WRITE.INVCE:
+ 690: 30ed: 
+ 691: 30ed:     CURRENT.CODE$ = INV.RECKEY$
+ 692: 3103:     CURRENT.REPORT.NUM% = INVCE.REPORT.NUM%
+ 693: 3111:     FILE.OPERATION$ = "W"
+ 694: 3120: 
+ 695: 3120:     EXIT FUNCTION
+ 696: 3122: 
+ 697: 3122: END FUNCTION
+ 698: 3131: 
+ 699: 3131: \-----------------------------------------------------------------------------
+ 700: 3131: 
+ 701: 3131: 
+ 702: 3131: 
+ 703: 3131: End of Compilation

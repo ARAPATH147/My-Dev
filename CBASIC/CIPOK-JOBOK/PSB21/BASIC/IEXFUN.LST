@@ -1,0 +1,207 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***                ITEM DATA FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***                REFERENCE   : IEXFUN.BAS
+   8: 0000: \***
+   9: 0000: \***    VERSION A.       Nalini Mathusoothanan                     12 JULY 2011.
+  10: 0000: \***
+  11: 0000: \******************************************************************************
+  12: 0000: \******************************************************************************
+  13: 0000: 
+  14: 0000:   INTEGER*2 GLOBAL            \
+  15: 0000:          CURRENT.REPORT.NUM%
+  16: 0000: 
+  17: 0000:   STRING GLOBAL               \
+  18: 0000:          CURRENT.CODE$,       \
+  19: 0000:          FILE.OPERATION$
+  20: 0000: 
+  21: 0000:   %INCLUDE IEXDEC.J86
+  22: 0000: REM \
+  23: 0000: \******************************************************************************
+  24: 0000: \******************************************************************************
+  25: 0000: \***
+  26: 0000: \***         %INCLUDE FOR Item Extension FILE - FIELD DECLARATIONS
+  27: 0000: \***                                            FILE REFERENCE PARAMETERS
+  28: 0000: \***
+  29: 0000: \***                  FILE TYPE    : Keyed
+  30: 0000: \***
+  31: 0000: \***                  REFERENCE    : DRUGDEC.J86
+  32: 0000: \***
+  33: 0000: \***         VERSION A :       Nalini Mathusoothanan                12 July 2011
+  34: 0000: \***
+  35: 0000: \***    Holds the Stock Supplier Number.
+  36: 0000: \*******************************************************************************
+  37: 0000: \*******************************************************************************
+  38: 0000: 
+  39: 0000:   STRING GLOBAL               \
+  40: 0000:     IEX.FILE.NAME$,           \ IEX file name - IEX.BIN
+  41: 0000:     IEX.ITEM.CODE$,           \ 3  byte UPD Boots Item Code (no check digit)
+  42: 0000:     IEX.ACTUAL.SUPPLIER.NUM$, \ 4  byte UPD Actual Last Supplier Number
+  43: 0000:     IEX.PRIMARY.SUPPLIER$,    \ 4  byte UPD Primary Supplier Number
+  44: 0000:     IEX.FILLER$               \ 17 byte UPD Filler - packed zeroes
+  45: 0000: 
+  46: 0000:   INTEGER*2 GLOBAL        \
+  47: 0000:     IEX.RECL%,            \ Record Length - 28
+  48: 0000:     IEX.REPORT.NUM%,      \ Drug File session Report Number
+  49: 0000:     IEX.SESS.NUM%         \ Drug File Session Number
+  50: 0000: 
+  51: 0000: 
+  52: 0000: 
+  53: 0000:   FUNCTION IEX.SET PUBLIC
+  54: 0014: \*************************
+  55: 0014:      IEX.REPORT.NUM% = 828
+  56: 001d:      IEX.RECL%       = 28
+  57: 0026:      IEX.FILE.NAME$  = "IEX"
+  58: 0035:   END FUNCTION
+  59: 0041: \------------------------------------------------------------------------------
+  60: 0041: 
+  61: 0041:   FUNCTION READ.IEX PUBLIC
+  62: 0055: \**************************
+  63: 0055:   INTEGER*2 READ.IEX
+  64: 0055: 
+  65: 0055:     READ.IEX = 1
+  66: 005a: 
+  67: 005a:     IF END #IEX.SESS.NUM% THEN READ.ERROR
+  68: 006e:     READ FORM "T4,C4,C4,C17";                                          \
+  69: 00b6:          #IEX.SESS.NUM%                                                \
+  70: 00b6:          KEY IEX.ITEM.CODE$;                                           \
+  71: 00b6:          IEX.ACTUAL.SUPPLIER.NUM$,                                     \
+  72: 00b6:          IEX.PRIMARY.SUPPLIER$,                                        \
+  73: 00b6:          IEX.FILLER$
+  74: 00b6: 
+  75: 00b6:      READ.IEX = 0
+  76: 00bb:      EXIT FUNCTION
+  77: 00bd: 
+  78: 00bd:      READ.ERROR:
+  79: 00bd: 
+  80: 00bd:         FILE.OPERATION$     EQ "R"
+  81: 00cc:         CURRENT.REPORT.NUM% EQ IEX.REPORT.NUM%
+  82: 00da:         CURRENT.CODE$       EQ UNPACK$(IEX.ITEM.CODE$)
+  83: 00f5: 
+  84: 00f5:         EXIT FUNCTION
+  85: 00f7: 
+  86: 00f7:   END FUNCTION
+  87: 0106: \------------------------------------------------------------------------------
+  88: 0106: REM EJECT^L
+  89: 0106: 
+  90: 0106:   FUNCTION READ.IEX.LOCK PUBLIC
+  91: 011a: \*******************************
+  92: 011a: 
+  93: 011a:     INTEGER*2 READ.IEX.LOCK
+  94: 011a: 
+  95: 011a:     READ.IEX.LOCK = 1
+  96: 011f: 
+  97: 011f:     IF END #IEX.SESS.NUM% THEN READ.LOCK.ERROR
+  98: 0133:     READ FORM "T4,C4,C4,C17";                                          \
+  99: 017b:          #IEX.SESS.NUM% AUTOLOCK                                       \
+ 100: 017b:          KEY IEX.ITEM.CODE$;                                           \
+ 101: 017b:          IEX.ACTUAL.SUPPLIER.NUM$,                                     \
+ 102: 017b:          IEX.PRIMARY.SUPPLIER$,                                        \
+ 103: 017b:          IEX.FILLER$
+ 104: 017b: 
+ 105: 017b:     READ.IEX.LOCK = 0
+ 106: 0180:     EXIT FUNCTION
+ 107: 0182: 
+ 108: 0182: 
+ 109: 0182:     READ.LOCK.ERROR:
+ 110: 0182: 
+ 111: 0182:        CURRENT.CODE$ = UNPACK$(IEX.ITEM.CODE$)
+ 112: 019d:        FILE.OPERATION$ = "R"
+ 113: 01ac:        CURRENT.REPORT.NUM% = IEX.REPORT.NUM%
+ 114: 01ba: 
+ 115: 01ba:        EXIT FUNCTION
+ 116: 01bc: 
+ 117: 01bc:   END FUNCTION
+ 118: 01cb: \------------------------------------------------------------------------------
+ 119: 01cb: 
+ 120: 01cb:   FUNCTION WRITE.IEX PUBLIC
+ 121: 01df: \**************************
+ 122: 01df: 
+ 123: 01df:     INTEGER*2 WRITE.IEX
+ 124: 01df: 
+ 125: 01df:     WRITE.IEX = 1
+ 126: 01e4: 
+ 127: 01e4:     IF END #IEX.SESS.NUM% THEN WRITE.ERROR
+ 128: 01f8:     WRITE FORM "C3,C4,C4,C17";                                         \
+ 129: 024a:              #IEX.SESS.NUM%;                                           \
+ 130: 024a:              IEX.ITEM.CODE$,                                           \
+ 131: 024a:              IEX.ACTUAL.SUPPLIER.NUM$,                                 \
+ 132: 024a:              IEX.PRIMARY.SUPPLIER$,                                    \
+ 133: 024a:              IEX.FILLER$
+ 134: 024a: 
+ 135: 024a:     WRITE.IEX = 0
+ 136: 024f:     EXIT FUNCTION
+ 137: 0251: 
+ 138: 0251: 
+ 139: 0251:     WRITE.ERROR:
+ 140: 0251: 
+ 141: 0251:        FILE.OPERATION$ = "W"
+ 142: 0260:        CURRENT.REPORT.NUM% = IEX.REPORT.NUM%
+ 143: 026e:        CURRENT.CODE$ = UNPACK$(IEX.ITEM.CODE$)
+ 144: 0289: 
+ 145: 0289:        EXIT FUNCTION
+ 146: 028b: 
+ 147: 028b:   END FUNCTION
+ 148: 029a: \------------------------------------------------------------------------------
+ 149: 029a: 
+ 150: 029a:   FUNCTION WRITE.IEX.HOLD PUBLIC
+ 151: 02ae:     INTEGER*2 WRITE.IEX.HOLD
+ 152: 02ae: 
+ 153: 02ae:     WRITE.IEX.HOLD = 1
+ 154: 02b3: 
+ 155: 02b3:     IF END #IEX.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 156: 02c7:     WRITE FORM "C3,C4,C4,C17"; HOLD                                    \
+ 157: 0319:              #IEX.SESS.NUM%;                                           \
+ 158: 0319:              IEX.ITEM.CODE$,                                           \
+ 159: 0319:              IEX.ACTUAL.SUPPLIER.NUM$,                                 \
+ 160: 0319:              IEX.PRIMARY.SUPPLIER$,                                    \
+ 161: 0319:              IEX.FILLER$
+ 162: 0319: 
+ 163: 0319:     WRITE.IEX.HOLD = 0
+ 164: 031e:     EXIT FUNCTION
+ 165: 0320: 
+ 166: 0320: 
+ 167: 0320:     WRITE.HOLD.ERROR:
+ 168: 0320: 
+ 169: 0320:        FILE.OPERATION$ = "W"
+ 170: 032f:        CURRENT.REPORT.NUM% = IEX.REPORT.NUM%
+ 171: 033d:        CURRENT.CODE$ = UNPACK$(IEX.ITEM.CODE$)
+ 172: 0358: 
+ 173: 0358:        EXIT FUNCTION
+ 174: 035a: 
+ 175: 035a:   END FUNCTION
+ 176: 0369: \------------------------------------------------------------------------------
+ 177: 0369: 
+ 178: 0369:   FUNCTION WRITE.IEX.UNLOCK PUBLIC
+ 179: 037d: \**********************************
+ 180: 037d: 
+ 181: 037d:     INTEGER*2 WRITE.IEX.UNLOCK
+ 182: 037d: 
+ 183: 037d:     WRITE.IEX.UNLOCK = 1
+ 184: 0382: 
+ 185: 0382:     IF END #IEX.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 186: 0396:     WRITE FORM "C3,C4,C4,C17";                                         \
+ 187: 03e8:              #IEX.SESS.NUM% AUTOUNLOCK;                                \
+ 188: 03e8:              IEX.ITEM.CODE$,                                           \
+ 189: 03e8:              IEX.ACTUAL.SUPPLIER.NUM$,                                 \
+ 190: 03e8:              IEX.PRIMARY.SUPPLIER$,                                    \
+ 191: 03e8:              IEX.FILLER$
+ 192: 03e8: 
+ 193: 03e8:     WRITE.IEX.UNLOCK = 0
+ 194: 03ed:     EXIT FUNCTION
+ 195: 03ef: 
+ 196: 03ef: 
+ 197: 03ef:     WRITE.UNLOCK.ERROR:
+ 198: 03ef: 
+ 199: 03ef:        FILE.OPERATION$ = "W"
+ 200: 03fe:        CURRENT.REPORT.NUM% = IEX.REPORT.NUM%
+ 201: 040c:        CURRENT.CODE$ = UNPACK$(IEX.ITEM.CODE$)
+ 202: 0427: 
+ 203: 0427:        EXIT FUNCTION
+ 204: 0429: 
+ 205: 0429:   END FUNCTION
+ 206: 0438: \------------------------------------------------------------------------------
+ 207: 0438: End of Compilation

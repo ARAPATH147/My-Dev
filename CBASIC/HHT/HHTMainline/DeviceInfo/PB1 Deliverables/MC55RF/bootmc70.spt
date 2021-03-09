@@ -1,0 +1,53 @@
+﻿;--------------------------------------------------------------------------------------------------
+; Program: Bootmc70.spt
+; Type:    MC55 RF script
+; Author:  Andrew Paton (EPOS DEV)
+; Date:    4 Feb 2016
+; Version: 1.00
+; Detail:  This script will auto-start on IPL of the MC55, both Warm and Cold boot.
+: Version: 1.01 Andrew Paton      04/11/16
+; Detail:  added new application to be ran on startup to update the date/time on the device from the controller 
+----------------------------------------------------------------------------------------------------
+   
+	;---------------- Start AppCenter Application if not running ------------ 
+	
+	
+  
+:CHECKAB
+	;Wait for airbeam sync to start
+	IF IsProcessRunning("ABSTART.EXE*") == 1
+		;GOTO WAITMENU
+	ELSE
+		SLEEP 2000
+		GOTO CHECKAB
+	ENDIF	
+ 
+	RUN "\Program Files\BtStoreApps\DeviceInfo.exe"
+ 
+:WAITMENU
+
+						
+	;wait for airbeam sunc to finish
+	IF IsProcessRunning("AB*") == 1
+		
+		;Stop appcenter if running
+		KILL("APP*") 
+		SLEEP 5000
+		GOTO WAITMENU  
+	ELSE			
+		; Open appcenter for modelday
+		RUN \application\appcenter.exe
+ 
+		; remove processlist.txt if on the device as not needed. 
+		IF FileExists( "\application\ProcessList.txt" ) == 1             	  
+      			DeleteFile "\application\ProcessList.txt"                              
+  		ENDIF                                                                    
+
+	ENDIF 
+	
+	
+
+
+
+
+

@@ -1,0 +1,762 @@
+   1: 0000: !****************************************************************************
+   2: 0000: !
+   3: 0000: !       MODULE:         DEAL FILE FUNCTIONS
+   4: 0000: !
+   5: 0000: !       AUTHOR:         STUART WILLIAM MCCONNACHIE
+   6: 0000: !
+   7: 0000: !       DATE:           AUGUST 2002
+   8: 0000: !
+   9: 0000: !****************************************************************************
+  10: 0000: !
+  11: 0000: !       VERSION A           STUART WILLIAM MCCONNACHIE          AUG 2002
+  12: 0000: !
+  13: 0000: !       Functions for adding and removing deals from the new format DEAL
+  14: 0000: !       file for the flexible deals project.
+  15: 0000: !       Note the deal file is a double linked list of all deals on the
+  16: 0000: !       system, so must not be updated directly without using the function.
+  17: 0000: !
+  18: 0000: !       VERSION B           STUART WILLIAM MCCONNACHIE          OCT 2003
+  19: 0000: !
+  20: 0000: !       Added buffering of DEAL file for reads via READ.DEAL.BUFFER.
+  21: 0000: !       Speeds up operation of PSBF42 when used there.
+  22: 0000: !       
+  23: 0000: !       VERSION C           STUART WILLIAM MCCONNACHIE          AUG 2005
+  24: 0000: !
+  25: 0000: !       Addition of DEAL MODEL file.
+  26: 0000: !       
+  27: 0000: !****************************************************************************
+  28: 0000: 
+  29: 0000: %INCLUDE DEALDEC.J86
+  30: 0000: !****************************************************************************
+  31: 0000: !
+  32: 0000: !       MODULE:         DEAL FILE FUNCTIONS
+  33: 0000: !
+  34: 0000: !       AUTHOR:         STUART WILLIAM MCCONNACHIE
+  35: 0000: !
+  36: 0000: !       DATE:           AUGUST 2002
+  37: 0000: !
+  38: 0000: !****************************************************************************
+  39: 0000: !
+  40: 0000: !       VERSION A           STUART WILLIAM MCCONNACHIE          AUG 2002
+  41: 0000: !
+  42: 0000: !       Functions for adding and removing deals from the new format DEAL
+  43: 0000: !       file for the flexible deals project.
+  44: 0000: !       Note the deal file is a double linked list of all deals on the
+  45: 0000: !       system, so must not be updated directly without using the function.
+  46: 0000: !
+  47: 0000: !       VERSION B           STUART WILLIAM MCCONNACHIE          AUG 2005
+  48: 0000: !
+  49: 0000: !       Addition of DEAL MODEL file.
+  50: 0000: !
+  51: 0000: !****************************************************************************
+  52: 0000: 
+  53: 0000:     STRING GLOBAL       DEAL.FILE.NAME$
+  54: 0000:     STRING GLOBAL       DEAL.MODEL.FILE.NAME$                               !BSWM
+  55: 0000:     STRING GLOBAL       DEAL.DEAL.NUM$
+  56: 0000:     STRING GLOBAL       DEAL.RECORD$
+  57: 0000: 
+  58: 0000:     INTEGER*2 GLOBAL    DEAL.SESS.NUM%
+  59: 0000:     INTEGER*2 GLOBAL    DEAL.MODEL.SESS.NUM%                                !BSWM
+  60: 0000:     INTEGER*2 GLOBAL    DEAL.REPORT.NUM%
+  61: 0000:     INTEGER*2 GLOBAL    DEAL.MODEL.REPORT.NUM%                              !BSWM
+  62: 0000:     INTEGER*2 GLOBAL    DEAL.RECL%
+  63: 0000:     INTEGER*2 GLOBAL    DEAL.MODEL.RECL%                                    !BSWM
+  64: 0000: 
+  65: 0000:     INTEGER*1 GLOBAL    DEAL.NUM.LISTS%
+  66: 0000:     INTEGER*1 GLOBAL    DEAL.RUN.DAY%
+  67: 0000:     INTEGER*1 GLOBAL    DEAL.PRIORITY%
+  68: 0000:     INTEGER*1 GLOBAL    DEAL.FLAGS1%
+  69: 0000:     INTEGER*1 GLOBAL    DEAL.FLAGS2%
+  70: 0000:     INTEGER*1 GLOBAL    DEAL.SALES.PROMPT%
+  71: 0000:     INTEGER*1 GLOBAL    DEAL.EXCLUSION.MSG%
+  72: 0000:     INTEGER*2 GLOBAL    DEAL.EXEMPT.TILLS%
+  73: 0000:     INTEGER*2 GLOBAL    DEAL.MAX.QLFY%(1)
+  74: 0000:     INTEGER*2 GLOBAL    DEAL.NUM.REWARD.QLFY%(1)
+  75: 0000:     INTEGER*2 GLOBAL    DEAL.START.TIME%
+  76: 0000:     INTEGER*2 GLOBAL    DEAL.END.TIME%
+  77: 0000: 
+  78: 0000:     INTEGER*1 GLOBAL    DEAL.QLFY.FLAG%(1)
+  79: 0000:     INTEGER*1 GLOBAL    DEAL.QLFY.CODE%(1)
+  80: 0000:     INTEGER*4 GLOBAL    DEAL.QLFY.AMNT%(1)
+  81: 0000:     INTEGER*1 GLOBAL    DEAL.QLFY.LIST%(1)
+  82: 0000: 
+  83: 0000:     INTEGER*1 GLOBAL    DEAL.REWARD.FLAG%(1)
+  84: 0000:     INTEGER*1 GLOBAL    DEAL.REWARD.CODE%(1)
+  85: 0000:     INTEGER*1 GLOBAL    DEAL.REWARD.QTY%(1)
+  86: 0000:     INTEGER*4 GLOBAL    DEAL.REWARD.AMNT%(1)
+  87: 0000:     INTEGER*1 GLOBAL    DEAL.REWARD.LIST%(1)
+  88: 0000:     INTEGER*1 GLOBAL    DEAL.QLFY.MSG%(1)
+  89: 0000:     INTEGER*1 GLOBAL    DEAL.REWARD.MSG%(1)
+  90: 0000: 
+  91: 0000:     STRING GLOBAL       DEAL.TILL.DATA$
+  92: 0000:     STRING GLOBAL       DEAL.DATA$
+  93: 0000:     STRING GLOBAL       DEAL.ACTIVE.FLAGS$
+  94: 0000:     STRING GLOBAL       DEAL.ACTIVE.FLAG$
+  95: 0000:     STRING GLOBAL       DEAL.BUSINESS.CENTRE$
+  96: 0000:     STRING GLOBAL       DEAL.DEAL.DESC$
+  97: 0000:     STRING GLOBAL       DEAL.DEAL.MODEL$
+  98: 0000:     STRING GLOBAL       DEAL.START.DATE$
+  99: 0000:     STRING GLOBAL       DEAL.END.DATE$
+ 100: 0000:     STRING GLOBAL       DEAL.START.TIME$
+ 101: 0000:     STRING GLOBAL       DEAL.END.TIME$
+ 102: 0000:     STRING GLOBAL       DEAL.QLFY.MSG.RCPT$(1)
+ 103: 0000:     STRING GLOBAL       DEAL.QLFY.MSG.DISP$(1)
+ 104: 0000:     STRING GLOBAL       DEAL.REWARD.MSG.RCPT$(1)
+ 105: 0000:     STRING GLOBAL       DEAL.FILLER$
+ 106: 0000: 
+ 107: 0000:     INTEGER*1 GLOBAL    DEAL.NUM.QLFNS%
+ 108: 0000:     INTEGER*1 GLOBAL    DEAL.NUM.REWARDS%
+ 109: 0000: 
+ 110: 0000: !****************************************************************************
+ 111: 0000: 
+ 112: 0000: 
+ 113: 0000: 
+ 114: 0000:     INTEGER*2           DEAL.RECORD.LTH
+ 115: 0000:     INTEGER*2           DEAL.NUM%                                           !BSWM
+ 116: 0000:     INTEGER*2           I%
+ 117: 0000:     INTEGER*2           DEAL.NO.QLFNS%
+ 118: 0000:     INTEGER*2           DEAL.NO.REWARDS%
+ 119: 0000:     INTEGER*2           DEAL.START.HOUR%
+ 120: 0000:     INTEGER*2           DEAL.START.MIN%
+ 121: 0000:     INTEGER*2           DEAL.END.HOUR%
+ 122: 0000:     INTEGER*2           DEAL.END.MIN%
+ 123: 0000: 
+ 124: 0000:     STRING              HOME.DEAL.NUM$
+ 125: 0000:     STRING              NULL.DEAL.RECORD$
+ 126: 0000:     STRING              PREV.DEAL.NUM$
+ 127: 0000:     STRING              NEXT.DEAL.NUM$
+ 128: 0000:     STRING              DEAL.START.HOUR$
+ 129: 0000:     STRING              DEAL.START.MIN$
+ 130: 0000:     STRING              DEAL.END.HOUR$
+ 131: 0000:     STRING              DEAL.END.MIN$
+ 132: 0000:     STRING              DEAL.PREV.DEAL.NUM$
+ 133: 0000:     STRING              DEAL.NEXT.DEAL.NUM$
+ 134: 0000:     STRING              NULL.TILL.DATA$
+ 135: 0000:     STRING              NULL.DEAL.DATA$
+ 136: 0000: 
+ 137: 0000:     INTEGER*1           DEAL.BUFFER                                         !BSWM
+ 138: 0000:     STRING              DEAL.BUFFER$(1)                                     !BSWM
+ 139: 0000:     
+ 140: 0000:     STRING GLOBAL       FILE.OPERATION$
+ 141: 0000:     STRING GLOBAL       CURRENT.CODE$
+ 142: 0000:     INTEGER*2 GLOBAL    CURRENT.REPORT.NUM%                                 !BSWM    
+ 143: 0000:     
+ 144: 0000:     INTEGER*2           SESS.NUM%                                           !CSWM
+ 145: 0000:     INTEGER*2           REPORT.NUM%                                         !CSWM
+ 146: 0000: 
+ 147: 0000: !****************************************************************************
+ 148: 0000: 
+ 149: 0000:     FUNCTION SUBSTR(S1$, O1%, S2$, O2%, L2%) EXTERNAL
+ 150: 0000:         STRING    S1$, S2$
+ 151: 0000:         INTEGER*2 O1%, O2%, L2%
+ 152: 0000:     END FUNCTION
+ 153: 0000: 
+ 154: 0000:     FUNCTION GETN4(S$, O%) EXTERNAL
+ 155: 0000:         INTEGER*4   GETN4
+ 156: 0000:         STRING      S$
+ 157: 0000:         INTEGER*2   O%
+ 158: 0000:     END FUNCTION
+ 159: 0000: 
+ 160: 0000:     FUNCTION PUTN4(S$, O%, N%) EXTERNAL
+ 161: 0000:         STRING      S$
+ 162: 0000:         INTEGER*2   O%
+ 163: 0000:         INTEGER*4   N%
+ 164: 0000:     END FUNCTION
+ 165: 0000: 
+ 166: 0000:     FUNCTION GETN2(S$, O%) EXTERNAL
+ 167: 0000:         INTEGER*2   GETN2
+ 168: 0000:         STRING      S$
+ 169: 0000:         INTEGER*2   O%
+ 170: 0000:     END FUNCTION
+ 171: 0000: 
+ 172: 0000:     FUNCTION PUTN2(S$, O%, N%) EXTERNAL
+ 173: 0000:         STRING      S$
+ 174: 0000:         INTEGER*2   O%
+ 175: 0000:         INTEGER*2   N%
+ 176: 0000:     END FUNCTION
+ 177: 0000: 
+ 178: 0000: !****************************************************************************
+ 179: 0000: 
+ 180: 0000:     FUNCTION GETN1 (S$, OFFSET%)
+ 181: 0019: 
+ 182: 0019:         INTEGER*2 GETN1
+ 183: 0019:         STRING S$
+ 184: 0019:         INTEGER*2 OFFSET%
+ 185: 0019: 
+ 186: 0019:         GETN1 = ASC(MID$(S$, OFFSET%+1, 1))
+ 187: 0036: 
+ 188: 0036:     END FUNCTION
+ 189: 004a: 
+ 190: 004a: !****************************************************************************
+ 191: 004a: 
+ 192: 004a:     SUB PUTN1 (S$, OFFSET%, VALUE%)
+ 193: 005e: 
+ 194: 005e:         INTEGER*2 OFFSET%
+ 195: 005e:         INTEGER*2 VALUE%
+ 196: 005e:         STRING S$
+ 197: 005e: 
+ 198: 005e:         POKE SADD(S$)+OFFSET%+2, VALUE%
+ 199: 0090: 
+ 200: 0090:     END SUB
+ 201: 009c: 
+ 202: 009c: !****************************************************************************
+ 203: 009c: 
+ 204: 009c:     FUNCTION DEAL.SET PUBLIC
+ 205: 00b0: 
+ 206: 00b0:         INTEGER*1   DEAL.SET
+ 207: 00b0: 
+ 208: 00b0:         DEAL.FILE.NAME$ = "DEAL"
+ 209: 00bf:         DEAL.RECL% = 400
+ 210: 00c8:         DEAL.REPORT.NUM% = 311
+ 211: 00d1: 
+ 212: 00d1:         DEAL.RECORD.LTH = 394
+ 213: 00d7:         
+ 214: 00d7:         DEAL.MODEL.FILE.NAME$ = "DEALMODL"
+ 215: 00e6:         DEAL.MODEL.RECL% = 400
+ 216: 00ef:         DEAL.MODEL.REPORT.NUM% = 330
+ 217: 00f8: 
+ 218: 00f8:         DEAL.NO.QLFNS% = 4
+ 219: 00fe:         DEAL.NO.REWARDS% = 3
+ 220: 0104: 
+ 221: 0104:         DIM DEAL.QLFY.FLAG%(DEAL.NO.QLFNS%)
+ 222: 012d:         DIM DEAL.QLFY.CODE%(DEAL.NO.QLFNS%)
+ 223: 0156:         DIM DEAL.QLFY.AMNT%(DEAL.NO.QLFNS%)
+ 224: 017f:         DIM DEAL.QLFY.LIST%(DEAL.NO.QLFNS%)
+ 225: 01a8: 
+ 226: 01a8:         DIM DEAL.REWARD.CODE%(DEAL.NO.REWARDS%)
+ 227: 01d1:         DIM DEAL.REWARD.QTY%(DEAL.NO.REWARDS%)
+ 228: 01fa:         DIM DEAL.REWARD.AMNT%(DEAL.NO.REWARDS%)
+ 229: 0223:         DIM DEAL.REWARD.LIST%(DEAL.NO.REWARDS%)
+ 230: 024c:         DIM DEAL.QLFY.MSG%(DEAL.NO.REWARDS%)
+ 231: 0275:         DIM DEAL.REWARD.MSG%(DEAL.NO.REWARDS%)
+ 232: 029e:         DIM DEAL.MAX.QLFY%(DEAL.NO.REWARDS%)
+ 233: 02c7:         DIM DEAL.NUM.REWARD.QLFY%(DEAL.NO.REWARDS%)
+ 234: 02f0:         DIM DEAL.QLFY.MSG.RCPT$(DEAL.NO.REWARDS%)
+ 235: 0319:         DIM DEAL.QLFY.MSG.DISP$(DEAL.NO.REWARDS%)
+ 236: 0342:         DIM DEAL.REWARD.MSG.RCPT$(DEAL.NO.REWARDS%)
+ 237: 036b: 
+ 238: 036b:         HOME.DEAL.NUM$    = PACK$("????")
+ 239: 037d:         NULL.DEAL.RECORD$ = STRING$(394, CHR$(0))
+ 240: 0395:         NULL.DEAL.DATA$   = STRING$(180, CHR$(0))
+ 241: 03ad: 
+ 242: 03ad:         DEAL.SET = 0
+ 243: 03b1: 
+ 244: 03b1:     END FUNCTION
+ 245: 03c0: 
+ 246: 03c0: !****************************************************************************
+ 247: 03c0: 
+ 248: 03c0:     SUB DEAL.SPLIT.RECORD PUBLIC
+ 249: 03d4:     
+ 250: 03d4:         IF LEN(DEAL.RECORD$) <> DEAL.RECORD.LTH THEN EXIT SUB               !BSWM
+ 251: 03ee: 
+ 252: 03ee:         DEAL.START.DATE$         = MID$(DEAL.RECORD$,   1,  4) !MID$'S START AT 1
+ 253: 040d:         DEAL.START.TIME%         = GETN2(DEAL.RECORD$,  4)     !GET'S START AT 0
+ 254: 0429:         DEAL.END.DATE$           = MID$(DEAL.RECORD$,   7,  4)
+ 255: 0448:         DEAL.END.TIME%           = GETN2(DEAL.RECORD$, 10)
+ 256: 0464:         DEAL.BUSINESS.CENTRE$    = MID$(DEAL.RECORD$,  13,  1)
+ 257: 0483:         DEAL.DEAL.DESC$          = MID$(DEAL.RECORD$,  14, 35)
+ 258: 04a2:         DEAL.NUM.LISTS%          = GETN1(DEAL.RECORD$, 48)
+ 259: 04bd:         DEAL.RUN.DAY%            = GETN1(DEAL.RECORD$, 49)
+ 260: 04d8:         DEAL.PRIORITY%           = GETN1(DEAL.RECORD$, 50)
+ 261: 04f3:         DEAL.EXEMPT.TILLS%       = GETN2(DEAL.RECORD$, 51)
+ 262: 050f:         DEAL.FLAGS1%             = GETN1(DEAL.RECORD$, 53)
+ 263: 052a:         DEAL.SALES.PROMPT%       = GETN1(DEAL.RECORD$, 54)
+ 264: 0545:         DEAL.EXCLUSION.MSG%      = GETN1(DEAL.RECORD$, 55)
+ 265: 0560:         DEAL.FLAGS2%             = GETN1(DEAL.RECORD$, 56)
+ 266: 057b:         DEAL.NUM.QLFNS%          = GETN1(DEAL.RECORD$, 57)
+ 267: 0596:         DEAL.NUM.REWARDS%        = GETN1(DEAL.RECORD$, 58)
+ 268: 05b1: 
+ 269: 05b1:         FOR I% = 0 TO DEAL.NO.QLFNS% - 1
+ 270: 05ba:             DEAL.QLFY.FLAG%(I%)   = GETN1(DEAL.RECORD$, 62+I%*8)
+ 271: 05f3:             DEAL.QLFY.CODE%(I%)   = GETN1(DEAL.RECORD$, 63+I%*8)
+ 272: 062c:             DEAL.QLFY.AMNT%(I%)   = GETN4(DEAL.RECORD$, 64+I%*8)
+ 273: 0668:             DEAL.QLFY.LIST%(I%)   = GETN1(DEAL.RECORD$, 68+I%*8)
+ 274: 06a1:         NEXT I%
+ 275: 06b5: 
+ 276: 06b5:         FOR I% = 0 TO DEAL.NO.REWARDS% - 1
+ 277: 06be:             DEAL.REWARD.CODE%(I%)     = GETN1(DEAL.RECORD$,  94+I%*100)
+ 278: 06f6:             DEAL.REWARD.QTY%(I%)      = GETN1(DEAL.RECORD$,  95+I%*100)
+ 279: 072e:             DEAL.REWARD.AMNT%(I%)     = GETN4(DEAL.RECORD$,  96+I%*100)
+ 280: 0769:             DEAL.REWARD.LIST%(I%)     = GETN1(DEAL.RECORD$, 100+I%*100)
+ 281: 07a1:             DEAL.QLFY.MSG%(I%)        = GETN1(DEAL.RECORD$, 101+I%*100)
+ 282: 07d9:             DEAL.QLFY.MSG.RCPT$(I%)   = MID$(DEAL.RECORD$,  103+I%*100, 38)
+ 283: 080f:             DEAL.QLFY.MSG.DISP$(I%)   = MID$(DEAL.RECORD$,  141+I%*100, 20)
+ 284: 0845:             DEAL.REWARD.MSG%(I%)      = GETN1(DEAL.RECORD$, 160+I%*100)
+ 285: 087d:             DEAL.REWARD.MSG.RCPT$(I%) = MID$(DEAL.RECORD$,  162+I%*100, 27)
+ 286: 08b3:             DEAL.MAX.QLFY%(I%)        = GETN2(DEAL.RECORD$, 188+I%*100)
+ 287: 08ec:             DEAL.NUM.REWARD.QLFY%(I%) = GETN2(DEAL.RECORD$, 190+I%*100)
+ 288: 0925:         NEXT I%
+ 289: 0939: 
+ 290: 0939:         DEAL.START.HOUR$ = RIGHT$("00" + STR$(DEAL.START.TIME% / 60),2)
+ 291: 097f:         DEAL.START.MIN$  = RIGHT$("00" + STR$(DEAL.START.TIME% -  (VAL(DEAL.START.HOUR$)* 60)),2)
+ 292: 09fd:         DEAL.START.TIME$ = PACK$(DEAL.START.HOUR$) + PACK$(DEAL.START.MIN$)
+ 293: 0a30: 
+ 294: 0a30:         DEAL.END.HOUR$   = RIGHT$("00" + STR$(DEAL.END.TIME% / 60),2)
+ 295: 0a76:         DEAL.END.MIN$    = RIGHT$("00" + STR$(DEAL.END.TIME% - (VAL(DEAL.END.HOUR$) * 60)),2)
+ 296: 0af4:         DEAL.END.TIME$   = PACK$(DEAL.END.HOUR$) + PACK$(DEAL.END.MIN$)
+ 297: 0b27: 
+ 298: 0b27:     END SUB
+ 299: 0b33: 
+ 300: 0b33: !****************************************************************************
+ 301: 0b33: 
+ 302: 0b33:     SUB DEAL.CONCAT.RECORD PUBLIC
+ 303: 0b47: 
+ 304: 0b47:         DEAL.RECORD$ = STRING$(DEAL.RECORD.LTH, CHR$(0))
+ 305: 0b62: 
+ 306: 0b62:         DEAL.START.HOUR% = VAL(UNPACK$(LEFT$(DEAL.START.TIME$,1))) * 60
+ 307: 0bc1:         DEAL.START.MIN%  = VAL(UNPACK$(RIGHT$(DEAL.START.TIME$,1)))
+ 308: 0be5:         DEAL.START.TIME% = DEAL.START.HOUR% + DEAL.START.MIN%
+ 309: 0bf2:         DEAL.END.HOUR%   = VAL(UNPACK$(LEFT$(DEAL.END.TIME$,1))) * 60
+ 310: 0c51:         DEAL.END.MIN%    = VAL(UNPACK$(RIGHT$(DEAL.END.TIME$,1)))
+ 311: 0c75:         DEAL.END.TIME%   = DEAL.END.HOUR% + DEAL.END.MIN%
+ 312: 0c82:         DEAL.DATA$       = NULL.DEAL.DATA$
+ 313: 0c95: 
+ 314: 0c95:         CALL SUBSTR(DEAL.RECORD$,  0, DEAL.START.DATE$, 0, 4)
+ 315: 0cc7:         CALL PUTN2(DEAL.RECORD$,   4, DEAL.START.TIME%)
+ 316: 0cf1:         CALL SUBSTR(DEAL.RECORD$,  6, DEAL.END.DATE$, 0, 4)
+ 317: 0d23:         CALL PUTN2(DEAL.RECORD$,  10, DEAL.END.TIME%)
+ 318: 0d4d:         CALL SUBSTR(DEAL.RECORD$, 12, DEAL.BUSINESS.CENTRE$, 0, 1)
+ 319: 0d7f:         CALL SUBSTR(DEAL.RECORD$, 13, DEAL.DEAL.DESC$, 0, 35)
+ 320: 0db1:         CALL PUTN1(DEAL.RECORD$,  48, DEAL.NUM.LISTS%)
+ 321: 0de4:         CALL PUTN1(DEAL.RECORD$,  49, DEAL.RUN.DAY%)
+ 322: 0e17:         CALL PUTN1(DEAL.RECORD$,  50, DEAL.PRIORITY%)
+ 323: 0e4a:         CALL PUTN2(DEAL.RECORD$,  51, DEAL.EXEMPT.TILLS%)
+ 324: 0e74:         CALL PUTN1(DEAL.RECORD$,  53, DEAL.FLAGS1%)
+ 325: 0ea7:         CALL PUTN1(DEAL.RECORD$,  54, DEAL.SALES.PROMPT%)
+ 326: 0eda:         CALL PUTN1(DEAL.RECORD$,  55, DEAL.EXCLUSION.MSG%)
+ 327: 0f0d:         CALL PUTN1(DEAL.RECORD$,  56, DEAL.FLAGS2%)
+ 328: 0f40:         CALL PUTN1(DEAL.RECORD$,  57, DEAL.NUM.QLFNS%)
+ 329: 0f73:         CALL PUTN1(DEAL.RECORD$,  58, DEAL.NUM.REWARDS%)
+ 330: 0fa6: 
+ 331: 0fa6:         FOR I% = 0 TO DEAL.NO.QLFNS% - 1
+ 332: 0faf:            CALL PUTN1(DEAL.RECORD$, 62+I%*8, DEAL.QLFY.FLAG%(I%))
+ 333: 0ff9:            CALL PUTN1(DEAL.RECORD$, 63+I%*8, DEAL.QLFY.CODE%(I%))
+ 334: 1043:            CALL PUTN4(DEAL.RECORD$, 64+I%*8, DEAL.QLFY.AMNT%(I%))
+ 335: 1089:            CALL PUTN1(DEAL.RECORD$, 68+I%*8, DEAL.QLFY.LIST%(I%))
+ 336: 10d3:         NEXT I%
+ 337: 10e7: 
+ 338: 10e7:         FOR I% = 0 TO DEAL.NO.REWARDS% - 1
+ 339: 10f0:            CALL PUTN1(DEAL.RECORD$,   94+I%*100, DEAL.REWARD.CODE%(I%))
+ 340: 1139:            CALL PUTN1(DEAL.RECORD$,   95+I%*100, DEAL.REWARD.QTY%(I%))
+ 341: 1182:            CALL PUTN4(DEAL.RECORD$,   96+I%*100, DEAL.REWARD.AMNT%(I%))
+ 342: 11c7:            CALL PUTN1(DEAL.RECORD$,  100+I%*100, DEAL.REWARD.LIST%(I%))
+ 343: 1210:            CALL PUTN1(DEAL.RECORD$,  101+I%*100, DEAL.QLFY.MSG%(I%))
+ 344: 1259:            CALL SUBSTR(DEAL.RECORD$, 102+I%*100, DEAL.QLFY.MSG.RCPT$(I%), 0, 38)
+ 345: 12a2:            CALL SUBSTR(DEAL.RECORD$, 140+I%*100, DEAL.QLFY.MSG.DISP$(I%), 0, 20)
+ 346: 12eb:            CALL PUTN1(DEAL.RECORD$,  160+I%*100, DEAL.REWARD.MSG%(I%))
+ 347: 1334:            CALL SUBSTR(DEAL.RECORD$, 161+I%*100, DEAL.REWARD.MSG.RCPT$(I%), 0, 27)
+ 348: 137d:            CALL PUTN2(DEAL.RECORD$,  188+I%*100, DEAL.MAX.QLFY%(I%))
+ 349: 13be:            CALL PUTN2(DEAL.RECORD$,  190+I%*100, DEAL.NUM.REWARD.QLFY%(I%))
+ 350: 13ff:         NEXT I%
+ 351: 1413: 
+ 352: 1413:     END SUB
+ 353: 141f: 
+ 354: 141f: !****************************************************************************
+ 355: 141f: 
+ 356: 141f:     SUB DEAL.SAVE (SAVE$) PUBLIC                                            !BSWM
+ 357: 1433:     
+ 358: 1433:         STRING SAVE$                                                        !BSWM
+ 359: 1433:     
+ 360: 1433:         SAVE$ = DEAL.DEAL.NUM$ +                                            \BSWM
+ 361: 1466:                 DEAL.PREV.DEAL.NUM$ +                                       \BSWM
+ 362: 1466:                 DEAL.NEXT.DEAL.NUM$ +                                       \BSWM
+ 363: 1466:                 DEAL.RECORD$                                                !BSWM
+ 364: 1466:                 
+ 365: 1466:     END SUB                                                                 !BSWM
+ 366: 1472:     
+ 367: 1472: !****************************************************************************
+ 368: 1472: 
+ 369: 1472:     SUB DEAL.RESTORE (RESTORE$) PUBLIC                                      !BSWM
+ 370: 1486:     
+ 371: 1486:         STRING RESTORE$                                                     !BSWM
+ 372: 1486:         
+ 373: 1486:         DEAL.DEAL.NUM$ = MID$(RESTORE$, 1, 2)                               !BSWM
+ 374: 14a4:         DEAL.PREV.DEAL.NUM$ = MID$(RESTORE$, 3, 2)                          !BSWM
+ 375: 14c0:         DEAL.NEXT.DEAL.NUM$ = MID$(RESTORE$, 5, 2)                          !BSWM
+ 376: 14dc:         DEAL.RECORD$ = MID$(RESTORE$, 7, DEAL.RECORD.LTH)                   !BSWM
+ 377: 14fc:         CALL DEAL.SPLIT.RECORD                                              !BSWM
+ 378: 1500:         
+ 379: 1500:     END SUB                                                                 !BSWM
+ 380: 150c:     
+ 381: 150c: !****************************************************************************
+ 382: 150c: 
+ 383: 150c:     FUNCTION DELETE.INT     !DO NOT MAKE PUBLIC - MUST USE REMOVE.DEAL      !CSWM
+ 384: 1520: 
+ 385: 1520:         INTEGER*1   DELETE.INT                                              !CSWM
+ 386: 1520: 
+ 387: 1520:         DELETE.INT = 1                                                      !CSWM
+ 388: 1524: 
+ 389: 1524:         IF END # SESS.NUM% THEN EXIT.FUNCTION                               !CSWM
+ 390: 1535:         DELREC SESS.NUM%; DEAL.DEAL.NUM$                                    !CSWM
+ 391: 1549: 
+ 392: 1549:         DELETE.INT = 0                                                      !CSWM
+ 393: 154d:         
+ 394: 154d:     EXIT FUNCTION                                                           !BSWM
+ 395: 154f:         
+ 396: 154f:     EXIT.FUNCTION:
+ 397: 154f: 
+ 398: 154f:         CURRENT.REPORT.NUM% = REPORT.NUM%                                   !BSWM
+ 399: 1559:         FILE.OPERATION$ = "D"                                               !BSWM
+ 400: 1568:         CURRENT.CODE$ = DEAL.DEAL.NUM$                                      !BSWM
+ 401: 157e:         
+ 402: 157e:     END FUNCTION
+ 403: 158d: 
+ 404: 158d: !****************************************************************************
+ 405: 158d: 
+ 406: 158d:     FUNCTION WRITE.INT      !DO NOT MAKE PUBLIC - MUST USE ADD.OR.UPDATE.DEAL
+ 407: 15a1: 
+ 408: 15a1:         INTEGER*1   WRITE.INT                                               !CSWM
+ 409: 15a1: 
+ 410: 15a1:         WRITE.INT = 1                                                       !CSWM
+ 411: 15a5: 
+ 412: 15a5:         IF END # SESS.NUM% THEN EXIT.FUNCTION                               !CSWM
+ 413: 15b6:         WRITE FORM "C2,2C2,C394"; # SESS.NUM%;                              \CSWM
+ 414: 15ff:             DEAL.DEAL.NUM$,                                                 \
+ 415: 15ff:             DEAL.PREV.DEAL.NUM$,                                            \
+ 416: 15ff:             DEAL.NEXT.DEAL.NUM$,                                            \
+ 417: 15ff:             DEAL.RECORD$
+ 418: 15ff: 
+ 419: 15ff:         WRITE.INT = 0                                                       !CSWM
+ 420: 1603:         
+ 421: 1603:     EXIT FUNCTION                                                           !BSWM
+ 422: 1605: 
+ 423: 1605:     EXIT.FUNCTION:
+ 424: 1605: 
+ 425: 1605:         CURRENT.REPORT.NUM% = REPORT.NUM%                                   !BSWM
+ 426: 160f:         FILE.OPERATION$ = "W"                                               !BSWM
+ 427: 161e:         CURRENT.CODE$ = DEAL.DEAL.NUM$                                      !BSWM
+ 428: 1634:         
+ 429: 1634:     END FUNCTION
+ 430: 1643: 
+ 431: 1643: !****************************************************************************
+ 432: 1643: 
+ 433: 1643:     FUNCTION READ.INT       !DO NOT MAKE PUBLIC - MUST USE DEAL.READ        !CSWM
+ 434: 1657: 
+ 435: 1657:         INTEGER*1   READ.INT                                                !CSWM
+ 436: 1657: 
+ 437: 1657:         READ.INT = 1                                                        !CSWM
+ 438: 165b: 
+ 439: 165b:         IF END # SESS.NUM% THEN EXIT.FUNCTION                               !CSWM
+ 440: 166c:         READ FORM "T3,2C2,C394"; # SESS.NUM%                                \CSWM
+ 441: 16ad:             KEY DEAL.DEAL.NUM$;                                             \
+ 442: 16ad:             DEAL.PREV.DEAL.NUM$,                                            \
+ 443: 16ad:             DEAL.NEXT.DEAL.NUM$,                                            \
+ 444: 16ad:             DEAL.RECORD$
+ 445: 16ad: 
+ 446: 16ad:         READ.INT = 0                                                        !CSWM
+ 447: 16b1: 
+ 448: 16b1:     EXIT FUNCTION                                                           !BSWM
+ 449: 16b3: 
+ 450: 16b3:     EXIT.FUNCTION:
+ 451: 16b3: 
+ 452: 16b3:         CURRENT.REPORT.NUM% = REPORT.NUM%                                   !BSWM
+ 453: 16bd:         FILE.OPERATION$ = "R"                                               !BSWM
+ 454: 16cc:         CURRENT.CODE$ = DEAL.DEAL.NUM$                                      !BSWM
+ 455: 16e2:         
+ 456: 16e2:     END FUNCTION
+ 457: 16f1: 
+ 458: 16f1: !****************************************************************************
+ 459: 16f1: 
+ 460: 16f1:     FUNCTION READ.DEAL PUBLIC                                               !CSWM
+ 461: 1705:     
+ 462: 1705:         INTEGER*1   READ.DEAL                                               !CSWM
+ 463: 1705:         
+ 464: 1705:         SESS.NUM% = DEAL.SESS.NUM%                                          !CSWM
+ 465: 170f:         REPORT.NUM% = DEAL.REPORT.NUM%                                      !CSWM
+ 466: 171a:         READ.DEAL = READ.INT                                                !CSWM
+ 467: 1721:         
+ 468: 1721:     END FUNCTION                                                            !CSWM
+ 469: 1730: 
+ 470: 1730: !****************************************************************************
+ 471: 1730:     
+ 472: 1730:     FUNCTION READ.DEAL.MODEL PUBLIC                                         !CSWM
+ 473: 1744: 
+ 474: 1744:         INTEGER*1   READ.DEAL.MODEL                                         !CSWM
+ 475: 1744: 
+ 476: 1744:         SESS.NUM% = DEAL.MODEL.SESS.NUM%                                    !CSWM
+ 477: 174e:         REPORT.NUM% = DEAL.MODEL.REPORT.NUM%                                !CSWM
+ 478: 1759:         READ.DEAL.MODEL = READ.INT                                          !CSWM
+ 479: 1760:         
+ 480: 1760:     END FUNCTION
+ 481: 176f: 
+ 482: 176f: !****************************************************************************
+ 483: 176f: 
+ 484: 176f:     FUNCTION READ.DEAL.BUFFER PUBLIC                                        !BSWM
+ 485: 1783:     
+ 486: 1783:         INTEGER*1   READ.DEAL.BUFFER                                        !BSWM
+ 487: 1783:         
+ 488: 1783:         READ.DEAL.BUFFER = 1                                                !BSWM
+ 489: 1787:         
+ 490: 1787:         IF NOT DEAL.BUFFER THEN BEGIN                                       !BSWM
+ 491: 178e:             DIM DEAL.BUFFER$(9999)                                          !BSWM
+ 492: 17b0:             DEAL.BUFFER = -1                                                !BSWM
+ 493: 17b5:         ENDIF                                                               !BSWM
+ 494: 17b5:         
+ 495: 17b5:         DEAL.NUM% = VAL(UNPACK$(DEAL.DEAL.NUM$))                            !BSWM
+ 496: 17d2:         IF LEN(DEAL.BUFFER$(DEAL.NUM%)) THEN BEGIN                          !BSWM
+ 497: 17ef:             DEAL.RECORD$ = DEAL.BUFFER$(DEAL.NUM%)                          !BSWM
+ 498: 1810:             READ.DEAL.BUFFER = 0                                            !BSWM
+ 499: 1816:         ENDIF ELSE BEGIN                                                    !BSWM
+ 500: 1816:             IF READ.DEAL = 0 THEN BEGIN                                     !BSWM
+ 501: 181e:                 DEAL.BUFFER$(DEAL.NUM%) = DEAL.RECORD$                      !BSWM
+ 502: 183f:                 READ.DEAL.BUFFER = 0                                        !BSWM
+ 503: 1843:             ENDIF                                                           !BSWM
+ 504: 1843:         ENDIF                                                               !BSWM
+ 505: 1843: 
+ 506: 1843:     END FUNCTION
+ 507: 1852:     
+ 508: 1852: !****************************************************************************
+ 509: 1852: 
+ 510: 1852:     FUNCTION ADD.OR.UPDATE.INT (DEAL.NUM$, RECORD$) !DO NOT MAKE PUBLIC     !CSWM
+ 511: 1870: 
+ 512: 1870:         INTEGER*1   ADD.OR.UPDATE.INT                                       !CSWM
+ 513: 1870:         STRING      DEAL.NUM$
+ 514: 1870:         STRING      RECORD$
+ 515: 1870: 
+ 516: 1870:         ADD.OR.UPDATE.INT = 1                                               !CSWM
+ 517: 1874: 
+ 518: 1874:         !Check to see if deal already exists
+ 519: 1874:         DEAL.DEAL.NUM$ = DEAL.NUM$
+ 520: 1885: 
+ 521: 1885:         !If deal already exists
+ 522: 1885:         IF READ.INT = 0 THEN BEGIN                                          !CSWM
+ 523: 188d: 
+ 524: 188d:             !Save previous and next items
+ 525: 188d:             PREV.DEAL.NUM$ = DEAL.PREV.DEAL.NUM$
+ 526: 189e:             NEXT.DEAL.NUM$ = DEAL.NEXT.DEAL.NUM$
+ 527: 18b2: 
+ 528: 18b2:         ENDIF ELSE BEGIN
+ 529: 18b2: 
+ 530: 18b2:             PREV.DEAL.NUM$ = HOME.DEAL.NUM$
+ 531: 18c3:             NEXT.DEAL.NUM$ = HOME.DEAL.NUM$
+ 532: 18d4: 
+ 533: 18d4:             !Read home record
+ 534: 18d4:             DEAL.DEAL.NUM$ = HOME.DEAL.NUM$
+ 535: 18e7:             IF READ.INT = 0 THEN BEGIN                                      !CSWM
+ 536: 18ef: 
+ 537: 18ef:                 !Save next record pointer
+ 538: 18ef:                 NEXT.DEAL.NUM$ = DEAL.NEXT.DEAL.NUM$
+ 539: 1900: 
+ 540: 1900:                 !Read first record in chain
+ 541: 1900:                 DEAL.DEAL.NUM$ = DEAL.NEXT.DEAL.NUM$
+ 542: 1913:                 IF READ.INT THEN EXIT FUNCTION                              !CSWM
+ 543: 191e: 
+ 544: 191e:                 !If already writen record and home record
+ 545: 191e:                 IF NEXT.DEAL.NUM$ = DEAL.NUM$ THEN BEGIN
+ 546: 1933:                     NEXT.DEAL.NUM$ = DEAL.NEXT.DEAL.NUM$
+ 547: 1946:                 ENDIF ELSE BEGIN
+ 548: 1946:                     DEAL.PREV.DEAL.NUM$ = DEAL.NUM$
+ 549: 1955:                     IF WRITE.INT THEN EXIT FUNCTION                         !CSWM
+ 550: 1960:                 ENDIF
+ 551: 1960: 
+ 552: 1960:             ENDIF
+ 553: 1960: 
+ 554: 1960:         ENDIF
+ 555: 1960: 
+ 556: 1960:         !Write the actual record
+ 557: 1960:         DEAL.DEAL.NUM$ = DEAL.NUM$
+ 558: 1971:         DEAL.PREV.DEAL.NUM$ = PREV.DEAL.NUM$
+ 559: 1982:         DEAL.NEXT.DEAL.NUM$ = NEXT.DEAL.NUM$
+ 560: 1993:         DEAL.RECORD$ = RECORD$
+ 561: 19a4:         IF WRITE.INT THEN EXIT FUNCTION                                     !CSWM
+ 562: 19af: 
+ 563: 19af:         !Need to write home record?
+ 564: 19af:         IF PREV.DEAL.NUM$ = HOME.DEAL.NUM$ THEN BEGIN
+ 565: 19c6: 
+ 566: 19c6:             DEAL.DEAL.NUM$ = HOME.DEAL.NUM$
+ 567: 19d9:             DEAL.PREV.DEAL.NUM$ = HOME.DEAL.NUM$
+ 568: 19ea:             DEAL.NEXT.DEAL.NUM$ = DEAL.NUM$
+ 569: 19f9:             DEAL.RECORD$ = NULL.DEAL.RECORD$
+ 570: 1a0c:             IF WRITE.INT THEN EXIT FUNCTION                                 !CSWM
+ 571: 1a16: 
+ 572: 1a16:         ENDIF
+ 573: 1a16: 
+ 574: 1a16:         IF DEAL.BUFFER AND SESS.NUM% = DEAL.SESS.NUM% THEN BEGIN            !BSWM
+ 575: 1a2e:             DEAL.NUM% = VAL(UNPACK$(DEAL.NUM$))                             !BSWM
+ 576: 1a46:             DEAL.BUFFER$(DEAL.NUM%) = RECORD$                               !BSWM
+ 577: 1a5f:         ENDIF                                                               !BSWM
+ 578: 1a5f: 
+ 579: 1a5f:         DEAL.DEAL.NUM$ = DEAL.NUM$ ! ENSURE GLOBAL IS UNAFFECTED
+ 580: 1a70: 
+ 581: 1a70:         ADD.OR.UPDATE.INT = 0                                               !CSWM
+ 582: 1a74: 
+ 583: 1a74:     END FUNCTION
+ 584: 1a8d: 
+ 585: 1a8d: !****************************************************************************
+ 586: 1a8d: 
+ 587: 1a8d:     FUNCTION ADD.OR.UPDATE.DEAL (DEAL.NUM$, RECORD$) PUBLIC                 !CSWM
+ 588: 1aab: 
+ 589: 1aab:         INTEGER*1   ADD.OR.UPDATE.DEAL                                      !CSWM
+ 590: 1aab:         STRING      DEAL.NUM$                                               !CSWM
+ 591: 1aab:         STRING      RECORD$                                                 !CSWM
+ 592: 1aab:         
+ 593: 1aab:         SESS.NUM% = DEAL.SESS.NUM%                                          !CSWM
+ 594: 1ab5:         REPORT.NUM% = DEAL.REPORT.NUM%                                      !CSWM
+ 595: 1ac0:         ADD.OR.UPDATE.DEAL = ADD.OR.UPDATE.INT (DEAL.NUM$, RECORD$)         !CSWM
+ 596: 1ad6:         
+ 597: 1ad6:     END FUNCTION                                                            !CSWM
+ 598: 1aef:     
+ 599: 1aef: !****************************************************************************
+ 600: 1aef: 
+ 601: 1aef:     FUNCTION ADD.OR.UPDATE.DEAL.MODEL (DEAL.NUM$, RECORD$) PUBLIC           !CSWM
+ 602: 1b0d: 
+ 603: 1b0d:         INTEGER*1   ADD.OR.UPDATE.DEAL.MODEL                                !CSWM
+ 604: 1b0d:         STRING      DEAL.NUM$                                               !CSWM
+ 605: 1b0d:         STRING      RECORD$                                                 !CSWM
+ 606: 1b0d:         
+ 607: 1b0d:         SESS.NUM% = DEAL.MODEL.SESS.NUM%                                    !CSWM
+ 608: 1b17:         REPORT.NUM% = DEAL.MODEL.REPORT.NUM%                                !CSWM
+ 609: 1b22:         ADD.OR.UPDATE.DEAL.MODEL = ADD.OR.UPDATE.INT (DEAL.NUM$, RECORD$)   !CSWM
+ 610: 1b38:         
+ 611: 1b38:     END FUNCTION                                                            !CSWM
+ 612: 1b51:     
+ 613: 1b51: !****************************************************************************
+ 614: 1b51: 
+ 615: 1b51:     FUNCTION REMOVE.INT (DEAL.NUM$)    !DO NOT MAKE PUBLIC                  !CSWM
+ 616: 1b6a: 
+ 617: 1b6a:         INTEGER*1   REMOVE.INT                                              !CSWM
+ 618: 1b6a:         STRING      DEAL.NUM$
+ 619: 1b6a: 
+ 620: 1b6a:         REMOVE.INT = 1                                                      !CSWM
+ 621: 1b6e: 
+ 622: 1b6e:         !Read existing deal record
+ 623: 1b6e:         DEAL.DEAL.NUM$ = DEAL.NUM$
+ 624: 1b7f:         IF READ.INT THEN GOTO ALREADY.REMOVED                               !CSWM
+ 625: 1b8a: 
+ 626: 1b8a:         !Save previous and next records
+ 627: 1b8a:         PREV.DEAL.NUM$ = DEAL.PREV.DEAL.NUM$
+ 628: 1b9b:         NEXT.DEAL.NUM$ = DEAL.NEXT.DEAL.NUM$
+ 629: 1bac: 
+ 630: 1bac:         !Update previous record
+ 631: 1bac:         DEAL.DEAL.NUM$ = PREV.DEAL.NUM$
+ 632: 1bbf:         IF READ.INT THEN EXIT FUNCTION                                      !CSWM
+ 633: 1bca:         DEAL.NEXT.DEAL.NUM$ = NEXT.DEAL.NUM$
+ 634: 1bdb:         IF WRITE.INT THEN EXIT FUNCTION                                     !CSWM
+ 635: 1be6: 
+ 636: 1be6:         !Update next record
+ 637: 1be6:         DEAL.DEAL.NUM$ = NEXT.DEAL.NUM$
+ 638: 1bf9:         IF READ.INT THEN EXIT FUNCTION                                      !CSWM
+ 639: 1c04:         DEAL.PREV.DEAL.NUM$ = PREV.DEAL.NUM$
+ 640: 1c15:         IF WRITE.INT THEN EXIT FUNCTION                                     !CSWM
+ 641: 1c1f: 
+ 642: 1c1f:         !Delete the actual record
+ 643: 1c1f:         DEAL.DEAL.NUM$ = DEAL.NUM$
+ 644: 1c30:         IF DELETE.INT THEN EXIT FUNCTION                                    !CSWM
+ 645: 1c3a: 
+ 646: 1c3a:         IF DEAL.BUFFER AND SESS.NUM% = DEAL.SESS.NUM% THEN BEGIN            !BSWM
+ 647: 1c52:             DEAL.NUM% = VAL(UNPACK$(DEAL.NUM$))                             !BSWM
+ 648: 1c6a:             DEAL.BUFFER$(DEAL.NUM%) = ""                                    !BSWM
+ 649: 1c81:         ENDIF                                                               !BSWM
+ 650: 1c81: 
+ 651: 1c81:     ALREADY.REMOVED:
+ 652: 1c81: 
+ 653: 1c81:         REMOVE.INT = 0                                                      !CSWM
+ 654: 1c85: 
+ 655: 1c85:     END FUNCTION
+ 656: 1c99: 
+ 657: 1c99: !****************************************************************************
+ 658: 1c99: 
+ 659: 1c99:     FUNCTION REMOVE.DEAL (DEAL.NUM$) PUBLIC                                 !CSWM
+ 660: 1cb2: 
+ 661: 1cb2:         INTEGER*1   REMOVE.DEAL                                             !CSWM
+ 662: 1cb2:         STRING      DEAL.NUM$                                               !CSWM
+ 663: 1cb2:         
+ 664: 1cb2:         SESS.NUM% = DEAL.SESS.NUM%                                          !CSWM
+ 665: 1cbc:         REPORT.NUM% = DEAL.REPORT.NUM%                                      !CSWM
+ 666: 1cc7:         REMOVE.DEAL = REMOVE.INT (DEAL.NUM$)                                !CSWM
+ 667: 1cd7:         
+ 668: 1cd7:     END FUNCTION                                                            !CSWM
+ 669: 1ceb:     
+ 670: 1ceb: !****************************************************************************
+ 671: 1ceb: 
+ 672: 1ceb:     FUNCTION REMOVE.DEAL.MODEL (DEAL.NUM$) PUBLIC                           !CSWM
+ 673: 1d04: 
+ 674: 1d04:         INTEGER*1   REMOVE.DEAL.MODEL                                       !CSWM
+ 675: 1d04:         STRING      DEAL.NUM$                                               !CSWM
+ 676: 1d04:         
+ 677: 1d04:         SESS.NUM% = DEAL.MODEL.SESS.NUM%                                    !CSWM
+ 678: 1d0e:         REPORT.NUM% = DEAL.MODEL.REPORT.NUM%                                !CSWM
+ 679: 1d19:         REMOVE.DEAL.MODEL = REMOVE.INT (DEAL.NUM$)                          !CSWM
+ 680: 1d29: 
+ 681: 1d29:     END FUNCTION                                                            !CSWM
+ 682: 1d3d:     
+ 683: 1d3d: !****************************************************************************
+ 684: 1d3d: 
+ 685: 1d3d:     FUNCTION GET.NEXT.INT (DEAL.NUM$)   !DO NOT MAKE PUBLIC                 !CSWM
+ 686: 1d56: 
+ 687: 1d56:         INTEGER*1   GET.NEXT.INT                                            !CSWM
+ 688: 1d56:         STRING      DEAL.NUM$
+ 689: 1d56: 
+ 690: 1d56:         GET.NEXT.INT = 1                                                    !CSWM
+ 691: 1d5a: 
+ 692: 1d5a:         DEAL.DEAL.NUM$ = DEAL.NUM$
+ 693: 1d6b:         IF READ.INT THEN EXIT FUNCTION                                      !CSWM
+ 694: 1d75: 
+ 695: 1d75:         DEAL.DEAL.NUM$ = DEAL.NEXT.DEAL.NUM$
+ 696: 1d88:         IF DEAL.DEAL.NUM$ = HOME.DEAL.NUM$ THEN EXIT FUNCTION
+ 697: 1da4:         IF READ.INT THEN EXIT FUNCTION                                      !CSWM
+ 698: 1dae: 
+ 699: 1dae:         GET.NEXT.INT = 0
+ 700: 1db2: 
+ 701: 1db2:      END FUNCTION
+ 702: 1dc6: 
+ 703: 1dc6: !****************************************************************************
+ 704: 1dc6: 
+ 705: 1dc6:     FUNCTION GET.NEXT.DEAL (DEAL.NUM$) PUBLIC                               !CSWM
+ 706: 1ddf:     
+ 707: 1ddf:         INTEGER*1   GET.NEXT.DEAL                                           !CSWM
+ 708: 1ddf:         STRING      DEAL.NUM$                                               !CSWM
+ 709: 1ddf:         
+ 710: 1ddf:         SESS.NUM% = DEAL.SESS.NUM%                                          !CSWM
+ 711: 1de9:         REPORT.NUM% = DEAL.REPORT.NUM%                                      !CSWM
+ 712: 1df4:         GET.NEXT.DEAL = GET.NEXT.INT (DEAL.NUM$)                            !CSWM
+ 713: 1e04:         
+ 714: 1e04:      END FUNCTION                                                           !CSWM
+ 715: 1e18: 
+ 716: 1e18: !****************************************************************************
+ 717: 1e18: 
+ 718: 1e18:     FUNCTION GET.NEXT.DEAL.MODEL (DEAL.NUM$) PUBLIC                         !CSWM
+ 719: 1e31:     
+ 720: 1e31:         INTEGER*1   GET.NEXT.DEAL.MODEL                                     !CSWM
+ 721: 1e31:         STRING      DEAL.NUM$                                               !CSWM
+ 722: 1e31:         
+ 723: 1e31:         SESS.NUM% = DEAL.MODEL.SESS.NUM%                                    !CSWM
+ 724: 1e3b:         REPORT.NUM% = DEAL.MODEL.REPORT.NUM%                                !CSWM
+ 725: 1e46:         GET.NEXT.DEAL.MODEL = GET.NEXT.INT (DEAL.NUM$)                      !CSWM
+ 726: 1e56:         
+ 727: 1e56:      END FUNCTION                                                           !CSWM
+ 728: 1e6a: 
+ 729: 1e6a: !****************************************************************************
+ 730: 1e6a: 
+ 731: 1e6a:     FUNCTION GET.FIRST.DEAL PUBLIC                                          !CSWM
+ 732: 1e7e: 
+ 733: 1e7e:         INTEGER*1   GET.FIRST.DEAL                                          !CSWM
+ 734: 1e7e: 
+ 735: 1e7e:         GET.FIRST.DEAL = GET.NEXT.DEAL (HOME.DEAL.NUM$)                     !CSWM
+ 736: 1e90: 
+ 737: 1e90:     END FUNCTION                                                            !CSWM
+ 738: 1e9f: 
+ 739: 1e9f: !****************************************************************************
+ 740: 1e9f: 
+ 741: 1e9f:     FUNCTION GET.FIRST.DEAL.MODEL PUBLIC                                    !CSWM
+ 742: 1eb3: 
+ 743: 1eb3:         INTEGER*1   GET.FIRST.DEAL.MODEL                                    !CSWM
+ 744: 1eb3: 
+ 745: 1eb3:         GET.FIRST.DEAL.MODEL = GET.NEXT.DEAL.MODEL (HOME.DEAL.NUM$)         !CSWM
+ 746: 1ec5: 
+ 747: 1ec5:     END FUNCTION                                                            !CSWM
+ 748: 1ed4: 
+ 749: 1ed4: !****************************************************************************
+ 750: 1ed4: 
+ 751: 1ed4:     SUB FLUSH.DEAL.BUFFER PUBLIC
+ 752: 1ee8: 
+ 753: 1ee8:         IF DEAL.BUFFER THEN BEGIN
+ 754: 1eef:             DIM DEAL.BUFFER$(0)
+ 755: 1f10:             DEAL.BUFFER = 0
+ 756: 1f15:         ENDIF
+ 757: 1f15:             
+ 758: 1f15:     END SUB
+ 759: 1f21:     
+ 760: 1f21: !****************************************************************************
+ 761: 1f21: 
+ 762: 1f21: End of Compilation

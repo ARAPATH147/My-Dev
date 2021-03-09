@@ -1,0 +1,346 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           PILST - LIST OF LISTS FILE - FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***           REFERENCE: PILSTFUN.BAS
+   7: 0000: \***
+   8: 0000: \***           9th October 1992
+   9: 0000: \***
+  10: 0000: \******************************************************************************
+  11: 0000: 
+  12: 0000:    INTEGER*2 GLOBAL                     \
+  13: 0000:       CURRENT.REPORT.NUM%
+  14: 0000:       
+  15: 0000:    STRING GLOBAL                        \
+  16: 0000:       CURRENT.CODE$,                    \
+  17: 0000:       FILE.OPERATION$
+  18: 0000:       
+  19: 0000:    %INCLUDE PILSTDEC.J86
+  20: 0000: 
+  21: 0000: \******************************************************************************
+  22: 0000: \***
+  23: 0000: \***      %INCLUDE FOR PILST - LIST OF LISTS FILE - FIELD DECLARATIONS
+  24: 0000: \***                                                FILE REFERENCE PARAMETERS
+  25: 0000: \***
+  26: 0000: \***                           8th October 1992
+  27: 0000: \***
+  28: 0000: \******************************************************************************
+  29: 0000: 
+  30: 0000:    INTEGER*1 GLOBAL             	\
+  31: 0000:         PILST.REPORT.NUM%,		\
+  32: 0000: 	PILST.SESS.NUM%,		\
+  33: 0000: 	PILST.ITEMS.IN.LIST%,		\ No of items in list
+  34: 0000: 	PILST.TO.BE.COUNTED%		! No of items left to be counted
+  35: 0000: 
+  36: 0000:    INTEGER*2 GLOBAL			\
+  37: 0000:         PILST.RECL%
+  38: 0000: 
+  39: 0000:    STRING GLOBAL			\
+  40: 0000: 	PILST.FILE.NAME$,		\
+  41: 0000: 	PILST.LIST.NUMBER$,		\ 4 byte - list number
+  42: 0000: 	PILST.SPARE.LIST.NUMBER$,	\ 4 byte - spare list number
+  43: 0000: 	PILST.LIST.NAME$,		\12 byte - list name
+  44: 0000: 	PILST.BC.LETTER$,		\ 1 byte - business centre letter
+  45: 0000: 	PILST.LIST.TYPE$,		\ 1 byte - list type :
+  46: 0000: 					\    "R" = regular,
+  47: 0000: 					\    "C" = CSR,
+  48: 0000: 					\    "E" = exceptions.
+  49: 0000: 	PILST.COUNT.BY.DATE$,		\ 3 byte UPD - count by date
+  50: 0000: 	PILST.PRODUCT.GROUP$,		\ 3 byte UPD - product group
+  51: 0000: 	PILST.COUNT.DATE$,		\ 3 byte UPD - scheduled count date
+  52: 0000: 	PILST.LIST.STATUS$,		\ 1 byte - list status :
+  53: 0000: 					\    "C" = to be counted,
+  54: 0000: 					\    "R" = to be re-counted,
+  55: 0000: 					\    "X" = cancelled,
+  56: 0000: 					\    "F" = completed.
+  57: 0000: 	PILST.RECOUNT.DATE$,		\ 3 byte UPD - scheduled re-count date
+  58: 0000: 	PILST.RECOUNT.ALLOWED$,		\ 1 byte UPD - re-count allowed flag
+  59: 0000: 	PILST.CPM.RUN.DATE$,		\ 3 byte UPD - cpm. run date
+  60: 0000: 	PILST.PIPLN.RUN.OK$,	        \ 1 byte - PIPLN run ok flag "Y" / "N"
+  61: 0000: 	PILST.HIGHEST.LIST.NO$,	        \ 4 byte - highest transmitted list no
+  62: 0000:         PILST.DET.FILLER$,              \ 6 bytes
+  63: 0000:         PILST.HDR.FILLER$               ! 24 bytes
+  64: 0000: 	
+  65: 0000:    
+  66: 0000:    
+  67: 0000:   FUNCTION PILST.SET PUBLIC
+  68: 0014: \***************************
+  69: 0014: 
+  70: 0014:      PILST.FILE.NAME$  = "PILST"
+  71: 0023:      PILST.REPORT.NUM% = 120
+  72: 002b:      PILST.RECL%       = 40   
+  73: 0034:   
+  74: 0034:   END FUNCTION
+  75: 0040:   
+  76: 0040: \-----------------------------------------------------------------------------  
+  77: 0040: 
+  78: 0040:   FUNCTION READ.PILST PUBLIC
+  79: 0054: \****************************
+  80: 0054: 
+  81: 0054:       INTEGER*2 READ.PILST
+  82: 0054:       
+  83: 0054:       READ.PILST = 1   
+  84: 0059: 
+  85: 0059:       IF PILST.LIST.NUMBER$ <> "0000" THEN BEGIN   
+  86: 0072:          REM ** Detail record **
+  87: 0072:          IF END #PILST.SESS.NUM% THEN READ.ERROR
+  88: 0088:          READ FORM "T5,C12,2C1,2C3,2I1,C3,C1,C3,C1,C6";                 \
+  89: 0135:            # PILST.SESS.NUM%                                            \
+  90: 0135:            KEY PILST.LIST.NUMBER$;                                      \
+  91: 0135:                PILST.LIST.NAME$,                                        \
+  92: 0135:                PILST.BC.LETTER$,                                        \
+  93: 0135:                PILST.LIST.TYPE$,                                        \
+  94: 0135:                PILST.COUNT.BY.DATE$,                                    \
+  95: 0135:                PILST.PRODUCT.GROUP$,                                    \
+  96: 0135:                PILST.ITEMS.IN.LIST%,                                    \
+  97: 0135:                PILST.TO.BE.COUNTED%,                                    \
+  98: 0135:                PILST.COUNT.DATE$,                                       \
+  99: 0135:                PILST.LIST.STATUS$,                                      \
+ 100: 0135:                PILST.RECOUNT.DATE$,                                     \
+ 101: 0135:                PILST.RECOUNT.ALLOWED$,                                  \
+ 102: 0135:                PILST.DET.FILLER$                                        !
+ 103: 0135:       ENDIF
+ 104: 0135:       
+ 105: 0135:       IF PILST.LIST.NUMBER$ = "0000" THEN BEGIN
+ 106: 014b:          REM ** 'header' record **
+ 107: 014b:          IF END #PILST.SESS.NUM% THEN READ.ERROR
+ 108: 0161:          READ FORM "T5,C4,C3,C1,C4,C24";                                \ 
+ 109: 01c1:            # PILST.SESS.NUM%                                            \
+ 110: 01c1:            KEY PILST.LIST.NUMBER$;                                      \
+ 111: 01c1:                PILST.SPARE.LIST.NUMBER$,                                \
+ 112: 01c1:                PILST.CPM.RUN.DATE$,                                     \
+ 113: 01c1:                PILST.PIPLN.RUN.OK$,                                     \
+ 114: 01c1:                PILST.HIGHEST.LIST.NO$,                                  \ 
+ 115: 01c1:                PILST.HDR.FILLER$ 
+ 116: 01c1:       ENDIF
+ 117: 01c1:       READ.PILST = 0
+ 118: 01c6:       EXIT FUNCTION
+ 119: 01c8:       
+ 120: 01c8:       READ.ERROR:
+ 121: 01c8:          
+ 122: 01c8:          CURRENT.CODE$ = PILST.LIST.NUMBER$
+ 123: 01de:          FILE.OPERATION$ = "R"
+ 124: 01ed:          CURRENT.REPORT.NUM% = PILST.REPORT.NUM%
+ 125: 01fc:          
+ 126: 01fc:          EXIT FUNCTION
+ 127: 01fe:       
+ 128: 01fe:    END FUNCTION
+ 129: 020d: \-----------------------------------------------------------------------------
+ 130: 020d:    
+ 131: 020d: 
+ 132: 020d:   FUNCTION READ.PILST.LOCK PUBLIC
+ 133: 0221: \*********************************
+ 134: 0221: 
+ 135: 0221:       INTEGER*2 READ.PILST.LOCK
+ 136: 0221:       
+ 137: 0221:       READ.PILST.LOCK = 1
+ 138: 0226:          
+ 139: 0226:       IF PILST.LIST.NUMBER$ <> "0000" THEN BEGIN   
+ 140: 023f:          REM ** Detail record **
+ 141: 023f:          IF END #PILST.SESS.NUM% THEN READ.LOCK.ERROR
+ 142: 0255:          READ FORM "T5,C12,2C1,2C3,2I1,C3,C1,C3,C1,C6";                 \
+ 143: 0302:            # PILST.SESS.NUM% AUTOLOCK                                   \
+ 144: 0302:            KEY PILST.LIST.NUMBER$;                                      \
+ 145: 0302:                PILST.LIST.NAME$,                                        \
+ 146: 0302:                PILST.BC.LETTER$,                                        \
+ 147: 0302:                PILST.LIST.TYPE$,                                        \
+ 148: 0302:                PILST.COUNT.BY.DATE$,                                    \
+ 149: 0302:                PILST.PRODUCT.GROUP$,                                    \
+ 150: 0302:                PILST.ITEMS.IN.LIST%,                                    \
+ 151: 0302:                PILST.TO.BE.COUNTED%,                                    \
+ 152: 0302:                PILST.COUNT.DATE$,                                       \
+ 153: 0302:                PILST.LIST.STATUS$,                                      \
+ 154: 0302:                PILST.RECOUNT.DATE$,                                     \
+ 155: 0302:                PILST.RECOUNT.ALLOWED$,                                  \
+ 156: 0302:                PILST.DET.FILLER$      
+ 157: 0302:       ENDIF
+ 158: 0302:       
+ 159: 0302:       IF PILST.LIST.NUMBER$ = "0000" THEN BEGIN
+ 160: 0318:          REM ** 'header' record **
+ 161: 0318:          IF END #PILST.SESS.NUM% THEN READ.LOCK.ERROR
+ 162: 032e:          READ FORM "T5,C4,C3,C1,C4,C24";                                \ 
+ 163: 038e:            # PILST.SESS.NUM%                                            \
+ 164: 038e:            KEY PILST.LIST.NUMBER$;                                      \
+ 165: 038e:                PILST.SPARE.LIST.NUMBER$,                                \
+ 166: 038e:                PILST.CPM.RUN.DATE$,                                     \
+ 167: 038e:                PILST.PIPLN.RUN.OK$,                                     \
+ 168: 038e:                PILST.HIGHEST.LIST.NO$,                                  \ 
+ 169: 038e:                PILST.HDR.FILLER$                       
+ 170: 038e:       ENDIF
+ 171: 038e:       READ.PILST.LOCK = 0
+ 172: 0393:       EXIT FUNCTION
+ 173: 0395:       
+ 174: 0395:       READ.LOCK.ERROR:
+ 175: 0395:       
+ 176: 0395:          CURRENT.CODE$ = PILST.LIST.NUMBER$
+ 177: 03ab:          FILE.OPERATION$ = "R"
+ 178: 03ba:          CURRENT.REPORT.NUM% = PILST.REPORT.NUM%
+ 179: 03c9:          
+ 180: 03c9:          EXIT FUNCTION
+ 181: 03cb:    
+ 182: 03cb:    END FUNCTION
+ 183: 03da: 
+ 184: 03da: \-----------------------------------------------------------------------------
+ 185: 03da: 
+ 186: 03da:   FUNCTION WRITE.PILST PUBLIC
+ 187: 03ee: \*****************************
+ 188: 03ee: 
+ 189: 03ee:       INTEGER*2 WRITE.PILST
+ 190: 03ee:       
+ 191: 03ee:       WRITE.PILST = 1  
+ 192: 03f3: 
+ 193: 03f3:       IF PILST.LIST.NUMBER$ <> "0000" THEN BEGIN   
+ 194: 040c:          REM ** Detail record **
+ 195: 040c:          IF END #PILST.SESS.NUM% THEN WRITE.ERROR
+ 196: 0422:          WRITE FORM "C4,C12,2C1,2C3,2I1,C3,C1,C3,C1,C6";                \
+ 197: 0502:            # PILST.SESS.NUM%;                                           \
+ 198: 0502:                PILST.LIST.NUMBER$,                                      \
+ 199: 0502:                PILST.LIST.NAME$,                                        \
+ 200: 0502:                PILST.BC.LETTER$,                                        \
+ 201: 0502:                PILST.LIST.TYPE$,                                        \
+ 202: 0502:                PILST.COUNT.BY.DATE$,                                    \
+ 203: 0502:                PILST.PRODUCT.GROUP$,                                    \
+ 204: 0502:                PILST.ITEMS.IN.LIST%,                                    \
+ 205: 0502:                PILST.TO.BE.COUNTED%,                                    \
+ 206: 0502:                PILST.COUNT.DATE$,                                       \
+ 207: 0502:                PILST.LIST.STATUS$,                                      \
+ 208: 0502:                PILST.RECOUNT.DATE$,                                     \
+ 209: 0502:                PILST.RECOUNT.ALLOWED$,                                  \
+ 210: 0502:                PILST.DET.FILLER$
+ 211: 0502:       ENDIF
+ 212: 0502:       
+ 213: 0502:       IF PILST.LIST.NUMBER$ = "0000" THEN BEGIN
+ 214: 051b:          REM ** 'header' record **
+ 215: 051b:          IF END #PILST.SESS.NUM% THEN WRITE.ERROR
+ 216: 0531:          WRITE FORM "C4,C4,C3,C1,C4,C24";                               \ 
+ 217: 05a5:            # PILST.SESS.NUM%;                                           \
+ 218: 05a5:                PILST.LIST.NUMBER$,                                      \
+ 219: 05a5:                PILST.SPARE.LIST.NUMBER$,                                \
+ 220: 05a5:                PILST.CPM.RUN.DATE$,                                     \
+ 221: 05a5:                PILST.PIPLN.RUN.OK$,                                     \
+ 222: 05a5:                PILST.HIGHEST.LIST.NO$,                                  \ 
+ 223: 05a5:                PILST.HDR.FILLER$  
+ 224: 05a5:       ENDIF
+ 225: 05a5:       WRITE.PILST = 0
+ 226: 05aa:       EXIT FUNCTION
+ 227: 05ac:       
+ 228: 05ac:       WRITE.ERROR:
+ 229: 05ac:       
+ 230: 05ac:          CURRENT.CODE$ = PILST.LIST.NUMBER$
+ 231: 05c2:          FILE.OPERATION$ = "O"
+ 232: 05d1:          CURRENT.REPORT.NUM% = PILST.REPORT.NUM%
+ 233: 05e0:          
+ 234: 05e0:          EXIT FUNCTION
+ 235: 05e2:    
+ 236: 05e2:    END FUNCTION
+ 237: 05f1: 
+ 238: 05f1: \-----------------------------------------------------------------------------
+ 239: 05f1: 
+ 240: 05f1:   FUNCTION WRITE.PILST.HOLD PUBLIC
+ 241: 0605: \**********************************
+ 242: 0605: 
+ 243: 0605:       INTEGER*2 WRITE.PILST.HOLD
+ 244: 0605:       
+ 245: 0605:       WRITE.PILST.HOLD = 1
+ 246: 060a:       
+ 247: 060a:       IF PILST.LIST.NUMBER$ <> "0000" THEN BEGIN   
+ 248: 0623:          REM ** Detail record **
+ 249: 0623:          IF END #PILST.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 250: 0639:          WRITE FORM "C4,C12,2C1,2C3,2I1,C3,C1,C3,C1,C6";                \
+ 251: 0719:            HOLD # PILST.SESS.NUM%;                                      \
+ 252: 0719:                PILST.LIST.NUMBER$,                                      \
+ 253: 0719:                PILST.LIST.NAME$,                                        \
+ 254: 0719:                PILST.BC.LETTER$,                                        \
+ 255: 0719:                PILST.LIST.TYPE$,                                        \
+ 256: 0719:                PILST.COUNT.BY.DATE$,                                    \
+ 257: 0719:                PILST.PRODUCT.GROUP$,                                    \
+ 258: 0719:                PILST.ITEMS.IN.LIST%,                                    \
+ 259: 0719:                PILST.TO.BE.COUNTED%,                                    \
+ 260: 0719:                PILST.COUNT.DATE$,                                       \
+ 261: 0719:                PILST.LIST.STATUS$,                                      \
+ 262: 0719:                PILST.RECOUNT.DATE$,                                     \
+ 263: 0719:                PILST.RECOUNT.ALLOWED$,                                  \
+ 264: 0719:                PILST.DET.FILLER$
+ 265: 0719:       ENDIF
+ 266: 0719: 
+ 267: 0719:       
+ 268: 0719:       IF PILST.LIST.NUMBER$ = "0000" THEN BEGIN
+ 269: 0732:          REM ** 'header' record **
+ 270: 0732:          IF END #PILST.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 271: 0748:          WRITE FORM "C4,C4,C3,C1,C4,C24";                               \ 
+ 272: 07bc:            # PILST.SESS.NUM%;                                           \
+ 273: 07bc:                PILST.LIST.NUMBER$,                                      \
+ 274: 07bc:                PILST.SPARE.LIST.NUMBER$,                                \
+ 275: 07bc:                PILST.CPM.RUN.DATE$,                                     \
+ 276: 07bc:                PILST.PIPLN.RUN.OK$,                                     \
+ 277: 07bc:                PILST.HIGHEST.LIST.NO$,                                  \ 
+ 278: 07bc:                PILST.HDR.FILLER$
+ 279: 07bc:       ENDIF
+ 280: 07bc:       WRITE.PILST.HOLD = 0
+ 281: 07c1:       EXIT FUNCTION
+ 282: 07c3:       
+ 283: 07c3:       WRITE.HOLD.ERROR:
+ 284: 07c3:       
+ 285: 07c3:          CURRENT.CODE$ = PILST.LIST.NUMBER$
+ 286: 07d9:          FILE.OPERATION$ = "O"
+ 287: 07e8:          CURRENT.REPORT.NUM% = PILST.REPORT.NUM%
+ 288: 07f7:          
+ 289: 07f7:          EXIT FUNCTION      
+ 290: 07f9:    
+ 291: 07f9:    END FUNCTION
+ 292: 0808: \-----------------------------------------------------------------------------
+ 293: 0808:    
+ 294: 0808: 
+ 295: 0808:   FUNCTION WRITE.PILST.UNLOCK PUBLIC
+ 296: 081c: \************************************
+ 297: 081c: 
+ 298: 081c:       INTEGER*2 WRITE.PILST.UNLOCK
+ 299: 081c:       
+ 300: 081c:       WRITE.PILST.UNLOCK = 1
+ 301: 0821:       
+ 302: 0821:       IF PILST.LIST.NUMBER$ <> "0000" THEN BEGIN   
+ 303: 083a:          REM ** Detail record **
+ 304: 083a:          IF END #PILST.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 305: 0850:          WRITE FORM "C4,C12,2C1,2C3,2I1,C3,C1,C3,C1,C6";                \
+ 306: 0930:            # PILST.SESS.NUM% AUTOUNLOCK;                                \
+ 307: 0930:                PILST.LIST.NUMBER$,                                      \
+ 308: 0930:                PILST.LIST.NAME$,                                        \
+ 309: 0930:                PILST.BC.LETTER$,                                        \
+ 310: 0930:                PILST.LIST.TYPE$,                                        \
+ 311: 0930:                PILST.COUNT.BY.DATE$,                                    \
+ 312: 0930:                PILST.PRODUCT.GROUP$,                                    \
+ 313: 0930:                PILST.ITEMS.IN.LIST%,                                    \
+ 314: 0930:                PILST.TO.BE.COUNTED%,                                    \
+ 315: 0930:                PILST.COUNT.DATE$,                                       \
+ 316: 0930:                PILST.LIST.STATUS$,                                      \
+ 317: 0930:                PILST.RECOUNT.DATE$,                                     \
+ 318: 0930:                PILST.RECOUNT.ALLOWED$,                                  \
+ 319: 0930:                PILST.DET.FILLER$
+ 320: 0930:       ENDIF
+ 321: 0930:       
+ 322: 0930:       IF PILST.LIST.NUMBER$ = "0000" THEN BEGIN
+ 323: 0949:          REM ** 'header' record **
+ 324: 0949:          IF END #PILST.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 325: 095f:          WRITE FORM "C4,C4,C3,C1,C4,C24";                               \ 
+ 326: 09d3:            # PILST.SESS.NUM%;                                           \
+ 327: 09d3:                PILST.LIST.NUMBER$,                                      \
+ 328: 09d3:                PILST.SPARE.LIST.NUMBER$,                                \
+ 329: 09d3:                PILST.CPM.RUN.DATE$,                                     \
+ 330: 09d3:                PILST.PIPLN.RUN.OK$,                                     \
+ 331: 09d3:                PILST.HIGHEST.LIST.NO$,                                  \ 
+ 332: 09d3:                PILST.HDR.FILLER$
+ 333: 09d3:       ENDIF
+ 334: 09d3:       WRITE.PILST.UNLOCK = 0
+ 335: 09d8:       EXIT FUNCTION
+ 336: 09da:       
+ 337: 09da:       WRITE.UNLOCK.ERROR:
+ 338: 09da:       
+ 339: 09da:          CURRENT.CODE$ = PILST.LIST.NUMBER$
+ 340: 09f0:          FILE.OPERATION$ = "O"
+ 341: 09ff:          CURRENT.REPORT.NUM% = PILST.REPORT.NUM%
+ 342: 0a0e:          
+ 343: 0a0e:          EXIT FUNCTION      
+ 344: 0a10:    
+ 345: 0a10:    END FUNCTION
+ 346: 0a1f: End of Compilation

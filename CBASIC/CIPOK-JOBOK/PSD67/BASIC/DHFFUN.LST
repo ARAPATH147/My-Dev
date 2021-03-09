@@ -1,0 +1,149 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* DHF File Functions                                             */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : DHFFUN.BAS                                       */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.              19 April 2007   */
+   8: 0000: \/*                                                                */
+   9: 0000: \/******************************************************************/
+  10: 0000: 
+  11: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  12: 0000: 
+  13: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  14: 0000:                     FILE.OPERATION$
+  15: 0000: 
+  16: 0000:    %INCLUDE DHFDEC.J86
+  17: 0000: \/******************************************************************/
+  18: 0000: \/*                                                                */
+  19: 0000: \/* DHF FILE GLOBAL VARIABLE DECLARATIONS                          */
+  20: 0000: \/*                                                                */
+  21: 0000: \/* REFERENCE   : DHFDEC.J86                                       */
+  22: 0000: \/*                                                                */
+  23: 0000: \/* VERSION A.          Neil Bennett.              19 APRIL 2007   */
+  24: 0000: \/*                                                                */
+  25: 0000: \/******************************************************************/
+  26: 0000: 
+  27: 0000:    STRING GLOBAL                \
+  28: 0000:       DHF.FILE.NAME$,           \
+  29: 0000:                                 \
+  30: 0000:       DHF.BOOTS.CODE$,          \ UPD 3 (without check digit)
+  31: 0000:       DHF.DEAL.NUM$,            \ UPD 2 - last deal to end
+  32: 0000:       DHF.END.DATE$             ! UPD 3 - yymmdd - last end date
+  33: 0000: 
+  34: 0000:    INTEGER*1 GLOBAL             \
+  35: 0000:       DHF.DEAL.TYPE%            !
+  36: 0000: 
+  37: 0000:    INTEGER*2 GLOBAL             \
+  38: 0000:       DHF.RECL%,                \
+  39: 0000:       DHF.KEY.LEN%,             \
+  40: 0000:       DHF.REPORT.NUM%,          \
+  41: 0000:       DHF.SESS.NUM%             !
+  42: 0000: 
+  43: 0000:    INTEGER*4 GLOBAL             \
+  44: 0000:       DHF.NUM.RECS%
+  45: 0000:       
+  46: 0000: \/******************************************************************/
+  47: 0000: 
+  48: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  49: 0000: \/* FUNCTION DHF.SET                                               */
+  50: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  51: 0000: 
+  52: 0000:    FUNCTION DHF.SET PUBLIC
+  53: 0014: 
+  54: 0014:       INTEGER*1 DHF.SET
+  55: 0014: 
+  56: 0014:       DHF.REPORT.NUM% =    742
+  57: 001d:       DHF.RECL%       =      9
+  58: 0026:       DHF.KEY.LEN%    =      3
+  59: 002f:       DHF.NUM.RECS%   = 300000
+  60: 003e:       DHF.FILE.NAME$  = "DEHF"
+  61: 004d: 
+  62: 004d:    END FUNCTION
+  63: 005c: 
+  64: 005c: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  65: 005c: \/* FUNCTION READ.DHF                                              */
+  66: 005c: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  67: 005c: 
+  68: 005c:    FUNCTION READ.DHF PUBLIC
+  69: 0070: 
+  70: 0070:       INTEGER*2 READ.DHF
+  71: 0070: 
+  72: 0070:       READ.DHF = 1
+  73: 0075: 
+  74: 0075:       IF END #DHF.SESS.NUM% THEN READ.ERROR
+  75: 0089:       READ FORM "T4,C2,I1,C3";                                      \
+  76: 00d1:            #DHF.SESS.NUM%                                           \
+  77: 00d1:            KEY DHF.BOOTS.CODE$;                                     \
+  78: 00d1:                DHF.DEAL.NUM$,                                       \
+  79: 00d1:                DHF.DEAL.TYPE%,                                      \
+  80: 00d1:                DHF.END.DATE$
+  81: 00d1: 
+  82: 00d1:       READ.DHF = 0
+  83: 00d6: 
+  84: 00d6:    EXIT FUNCTION
+  85: 00d8: 
+  86: 00d8: READ.ERROR:
+  87: 00d8: 
+  88: 00d8:       FILE.OPERATION$     = "R"
+  89: 00e7:       CURRENT.REPORT.NUM% = DHF.REPORT.NUM%
+  90: 00f5:       CURRENT.CODE$       = ""
+  91: 0104: 
+  92: 0104:    END FUNCTION
+  93: 0113: 
+  94: 0113: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  95: 0113: \/* FUNCTION WRITE.DHF                                             */
+  96: 0113: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  97: 0113: 
+  98: 0113:    FUNCTION WRITE.DHF PUBLIC
+  99: 0127: 
+ 100: 0127:       INTEGER*2 WRITE.DHF
+ 101: 0127: 
+ 102: 0127:       WRITE.DHF = 1
+ 103: 012c: 
+ 104: 012c:       IF END #DHF.SESS.NUM% THEN WRITE.ERROR
+ 105: 0140:       WRITE FORM "C3,C2,I1,C3";                                     \
+ 106: 0190:            #DHF.SESS.NUM%;                                          \
+ 107: 0190:                DHF.BOOTS.CODE$,                                     \
+ 108: 0190:                DHF.DEAL.NUM$,                                       \
+ 109: 0190:                DHF.DEAL.TYPE%,                                      \
+ 110: 0190:                DHF.END.DATE$
+ 111: 0190: 
+ 112: 0190:       WRITE.DHF = 0
+ 113: 0195:       EXIT FUNCTION
+ 114: 0197: 
+ 115: 0197: WRITE.ERROR:
+ 116: 0197: 
+ 117: 0197:       FILE.OPERATION$ = "W"
+ 118: 01a6:       CURRENT.REPORT.NUM% = DHF.REPORT.NUM%
+ 119: 01b4:       CURRENT.CODE$ = ""
+ 120: 01c3: 
+ 121: 01c3:    END FUNCTION
+ 122: 01d2: 
+ 123: 01d2: 
+ 124: 01d2: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 125: 01d2: \/* FUNCTION DELETE.DHF                                            */
+ 126: 01d2: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 127: 01d2:     FUNCTION DELETE.DHF   PUBLIC 
+ 128: 01e6: 
+ 129: 01e6:         INTEGER*1   DELETE.DHF
+ 130: 01e6: 
+ 131: 01e6:         DELETE.DHF = 1
+ 132: 01ea: 
+ 133: 01ea:         IF END # DHF.SESS.NUM% THEN FILE.ERROR
+ 134: 01fe:         DELREC DHF.SESS.NUM%; DHF.BOOTS.CODE$
+ 135: 0215: 
+ 136: 0215:         DELETE.DHF = 0
+ 137: 0219: 
+ 138: 0219:     EXIT FUNCTION
+ 139: 021b: 
+ 140: 021b:     FILE.ERROR:
+ 141: 021b: 
+ 142: 021b:         FILE.OPERATION$     = "D"
+ 143: 022a:         CURRENT.REPORT.NUM% = DHF.REPORT.NUM%
+ 144: 0238:         CURRENT.CODE$       = PACK$("0000") + DHF.BOOTS.CODE$
+ 145: 0265: 
+ 146: 0265:     END FUNCTION
+ 147: 0274: 
+ 148: 0274: \/******************************************************************/
+ 149: 0274: End of Compilation

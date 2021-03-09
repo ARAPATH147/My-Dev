@@ -1,0 +1,803 @@
+\*****************************************************************************
+\*****************************************************************************
+\***                                                                       ***
+\***      G L O B A L   D E F I N I T I O N S   F O R   P S S 3 7          ***
+\***                                                                       ***
+\***           REFERENCE : PSS37G                                          ***
+\***                                                                       ***
+\***           VERSION E                                                   ***
+\***           5th November 1992                                           ***
+\***           Ver D.  Add support for ADXSERCL routine.                   ***
+\***           Ver E.  Add support for LDTBF                               ***
+\***                                                                       ***
+\***                                                                       ***
+\***           Version G                                                   ***
+\***           Add support for Returns/Automatic credit claiming           ***
+\***                                                                       ***
+\***           Version H  Michael J. Kelsall    24th March 1994.           ***
+\***           Add support for CCUPF                                       ***
+\***
+\***           REVISION 1.1  ROBERT COWEY / STEVE WRIGHT  6TH OCTOBER 1994
+\***           Removed version letters from included code (not commented).
+\***
+\***           REVISION 1.2  David Smallwood    26th May 1995
+\***           Add global variable ALLOW.CSR.PROCESSING.
+\***
+\***           REVISION 1.3  Stuart Highly      April 1996
+\***           Gap monitor changes
+\***
+\***           REVISION 1.4  David Smallwood    21st May 1996
+\***           Change global variable "NUM.OF.UODS%" to
+\***           "NUM.STATUS.O.C.X.UODS%".  Add variables "NUM.OF.CANCELLED.UODS%"
+\***           "NUM.OF.DESPATCHED.UODS%".  Add global variables for CCLAM.
+\***
+\***           REVISION 1.5  Nik Sen            30th June 1997
+\***           Add variables for SXTMP STKTK and STKBUF for stocktaking.
+\***
+\***           REVISION 1.6  David Artiss       23rd January 2001
+\***           Add new audit file STLDT
+\***
+\***           REVISION 1.7  Brian Greenfield   17th October 2002
+\***           Added LSSST and IMSTC for LSS stock counts.
+\***
+\***           REVISION 1.8  David Artiss       7th March 2003
+\***           Lots of file and field definitions added for BOL
+\***           stocktake changes.
+\***
+\***           REVISION 1.9  Brian Greenfield   18th July 2003
+\***           New file additions for Store Stock Counts
+\***
+\***           REVISION 2.0  Julia Stones      22nd October 2003
+\***           New file additions for SmartScript Pharmacy Stock system
+\***
+\***           REVISION 2.1  Julia Stones      12th November 2003
+\***           New file additions for Simplification of the credit claim system
+\***
+\***           REVISION 2.2 Julia Stones       12th March 2004
+\***           New file addition for Credit Claim rejection information
+\***
+\***           REVISION 2.3 Charles Skadorwa   10th November 2004
+\***           Shelf Monitor Project: add declarations for PLLOL & PLLDB files
+\***
+\***           REVISION 2.4 Brian Greenfield   11th January 2005
+\***           Fixes to allow old record type P and new record type P to both work.
+\***           The old record type P can be removed next time this module is
+\***           altered.
+\***
+\***           REVISION 2.5    Neil Bennett    22nd December 2006
+\***           Add ASN processing support.
+\***           Remove CSR processing support.
+\***
+\***           REVISION 2.6    Brian Greenfield 11th may 2007
+\***           Added recalls processing for A7C.
+\***
+\*****************************************************************************
+\*****************************************************************************
+
+\*****************************************************************************
+\***   include global definitions for the following functions and procedures
+\***
+\***     APPLICATION.LOG              01
+\***     READ.NEXT.IEF                11
+\***     SORT.TABLE                   14
+\***     CONV.TO.HEX                  16
+\***     CONV.TO.STRING               17
+\***     SESS.NUM.UTILITY             20
+\***     CIMF
+\***     CITEM
+\***     CSR
+\***     CSRWF
+\***     CSRBF
+\***     FPF
+\***     IDF
+\***     IDSOF
+\***     INVOK
+\***     ONORD
+\***     PCHK
+\***     PIPEI
+\***     UNITS
+\***     STKMQ
+\***     BCSMF
+\***     IEF
+\***     DIRORD
+\***     DIRSUP
+\***     DIRWF
+\***     DIR
+\***     LDTBF
+\***     LDTCF
+\***     UOD
+\***     UODBF
+\***     UODTF
+\***     STKBF
+\***     SXTMP
+\***     STKTK
+\***     SSPSC
+\***     BTCS
+\***     PRINT
+\***     SOPTS
+\***     TSF
+\***     LOCAL
+\***
+\*****************************************************************************
+
+ %INCLUDE PSBF01G.J86                     ! FLC
+ %INCLUDE PSBF05G.J86                     ! 1.9BG
+!%INCLUDE PSBF06G.J86                     ! FLC
+ %INCLUDE PSBF11G.J86                     ! DLC
+ %INCLUDE PSBF14G.J86                     ! DLC
+ %INCLUDE PSBF16G.J86                     ! DLC
+ %INCLUDE PSBF17G.J86                     ! DLC
+ %INCLUDE PSBF18G.J86                     ! 1.8DA
+ %INCLUDE PSBF20G.J86                     ! DLC
+ %INCLUDE PSBF21G.J86                     ! 1.9BG
+
+!%INCLUDE ASYNCNUB.J86                    ! FLC
+ %INCLUDE CHKBFDEC.J86                    ! DLC
+ %INCLUDE GAPBFDEC.J86                    ! SDH !2.3CS !2.4BG
+ %INCLUDE PLLOLDEC.J86                    ! 2.3CS
+ %INCLUDE PLLDBDEC.J86                    ! 2.3CS
+\%INCLUDE CIMFDEC.J86                     ! DLC !2.5NWB
+\%INCLUDE CITEMDEC.J86                    ! DLC !2.5NWB
+\%INCLUDE CSRDEC.J86                      ! DLC !2.5NWB
+\%INCLUDE CSRWFDEC.J86                    ! DLC !2.5NWB
+\%INCLUDE CSRBFDEC.J86                    ! DLC !2.5NWB
+!%INCLUDE EPSOMDEC.J86                    ! FLC TEST
+ %INCLUDE FPFDEC.J86                      ! DLC
+ %INCLUDE IDFDEC.J86                      ! FLC
+ %INCLUDE INVOKDEC.J86                    ! FLC
+ %INCLUDE ONORDDEC.J86                    ! DLC
+ %INCLUDE PCHKDEC.J86                     ! DLC
+ %INCLUDE PIPEINUB.J86                    ! DLC
+!%INCLUDE PIPEONUB.J86                    ! FLC TEST
+ %INCLUDE UNITSDEC.J86                    ! DLC
+ %INCLUDE STKMQDEC.J86                    ! MMJK
+ %INCLUDE BCSMFDEC.J86                    ! FLC
+ %INCLUDE IEFDEC.J86                      ! DLC
+ %INCLUDE DIRORDEC.J86                    ! DLC
+ %INCLUDE DIRSUDEC.J86                    ! DLC
+ %INCLUDE DIRWFDEC.J86                    ! DLC
+ %INCLUDE DIRECDEC.J86                    ! DLC
+ %INCLUDE LDTCFDEC.J86                    ! DLC
+ %INCLUDE DRSMQDEC.J86                    ! DLC
+ %INCLUDE LDTBFDEC.J86                    ! ELC
+ %INCLUDE IDSOFDEC.J86                    ! ELC
+ %INCLUDE UODDEC.J86                      ! FLC
+ %INCLUDE UODBFDEC.J86                    ! FLC
+ %INCLUDE UODTFDEC.J86                    ! FLC
+ %INCLUDE PILSTDEC.J86                    ! FLC
+ %INCLUDE PIITMDEC.J86                    ! FLC
+!%INCLUDE PDTWFDEC.J86                    ! FLC
+!%INCLUDE IRFDEC.J86                      ! FLC TEST
+
+ %INCLUDE CCUODDEC.J86                    ! GMJK
+ %INCLUDE CCLAMDEC.J86                    ! 1.4
+ %INCLUDE CCITMDEC.J86                    ! GMJK
+ %INCLUDE CCTRLDEC.J86                    ! GMJK
+ %INCLUDE CCTMPDEC.J86                    ! GMJK
+ %INCLUDE CCBUFDEC.J86                    ! GMJK
+ %INCLUDE CCUPFDEC.J86                    ! HMJK
+ %INCLUDE CCWKFDEC.J86                    ! GMJK
+ %INCLUDE CCDMYDEC.J86                    ! GMJK
+ %INCLUDE LDTAFDEC.J86                    ! HMJK
+ %INCLUDE SOFTSDEC.J86                    ! GMJK
+ %INCLUDE STKBFDEC.J86                    ! 1.5
+ %INCLUDE SXTMPDEC.J86                    ! 1.5
+ %INCLUDE STKTKDEC.J86                    ! 1.5
+ %INCLUDE STLDTDEC.J86                    ! 1.6
+ %INCLUDE STOCKDEC.J86                    ! 1.7BG
+ %INCLUDE IMSTCDEC.J86                    ! 1.7BG
+ %INCLUDE LSSSTDEC.J86                    ! 1.7BG
+ %INCLUDE SXTCFDEC.J86                    ! 1.8DA
+ %INCLUDE STKCFDEC.J86                    ! 1.8DA
+ %INCLUDE STKMFDEC.J86                    ! 1.8DA
+ %INCLUDE STKRCDEC.J86                    ! 1.8DA
+ %INCLUDE XGCFDEC.J86                     ! 1.8DA
+ %INCLUDE STKEXDEC.J86                    ! 1.8DA
+ %INCLUDE STKIFDEC.J86                    ! 1.8DA
+ %INCLUDE LOCNTDEC.J86                    ! 1.8DA
+ %INCLUDE STKIGDEC.J86                    ! 1.8DA
+ %INCLUDE STKTFDEC.J86                    ! 1.8DA
+ %INCLUDE IRFDEC.J86                      ! 1.8DA
+ %INCLUDE STKDCDEC.J86                    ! 1.8DA
+ %INCLUDE MINLSDEC.J86                    ! 1.9BG
+ %INCLUDE NEGSCDEC.J86                    ! 1.9BG
+ %INCLUDE SSPSCDEC.J86                    ! 2.0JAS
+ %INCLUDE BTCSDEC.J86                     ! 2.0JAS
+ %INCLUDE PRINTDEC.J86                    ! 2.0JAS
+ %INCLUDE SOPTSDEC.J86                    ! 2.1JAS
+ %INCLUDE TSFDEC.J86                      ! 2.1JAS
+ %INCLUDE LOCALDEC.J86                    ! 2.1JAS
+ %INCLUDE CCREJDEC.J86                    ! 1.2JAS
+ %INCLUDE RBDEC.J86                       ! 2.6BG
+ %INCLUDE REWKFDEC.J86                    ! 2.6BG
+ %INCLUDE RECALDEC.J86                    ! 2.6BG
+ %INCLUDE DELVIDEC.J86                    ! 2.7SH
+ %INCLUDE UODOTDEC.J86                    ! 2.7SH
+ %INCLUDE AFDEC.J86                       ! 2.7SH
+ %INCLUDE UBDEC.J86                       ! 2.7SH
+ 
+\*****************************************************************************
+\*****************************************************************************
+\***                                                                       ***
+\***      V A R I A B L E   D E C L A R A T I O N S                        ***
+\***                                                                       ***
+\*****************************************************************************
+\*****************************************************************************
+
+INTEGER*1 GLOBAL                          \
+        ASN.ACTIVE%,                      \ 2.5NWB
+        BC.CHECK%(1),                     \ FLC
+        ERROR.COUNT%,                     \
+        REC.MAX%,                         \
+        LDT.TRANSMIT,                     \ HDS
+        NESTING.LEVEL%,                   \ FLC
+        TRUE,                             \ HDS
+        FALSE,                            \ HDS
+        PORT.EVENT%,                      \ FLC
+        RE.CHAIN,                         \ DSW
+        WARM.START,                       \ DSW
+        GAP,                              \ GMJK
+        CCBUF.ENTRY.REQUIRED,             \ GMJK
+        CCBUF.RECS.PRESENT,               \ GMJK
+        CCREJ.RECS.PRESENT,               \ 2.2JAS
+        DETAIL.RECORDS.RECEIVED,          \ GMJK
+        END.OF.CCTMP,                     \ GMJK
+        END.OF.FILE,                      \ GMJK
+        TABLE.FULL,                       \ GMJK
+        REWKF.RECS.PRESENT,               \ 2.6BG
+        ALL.PRODUCTS                      ! 1.8DA
+\       ALLOW.CSR.PROCESSING              ! 1.2 !2.5NWB
+
+INTEGER*2 GLOBAL                          \
+        ACTUAL.NUM.OF.UODS%,              \ FLC
+        BTSCNT%,                          \2.3CS
+        EANCNT%,                          \2.3CS
+        COUNTED.ITEMS%,                   \ FLC
+\       CSR.ITEMS.COUNT%,                 \     !2.5NWB
+        CSR.AUDIT.SESS.NUM%,              \ CDS
+        CURRENT.REPORT.NUM%,              \ DLC
+        EXPECTED.NUM.OF.UODS%,            \ FLC
+        FILE.HEADER.LISTS%,               \ FLC
+        FILE.TRAILER.LISTS%,              \ FLC
+        FIRST.TIME,                       \ CDS
+        ORDERS.EXPECTED%,                 \ CDS
+        INT.DELAY%,                       \ FLC
+        ITEMS.BOOKED.IN%,                 \ CDS
+        ITEM.COUNT%,                      \ FLC
+        LINES.BOOKED.IN%,                 \ CDS
+        LINES.ADDED%,                     \ CDS
+        LINE.TOTAL%,                      \ CDS
+        LIST.COUNT%,                      \ FLC
+        LIST.TRAILER.ITEMS%,              \ FLC
+        ONORD.COUNT%,                     \
+        ORDERS.FOUND%,                    \ CDS
+        RC%,                              \ DLC
+        SINGLES.ADDED%,                   \ CDS
+        TYPE.17.WRITTEN,                  \ CDS
+        UOD.NUM.ITEMS%,                   \ FLC
+        ACTUAL.NUM%,                      \ GMJK
+        ACTUAL.UOD.ITEMS%,                \ GMJK
+        CURR.ITEM%,                       \ GMJK
+        CURR.REC%,                        \ GMJK
+        CURR.SUBSCRIPT%,                  \ GMJK
+        EXPECTED.NUM%,                    \ GMJK
+        FILE.NUM%,                        \ GMJK
+        ITEM.POS%,                        \ GMJK
+        MAX.TABLE.SIZE%,                  \ GMJK
+        NUM.BARCODES%,                    \ GMJK
+        NUM.BC.EXTRACTED%,                \ GMJK
+        NUM.ITEMS%,                       \ GMJK
+        NUM.STATUS.O.C.X.UODS%,           \ 1.4
+        NUM.OF.CANCELLED.UODS%,           \ 1.4
+        NUM.OF.DESPATCHED.UODS%,          \ 1.4
+        NUM.RECORDS%,                     \ GMJK
+        RECORD$,                          \ GMJK
+        REC.NUM%,                         \ GMJK
+        RECS.PER.SECTOR%,                 \ GMJK
+        BC%,CG%,PG%,                      \ 1.8DA
+        SECTOR%                           ! GMJK
+
+INTEGER*4 GLOBAL                          \
+        LAST.ACTIVE%,                     \
+        LAST.STOCKTAKE%,                  \ 1.5
+        TIMEOUT.VALUE%                    ! FLC
+
+
+STRING GLOBAL                             \ for modules 00, 01 , 02 , 03 and 04
+        ACK$,                             \ 1.5
+        ALL.FILES.CLOSED$,                \
+        APPL$,                            \ FLC
+        APPLICATION.NO$,                  \
+        BAR.CODES$(1),                    \ FLC
+        BCSMF.RECORD$,                    \ GMJK
+        BOOKING.STARTED$,                 \ CDS
+        BOOKING.ENDED$,                   \ CDS
+        CCUOD.OPEN.FLAG$,                 \ GMJK
+        CCLAM.OPEN.FLAG$,                 \ 1.4
+        CCITM.OPEN.FLAG$,                 \ GMJK
+        CCTRL.OPEN.FLAG$,                 \ GMJK
+        CCDMY.OPEN.FLAG$,                 \ GMJK
+        CCTMP.OPEN.FLAG$,                 \ GMJK
+        CCBUF.OPEN.FLAG$,                 \ GMJK
+        CCUPF.OPEN.FLAG$,                 \ HMJK
+        CCWKF.OPEN.FLAG$,                 \ GMJK
+        STKRC.OPEN.FLAG$,                 \ 1.8DA
+        XGCF.OPEN.FLAG$,                  \ 1.8DA
+        STKEX.OPEN.FLAG$,                 \ 1.8DA
+        STKIF.OPEN.FLAG$,                 \ 1.8DA
+        LOCCNT.OPEN.FLAG$,                \ 1.8DA
+        STKTF.OPEN.FLAG$,                 \ 1.8DA
+        STKDC.OPEN.FLAG$,                 \ 1.8DA
+\       CSR.LIST.ALREADY.PROCESSED.FLAG$, \ !2.5NWB
+\       CSR.OPEN.FLAG$,                   \ !2.5NWB
+        CHKBF.OPEN.FLAG$,                 \ DSW
+        GAPBF.OPEN.FLAG$,                 \ SDH  2.3CS !2.4BG
+        PLLOL.OPEN.FLAG$,                 \ 2.3CS
+        PLLDB.OPEN.FLAG$,                 \ 2.3CS
+        PLLDB.TABLE$(1),                  \ 2.3CS
+        EAN.TABLE$(1),                    \ 2.3CS
+\       CITEM.OPEN.FLAG$,                 \ !2.5NWB
+\       CIMF.OPEN.FLAG$,                  \ !2.5NWB
+\       CSRWF.OPEN.FLAG$,                 \ !2.5NWB
+\       CSRBF.OPEN.FLAG$,                 \ !2.5NWB
+        CSR.AUDIT.FILE$,                  \ CDS
+        CSR.AUDIT.DATA$,                  \ CDS
+        CSR.AUDIT.OPEN.FLAG$,             \ CDS
+        CURR.LIST$,                       \ FLC
+        CURR.TERMINAL$,                   \
+        CURRENT.CODE$,                    \ DLC
+        DATA.IN$,                         \
+        DATE.TODAY$,                      \ FLC
+        STKMQ.OPEN.FLAG$,                 \ CDS
+        STLDT.OPEN.FLAG$,                 \ 1.6
+        BCSMF.OPEN.FLAG$,                 \ CDS
+        IEF.OPEN.FLAG$,                   \ CDS
+        DATA.FILES.REQ$,                  \ GMJK
+        DETAIL.RECORDS.RECEIVED$,         \ FLC
+        DIREC.OPEN.FLAG$,                 \ CDS
+        DIRORD.OPEN.FLAG$,                \ CDS
+        DIRSUP.OPEN.FLAG$,                \ CDS
+        DIRWF.OPEN.FLAG$,                 \ CDS
+        EPSOM.OPEN.FLAG$,                 \ FLC
+        LDTAF.OPEN.FLAG$,                 \ GMJK
+        LDTCF.OPEN.FLAG$,                 \ CDS
+        DRSMQ.OPEN.FLAG$,                 \ CDS
+        FILE.OPERATION$,                  \ DLC
+\       FIRST.CSR.LIST.FOR.PDT$,          \ 2.5NWB
+        FIRST.EOT.FOR.THIS.PDT$,          \
+        FIRST.ITEM.TO.BE.PROCESSED$,      \
+        FIRST.RETURN$,                    \ FLC
+        FPF.OPEN.FLAG$,                   \
+        HOLD.FLAG$,                       \
+        IDF.OPEN.FLAG$,                   \
+        IDSOF.OPEN.FLAG$,                 \ ELC
+        IRF.OPEN.FLAG$,                   \ FLC
+        IMSTC.OPEN.FLAG$,                 \1.7BG
+        LAST.ACTIVE.DATE$,                \
+        LAST.STOCKTAKE.DATE$,             \ 1.5
+        LAST.MESSAGE$,                    \
+        LOG.ON.DATE$,                     \ GMJK
+        LOG.ON.TIME$,                     \ GMJK
+        LDTBF.HEADER.WRITTEN$,            \ ELC
+        LDTBF.OPEN.FLAG$,                 \ ELC
+        LIST.ABANDONED$,                  \
+        LIST.BC$,                         \ FLC
+        LIST.TRANSMIT$(1),                \ FLC
+        LSSST.OPEN.FLAG$,                 \1.7BG
+        MONITORED.PORT$,                  \ DLC
+        NUM.SECTOR$,                      \ GMJK
+        ONORD.OPEN.FLAG$,                 \
+        ONORD.DELETED$(1),                \
+        ORDER.LINE.TABLE$(1),             \ CDS
+        PCHK.OPEN.FLAG$,                  \
+        PDT.ACTION$,                      \ FLC
+        PIITM.OPEN.FLAG$,                 \ FLC
+        PILST.OPEN.FLAG$,                 \ FLC
+        PIPE.OUT$,                        \
+        PDTWF.OPEN.FLAG$,                 \ FLC
+        PK2$,                             \
+        PK4$,                             \
+        PORT.STRING$,                     \
+        PREV.LOGGED.STATE$,               \ ELC
+\       PROCESS.CSR.WORKFILE$,            \ !2.5NWB
+        PSS38.STATUS$,                    \ FLC
+        RB.OPEN.FLAG$,                    \ 2.6BG
+        REWKF.OPEN.FLAG$,                 \ 2.6BG
+        RECALLS.OPEN.FLAG$,               \ 2.6BG
+        DELVINDX.OPEN.FLAG$,              \ 2.7SH
+        AF.OPEN.FLAG$,                    \ 2.7SH
+        UB.OPEN.FLAG$,                    \ 2.7SH
+        RECEIVE.STATE$,                   \
+        REQ.LIST.STORE$(1),               \ FLC
+        REQ.LIST.DATA$(1),                \ FLC
+        SAVED.ORDER.NO$,                  \ CDS
+        SAVED.ORDER.SUFFIX$,              \ CDS
+        SAVED.PAGE.NO$,                   \ CDS
+        SAVED.STORE.NUMBER$,              \ 1.8DA
+        SAVED.SUPPLIER.NO$,               \ CDS
+        SECTOR$,                          \ GMJK
+        SOFTS.OPEN.FLAG$,                 \ GMJK
+        SOH$,                             \ 1.5
+        STORED.UOD.HEADER$,               \ FLC
+        STORE.NUMBER$,                    \ 1.5
+        STOCK.OPEN.FLAG$,                 \1.7BG
+        STX$,                             \ FLC
+        STKBF.OPEN.FLAG$,                 \ 1.5
+        SXTMP.OPEN.FLAG$,                 \ 1.5
+        T.DATE$,                          \ 1.5
+        T.TIME$,                          \ 1.5
+        TEMP.TIME$,                       \ GMJK
+        TRAILER.LIST$,                    \ FLC
+        UOD.NUMBER$,                      \ FLC
+        UOD.NUM.ITEMS$,                   \ FLC
+        UOD.OPEN.FLAG$,                   \ FLC
+        UOD.STATUS.FLAG$,                 \ FLC
+        UODBF.OPEN.FLAG$,                 \ FLC
+        UODTF.OPEN.FLAG$,                 \ FLC
+        UNITS.OPEN.FLAG$
+
+STRING GLOBAL                             \ GMJK
+        ITEM.STORAGE$,                    \ GMJK
+        ITEM.DESC.STORAGE$,               \ GMJK
+        BARCODE.DATA$,                    \ GMJK
+        BARCODE.INDEX$,                   \ GMJK
+        BARCODE.INDEX.STORAGE$,           \ GMJK
+        BARCODE.STORAGE$,                 \ GMJK
+        ITEM.DATA$,                       \ GMJK
+        ITEM.DATA.DESC$,                  \ GMJK
+        ITEM.POS.TABLE$(1),               \ GMJK
+        CCUOD.TABLE$(1),                  \ GMJK
+        CCLAM.TABLE$(1),                  \ 1.4
+        DATA.FILES.REQUIRED$,             \ GMJK
+        FINISH.DATE$,                     \ GMJK
+        FINISH.TIME$,                     \ GMJK
+        LDT.CCUOD.UPDATE.DATE$,           \ GMJK
+        LDT.CCUOD.UPDATE.TIME$,           \ GMJK
+        LDT.DATE.TIME$,                   \ GMJK
+        LDT.LAST.CLAIM.NUM$,              \ GMJK
+        STKCF.OPEN.FLAG$,                 \ 1.8DA
+        STKMF.OPEN.FLAG$,                 \ 1.8DA
+        CONCEPT.GROUPS$(1),               \ 1.8DA
+        PRODUCT.GROUPS$(1),               \ 1.8DA
+        BUSINESS.CENTRES$(1),             \ ! 1.8DA 2.1JAS
+        SOPTS.OPEN.FLAG$,                 \ ! 2.1JAS
+        LOCAL.OPEN.FLAG$,                 \ ! 2.1JAS
+        TSF.OPEN.FLAG$,                   \ ! 2.1JAS 2.2JAS
+        CCREJ.OPEN.FLAG$,                 \ 2.2JAS
+        CREDIT.CLAIM.FLAG$                ! 2.2JAS
+
+
+STRING GLOBAL                             \
+        BATCH.SCREEN.FLAG$,               \
+        EXP.STATES$,                      \
+        MODULE.NUMBER$,                   \
+        OPERATOR.ID$,                     \
+        STATE$,                           \
+        TRANS.FROM$,                      \
+        TRANS.TO$
+
+ STRING GLOBAL                            \
+        REC.CHECK$(1),                    \
+        V.TAB$(1)
+
+\*****************************************************************************
+\*****************************************************************************
+\***                                                                       ***
+\*** E X T E R N A L   F U N C T I O N   D E C L A R A T I O N S           ***
+\***                                                                       ***
+\*****************************************************************************
+\*****************************************************************************
+
+\*****************************************************************************
+\***   include external definitions for the following functions
+\***
+\***     ADXERROR
+\***     ADXSERVE
+\***     ADXSERCL
+\***     APPLICATION.LOG             01
+\***     READ.NEXT.IEF               11
+\***     SORT.TABLE                  14
+\***     CONV.TO.HEX                 16
+\***     CONV.TO.STRING              17
+\***     SESS.NUM.UTILITY            20
+\***     STKMQ
+\***     BCSMF
+\***     IDF
+\***     INVOK
+\***     PCHK
+\***     UOD
+\***     UODBF
+\***     UODTF
+\***     STKBF
+\***     SXTMP
+\***     SSPSC
+\***     BTCS
+\***     PRINT
+\***     SOPTS
+\***     LOCAL
+\***
+\*****************************************************************************
+
+ %INCLUDE ADXERROR.J86
+ %INCLUDE ADXSERVE.J86
+ %INCLUDE ADXSERCL.J86                    ! DSW
+ %INCLUDE PSBF01E.J86                     ! DLC
+ %INCLUDE PSBF05E.J86                     ! 1.9BG
+!%INCLUDE PSBF06E.J86                     ! FLC
+ %INCLUDE PSBF11E.J86                     ! DLC
+ %INCLUDE PSBF14E.J86                     ! DLC
+ %INCLUDE PSBF16E.J86                     ! DLC
+ %INCLUDE PSBF17E.J86                     ! DLC
+ %INCLUDE PSBF18E.J86                     ! 1.8DA
+ %INCLUDE PSBF20E.J86                     ! DLC
+ %INCLUDE PSBF21E.J86                     ! 1.9BG
+
+ %INCLUDE IDFEXT.J86                      ! FLC
+!%INCLUDE IRFEXT.J86                      ! FLC TEST
+ %INCLUDE STKMQEXT.J86                    ! GMJK
+ %INCLUDE BCSMFEXT.J86                    ! FLC
+ %INCLUDE INVOKEXT.J86                    ! FLC
+ %INCLUDE PCHKEXT.J86                     ! DLC
+\%INCLUDE CSREXT.J86                      ! DLC !2.5NWB
+ %INCLUDE EPSOMEXT.J86                    ! DLC
+ %INCLUDE UNITSEXT.J86                    ! DLC
+ %INCLUDE DIRECEXT.J86                    ! DLC
+ %INCLUDE LDTBFEXT.J86                    ! ELC
+ %INCLUDE UODEXT.J86                      ! FLC
+ %INCLUDE UODBFEXT.J86                    ! FLC
+ %INCLUDE UODTFEXT.J86                    ! FLC
+ %INCLUDE PILSTEXT.J86                    ! FLC
+ %INCLUDE PIITMEXT.J86                    ! FLC
+!%INCLUDE PDTWFEXT.J86                    ! FLC
+
+ %INCLUDE CCUODEXT.J86                    ! GMJK
+ %INCLUDE CCLAMEXT.J86                    ! 1.4
+ %INCLUDE CCITMEXT.J86                    ! GMJK
+ %INCLUDE CCTRLEXT.J86                    ! GMJK
+ %INCLUDE CCTMPEXT.J86                    ! GMJK
+ %INCLUDE CCBUFEXT.J86                    ! GMJK
+ %INCLUDE CCUPFEXT.J86                    ! HMJK
+ %INCLUDE CCWKFEXT.J86                    ! GMJK
+ %INCLUDE CCDMYEXT.J86                    ! GMJK
+ %INCLUDE LDTAFEXT.J86                    ! HMJK
+ %INCLUDE SOFTSEXT.J86                    ! GMJK
+ %INCLUDE STKBFEXT.J86                    ! 1.5
+ %INCLUDE SXTMPEXT.J86                    ! 1.5
+ %INCLUDE STKTKEXT.J86                    ! 1.5
+ %INCLUDE STLDTEXT.J86                    ! 1.6
+ %INCLUDE SXTCFEXT.J86                    ! 1.8DA
+ %INCLUDE STKCFEXT.J86                    ! 1.8DA
+ %INCLUDE STKMFEXT.J86                    ! 1.8DA
+ %INCLUDE STKRCEXT.J86                    ! 1.8DA
+ %INCLUDE XGCFEXT.J86                     ! 1.8DA
+ %INCLUDE STKEXEXT.J86                    ! 1.8DA
+ %INCLUDE STKIFEXT.J86                    ! 1.8DA
+ %INCLUDE LOCNTEXT.J86                    ! 1.8DA
+ %INCLUDE STKIGEXT.J86                    ! 1.8DA
+ %INCLUDE STKTFEXT.J86                    ! 1.8DA
+ %INCLUDE IRFEXT.J86                      ! 1.8DA
+ %INCLUDE STKDCEXT.J86                    ! 1.8DA
+ %INCLUDE IMSTCEXT.J86                    ! 1.9BG
+ %INCLUDE STOCKEXT.J86                    ! 1.9BG
+ %INCLUDE MINLSEXT.J86                    ! 1.9BG
+ %INCLUDE NEGSCEXT.J86                    ! 1.9BG
+ %INCLUDE SSPSCEXT.J86                    ! 2.0JAS
+ %INCLUDE BTCSEXT.J86                     ! 2.0JAS
+ %INCLUDE PRINTEXT.J86                    ! 2.0JAS
+ %INCLUDE SOPTSEXT.J86                    ! 2.1JAS
+ %INCLUDE LOCALEXT.J86                    ! 2.1JAS
+ %INCLUDE CCREJEXT.J86                    ! 2.2JAS
+ %INCLUDE RBEXT.J86                       ! 2.6BG
+ %INCLUDE REWKFEXT.J86                    ! 2.6BG
+ %INCLUDE RECALEXT.J86                    ! 2.6BG
+ %INCLUDE DELVIEXT.J86                    ! 2.7SH
+ %INCLUDE UODOTEXT.J86                    ! 2.7SH
+ %INCLUDE AFEXT.J86                       ! 2.7SH
+ %INCLUDE UBEXT.J86                       ! 2.7SH
+ 
+\*****************************************************************************
+\*****************************************************************************
+\***                                                                       ***
+\*** I N T E R N A L   F U N C T I O N   D E C L A R A T I O N S           ***
+\***                                                                       ***
+\***   - FN.SECONDS                                                        ***
+\***   - FN.Z.PACK                                                         ***
+\***   - FN.VALIDATE.DATA                                                  ***
+\***   - FN.CONV.TO.INTEGER (SIGNED)                                       ***
+\***                                                                       ***
+\*****************************************************************************
+\*****************************************************************************
+
+\******************************************************************************
+\***
+\***   Function : FN.SECONDS( TIME.VALUE$ )
+\***
+\***   Purpose  : Convert passed TIME in format HHMMSS to seconds
+\***
+\***   Output   : = 4 byte integer
+\***
+\******************************************************************************
+
+   FUNCTION FN.SECONDS( TIME.VALUE$ )
+
+      STRING                                                                  \
+         TIME.VALUE$
+      INTEGER*4                                                               \
+         FN.SECONDS
+
+      FN.SECONDS = VAL(MID$(TIME.VALUE$,1,2)) * 3600 +                        \
+                   VAL(MID$(TIME.VALUE$,3,2)) * 60 +                          \
+                   VAL(MID$(TIME.VALUE$,5,2))
+
+   END FUNCTION
+
+\******************************************************************************
+\***
+\***   Function : FN.Z.PACK( NUM.STRING$, LENGTH% )
+\***
+\***   Purpose  : Zero pack (to the left) NUM.STRING$ out to LENGTH%
+\***
+\******************************************************************************
+
+   FUNCTION FN.Z.PACK(NUM.STRING$, LENGTH%)
+
+      STRING                                                                 \
+         FN.Z.PACK,                                                          \
+         NUM.STRING$
+      INTEGER*2                                                              \
+         LENGTH%
+
+      FN.Z.PACK = RIGHT$(STRING$(LENGTH%,"0")+NUM.STRING$,LENGTH%)
+
+   END FUNCTION
+
+\******************************************************************************
+\***
+\***   Function : FN.VALIDATE.DATA( RECORD$, FORMAT% )
+\***
+\***   Purpose  : Test received record RECORD$ is in correct format for
+\***              data format FORMAT%
+\***
+\***   Output   : = 0 if RECORD$ does not conform to data format FORMAT%
+\***              = 1 if RECORD$ does conform to data format FORMAT%
+\***
+\******************************************************************************
+
+   FUNCTION FN.VALIDATE.DATA(RECORD$, FORMAT%)
+
+      STRING                                                                  \
+         CHECK$,                                                              \
+         DATA$,                                                               \
+         RECORD$,                                                             \
+         TEST$,                                                               \
+         TYPE$,                                                               \
+         VALID.FLAG$
+      INTEGER*1                                                               \
+         FORMAT%,                                                             \
+         FN.VALIDATE.DATA
+      INTEGER*2                                                               \
+         BYTE.PTR%,                                                           \
+         CHECK.PTR%,                                                          \
+         REC.LENGTH%
+
+      REC.LENGTH% = LEN(RECORD$)
+      IF REC.LENGTH% < 1                                                      \
+      OR FORMAT% < 1 OR FORMAT% > REC.MAX% THEN BEGIN                         \
+         FN.VALIDATE.DATA = 0
+         EXIT FUNCTION
+      ENDIF
+
+      CHECK$ = REC.CHECK$(FORMAT%)
+      CHECK.PTR% = 1
+      BYTE.PTR% = 1
+      VALID.FLAG$ = "Y"
+
+      WHILE BYTE.PTR% <= REC.LENGTH%                                          \
+        AND CHECK.PTR% < LEN(CHECK$)
+
+         TYPE$ = MID$(CHECK$, CHECK.PTR%, 1)
+         DATA$ = MID$(CHECK$, CHECK.PTR%+1, 1)
+         CHECK.PTR% = CHECK.PTR% + 2
+
+         IF TYPE$ = "B" THEN BEGIN
+            IF MID$(RECORD$, BYTE.PTR%, 1) <> DATA$ THEN BEGIN
+               VALID.FLAG$ = "N"
+            ENDIF
+            BYTE.PTR% = BYTE.PTR% + 1
+         ENDIF
+
+         IF TYPE$ = "N" THEN BEGIN
+            WHILE BYTE.PTR% <= REC.LENGTH% AND DATA$ <> CHR$(0)
+               TEST$ = MID$(RECORD$, BYTE.PTR%, 1)
+               IF (TEST$ < "0" OR TEST$ > "9")                               \
+              AND TEST$ <> "-" AND TEST$ <> "+"                              \
+              AND TEST$ <> "." THEN VALID.FLAG$ = "N"
+               BYTE.PTR% = BYTE.PTR% + 1
+               DATA$ = CHR$(ASC(DATA$) - 1)
+            WEND
+            IF BYTE.PTR% > REC.LENGTH%                                       \
+           AND DATA$ <> CHR$(0) THEN VALID.FLAG$ = "N"
+         ENDIF
+
+         IF TYPE$ = "A" THEN BYTE.PTR% = BYTE.PTR% + ASC(DATA$)
+
+      WEND
+
+      IF CHECK.PTR% <= LEN(CHECK$) THEN VALID.FLAG$ = "N"
+
+      IF VALID.FLAG$ = "Y" THEN BEGIN
+         FN.VALIDATE.DATA = 1
+         LAST.ACTIVE.DATE$ = DATE$
+         LAST.ACTIVE% = FN.SECONDS(TIME$)
+      ENDIF ELSE BEGIN
+         FN.VALIDATE.DATA = 0
+      ENDIF
+
+   END FUNCTION
+
+\******************************************************************************
+\***
+\***   Function : FN.CONV.TO.INTEGER( NUM.STRING$ )
+\***
+\***   Purpose  : Convert passed string to a 1, 2 or 4 byte (dependant on
+\***              length of passed string) signed integer.
+\***
+\***   Output   : = 1, 2 or 4 byte integer
+\***
+\******************************************************************************
+
+   FUNCTION FN.CONV.TO.INTEGER( NUM.STRING$ )
+
+      INTEGER*4                                                              \
+         BYTE%,                                                              \
+         BYTE.POS%,                                                          \
+         BYTES%,                                                             \
+         SIGN.BIT%
+      REAL                                                                   \
+         FN.CONV.TO.INTEGER,                                                 \
+         NUMBER
+      STRING                                                                 \
+         NUM.STRING$
+
+      BYTES% = LEN(NUM.STRING$)
+      NUMBER = 0
+      FOR BYTE.POS% = 1 TO BYTES%
+         BYTE% = ASC(MID$(NUM.STRING$, BYTE.POS%, 1))
+         IF BYTE.POS% = BYTES% THEN BEGIN
+            SIGN.BIT% = BYTE% AND 80h
+            BYTE% = BYTE% AND (SIGN.BIT% XOR 0FFh)
+         ENDIF
+         NUMBER = NUMBER + (100h ^ (BYTE.POS% - 1)) * BYTE%
+      NEXT BYTE.POS%
+      IF SIGN.BIT% <> 0 THEN NUMBER = NUMBER - (80h * (100h ^ (BYTES% - 1)))
+
+      FN.CONV.TO.INTEGER = NUMBER
+
+   END FUNCTION
+
+\******************************************************************************
+\***
+\***   Function : FN.ZERO.PL( TEXT$,
+\***                          LENGTH% )
+\***
+\***   Purpose  : Zero pack, to the left, the passed string TEXT$ to the
+\***              specified length.
+\***
+\******************************************************************************
+
+   FUNCTION FN.ZERO.PL(TEXT$,LENGTH%)
+
+      STRING    FN.ZERO.PL, TEXT$
+      INTEGER*2 LENGTH%
+
+      FN.ZERO.PL = RIGHT$( STRING$( LENGTH%, "0" ) + TEXT$ , LENGTH% )
+
+   END FUNCTION
+
+\*****************************************************************************
+\*****************************************************************************
+\***                                                                       ***
+\*** E N D   OF   G L O B A L   D E F N S   F O R   P S S 3 7              ***
+\***                                                                       ***
+\*****************************************************************************
+\*****************************************************************************

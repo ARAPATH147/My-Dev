@@ -1,0 +1,203 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \***      GAOPT file functions 
+   3: 0000: \***      Reference : GAOPTFU.BAS
+   4: 0000: \***      Version A           Steve Windsor         10.05.93
+   5: 0000: \***
+   6: 0000: \***      Version B           Dom Sweeney           21.09.98
+   7: 0000: \***      Included READ & WRITE Locked and Unlocked. This can omly be done
+   8: 0000: \***      if a record number is specified, therefore making the file Direct.
+   9: 0000: \***      READ = Sequential, READ.LOCKED = Direct.
+  10: 0000: \.............................................................................
+  11: 0000: 
+  12: 0000:    INTEGER*2 GLOBAL                  \
+  13: 0000:       CURRENT.REPORT.NUM%
+  14: 0000: 
+  15: 0000:    STRING GLOBAL                     \
+  16: 0000:       CURRENT.CODE$,                 \
+  17: 0000:       FILE.OPERATION$
+  18: 0000: 
+  19: 0000:    %INCLUDE GAOPTDEC.J86
+  20: 0000: \******************************************************************************
+  21: 0000: \******************************************************************************
+  22: 0000: \***
+  23: 0000: \***   $Workfile:   GAOPTDEC.J86  $
+  24: 0000: \***
+  25: 0000: \***   $Revision:   1.1  $
+  26: 0000: \***
+  27: 0000: \******************************************************************************
+  28: 0000: \******************************************************************************
+  29: 0000: \***
+  30: 0000: \***   $Log:   V:\archive\j86\gaoptdec.j8v  $
+  31: 0000: \***   
+  32: 0000: \***      Rev 1.1   22 Dec 1994 11:56:46   DEVOSPS
+  33: 0000: \***   ADDED GAOPT.RECL% AND GAOPT.RECNO%
+  34: 0000: \***   VARIABLES
+  35: 0000: \***   
+  36: 0000: \******************************************************************************
+  37: 0000: \******************************************************************************\*****************************************************************************
+  38: 0000: \***      %INCLUDE for GAOPT - field declarations
+  39: 0000: \***      Reference : GAOPTDEA.J86
+  40: 0000: \***      Version A             Steve Windsor          10.05.93
+  41: 0000: \.............................................................................
+  42: 0000: 
+  43: 0000:   STRING GLOBAL           \
+  44: 0000:     GAOPT.FILE.NAME$,     \
+  45: 0000:     LOCAL.GAOPT.FILE.NAME$
+  46: 0000: 
+  47: 0000:   INTEGER*2 GLOBAL        \
+  48: 0000:     GAOPT.SESS.NUM%,      \
+  49: 0000:     GAOPT.RECL%
+  50: 0000: 
+  51: 0000:   INTEGER*1 GLOBAL        \ 
+  52: 0000:     GAOPT.REPORT.NUM%     ! 
+  53: 0000: 
+  54: 0000:   INTEGER*1 GLOBAL        \
+  55: 0000:     GAOPT.LOGMSGS%,       \ Log warning message allowed
+  56: 0000:     GAOPT.TERMILU%,       \ Terminal lookup used
+  57: 0000:     GAOPT.OFFLCHNG%,      \ Offline price changes allowed
+  58: 0000:     GAOPT.DESCTYPE%,      \ Item descriptor type
+  59: 0000:     GAOPT.USERDATA%,      \ User data fields included
+  60: 0000:     GAOPT.PCKGFCTR%       ! Packing factor
+  61: 0000: 
+  62: 0000:   INTEGER*4 GLOBAL        \  
+  63: 0000:     GAOPT.RECNO%,         \ 
+  64: 0000:     GAOPT.NUMITEMS%,      \ Number of item records
+  65: 0000:     GAOPT.DFLTSIZE%       ! Default threshold size of TMCF
+  66: 0000:     
+  67: 0000: 
+  68: 0000: 
+  69: 0000:    FUNCTION GAOPT.SET PUBLIC
+  70: 0014: 
+  71: 0014:     GAOPT.REPORT.NUM% = 67    
+  72: 001c:     GAOPT.FILE.NAME$ = "GAOPT"
+  73: 002b:     LOCAL.GAOPT.FILE.NAME$ = "$ALGAOPT"
+  74: 003a:     
+  75: 003a:    END FUNCTION
+  76: 0046: \----------------------------------------------------------------------------
+  77: 0046: 
+  78: 0046:   FUNCTION READ.GAOPT PUBLIC
+  79: 005a: 
+  80: 005a:    INTEGER*2 READ.GAOPT
+  81: 005a: 
+  82: 005a:    READ.GAOPT = 1
+  83: 005f: 
+  84: 005f:    IF END#GAOPT.SESS.NUM% THEN READ.GAOPT.ERROR
+  85: 0073: 
+  86: 0073:       READ  #GAOPT.SESS.NUM%;                                       \ 
+  87: 00de:              GAOPT.LOGMSGS%,                                        \
+  88: 00de:              GAOPT.TERMILU%,                                        \
+  89: 00de:              GAOPT.OFFLCHNG%,                                       \
+  90: 00de:              GAOPT.NUMITEMS%,                                       \
+  91: 00de:              GAOPT.DESCTYPE%,                                       \
+  92: 00de:              GAOPT.USERDATA%,                                       \
+  93: 00de:              GAOPT.PCKGFCTR%,                                       \
+  94: 00de:              GAOPT.DFLTSIZE%
+  95: 00de: 
+  96: 00de:    READ.GAOPT = 0
+  97: 00e3:    EXIT FUNCTION
+  98: 00e5: 
+  99: 00e5:    READ.GAOPT.ERROR:
+ 100: 00e5: 
+ 101: 00e5:    CURRENT.REPORT.NUM% = GAOPT.REPORT.NUM%
+ 102: 00f4:    FILE.OPERATION$ = "R"
+ 103: 0103:    CURRENT.CODE$ = ""
+ 104: 0112: 
+ 105: 0112:    EXIT FUNCTION
+ 106: 0114:   END FUNCTION
+ 107: 0123: 
+ 108: 0123: \----------------------------------------------------------------------------
+ 109: 0123: 
+ 110: 0123:   FUNCTION READ.GAOPT.LOCKED PUBLIC
+ 111: 0137: 
+ 112: 0137:    INTEGER*2 READ.GAOPT.LOCKED
+ 113: 0137: 
+ 114: 0137:    READ.GAOPT.LOCKED = 1
+ 115: 013c: 
+ 116: 013c:    IF END#GAOPT.SESS.NUM% THEN READ.GAOPT.LOCKED.ERROR
+ 117: 0150: 
+ 118: 0150:       READ  #GAOPT.SESS.NUM% AUTOLOCK,1;                                       \ 
+ 119: 01c8:              GAOPT.LOGMSGS%,                                        \
+ 120: 01c8:              GAOPT.TERMILU%,                                        \
+ 121: 01c8:              GAOPT.OFFLCHNG%,                                       \
+ 122: 01c8:              GAOPT.NUMITEMS%,                                       \
+ 123: 01c8:              GAOPT.DESCTYPE%,                                       \
+ 124: 01c8:              GAOPT.USERDATA%,                                       \
+ 125: 01c8:              GAOPT.PCKGFCTR%,                                       \
+ 126: 01c8:              GAOPT.DFLTSIZE%
+ 127: 01c8: 
+ 128: 01c8:    READ.GAOPT.LOCKED = 0
+ 129: 01cd:    EXIT FUNCTION
+ 130: 01cf: 
+ 131: 01cf:    READ.GAOPT.LOCKED.ERROR:
+ 132: 01cf: 
+ 133: 01cf:    CURRENT.REPORT.NUM% = GAOPT.REPORT.NUM%
+ 134: 01de:    FILE.OPERATION$ = "R"
+ 135: 01ed:    CURRENT.CODE$ = ""
+ 136: 01fc: 
+ 137: 01fc:    EXIT FUNCTION
+ 138: 01fe:   END FUNCTION
+ 139: 020d: 
+ 140: 020d: \----------------------------------------------------------------------------
+ 141: 020d: 
+ 142: 020d:   FUNCTION WRITE.GAOPT PUBLIC
+ 143: 0221: 
+ 144: 0221:    INTEGER*2 WRITE.GAOPT
+ 145: 0221: 
+ 146: 0221:    WRITE.GAOPT = 1
+ 147: 0226: 
+ 148: 0226:    IF END# GAOPT.SESS.NUM% THEN WRITE.GAOPT.ERROR
+ 149: 023a: 
+ 150: 023a:       WRITE  #GAOPT.SESS.NUM%;                                       \ 
+ 151: 02bc:              GAOPT.LOGMSGS%,                                        \
+ 152: 02bc:              GAOPT.TERMILU%,                                        \
+ 153: 02bc:              GAOPT.OFFLCHNG%,                                       \
+ 154: 02bc:              GAOPT.NUMITEMS%,                                       \
+ 155: 02bc:              GAOPT.DESCTYPE%,                                       \
+ 156: 02bc:              GAOPT.USERDATA%,                                       \
+ 157: 02bc:              GAOPT.PCKGFCTR%,                                       \
+ 158: 02bc:              GAOPT.DFLTSIZE%
+ 159: 02bc: 
+ 160: 02bc:    WRITE.GAOPT = 0
+ 161: 02c1:    EXIT FUNCTION
+ 162: 02c3: 
+ 163: 02c3:    WRITE.GAOPT.ERROR:
+ 164: 02c3: 
+ 165: 02c3:    CURRENT.REPORT.NUM% = GAOPT.REPORT.NUM%
+ 166: 02d2:    FILE.OPERATION$ = "W"
+ 167: 02e1:    CURRENT.CODE$ = ""
+ 168: 02f0: 
+ 169: 02f0:    EXIT FUNCTION
+ 170: 02f2:   END FUNCTION 
+ 171: 0301: 
+ 172: 0301: \----------------------------------------------------------------------------
+ 173: 0301: 
+ 174: 0301:   FUNCTION WRITE.GAOPT.UNLOCK PUBLIC
+ 175: 0315: 
+ 176: 0315:    INTEGER*2 WRITE.GAOPT.UNLOCK
+ 177: 0315: 
+ 178: 0315:    WRITE.GAOPT.UNLOCK = 1
+ 179: 031a: 
+ 180: 031a:    IF END# GAOPT.SESS.NUM% THEN WRITE.GAOPT.UNLOCK.ERROR
+ 181: 032e: 
+ 182: 032e:       WRITE  #GAOPT.SESS.NUM%,1;                                       \ 
+ 183: 03bd:              GAOPT.LOGMSGS%,                                        \
+ 184: 03bd:              GAOPT.TERMILU%,                                        \
+ 185: 03bd:              GAOPT.OFFLCHNG%,                                       \
+ 186: 03bd:              GAOPT.NUMITEMS%,                                       \
+ 187: 03bd:              GAOPT.DESCTYPE%,                                       \
+ 188: 03bd:              GAOPT.USERDATA%,                                       \
+ 189: 03bd:              GAOPT.PCKGFCTR%,                                       \
+ 190: 03bd:              GAOPT.DFLTSIZE%
+ 191: 03bd: 
+ 192: 03bd:    WRITE.GAOPT.UNLOCK = 0
+ 193: 03c2:    EXIT FUNCTION
+ 194: 03c4: 
+ 195: 03c4:    WRITE.GAOPT.UNLOCK.ERROR:
+ 196: 03c4: 
+ 197: 03c4:    CURRENT.REPORT.NUM% = GAOPT.REPORT.NUM%
+ 198: 03d3:    FILE.OPERATION$ = "W"
+ 199: 03e2:    CURRENT.CODE$ = ""
+ 200: 03f1: 
+ 201: 03f1:    EXIT FUNCTION
+ 202: 03f3:   END FUNCTION
+ 203: 0402: End of Compilation

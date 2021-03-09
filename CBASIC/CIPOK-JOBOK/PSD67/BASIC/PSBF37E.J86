@@ -1,0 +1,219 @@
+!*******************************************************************************
+!
+!   PSBF37  -  BIG SORT FUNCTIONS
+!
+!   VERSION A - Stuart William McConnachie                  October 2003
+!
+!
+!   A set of functions designed for sorting large quantities of data, for
+!   example more that 16K items (the limit of a 4690 BASIC string array).
+!
+!   Blocks of data are sorted in memory up to 16,000 items.  Once this limit
+!   has been reached the items are then merge sorted out to a disk file and
+!   the process repeats.
+!
+!   Various options are available for determining file name, type of data etc.
+!
+!   Note that the routines are designed to be able to sort more than one
+!   stream of data at a time.  Just allocate as many sort handles as you need.
+!   Remember to return handles with SORT.END when you are done!
+!
+!   A typical sort operation might consist of the following:
+!
+!       !Start a sort operation
+!       MY.SORT.FILE$ = <either specify a name or leave blank>
+!       MY.HANDLE% = SORT.START (MY.SORT.FILE$, 1113H, 16)
+!
+!       !Collect the data to sort
+!       <loop>
+!           MY.RECORD$ = <some data to sort>
+!           CALL SORT.ITEM (MY.HANDLE%, MY.RECORD$)
+!       <end loop>
+!
+!       !Signal sort of data complete
+!       CALL SORT.COMPLETE (MY.HANDLE%)
+!
+!       !Now access the data
+!       MY.COUNT% = SORT.COUNT%(HANDLE%)
+!       MY.REC% = 0
+!       WHILE MY.REC% < MY.COUNT%
+!           CALL SORT.GET.ITEM (MY.HANDLE%, MY.REC%, MY.RECORD$)
+!           <do someting with MY.RECORD$>
+!           MY.REC% = MY.REC% + 1
+!       WEND
+!
+!       !End the sort operation
+!       CALL SORT.END (MY.HANDLE%)
+!
+!*******************************************************************************
+
+!*******************************************************************************
+!
+!   SORT.START (FILE.NAME$, FLAGS%, REC.LEN%)
+!
+!   Begins a sort operation.
+!
+!   FILE.NAME$
+!       Name of the file to sort.  Can be either a logical name or a
+!       temporary file for example "D:\ADX_UDT1\MYSORT.TMP".
+!       You can also leave this field blank and a temporary name will be
+!       created for you.
+!
+!   FLAGS%
+!       OR together the following flag values:
+!   File and data record format flags:
+!       0000H   Variable length ASCII data with quotes (as in IUF FORMAT)
+!       0001H   Variable length ASCII data without quotes
+!       0002H   Variable length packed or binary data
+!       0003H   Fixed length records (any format data)
+!   Discard duplicates flag:
+!       0000H   Duplicates allowed
+!       0010H   Duplicate records are discarded
+!   File type flags:
+!       0100H   Local file (no distribution)
+!       0200H   Distributed mirrored at update
+!       0300H   Distributed mirrored at close
+!       0400H   Distributed compound at update
+!       0500H   Distributed compound at close
+!   File location flag (must be correct for rename to work!):
+!       0000H   File is on C:
+!       1000H   File is on D:
+!   Append file flag:
+!       0000H   A new file is created and any existing data is lost
+!       8000H   New data is merged with existing file
+!
+!   REC.LEN%
+!       Length of records for file type 0003H, unimportant otherwise
+!
+!   F37.RC% (Global)
+!       Check for error code, or zero on success
+
+SUB SORT.START (HANDLE%, FILE.NAME$, FLAGS%, REC.LEN%) EXTERNAL
+    INTEGER*2   HANDLE%
+    STRING      FILE.NAME$
+    INTEGER*2   FLAGS%
+    INTEGER*2   REC.LEN%
+END SUB
+
+!*******************************************************************************
+!
+!   SORT.ITEM (HANDLE%, ITEM$)
+!
+!   Sorts an item of data.
+!
+!   HANDLE%
+!       Sort handle returned by SORT.START
+!
+!   ITEM$
+!       Item of data to sort
+!
+!   F37.RC% (Global)
+!       Check for error code, or zero on success
+
+SUB SORT.ITEM (HANDLE%, ITEM$) EXTERNAL
+    INTEGER*2   HANDLE%
+    STRING      ITEM$
+END SUB
+
+!*******************************************************************************
+!
+!   SORT.COMPLETE (HANDLE%)
+!
+!   Called to indicate sorting of data is complete.
+!   Data can now be read back in sorted order using GET.ITEM/GET.NEXT.ITEM.
+!
+!   HANDLE%
+!       Sort handle returned by SORT.START
+!
+!   F37.RC% (Global)
+!       Check for error code, or zero on success
+
+SUB SORT.COMPLETE (HANDLE%) EXTERNAL
+    INTEGER*2   HANDLE%
+END SUB
+
+!*******************************************************************************
+!
+!   SORT.COUNT (HANDLE%)
+!
+!   Called to return number of items in sorted list.
+!   Value returned is correct after signaling SORT.COMPLETE, but may not be
+!   correct during sort operation if duplicates are being discarded.
+!
+!   HANDLE%
+!       Sort handle returned by SORT.START
+!
+!   F37.RC% (Global)
+!       Check for error code, or zero on success
+
+FUNCTION SORT.COUNT (HANDLE%) EXTERNAL
+    INTEGER*4   SORT.COUNT
+    INTEGER*2   HANDLE%
+END FUNCTION
+
+!*******************************************************************************
+!
+!   SORT.GET.NEXT.ITEM
+!
+!   Called to return the next item in sorted order
+!
+!   HANDLE%
+!       Sort handle returned by SORT.START
+!
+!   ITEM$
+!       Returned sorted item
+!
+!   F37.RC% (Global)
+!       Check for error code, or zero on success
+
+SUB SORT.GET.NEXT.ITEM (HANDLE%, ITEM$) EXTERNAL
+    INTEGER*2   HANDLE%
+    STRING      ITEM$
+END SUB
+
+!*******************************************************************************
+!
+!   SORT.GET.ITEM
+!
+!   Called to return the next item in sorted order
+!
+!   HANDLE%
+!       Sort handle returned by SORT.START
+!
+!   REC.NO%
+!       Number of indexed record to get.  Note that 0 is the first record.
+!       If there are 10 records then they are indexed 0..9
+!
+!   ITEM$
+!       Returned sorted item
+!
+!   F37.RC% (Global)
+!       Check for error code, or zero on success
+
+SUB SORT.GET.ITEM (HANDLE%, REC.NO%, ITEM$) EXTERNAL
+    INTEGER*2   HANDLE%
+    INTEGER*4   REC.NO%
+    STRING      ITEM$
+END SUB
+
+!*******************************************************************************
+!
+!   SORT.END
+!
+!   Called to indicate that the sort operation is finished and the sorted data
+!   can be deleted
+!
+!   HANDLE%
+!       Sort handle returned by SORT.START
+!
+!   RETAIN%
+!       If non-zero the sorted data is retained in the file, otherwise
+!       the file is deleted.
+
+SUB SORT.END (HANDLE%, RETAIN%) EXTERNAL
+    INTEGER*2   HANDLE%
+    INTEGER*1   RETAIN%
+END SUB
+
+!*******************************************************************************
+

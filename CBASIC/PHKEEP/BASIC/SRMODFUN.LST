@@ -1,0 +1,391 @@
+   1: 0000: \********************************************************************
+   2: 0000: \***      Space and Range Planogram database (SRMOD)
+   3: 0000: \***      Version A           Neil Bennett          6th June 2006
+   4: 0000: \***
+   5: 0000: \....................................................................
+   6: 0000: 
+   7: 0000:   INTEGER*2 GLOBAL                   \
+   8: 0000:       CURRENT.REPORT.NUM%
+   9: 0000: 
+  10: 0000:   STRING GLOBAL                      \
+  11: 0000:       CURRENT.CODE$,                 \
+  12: 0000:       FILE.OPERATION$
+  13: 0000: 
+  14: 0000:   %INCLUDE SRMODDEC.J86
+  15: 0000: \********************************************************************
+  16: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRMOD FILE
+  17: 0000: \***      REFERENCE : SRMODDEC.J86
+  18: 0000: \***      Version A           Neil Bennett            5th June 2006
+  19: 0000: \***
+  20: 0000: \********************************************************************
+  21: 0000: 
+  22: 0000:   INTEGER*1 GLOBAL             \
+  23: 0000:     SRMOD.FACINGS%(1),         \
+  24: 0000:     SRMOD.MODULE.SEQ%,         \
+  25: 0000:     SRMOD.RECORD.CHAIN%,       \
+  26: 0000:     SRMOD.SHELF.NUM%(1)
+  27: 0000: 
+  28: 0000:   INTEGER*2 GLOBAL             \
+  29: 0000:     SRMOD.ITEM.COUNT%,         \
+  30: 0000:     SRMOD.MAX.ITEMS%,          \
+  31: 0000:     SRMOD.MDQ%(1),             \
+  32: 0000:     SRMOD.PSC%(1),             \
+  33: 0000:     SRMOD.RECL%,               \
+  34: 0000:     SRMOD.REPORT.NUM%,         \
+  35: 0000:     SRMOD.SHELF.COUNT%,        \
+  36: 0000:     SRMOD.SESS.NUM%
+  37: 0000: 
+  38: 0000:   INTEGER*4 GLOBAL             \
+  39: 0000:     SRMOD.POGDB%
+  40: 0000: 
+  41: 0000:   STRING GLOBAL                \
+  42: 0000:     SRMOD.ARRAY$,              \
+  43: 0000:     SRMOD.COPY.NAME$,          \
+  44: 0000:     SRMOD.DESCRIPTOR$,         \
+  45: 0000:     SRMOD.FILE.NAME$,          \
+  46: 0000:     SRMOD.ITEM.CODE$(1),       \
+  47: 0000:     SRMOD.FILLER$
+  48: 0000: 
+  49: 0000: \--------------------------------------------------------------------
+  50: 0000: 
+  51: 0000:   %INCLUDE BTCMEM.J86
+  52: 0000: !********************************************************************
+  53: 0000: !***
+  54: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+  55: 0000: !***    AUTHOR:         Stuart William McConnachie
+  56: 0000: !***    DATE:           26th February 2006
+  57: 0000: !***
+  58: 0000: !********************************************************************
+  59: 0000: !***
+  60: 0000: !***    Controller CBASIC Memory Functions
+  61: 0000: !***
+  62: 0000: !********************************************************************
+  63: 0000: 
+  64: 0000: !Get a single byte integer from a string offset
+  65: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+  66: 0000:     STRING S$
+  67: 0000:     INTEGER*2 P%
+  68: 0000:     INTEGER*2 GETN1
+  69: 0000: END FUNCTION
+  70: 0000: 
+  71: 0000: !Get a two byte integer from a string offset
+  72: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+  73: 0000:     STRING S$
+  74: 0000:     INTEGER*2 P%
+  75: 0000:     INTEGER*2 GETN2
+  76: 0000: END FUNCTION
+  77: 0000: 
+  78: 0000: !Get a four byte integer from a string offset
+  79: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+  80: 0000:     STRING S$
+  81: 0000:     INTEGER*2 P%
+  82: 0000:     INTEGER*4 GETN4
+  83: 0000: END FUNCTION
+  84: 0000: 
+  85: 0000: !Get a 10 byte CBASIC real from a string offset
+  86: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+  87: 0000:     STRING S$
+  88: 0000:     INTEGER*2 P%
+  89: 0000:     REAL GETR10
+  90: 0000: END FUNCTION
+  91: 0000: 
+  92: 0000: !Put a single byte integer into a string at offset
+  93: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+  94: 0000:     STRING S$
+  95: 0000:     INTEGER*2 P%
+  96: 0000:     INTEGER*1 N%
+  97: 0000:     INTEGER*1 PUTN1
+  98: 0000: END FUNCTION
+  99: 0000: 
+ 100: 0000: !Put a two byte integer into a string at offset
+ 101: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 102: 0000:     STRING S$
+ 103: 0000:     INTEGER*2 P%
+ 104: 0000:     INTEGER*2 N%
+ 105: 0000:     INTEGER*1 PUTN2
+ 106: 0000: END FUNCTION
+ 107: 0000: 
+ 108: 0000: !Put a four byte integer into a string at offset
+ 109: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 110: 0000:     STRING S$
+ 111: 0000:     INTEGER*2 P%
+ 112: 0000:     INTEGER*4 N%
+ 113: 0000:     INTEGER*1 PUTN4
+ 114: 0000: END FUNCTION
+ 115: 0000: 
+ 116: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 117: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 118: 0000:     STRING S$
+ 119: 0000:     INTEGER*2 P%
+ 120: 0000:     REAL R
+ 121: 0000:     INTEGER*1 PUTR10
+ 122: 0000: END FUNCTION
+ 123: 0000: 
+ 124: 0000: !Peek a two byte integer from a memory address
+ 125: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 126: 0000:     INTEGER*4 A%
+ 127: 0000:     INTEGER*2 PEEKN2
+ 128: 0000: END FUNCTION
+ 129: 0000: 
+ 130: 0000: !Peek a four byte integer from a memory address
+ 131: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 132: 0000:     INTEGER*4 A%
+ 133: 0000:     INTEGER*4 PEEKN4
+ 134: 0000: END FUNCTION
+ 135: 0000: 
+ 136: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 137: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 138: 0000:     INTEGER*4 A%
+ 139: 0000:     REAL PEEKR10
+ 140: 0000: END FUNCTION
+ 141: 0000: 
+ 142: 0000: !Poke a two byte integer to a memory address
+ 143: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 144: 0000:     INTEGER*4 A%
+ 145: 0000:     INTEGER*2 N%
+ 146: 0000:     INTEGER*1 POKEN2
+ 147: 0000: END FUNCTION
+ 148: 0000: 
+ 149: 0000: !Poke a four byte integer to a memory address
+ 150: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 151: 0000:     INTEGER*4 A%
+ 152: 0000:     INTEGER*4 N%
+ 153: 0000:     INTEGER*1 POKEN4
+ 154: 0000: END FUNCTION
+ 155: 0000: 
+ 156: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 157: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 158: 0000:     INTEGER*4 A%
+ 159: 0000:     REAL R
+ 160: 0000:     INTEGER*1 POKER10
+ 161: 0000: END FUNCTION
+ 162: 0000: 
+ 163: 0000:   %INCLUDE BTCSTR.J86
+ 164: 0000: !********************************************************************
+ 165: 0000: !***
+ 166: 0000: !***    INCLUDED CODE:  BTCSTR.J86
+ 167: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 168: 0000: !***    DATE:           26th February 2006
+ 169: 0000: !***
+ 170: 0000: !********************************************************************
+ 171: 0000: !***
+ 172: 0000: !***    Controller CBASIC String Functions
+ 173: 0000: !***
+ 174: 0000: !********************************************************************
+ 175: 0000: 
+ 176: 0000: !Swaps to CBASIC strings
+ 177: 0000: SUB SWAPSTR (S1$, S2$) EXTERNAL
+ 178: 0000:     STRING S1$, S2$
+ 179: 0000: END SUB
+ 180: 0000: 
+ 181: 0000: !Left trim a string of spaces
+ 182: 0000: SUB LTRIM (S$) EXTERNAL
+ 183: 0000:     STRING S$
+ 184: 0000: END SUB
+ 185: 0000: 
+ 186: 0000: !Right trim a string of spaces
+ 187: 0000: SUB RTRIM (S$) EXTERNAL
+ 188: 0000:     STRING S$
+ 189: 0000: END SUB
+ 190: 0000: 
+ 191: 0000: !Left and right trim a string of spaces
+ 192: 0000: SUB TRIM (S$) EXTERNAL
+ 193: 0000:     STRING S$
+ 194: 0000: END SUB
+ 195: 0000: 
+ 196: 0000: !Left trim a string of a given ASCII character
+ 197: 0000: SUB LTRIMC (S$, C%) EXTERNAL
+ 198: 0000:     STRING S$
+ 199: 0000:     INTEGER*1 C%
+ 200: 0000: END SUB
+ 201: 0000: 
+ 202: 0000: !Right trim a string of a given ASCII character
+ 203: 0000: SUB RTRIMC (S$, C%) EXTERNAL
+ 204: 0000:     STRING S$
+ 205: 0000:     INTEGER*1 C%
+ 206: 0000: END SUB
+ 207: 0000: 
+ 208: 0000: !Left and right trim a string of a given ASCII character
+ 209: 0000: SUB TRIMC (S$, C%) EXTERNAL
+ 210: 0000:     STRING S$
+ 211: 0000:     INTEGER*1 C%
+ 212: 0000: END SUB
+ 213: 0000: 
+ 214: 0000: !Insert one string into another
+ 215: 0000: FUNCTION SUBSTR(S1$, O1%, S2$, O2%, L2%) EXTERNAL
+ 216: 0000:     STRING    S1$, S2$
+ 217: 0000:     INTEGER*2 O1%, O2%, L2%
+ 218: 0000:     INTEGER*1 SUBSTR
+ 219: 0000: END FUNCTION
+ 220: 0000:     
+ 221: 0000: 
+ 222: 0000: \--------------------------------------------------------------------
+ 223: 0000: 
+ 224: 0000:   FUNCTION BUILD.SRMOD.KEY$
+ 225: 0024: 
+ 226: 0024:    STRING   BUILD.SRMOD.KEY$
+ 227: 0024:    STRING   work$
+ 228: 0024: 
+ 229: 0024:    work$ = STRING$(6,CHR$(0))
+ 230: 0043: 
+ 231: 0043:    CALL PUTN4(work$, 0, SRMOD.POGDB%)
+ 232: 0068:    CALL PUTN1(work$, 4, SRMOD.MODULE.SEQ%)
+ 233: 008b:    CALL PUTN1(work$, 5, SRMOD.RECORD.CHAIN%)
+ 234: 00ae: 
+ 235: 00ae:    BUILD.SRMOD.KEY$ = work$
+ 236: 00c8:    work$ = ""
+ 237: 00dd: 
+ 238: 00dd:   END FUNCTION
+ 239: 00f6: 
+ 240: 00f6: \--------------------------------------------------------------------
+ 241: 00f6: 
+ 242: 00f6:   SUB SRMOD.SPLIT.SHELF.ITEM PUBLIC
+ 243: 011a: 
+ 244: 011a:    INTEGER*2 i%
+ 245: 011a: 
+ 246: 011a:    FOR i% = 0 TO SRMOD.MAX.ITEMS% - 1
+ 247: 012b: 
+ 248: 012b:       SRMOD.SHELF.NUM%(i%) = GETN1(SRMOD.ARRAY$, i%*9 +0)
+ 249: 016a:       SRMOD.FACINGS%(i%)   = GETN1(SRMOD.ARRAY$, i%*9 +1)
+ 250: 01a7:       SRMOD.ITEM.CODE$(i%) = MID$ (SRMOD.ARRAY$, i%*9 +3,3)
+ 251: 01e3:       SRMOD.MDQ%(i%)       = GETN2(SRMOD.ARRAY$, i%*9 +5)
+ 252: 0222:       SRMOD.PSC%(i%)       = GETN2(SRMOD.ARRAY$, i%*9 +7)
+ 253: 0261: 
+ 254: 0261:    NEXT i%
+ 255: 0281: 
+ 256: 0281:   END SUB
+ 257: 0295: 
+ 258: 0295: \--------------------------------------------------------------------
+ 259: 0295: 
+ 260: 0295:   SUB SRMOD.CONCAT.SHELF.ITEM
+ 261: 02b9: 
+ 262: 02b9:    INTEGER*2 i%
+ 263: 02b9: 
+ 264: 02b9:    SRMOD.ARRAY$ = STRING$(9, CHR$(00))
+ 265: 02da:    SRMOD.ARRAY$ = STRING$(SRMOD.MAX.ITEMS%, SRMOD.ARRAY$)
+ 266: 0304: 
+ 267: 0304:    FOR i% = 0 TO SRMOD.MAX.ITEMS% - 1
+ 268: 0315: 
+ 269: 0315:       CALL PUTN1 (SRMOD.ARRAY$, i%*9 +0, SRMOD.SHELF.NUM%(i%))
+ 270: 0350:       CALL PUTN1 (SRMOD.ARRAY$, i%*9 +1, SRMOD.FACINGS%(i%))
+ 271: 0389:       CALL SUBSTR(SRMOD.ARRAY$, i%*9 +2, SRMOD.ITEM.CODE$(i%),0,3)
+ 272: 03ca:       CALL PUTN2 (SRMOD.ARRAY$, i%*9 +5, SRMOD.MDQ%(i%))
+ 273: 0403:       CALL PUTN2 (SRMOD.ARRAY$, i%*9 +7, SRMOD.PSC%(i%))
+ 274: 043c: 
+ 275: 043c:    NEXT i%
+ 276: 045c: 
+ 277: 045c:   END SUB
+ 278: 0470: 
+ 279: 0470: \--------------------------------------------------------------------
+ 280: 0470: 
+ 281: 0470:   FUNCTION SRMOD.SET PUBLIC
+ 282: 0494: 
+ 283: 0494:    SRMOD.REPORT.NUM%   = 727
+ 284: 04a5:    SRMOD.RECL%         = 508
+ 285: 04b6:    SRMOD.FILE.NAME$    = "SRMOD"
+ 286: 04cd:    SRMOD.COPY.NAME$    = "ADXLXACN::D:\ADX_UDT3\SRMOD.BAK"
+ 287: 04e4:    SRMOD.MAX.ITEMS%    = 50
+ 288: 04f5: 
+ 289: 04f5:    DIM SRMOD.SHELF.NUM% (SRMOD.MAX.ITEMS%-1)
+ 290: 052b:    DIM SRMOD.FACINGS%   (SRMOD.MAX.ITEMS%-1)
+ 291: 0561:    DIM SRMOD.ITEM.CODE$ (SRMOD.MAX.ITEMS%-1)
+ 292: 0597:    DIM SRMOD.MDQ%       (SRMOD.MAX.ITEMS%-1)
+ 293: 05cd:    DIM SRMOD.PSC%       (SRMOD.MAX.ITEMS%-1)
+ 294: 0603: 
+ 295: 0603:   END FUNCTION
+ 296: 0617: 
+ 297: 0617: \--------------------------------------------------------------------
+ 298: 0617: 
+ 299: 0617:   FUNCTION READ.SRMOD PUBLIC
+ 300: 063b: 
+ 301: 063b:    INTEGER*2 READ.SRMOD
+ 302: 063b:    STRING    key$
+ 303: 063b: 
+ 304: 063b:    READ.SRMOD = 1
+ 305: 0648: 
+ 306: 0648:    IF END #SRMOD.SESS.NUM% THEN READ.SRMOD.ERROR
+ 307: 0664: 
+ 308: 0664:    key$ = BUILD.SRMOD.KEY$
+ 309: 0679: 
+ 310: 0679:    READ FORM "T7,C30,C450,I2,I2,C18"; #SRMOD.SESS.NUM%              \
+ 311: 06dc:          KEY key$;                                                  \
+ 312: 06dc:              SRMOD.DESCRIPTOR$,                                     \
+ 313: 06dc:              SRMOD.ARRAY$,                                          \
+ 314: 06dc:              SRMOD.SHELF.COUNT%,                                    \
+ 315: 06dc:              SRMOD.ITEM.COUNT%,                                     \
+ 316: 06dc:              SRMOD.FILLER$
+ 317: 06dc: 
+ 318: 06dc:    CALL SRMOD.SPLIT.SHELF.ITEM
+ 319: 06e8: 
+ 320: 06e8:    READ.SRMOD = 0
+ 321: 06f5: 
+ 322: 06f5:    EXIT FUNCTION
+ 323: 06ff: 
+ 324: 06ff: READ.SRMOD.ERROR:
+ 325: 070f: 
+ 326: 070f:    CURRENT.REPORT.NUM% = SRMOD.REPORT.NUM%
+ 327: 0725:    FILE.OPERATION$ = "R"
+ 328: 073c:    CURRENT.CODE$ = key$
+ 329: 0757: 
+ 330: 0757:   END FUNCTION
+ 331: 076e: 
+ 332: 076e: \--------------------------------------------------------------------
+ 333: 076e: 
+ 334: 076e:   FUNCTION WRITE.SRMOD PUBLIC
+ 335: 0792: 
+ 336: 0792:    INTEGER*2 WRITE.SRMOD
+ 337: 0792:    STRING    key$
+ 338: 0792: 
+ 339: 0792:    WRITE.SRMOD = 1
+ 340: 079f: 
+ 341: 079f:    IF END #SRMOD.SESS.NUM% THEN WRITE.SRMOD.ERROR
+ 342: 07bb: 
+ 343: 07bb:    key$ = BUILD.SRMOD.KEY$
+ 344: 07d0:    CALL SRMOD.CONCAT.SHELF.ITEM
+ 345: 07dc: 
+ 346: 07dc:    WRITE FORM "C6,C30,C450,I2,I2,C18"; #SRMOD.SESS.NUM%;            \
+ 347: 084b:              key$,                                                  \
+ 348: 084b:              SRMOD.DESCRIPTOR$,                                     \
+ 349: 084b:              SRMOD.ARRAY$,                                          \
+ 350: 084b:              SRMOD.SHELF.COUNT%,                                    \
+ 351: 084b:              SRMOD.ITEM.COUNT%,                                     \
+ 352: 084b:              SRMOD.FILLER$
+ 353: 084b: 
+ 354: 084b:    WRITE.SRMOD = 0
+ 355: 0858: 
+ 356: 0858:    EXIT FUNCTION
+ 357: 0862: 
+ 358: 0862: WRITE.SRMOD.ERROR:
+ 359: 0872: 
+ 360: 0872:    CURRENT.REPORT.NUM% = SRMOD.REPORT.NUM%
+ 361: 0888:    FILE.OPERATION$ = "W"
+ 362: 089f:    CURRENT.CODE$ = key$
+ 363: 08ba: 
+ 364: 08ba:   END FUNCTION
+ 365: 08d1: 
+ 366: 08d1: \--------------------------------------------------------------------
+ 367: 08d1: 
+ 368: 08d1:   FUNCTION DELREC.SRMOD PUBLIC
+ 369: 08f5: 
+ 370: 08f5:    INTEGER*2 DELREC.SRMOD
+ 371: 08f5:    STRING    key$
+ 372: 08f5: 
+ 373: 08f5:    DELREC.SRMOD = 1
+ 374: 0902: 
+ 375: 0902:    IF END #SRMOD.SESS.NUM% THEN DELREC.SRMOD.ERROR
+ 376: 091e: 
+ 377: 091e:    key$ = BUILD.SRMOD.KEY$
+ 378: 0933: 
+ 379: 0933:    DELREC SRMOD.SESS.NUM%; key$
+ 380: 094f: 
+ 381: 094f:    DELREC.SRMOD = 0
+ 382: 095c:    EXIT FUNCTION
+ 383: 0966: 
+ 384: 0966: DELREC.SRMOD.ERROR:
+ 385: 0976: 
+ 386: 0976:    CURRENT.REPORT.NUM% = SRMOD.REPORT.NUM%
+ 387: 098c:    FILE.OPERATION$ = "D"
+ 388: 09a3:    CURRENT.CODE$ = key$
+ 389: 09be: 
+ 390: 09be:   END FUNCTION
+ 391: 09d5: End of Compilation

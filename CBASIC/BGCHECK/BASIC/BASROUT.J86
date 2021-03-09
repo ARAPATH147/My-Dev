@@ -1,0 +1,431 @@
+\*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+\*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+\*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+\*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+\*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+\*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+!   the BASROUT.OBJ routines.  These routines were written
+!  using Metaware C and are intended to provide functions which
+!         are either not available in 4680 CBASIC or which can be more
+!               efficiently handled by the C language.  Their usage is
+!  offered on an "AT YOUR OWN RISK" basis.
+!
+!               The insert/extract routines usefulness may not be immediately
+!               apparent.  Their intention is that they be used in conjunction
+!               with a read/write form command.  They can more efficiently
+!               parse a string into many different variables than can the
+!               read form statement.  So instead of a long list of data var's
+!               it may be more efficient to just read/write one long string
+!               and then use the insert/extract routines to parse out the
+!   data.
+
+! ******************* SUB PROCESS FUNCTIONS *********************************
+
+function osshell(cmd.line$) external   ! routine to start
+       ! another program.
+           integer*4    osshell    ! Upon completion of
+           string       cmd.line$   ! program, control is
+       ! returned to calling
+end function      ! program.
+!
+! NOTES:  Program must be a 286 type file.  This does not exclude
+!         the capability to execute a batch file however.  Simply pass the
+!         following:
+!              c:\adx_spgm\command.286 batfile
+!         where batfile is the name of the batch file to be executed.
+!
+! IMPORTANT: When using osshell to execute a batch file as described above,
+!            the final command in the batch file must be "exit".  If not,
+!       control is never given back to the calling program.
+
+! ************************ MEMORY RELATED FUNCTIONS ************************
+
+function memfree(choice) external   ! routine to que the
+       ! status of the
+ integer*4 memfree    ! machine's memory:
+ integer*2 choice    ! Options:
+       !    1 - free
+end function      !    2 - total
+       !    3 - system
+
+! ********************** TIMEDATE RELATED FUNCTIONS ************************
+
+function timedate(choice) external   ! routine to que the
+       ! OS's timedate table
+ integer*4 timedate   ! Choices:
+ integer*2 choice    !    1 - millisec's
+       !        since midnight
+end function      !    2 - minutes from
+       !  UCT (timezone)
+       !    3 - day of week
+       !   0-Sunday
+       !  6-Saturday
+
+function settime(msecs) external   ! routine to set the
+       ! time on the controller
+ integer*4  settime    ! msecs is the desired
+ integer*4 msecs    ! number of milliseconds
+       ! since midnight
+end function      ! Returns negative on
+       ! error
+! NOTE:  This routine sets the time only on the controller.  The terminals'
+! time will not be updated until 1 AM or unless a terminal is STC'd.
+! At 1 AM the controller broadcasts the new time to all terminals.
+! Insure this is taken into consideration when using this routine.
+
+!******************** DISK FILE RELATED FUNCTIONS *************************
+
+function truncate(name,length) external   ! routine to truncate
+       ! the specified file
+ integer*4 truncate   ! to a given length.
+ string  name
+ integer*4 length
+
+end function
+
+!******************** STRING VALUE RELATED FUNCTIONS **********************
+
+function isalpha(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isalpha    ! string contains all
+ string  bstrn    ! alphabetic char's
+       ! Returns:
+end function      !     0 - all alpha
+       !     X - byte of 1st
+       !         non-alpha
+       !   char
+
+function isdigit(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isdigit    ! string contains all
+ string  bstrn    ! numeric char's
+       ! Returns:
+end function      !     0 - all numeric
+       !     X - byte of 1st
+       !         non-numeric
+       !   char
+
+function islower(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 islower    ! string contains all
+ string  bstrn    ! lower case char's
+       ! Returns:
+end function      !     0 - all lowercase
+       !     X - byte of 1st
+       !         non-lowercase
+       !   char
+
+function isupper(bstrn) external   ! routine to identify
+       ! if the specified
+ integer*1 isupper    ! string contains all
+ string  bstrn    ! upper case char's
+       ! Returns:
+end function      !     0 - all uppercase
+       !     X - byte of 1st
+       !         non-uppercase
+       !   char
+
+function toalpha(bstrn) external   ! routine to convert
+       ! non-alpha or non-num
+   integer*2 toalpha    ! char's to spaces
+ string  bstrn    ! Returns:
+end function      !   x - no. of char's
+       !       changed
+
+! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+
+function idlecount(choice) external   ! routine to either
+       ! set to zero or queue
+ integer*4 idlecount   ! the value of the
+ integer*1 choice    ! processor's idlecount
+       ! Choice:
+end function      !     0 - set to zero
+!       !     1 - get value
+! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+! TO WORK - This level is not available unless  !     X - idlecount
+! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+! is highly unrecommended.
+
+function logical(actname,logname,choice) external ! routine to set a
+       ! a logical name.
+ integer*4 logical    ! parms are self
+        string  logname    ! explanatory except
+ string  actname    ! for choice:
+ integer*1 choice    !   0 - set process
+       !   1 - set system
+end function      !   2 - get process
+       !   3 - get system
+
+! NOTE:  Only the setting of a system level of logical name requires
+! user/group zero level of authorization.  Any application may query any
+! logical name.  Setting of a system logical name is only applicable until
+! the system is IPL'd.  A process logical name is only active when that
+! process is active.
+
+!******************** STRING PARSING FUNCTIONS *****************************
+
+function inserts(whole,part,offset) external  ! routine to insert a
+       ! string (part) into
+ integer*2 INSERTS    ! another string (whole)
+ string  whole    ! starting at specified
+ string  part    ! character (offset)
+ integer*2 offset
+
+end function
+
+function cinsert4(integer4,bstring,offset) external   ! routine to insert
+       ! a 4-byte integer into
+ integer*1 cinsert4   ! a string starting at
+ integer*4 integer4   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function cinsert2(integer2,bstring,offset) external  ! routine to insert
+       ! a 2-byte integer into
+ integer*1 cinsert2   ! a string starting at
+ integer*2 integer2   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function cinsert1(bstring,integer1,offset) external  ! routine to insert
+       ! a 1-byte integer into
+ integer*1 cinsert1   ! a string starting at
+ integer*1 integer1   ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     0 - Success
+end function      !    -1 - String overrun
+
+function extracts(whole,part,offset) external  ! routine to extract a
+       ! string (part) from
+ integer*2 EXTRACTS   ! another string (whole)
+ string  whole    ! starting at specified
+ string  part    ! character (offset)
+ integer*2 offset
+
+end function
+
+function cextract4(bstring,offset) external  ! routine to extract
+       ! a 4-byte integer from
+ integer*4 cextract4   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 4 byte integer
+end function      !    -1 - String overrun
+
+function cextract2(bstring,offset) external  ! routine to extract
+       ! a 2-byte integer from
+ integer*2 cextract2   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 2 byte integer
+end function      !    -1 - String overrun
+
+function cextract1(bstring,offset) external  ! routine to extract
+       ! a 1-byte integer from
+ integer*1 cextract1   ! a string starting at
+                       ! byte specified by
+ string  bstring    ! offset (1-based)
+ integer*2 offset    ! Returns:
+       !     X - 1 byte integer
+end function      !    -1 - String overrun
+
+
+function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+       ! file names and sizes
+       ! Return values:
+       !    -1  no matches
+       !        found on first
+       !        call
+       !    0   no matches
+       !        found on sub-
+       !        sequent calls
+       !    Pos Success
+       !    Neg OS Rtn Code
+! Usage Note:  If searching for all occurences of a particular file name,
+! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+! to srchdir.  If any matches are found, a positive value will be returned.
+! To see if any more matches exist, just issue another call to srchdir without
+! resetting the values of dtbl.buffer$.  If any are found, a positive value
+! will be returned.  This can be repeated until a Zero is returned.  All data
+! describing file will be returned in the dtbl.buffer$ after each call.  Format
+! of this data is defined below.
+
+ integer*4 srchdir
+
+ string  file.name$   ! file name to start
+       ! search (18 bytes max)
+       ! Wild cards and logical
+       ! names supported.
+
+ string  dtbl.buffer$   ! must be initialized
+       ! to 48 bytes.  Contains
+       ! all of directory info
+       ! Initialize to nulls
+       ! each time a new file
+       ! name is used.
+
+! NOTE:  Format of dtbl.buffer$ string is as follows:
+!
+! Offs  Type                    Description Notes
+!  0 integer*4  key  use extract4 to access
+!  4  string (18 bytes) file name
+! 22 integer*2  attributes use extract2 to access
+!      0x01 - Read Only
+!      0x02 - Hidden
+!      0x04 - System
+!      0x08 - Volume Label
+!      0x10 - Subdirectory
+!      0x20 - Archive (Files)
+!      0x40 - Security enabled
+!      0x80 - Reserved
+!      0x0000 - Local
+!      0x4000 - Mirrored/Update
+!      0xC000 - Mirrored/Close
+!
+!      0x6000 - Compound/Update
+!      0xE000 - Compound/Close
+! 24 integer*2  record size use extract2 to access
+! 26 integer*1  User ID of Owner
+! 27 integer*1  Group ID of Owner
+! 28 integer*2  File Security
+! 30 string (6 bytes) Reserved
+! 36 integer*4  File Size use extract4 to access
+! 40 integer*2  Year  use extract2 to access
+! 42 integer*1  Month
+! 43 integer*1  Day
+! 44 integer*1  Hour
+! 45 integer*1  Minute
+! 46 integer*1  Second
+! 47 integer*1  Reserved
+
+end function
+
+function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+       ! process names and
+       ! status.  Handy to
+       ! determine if a
+       ! program is currently
+       ! running.
+       ! Return values:
+       !    -1  no matches
+       !        found on first
+       !        call
+       !    0   no matches
+       !        found on sub-
+       !        sequent calls
+       !    Pos Success
+       !    Neg Failure
+       !        OS Rtn Code
+       ! 80000001h - Insuff
+        !        ptbl buffer
+       !        Length
+! Usage Note:  If searching for all occurences of a particular process name,
+! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+! to srchproc.  If any matches are found, a positive value will be returned.
+! To see if any more matches exist, just issue another call to srchproc without
+! resetting the values of ptbl.buffer$.  If any are found, a positive value
+! will be returned.  This can be repeated until a Zero is returned.  All data
+! describing file will be returned in the ptbl.buffer$ after each call.  Format
+! of this data is defined as follows:
+!
+!       --------------------------------------------------------
+!   0   |                         PID                          |
+!       --------------------------------------------------------
+!   4   |           FID             |   CID        |   VCID    |
+!       --------------------------------------------------------
+!   8   |                         NAME                         |
+!       --------------------------------------------------------
+!  12   |                         NAME cont'd                  |
+!       --------------------------------------------------------
+!  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+!       --------------------------------------------------------
+!  20   |                         MAXMEM                       |
+!       --------------------------------------------------------
+!  24   |       FLAGS               |   USER        |  GROUP   |
+!       --------------------------------------------------------
+!  28   |                         PARENT                       |
+!       --------------------------------------------------------
+!  32   |                         EVENTS                       |
+!       --------------------------------------------------------
+!  36   |                         CODE                         |
+!       --------------------------------------------------------
+!  40   |                         CSIZE                        |
+!       --------------------------------------------------------
+!  44   |                         DATA                         |
+!       --------------------------------------------------------
+!  48   |                         DSIZE                        |
+!       --------------------------------------------------------
+!  52   |                         HEAP                         |
+!       --------------------------------------------------------
+!  56   |                         HSIZE                        |
+!       --------------------------------------------------------
+!
+!       PID   Process ID
+!       FID  Process's Family ID
+!       CID   Physical Console Device Number
+!       VCID  Process's Virtual Console Number
+!       NAME  Process Name (Application Running)
+! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+! PRIOR    Priority
+!       MAXMEM  Maximum Memory Allowed
+!       FLAGS  Bit 0 (1-System Process, 0-User Process)
+!   Bit 1 (1-Locked in Memory, 0-Swappable)
+!   Bit 2 (1-Running in SWI context, 0-Running in main context)
+!   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+! USER  User Number
+! GROUP  Group Number
+!       PARENT   Parent Process ID
+!       EVENTS   Bit Map of events that have completed but not retrieved
+!       CODE  Start of code area in user space
+! CSIZE  Size in bytes of code area
+!       DATA  Start of data area in user space
+! DSIZE  Size in bytes of data area
+!       HEAP  Start of heap area in user space
+! HSIZE  Size in bytes of heap area
+!
+ integer*4 srchproc
+
+ string  proc.name$   ! process name to start
+       ! search (10 bytes max)
+       ! Wild cards and logical
+       ! names supported.
+
+ string  ptbl.buffer$   ! must be initialized
+       ! to 60 bytes.  Contains
+       ! all of process info
+       ! Initialize to nulls
+       ! each time a new
+       ! process name is used.
+
+end function
+
+function cconstat(timeout) external       ! function similar
+                                              ! to BASIC constat%
+ integer*2 cconstat   ! waits for either a
+ integer*4 timeout    ! key being hit or
+       ! the timer expiring
+       ! before returning
+       ! returns:
+       !   -1 error
+       !    0 timer expired
+       !    x scan code of
+       !      key hit
+end function
+
+function disksize(disk.name$) external   ! function to find
+       ! the total size of
+ integer*4 disksize   ! the specified disk
+ string  disk.name$   ! name (e.g. "h0:")
+       ! if return value is
+       ! negative, error
+end function      ! was received
+
+

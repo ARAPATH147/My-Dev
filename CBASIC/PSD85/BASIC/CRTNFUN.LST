@@ -1,0 +1,380 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* CARTON FILE FUNCTIONS                                          */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : CRTNFUN.BAS                                      */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.           12 DECEMBER 2006   */
+   8: 0000: \/*                                                                */
+   9: 0000: \/* VERSION B.          Arun Sudhakaran.        10 APRIL 2013      */
+  10: 0000: \/* Defined new variables for getting CRTN field positions         */
+  11: 0000: \/* and lengths as part of Automatic Booking In of Chilled Food    */
+  12: 0000: \/* ASNs project                                                   */
+  13: 0000: \/*                                                                */
+  14: 0000: \/* Version C.          Ramya Rajendran.        10/06/2016         */
+  15: 0000: \/* SC106  - Retail Stock 6                                        */
+  16: 0000: \/* Added new field 'SAP order number'                             */
+  17: 0000: \/*                                                                */
+  18: 0000: \/******************************************************************/
+  19: 0000: 
+  20: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  21: 0000: 
+  22: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  23: 0000:                     FILE.OPERATION$
+  24: 0000: 
+  25: 0000:    %INCLUDE CRTNDEC.J86
+  26: 0000: \/******************************************************************/
+  27: 0000: \/*                                                                */
+  28: 0000: \/* CARTON FILE GLOBAL VARIABLE DECLARATIONS                       */
+  29: 0000: \/*                                                                */
+  30: 0000: \/* REFERENCE   : CRTNDEC.J86                                      */
+  31: 0000: \/*                                                                */
+  32: 0000: \/* VERSION A.          Neil Bennett.           12 DECEMBER 2006   */
+  33: 0000: \/*                                                                */
+  34: 0000: \/* VERSION B.          Arun Sudhakaran.        10 APRIL 2013      */
+  35: 0000: \/* Added new variables for including CRTN field positions and     */
+  36: 0000: \/* lengths as part of Automatic Booking In of Chilled Food        */
+  37: 0000: \/* ASNs project                                                   */
+  38: 0000: \/*                                                                */
+  39: 0000: \/* Version C.          Ramya Rajendran.        10/06/2016         */
+  40: 0000: \/* SC106  - Retail Stock 6                                        */
+  41: 0000: \/* Added new variable 'SAP order number'                          */
+  42: 0000: \/*                                                                */
+  43: 0000: \/******************************************************************/
+  44: 0000: 
+  45: 0000:    STRING GLOBAL                \
+  46: 0000:       CRTN.ASN.CODE$,           \ ASC 35
+  47: 0000:       CRTN.BUS.CNTR$,           \ ASC  1
+  48: 0000:       CRTN.DEL.DTTM$,           \ ASC 12 (CCYYMMDDHHmm)
+  49: 0000:       CRTN.FILE.NAME$,          \
+  50: 0000:       CRTN.FILLER$,             \ ASC 22                            !CRR
+  51: 0000:       CRTN.ITEM.CNT$,           \ ASC  3
+  52: 0000:       CRTN.ITEM.CODE$(1),       \ PD 3
+  53: 0000:       CRTN.NO$,                 \ PD 4
+  54: 0000:       CRTN.ORD.NO$,             \ ASC  5
+  55: 0000:       CRTN.ORD.SUFFIX$,         \ ASC  1
+  56: 0000:       CRTN.SAP.ORDER.NUM$,      \ ASC 10                            !CRR
+  57: 0000:       CRTN.STATUS$,             \ ASC 1
+  58: 0000:       CRTN.SUPPLIER$            ! PD 3                              !CRR
+  59: 0000: 
+  60: 0000:    INTEGER*2 GLOBAL             \
+  61: 0000:       CHAIN.OFFSET%,            \ CHAIN% field offset               !BAS
+  62: 0000:       CRTN.DESP.QTY%(1),        \
+  63: 0000:       CRTN.IN.QTY%(1),          \
+  64: 0000:       CRTN.NO.KEY.LEN%,         \ CARTON.NO$ field length           !BAS
+  65: 0000:       CRTN.NO.KEY.OFFSET%,      \ CARTON.NO$ field offset           !BAS
+  66: 0000:       CRTN.RECL%,               \
+  67: 0000:       CRTN.REPORT.NUM%,         \
+  68: 0000:       CRTN.SESS.NUM%,           \
+  69: 0000:       DELIVERY.DATE.LEN%,       \ Length of delivery date           !BAS
+  70: 0000:       DELIVERY.DATE.OFFSET%,    \ Offset of delivery date           !BAS
+  71: 0000:       STATUS.LEN%,              \ STATUS$ field length              !BAS
+  72: 0000:       STATUS.OFFSET%,           \ STATUS$ field offset              !BAS
+  73: 0000:       SUPPLIER.NUMBER.LEN%,     \ SUPPLIER$ field length            !BAS
+  74: 0000:       SUPPLIER.NUMBER.OFFSET%   ! SUPPLIER$ field offset            !BAS
+  75: 0000: 
+  76: 0000:    INTEGER*1 GLOBAL             \
+  77: 0000:       CRTN.CHAIN%               !
+  78: 0000: 
+  79: 0000: \/******************************************************************/
+  80: 0000: 
+  81: 0000: 
+  82: 0000:    %INCLUDE BTCMEM.J86
+  83: 0000: !********************************************************************
+  84: 0000: !***
+  85: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+  86: 0000: !***    AUTHOR:         Stuart William McConnachie
+  87: 0000: !***    DATE:           26th February 2006
+  88: 0000: !***
+  89: 0000: !********************************************************************
+  90: 0000: !***
+  91: 0000: !***    Controller CBASIC Memory Functions
+  92: 0000: !***
+  93: 0000: !********************************************************************
+  94: 0000: 
+  95: 0000: !Get a single byte integer from a string offset
+  96: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+  97: 0000:     STRING S$
+  98: 0000:     INTEGER*2 P%
+  99: 0000:     INTEGER*2 GETN1
+ 100: 0000: END FUNCTION
+ 101: 0000: 
+ 102: 0000: !Get a two byte integer from a string offset
+ 103: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 104: 0000:     STRING S$
+ 105: 0000:     INTEGER*2 P%
+ 106: 0000:     INTEGER*2 GETN2
+ 107: 0000: END FUNCTION
+ 108: 0000: 
+ 109: 0000: !Get a four byte integer from a string offset
+ 110: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 111: 0000:     STRING S$
+ 112: 0000:     INTEGER*2 P%
+ 113: 0000:     INTEGER*4 GETN4
+ 114: 0000: END FUNCTION
+ 115: 0000: 
+ 116: 0000: !Get a 10 byte CBASIC real from a string offset
+ 117: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 118: 0000:     STRING S$
+ 119: 0000:     INTEGER*2 P%
+ 120: 0000:     REAL GETR10
+ 121: 0000: END FUNCTION
+ 122: 0000: 
+ 123: 0000: !Put a single byte integer into a string at offset
+ 124: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 125: 0000:     STRING S$
+ 126: 0000:     INTEGER*2 P%
+ 127: 0000:     INTEGER*1 N%
+ 128: 0000:     INTEGER*1 PUTN1
+ 129: 0000: END FUNCTION
+ 130: 0000: 
+ 131: 0000: !Put a two byte integer into a string at offset
+ 132: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 133: 0000:     STRING S$
+ 134: 0000:     INTEGER*2 P%
+ 135: 0000:     INTEGER*2 N%
+ 136: 0000:     INTEGER*1 PUTN2
+ 137: 0000: END FUNCTION
+ 138: 0000: 
+ 139: 0000: !Put a four byte integer into a string at offset
+ 140: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 141: 0000:     STRING S$
+ 142: 0000:     INTEGER*2 P%
+ 143: 0000:     INTEGER*4 N%
+ 144: 0000:     INTEGER*1 PUTN4
+ 145: 0000: END FUNCTION
+ 146: 0000: 
+ 147: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 148: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 149: 0000:     STRING S$
+ 150: 0000:     INTEGER*2 P%
+ 151: 0000:     REAL R
+ 152: 0000:     INTEGER*1 PUTR10
+ 153: 0000: END FUNCTION
+ 154: 0000: 
+ 155: 0000: !Peek a two byte integer from a memory address
+ 156: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 157: 0000:     INTEGER*4 A%
+ 158: 0000:     INTEGER*2 PEEKN2
+ 159: 0000: END FUNCTION
+ 160: 0000: 
+ 161: 0000: !Peek a four byte integer from a memory address
+ 162: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 163: 0000:     INTEGER*4 A%
+ 164: 0000:     INTEGER*4 PEEKN4
+ 165: 0000: END FUNCTION
+ 166: 0000: 
+ 167: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 168: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 169: 0000:     INTEGER*4 A%
+ 170: 0000:     REAL PEEKR10
+ 171: 0000: END FUNCTION
+ 172: 0000: 
+ 173: 0000: !Poke a two byte integer to a memory address
+ 174: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 175: 0000:     INTEGER*4 A%
+ 176: 0000:     INTEGER*2 N%
+ 177: 0000:     INTEGER*1 POKEN2
+ 178: 0000: END FUNCTION
+ 179: 0000: 
+ 180: 0000: !Poke a four byte integer to a memory address
+ 181: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 182: 0000:     INTEGER*4 A%
+ 183: 0000:     INTEGER*4 N%
+ 184: 0000:     INTEGER*1 POKEN4
+ 185: 0000: END FUNCTION
+ 186: 0000: 
+ 187: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 188: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 189: 0000:     INTEGER*4 A%
+ 190: 0000:     REAL R
+ 191: 0000:     INTEGER*1 POKER10
+ 192: 0000: END FUNCTION
+ 193: 0000: 
+ 194: 0000: 
+ 195: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 196: 0000: \/* FUNCTION GET.CRTN.KEY                                          */
+ 197: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 198: 0000: 
+ 199: 0000:    FUNCTION GET.CRTN.KEY$
+ 200: 0014: 
+ 201: 0014:       STRING    GET.CRTN.KEY$
+ 202: 0014:       STRING    work$
+ 203: 0014: 
+ 204: 0014:       work$ = CRTN.SUPPLIER$ + CRTN.NO$ + CHR$(0)
+ 205: 003d:       CALL PUTN1(work$, 7, CRTN.CHAIN%)
+ 206: 0058: 
+ 207: 0058:       GET.CRTN.KEY$ = work$
+ 208: 006a:       work$ = ""
+ 209: 0077: 
+ 210: 0077:    END FUNCTION
+ 211: 0088: 
+ 212: 0088: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 213: 0088: \/* FUNCTION CRTN.SET                                              */
+ 214: 0088: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 215: 0088: 
+ 216: 0088:    FUNCTION CRTN.SET PUBLIC
+ 217: 009c: 
+ 218: 009c:       INTEGER*1 CRTN.SET
+ 219: 009c: 
+ 220: 009c:       !Changed the variable definitions in alphabetical order and added new         !BAS
+ 221: 009c:       !variable definitions.                                                        !BAS
+ 222: 009c:       CHAIN.OFFSET%             = 7     !CHAIN% field offset of the CARTON record   !BAS
+ 223: 00a5:       CRTN.FILE.NAME$           = "CARTON"                                          !BAS
+ 224: 00b4:       CRTN.NO.KEY.LEN%          = 4     !CARTON.NO$ field length of the             !BAS
+ 225: 00bd:                                         !CARTON record                              !BAS
+ 226: 00bd:       CRTN.NO.KEY.OFFSET%       = 4     !CARTON.NO$ field offset of the             !BAS
+ 227: 00c6:                                         !CARTON record                              !BAS
+ 228: 00c6:       CRTN.RECL%                = 508                                               !BAS
+ 229: 00cf:       CRTN.REPORT.NUM%          = 735                                               !BAS
+ 230: 00d8:       DELIVERY.DATE.LEN%        = 6     !Length of delivery date (YYMMDD) in the    !BAS
+ 231: 00e1:                                         !field EXPECTED.DELIVERY.DATETIME$          !BAS
+ 232: 00e1:                                         !(CCYYMMDDHHmm)                             !BAS
+ 233: 00e1:       DELIVERY.DATE.OFFSET%     = 37    !Field offset of delivery date (YYMMDD)     !BAS
+ 234: 00ea:                                         !in the field EXPECTED.DELIVERY.DATETIME$   !BAS
+ 235: 00ea:                                         !(CCYYMMDDHHmm)                             !BAS
+ 236: 00ea:       STATUS.LEN%               = 1     !STATUS$ field length of the CARTON record  !BAS
+ 237: 00f3:       STATUS.OFFSET%            = 9     !STATUS$ field offset of the CARTON record  !BAS
+ 238: 00fc:       SUPPLIER.NUMBER.LEN%      = 3     !SUPPLIER$ field length of the CARTON record!BAS
+ 239: 0105:       SUPPLIER.NUMBER.OFFSET%   = 1     !SUPPLIER$ field offset of the CARTON record!BAS
+ 240: 010e: 
+ 241: 010e:    END FUNCTION
+ 242: 011d: 
+ 243: 011d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 244: 011d: \/* FUNCTION READ.CRTN                                             */
+ 245: 011d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 246: 011d: 
+ 247: 011d:    FUNCTION READ.CRTN PUBLIC
+ 248: 0131: 
+ 249: 0131:       INTEGER*2 READ.CRTN
+ 250: 0131:       INTEGER*2 i%
+ 251: 0131:       STRING    CRTN.KEY$
+ 252: 0131:       STRING    work$
+ 253: 0131: 
+ 254: 0131:       READ.CRTN = 1
+ 255: 0136: 
+ 256: 0136:       CRTN.KEY$ = GET.CRTN.KEY$
+ 257: 0143: 
+ 258: 0143:       DIM CRTN.ITEM.CODE$(60)
+ 259: 016a:       DIM CRTN.DESP.QTY%(60)
+ 260: 0191:       DIM CRTN.IN.QTY%(60)
+ 261: 01b8: 
+ 262: 01b8:       IF END #CRTN.SESS.NUM% THEN READ.ERROR
+ 263: 01cc:       READ FORM "T9,C1,C18,C5,C1,C1,C12,C3,C420,C10,C29";           \   !CRR
+ 264: 025c:            #CRTN.SESS.NUM%                                          \
+ 265: 025c:            KEY CRTN.KEY$;                                           \
+ 266: 025c:                CRTN.STATUS$,                                        \
+ 267: 025c:                CRTN.ASN.CODE$,                                      \
+ 268: 025c:                CRTN.ORD.NO$,                                        \
+ 269: 025c:                CRTN.ORD.SUFFIX$,                                    \
+ 270: 025c:                CRTN.BUS.CNTR$,                                      \
+ 271: 025c:                CRTN.DEL.DTTM$,                                      \
+ 272: 025c:                CRTN.ITEM.CNT$,                                      \
+ 273: 025c:                work$,                                               \
+ 274: 025c:                CRTN.SAP.ORDER.NUM$,                                 \   !CRR
+ 275: 025c:                CRTN.FILLER$
+ 276: 025c: 
+ 277: 025c:        FOR i% = 0 TO 59
+ 278: 0265:           CRTN.ITEM.CODE$(i% +1) =  MID$(work$, (i%*7) +1, 3)
+ 279: 0295:           CRTN.DESP.QTY%(i% +1)  = GETN2(work$, (i%*7) +3)
+ 280: 02cb:           CRTN.IN.QTY%(i% +1)    = GETN2(work$, (i%*7) +5)
+ 281: 0301:        NEXT i%
+ 282: 0312: 
+ 283: 0312:        READ.CRTN = 0
+ 284: 0317:     EXIT FUNCTION
+ 285: 0319: 
+ 286: 0319: 
+ 287: 0319: READ.ERROR:
+ 288: 0319: 
+ 289: 0319:       FILE.OPERATION$     = "R"
+ 290: 0328:       CURRENT.REPORT.NUM% = CRTN.REPORT.NUM%
+ 291: 0336:       CURRENT.CODE$       = CRTN.KEY$
+ 292: 0349: 
+ 293: 0349:    END FUNCTION
+ 294: 0358: 
+ 295: 0358: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 296: 0358: \/* FUNCTION WRITE.CRTN                                            */
+ 297: 0358: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 298: 0358: 
+ 299: 0358:    FUNCTION WRITE.CRTN PUBLIC
+ 300: 036c: 
+ 301: 036c:       INTEGER*2 WRITE.CRTN
+ 302: 036c:       INTEGER*2 i%
+ 303: 036c:       STRING    CRTN.KEY$
+ 304: 036c:       STRING    work$
+ 305: 036c: 
+ 306: 036c:       WRITE.CRTN = 1
+ 307: 0371: 
+ 308: 0371:       CRTN.KEY$ = GET.CRTN.KEY$
+ 309: 037e: 
+ 310: 037e:        work$ = ""
+ 311: 038b:        FOR i% = 1 TO 60
+ 312: 0394:           work$ = work$                                             \
+ 313: 03cf:                 + CRTN.ITEM.CODE$(i%)                               \
+ 314: 03cf:                 + STRING$(4, CHR$(0))
+ 315: 03cf:           CALL PUTN2(work$, ((i% -1)*7) +3, CRTN.DESP.QTY%(i%))
+ 316: 03ff:           CALL PUTN2(work$, ((i% -1)*7) +5, CRTN.IN.QTY%(i%))
+ 317: 042f:        NEXT i%
+ 318: 0440: 
+ 319: 0440:       IF END #CRTN.SESS.NUM% THEN WRITE.ERROR
+ 320: 0454:       WRITE FORM "C8,C1,C18,C5,C1,C1,C12,C3,C420,C10,C29";          \   !CRR
+ 321: 0510:            #CRTN.SESS.NUM%;                                         \
+ 322: 0510:                CRTN.KEY$,                                           \
+ 323: 0510:                CRTN.STATUS$,                                        \
+ 324: 0510:                CRTN.ASN.CODE$,                                      \
+ 325: 0510:                CRTN.ORD.NO$,                                        \
+ 326: 0510:                CRTN.ORD.SUFFIX$,                                    \
+ 327: 0510:                CRTN.BUS.CNTR$,                                      \
+ 328: 0510:                CRTN.DEL.DTTM$,                                      \
+ 329: 0510:                CRTN.ITEM.CNT$,                                      \
+ 330: 0510:                work$,                                               \
+ 331: 0510:                CRTN.SAP.ORDER.NUM$,                                 \   !CRR
+ 332: 0510:                CRTN.FILLER$
+ 333: 0510: 
+ 334: 0510:       WRITE.CRTN = 0
+ 335: 0515:       EXIT FUNCTION
+ 336: 0517: 
+ 337: 0517: WRITE.ERROR:
+ 338: 0517: 
+ 339: 0517:       FILE.OPERATION$ = "W"
+ 340: 0526:       CURRENT.REPORT.NUM% = CRTN.REPORT.NUM%
+ 341: 0534:       CURRENT.CODE$ = CRTN.KEY$
+ 342: 0547: 
+ 343: 0547:    END FUNCTION
+ 344: 0556: 
+ 345: 0556: \/******************************************************************/
+ 346: 0556: 
+ 347: 0556: FUNCTION DELETE.CRTN PUBLIC
+ 348: 056a: 
+ 349: 056a:       INTEGER*2 DELETE.CRTN
+ 350: 056a:       INTEGER*2 i%
+ 351: 056a:       STRING    CRTN.KEY$
+ 352: 056a:       STRING    work$
+ 353: 056a: 
+ 354: 056a:       ON ERROR GOTO RECORD.NOT.FOUND
+ 355: 0577: 
+ 356: 0577:       DELETE.CRTN = 1
+ 357: 057c: 
+ 358: 057c:       CRTN.KEY$ = GET.CRTN.KEY$
+ 359: 0589:       DELREC CRTN.SESS.NUM%;CRTN.KEY$
+ 360: 059d: 
+ 361: 059d:       DELETE.CRTN = 0
+ 362: 05a2: 
+ 363: 05a2: EXITFUNC:
+ 364: 05a2: 
+ 365: 05a2:     EXIT FUNCTION
+ 366: 05a4: 
+ 367: 05a4: RECORD.NOT.FOUND:
+ 368: 05a4: 
+ 369: 05a4:     RESUME EXITFUNC
+ 370: 05b3: 
+ 371: 05b3: READ.ERROR:
+ 372: 05b3: 
+ 373: 05b3:       FILE.OPERATION$     = "D"
+ 374: 05c2:       CURRENT.REPORT.NUM% = CRTN.REPORT.NUM%
+ 375: 05d0: 
+ 376: 05d0:       CURRENT.CODE$       = CRTN.KEY$
+ 377: 05e3: 
+ 378: 05e3:    END FUNCTION
+ 379: 05f2: 
+ 380: 05f2: End of Compilation

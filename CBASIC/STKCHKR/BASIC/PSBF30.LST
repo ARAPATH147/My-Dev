@@ -1,0 +1,701 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   FUNCTION        :       PSBF30
+   5: 0000: \***   NAME            :       PROCESS.KEYED.FILE
+   6: 0000: \***   AUTHOR          :       Mark Walker
+   7: 0000: \***   DATE            :       31st May 1995
+   8: 0000: \***
+   9: 0000: \******************************************************************************
+  10: 0000: \******************************************************************************
+  11: 0000: 
+  12: 0000: \******************************************************************************
+  13: 0000: \******************************************************************************
+  14: 0000: \***
+  15: 0000: \***   Overview
+  16: 0000: \***   --------
+  17: 0000: \***
+  18: 0000: \***   This function processes all the records in a keyed file. It uses the
+  19: 0000: \***   concept of 'user exits' to allow user-defined processing to occur
+  20: 0000: \***   on individual records. It is also possible to get the function to
+  21: 0000: \***   update records as it's going along. Good eh!
+  22: 0000: \***
+  23: 0000: \******************************************************************************
+  24: 0000: \******************************************************************************
+  25: 0000: 
+  26: 0000: \******************************************************************************
+  27: 0000: \******************************************************************************
+  28: 0000: \***
+  29: 0000: \***   Version 96A             Mark Walker                     31st May 1995
+  30: 0000: \***   Original version.
+  31: 0000: \***
+  32: 0000: \***   Version B               Andrew Wedgeworth              17th March 1997
+  33: 0000: \***   Altered to make opening the file READONLY optional.
+  34: 0000: \***
+  35: 0000: \***   Version C               Julia Stones                   12th May 2005
+  36: 0000: \***   Changed BLOCK.NUM% and FULL.BLOCKS% from integer*2 to integer*4 variables
+  37: 0000: \***
+  38: 0000: \******************************************************************************
+  39: 0000: \******************************************************************************
+  40: 0000: 
+  41: 0000:        STRING GLOBAL           BATCH.SCREEN.FLAG$,                     \
+  42: 0000:                                MODULE.NUMBER$,                         \
+  43: 0000:                                OPERATOR.NUMBER$
+  44: 0000: 
+  45: 0000:        %INCLUDE PSBF20G.J86
+  46: 0000: REM\
+  47: 0000: \*******************************************************************************
+  48: 0000: \*******************************************************************************
+  49: 0000: \***
+  50: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+  51: 0000: \***
+  52: 0000: \***                       REFERENCE     : PSBF20G.J86
+  53: 0000: \*** 
+  54: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+  55: 0000: \*** 
+  56: 0000: \***     Version B              Robert Cowey                   7th May 1991
+  57: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+  58: 0000: \***     to two byte integer.
+  59: 0000: \***
+  60: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+  61: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+  62: 0000: \***
+  63: 0000: \*******************************************************************************
+  64: 0000: \*******************************************************************************
+  65: 0000: 
+  66: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+  67: 0000:                        F20.STRING.FILE.NO$,                            \
+  68: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+  69: 0000:                        SESS.NUM.TABLE$(1)
+  70: 0000: 
+  71: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+  72: 0000: 
+  73: 0000:       ! 1 line deleted from here                                       ! DAW 
+  74: 0000: 
+  75: 0000: 
+  76: 0000:        %INCLUDE PSBF01E.J86
+  77: 0000: REM \
+  78: 0000: \*******************************************************************************
+  79: 0000: \*******************************************************************************
+  80: 0000: \***
+  81: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+  82: 0000: \***
+  83: 0000: \***                      FUNCTION NUMBER   : PSBF01
+  84: 0000: \***
+  85: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+  86: 0000: \*** 
+  87: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+  88: 0000: \***      Three parameters which passed to the function have been removed.
+  89: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+  90: 0000: \***      return code).
+  91: 0000: \***
+  92: 0000: \*******************************************************************************
+  93: 0000: 
+  94: 0000: 
+  95: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+  96: 0000:                              VAR.STRING.1$,                                   \
+  97: 0000:                              VAR.STRING.2$,                                   \
+  98: 0000:                              EVENT.NO%)  EXTERNAL
+  99: 0000: 
+ 100: 0000:       INTEGER*1 EVENT.NO%
+ 101: 0000: 
+ 102: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 103: 0000:                 MESSAGE.NO%
+ 104: 0000: 
+ 105: 0000:       STRING VAR.STRING.1$,                                            \
+ 106: 0000:              VAR.STRING.2$
+ 107: 0000: 
+ 108: 0000:    END FUNCTION
+ 109: 0000: 
+ 110: 0000: \*******************************************************************************
+ 111: 0000:        %INCLUDE PSBF20E.J86
+ 112: 0000: REM\
+ 113: 0000: \*******************************************************************************
+ 114: 0000: \*******************************************************************************
+ 115: 0000: \***
+ 116: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 117: 0000: \***
+ 118: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 119: 0000: \***
+ 120: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 121: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 122: 0000: \***     128 files.
+ 123: 0000: \***
+ 124: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 125: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 126: 0000: \***     as a variable.  This new variable contains the function's return
+ 127: 0000: \***     code.
+ 128: 0000: \***
+ 129: 0000: \*******************************************************************************
+ 130: 0000: \*******************************************************************************
+ 131: 0000: 
+ 132: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 133: 0000:                               PASSED.INTEGER%,                         \
+ 134: 0000:                               PASSED.STRING$)                          \
+ 135: 0000:    EXTERNAL
+ 136: 0000: 
+ 137: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 138: 0000:              PASSED.STRING$
+ 139: 0000:    ! 3 variables removed from here                                     ! CAW
+ 140: 0000: 
+ 141: 0000: 
+ 142: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 143: 0000:              PASSED.INTEGER%				               ! CJAS
+ 144: 0000: 
+ 145: 0000:    END FUNCTION
+ 146: 0000: 
+ 147: 0000:        %INCLUDE PSBF24E.J86
+ 148: 0000: REM \
+ 149: 0000: \*******************************************************************************
+ 150: 0000: \*******************************************************************************
+ 151: 0000: \***
+ 152: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 153: 0000: \***
+ 154: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 155: 0000: \***
+ 156: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 157: 0000: \***
+ 158: 0000: \*******************************************************************************
+ 159: 0000: \*******************************************************************************
+ 160: 0000: 
+ 161: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 162: 0000: 				    ERRFILE%,              \
+ 163: 0000: 				    ERRL%,                 \
+ 164: 0000: 				    ERR$)        EXTERNAL
+ 165: 0000: 				    
+ 166: 0000:           STRING    ERR$
+ 167: 0000: 
+ 168: 0000:           INTEGER*2 ERRFILE%,              \
+ 169: 0000: 	            ERRL%,                 \
+ 170: 0000: 		    STANDARD.ERROR.DETECTED
+ 171: 0000: 		    
+ 172: 0000:           INTEGER*4 ERRN%
+ 173: 0000: 	  		    
+ 174: 0000:    END FUNCTION
+ 175: 0000: 
+ 176: 0000: 
+ 177: 0000: 
+ 178: 0000:        
+ 179: 0000: FUNCTION GET.BUFF(INPUT%)
+ 180: 0024:     INTEGER*2 GET.BUFF
+ 181: 0024:     INTEGER*4 INPUT%,    \
+ 182: 0024:               A%,        \
+ 183: 0024:               B%,        \
+ 184: 0024:               C%
+ 185: 0024:     !KEYED FILE CAN ALWAYS BE DEVIDED BY 512          
+ 186: 0024:     !LOOP THROUGH TO FIND HIGHEST COM DOM FOR MAX BUFF
+ 187: 0024:     B% = 64
+ 188: 0039:     C% = 0
+ 189: 004e:     WHILE NOT C%
+ 190: 0058:         A% = MOD(INPUT%,B%*512)
+ 191: 007d:         IF NOT A% THEN C% = B%
+ 192: 009d:         B% = B%-1
+ 193: 00b6:     WEND
+ 194: 00c9:     GET.BUFF = C%*512
+ 195: 00e1:     
+ 196: 00e1: END FUNCTION
+ 197: 00f8: 
+ 198: 00f8: 
+ 199: 00f8: \******************************************************************************
+ 200: 00f8: \***
+ 201: 00f8: \***   FUNCTION        :       PROCESS.KEYED.RECORD$
+ 202: 00f8: \***
+ 203: 00f8: \******************************************************************************
+ 204: 00f8: \***
+ 205: 00f8: \***   The main body of this 'user exit' function must be written by the
+ 206: 00f8: \***   user and included in their application, as a PUBLIC function.
+ 207: 00f8: \***
+ 208: 00f8: \***   The function must return EITHER the record which was passed into
+ 209: 00f8: \***   it OR the modified record. It is important that any amendments to
+ 210: 00f8: \***   the record DO NOT cause the size of the record to change, otherwise
+ 211: 00f8: \***   the function will end with an error.
+ 212: 00f8: \***
+ 213: 00f8: \******************************************************************************
+ 214: 00f8: 
+ 215: 00f8:        FUNCTION PROCESS.KEYED.RECORD$(RECORD$) EXTERNAL
+ 216: 00f8: 
+ 217: 00f8:        STRING                  RECORD$,                                \
+ 218: 00f8:                                PROCESS.KEYED.RECORD$
+ 219: 00f8: 
+ 220: 00f8:        END FUNCTION
+ 221: 00f8: 
+ 222: 00f8: \******************************************************************************
+ 223: 00f8: \***
+ 224: 00f8: \***   FUNCTION        :       PROCESS.KEYED.FILE
+ 225: 00f8: \***
+ 226: 00f8: \******************************************************************************
+ 227: 00f8: \***
+ 228: 00f8: \***   Processes ALL records in a specified keyed file. It calls the function
+ 229: 00f8: \***   PROCESS.KEYED.RECORD$, after each record, to allow optional processing
+ 230: 00f8: \***   OR updating of individual records to be done.
+ 231: 00f8: \***
+ 232: 00f8: \***   Possible return codes:
+ 233: 00f8: \***
+ 234: 00f8: \***   0  = successful
+ 235: 00f8: \***   1  = file error
+ 236: 00f8: \***   2  = function error
+ 237: 00f8: \***   99 = fatal error
+ 238: 00f8: \***
+ 239: 00f8: \******************************************************************************
+ 240: 00f8: 
+ 241: 00f8:        FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \
+ 242: 00f8:                                    REPORT.NUM%,                        \
+ 243: 00f8:                                    READONLY$ ) PUBLIC                  ! BAW
+ 244: 0126: 
+ 245: 0126:        STRING                  FILE.NAME$,                             \
+ 246: 0126:                                FILE.OPERATION$,                        \
+ 247: 0126:                                FILE.NO$,                               \
+ 248: 0126:                                VAR.STRING.1$,                          \
+ 249: 0126:                                VAR.STRING.2$,                          \
+ 250: 0126:                                FORMAT$,                                \
+ 251: 0126:                                BLOCK$,                                 \
+ 252: 0126:                                RECORD$,                                \
+ 253: 0126:                                OLD.RECORD$,                            \
+ 254: 0126:                                NEW.RECORD$,                            \
+ 255: 0126:                                SECTOR$,                                \
+ 256: 0126:                                KEY$,                                   \
+ 257: 0126:                                FILE.NAME$,                             \
+ 258: 0126:                                CURRENT.FILE.NAME$,                     \
+ 259: 0126:                                KFCB$,                                  \
+ 260: 0126:                                READONLY$                               ! BAW
+ 261: 0126: 
+ 262: 0126:        INTEGER*1               EVENT.NO%,                              \
+ 263: 0126:                                TRUE,                                   \
+ 264: 0126:                                FALSE,                                  \
+ 265: 0126:                                EMPTY.RECORD.FOUND,                     \
+ 266: 0126:                                END.OF.FILE,                            \
+ 267: 0126:                                END.OF.BLOCK,                           \
+ 268: 0126:                                BLOCK.UPDATED
+ 269: 0126: 
+ 270: 0126:        INTEGER*2               SESS.NUM%,                              \
+ 271: 0126:                                REPORT.NUM%,                            \
+ 272: 0126:                                MESSAGE.NO%,                            \
+ 273: 0126:                                BLOCK.SIZE%,                            \
+ 274: 0126:                                SECTOR.SIZE%,                           \
+ 275: 0126:                                REMAINING.BYTES%,                       \
+ 276: 0126:                                RECS.PER.SECTOR%,                       \
+ 277: 0126:                                SECTOR.NUM%,                            \
+ 278: 0126:                                RECORD.COUNT%,                          \
+ 279: 0126:                                BASE%,                                  \
+ 280: 0126:                                RECORD.INDEX%,                          \
+ 281: 0126:                                LEFT.LEN%,                              \
+ 282: 0126:                                RIGHT.LEN%,                             \
+ 283: 0126:                                RECORD.LENGTH%,                         \
+ 284: 0126:                                KEY.LENGTH%,                            \
+ 285: 0126:                                CURRENT.REPORT.NUM%,                    \
+ 286: 0126:                                RETURN.CODE%,                           \
+ 287: 0126:                                PROCESS.KEYED.FILE
+ 288: 0126: 
+ 289: 0126:        INTEGER*4               FILE.SIZE%,                             \ CJAS
+ 290: 0126:                                FULL.BLOCKS%,                           \ CJAS
+ 291: 0126:                                BLOCK.NUM%                              ! CJAS
+ 292: 0126: 
+ 293: 0126: \******************************************************************************
+ 294: 0126: \******************************************************************************
+ 295: 0126: \***
+ 296: 0126: \***    S T A R T  O F  M A I N  F U N C T I O N
+ 297: 0126: \***
+ 298: 0126: \******************************************************************************
+ 299: 0126: \******************************************************************************
+ 300: 0126: 
+ 301: 0126:        ON ERROR GOTO ERROR.DETECTED
+ 302: 013b: 
+ 303: 013b:        RETURN.CODE% = 0
+ 304: 0149: 
+ 305: 0149:        IF SESS.NUM.UTILITY("O",REPORT.NUM%,FILE.NAME$) = 0 THEN BEGIN
+ 306: 016b: 
+ 307: 016b:           SESS.NUM% = F20.INTEGER.FILE.NO%
+ 308: 017f: 
+ 309: 017f:        ENDIF ELSE BEGIN
+ 310: 0187: 
+ 311: 0187:           RETURN.CODE% = 2
+ 312: 0195:           GOTO END.PSBF30
+ 313: 01a0: 
+ 314: 01a0:        ENDIF
+ 315: 01a8: 
+ 316: 01a8:        TRUE = -1
+ 317: 01b5:        FALSE = 0
+ 318: 01c2: 
+ 319: 01c2:        
+ 320: 01c2:        SECTOR.SIZE%     = 512
+ 321: 01d0:        FILE.SIZE%       = SIZE(FILE.NAME$)
+ 322: 01f0:        BLOCK.SIZE%      = GET.BUFF(FILE.SIZE%)
+ 323: 020a:        FULL.BLOCKS%     = INT%(FILE.SIZE% / BLOCK.SIZE%)
+ 324: 023d:        REMAINING.BYTES% = MOD(FILE.SIZE%,BLOCK.SIZE%)
+ 325: 0257: 
+ 326: 0257:        IF FULL.BLOCKS% = 0 AND                                         \
+ 327: 0286:           REMAINING.BYTES% > 0 THEN BEGIN
+ 328: 0286: 
+ 329: 0286:           BLOCK.SIZE% = REMAINING.BYTES%
+ 330: 0294: 
+ 331: 0294:        ENDIF
+ 332: 029c: 
+ 333: 029c:        IF READONLY$ = "N" THEN BEGIN                                   ! BAW
+ 334: 02b5: 
+ 335: 02b5:           IF END # SESS.NUM% THEN OPEN.ERROR
+ 336: 02ce:           OPEN FILE.NAME$ DIRECT RECL BLOCK.SIZE% AS                   \ BAW
+ 337: 02f3:                SESS.NUM% BUFFSIZE BLOCK.SIZE%                          ! BAW
+ 338: 02f3: 
+ 339: 02f3:        ENDIF ELSE BEGIN                                                ! BAW
+ 340: 02fb: 
+ 341: 02fb:           IF END # SESS.NUM% THEN OPEN.ERROR
+ 342: 0314:           OPEN FILE.NAME$ DIRECT RECL BLOCK.SIZE% AS                   \
+ 343: 0337:                SESS.NUM% BUFFSIZE BLOCK.SIZE% READONLY
+ 344: 0337: 
+ 345: 0337:        ENDIF                                                           ! BAW
+ 346: 033f: 
+ 347: 033f:        FORMAT$ = "C" + STR$(BLOCK.SIZE%)
+ 348: 0362: 
+ 349: 0362:        BLOCK.NUM% = 1
+ 350: 0377: 
+ 351: 0377:        IF END # SESS.NUM% THEN READ.ERROR
+ 352: 0390:        READ FORM FORMAT$; # SESS.NUM%, BLOCK.NUM%; BLOCK$
+ 353: 03c6: 
+ 354: 03c6:        END.OF.FILE = FALSE
+ 355: 03d4: 
+ 356: 03d4:        WHILE NOT END.OF.FILE
+ 357: 03de:              GOSUB PROCESS.BLOCK
+ 358: 03f0:        WEND
+ 359: 03ff: 
+ 360: 03ff:        CLOSE SESS.NUM%
+ 361: 0410: 
+ 362: 0410:        CALL SESS.NUM.UTILITY("C",SESS.NUM%,"")
+ 363: 042c: 
+ 364: 042c: END.PSBF30:
+ 365: 043c: 
+ 366: 043c:        PROCESS.KEYED.FILE = RETURN.CODE%
+ 367: 044a: 
+ 368: 044a:        EXIT FUNCTION
+ 369: 0455: 
+ 370: 0455: \******************************************************************************
+ 371: 0455: \******************************************************************************
+ 372: 0455: \***
+ 373: 0455: \***    E N D  O F  M A I N  F U N C T I O N
+ 374: 0455: \***
+ 375: 0455: \******************************************************************************
+ 376: 0455: \******************************************************************************
+ 377: 0455: 
+ 378: 0455: \******************************************************************************
+ 379: 0455: \******************************************************************************
+ 380: 0455: \***
+ 381: 0455: \***    S T A R T  O F  S U B R O U T I N E S
+ 382: 0455: \***
+ 383: 0455: \******************************************************************************
+ 384: 0455: \******************************************************************************
+ 385: 0455: 
+ 386: 0455: \******************************************************************************
+ 387: 0455: \***
+ 388: 0455: \***    SUBROUTINE      :       PROCESS.BLOCK
+ 389: 0455: \***
+ 390: 0455: \******************************************************************************
+ 391: 0455: \***
+ 392: 0455: \***   Processes a block of sectors
+ 393: 0455: \***
+ 394: 0455: \******************************************************************************
+ 395: 0455: 
+ 396: 0455: PROCESS.BLOCK:
+ 397: 0465: 
+ 398: 0465:        SECTOR.NUM% = 0
+ 399: 0473: 
+ 400: 0473:        END.OF.BLOCK  = FALSE
+ 401: 0481:        BLOCK.UPDATED = FALSE
+ 402: 048f: 
+ 403: 048f:        WHILE NOT END.OF.BLOCK
+ 404: 0499: 
+ 405: 0499:              GOSUB PROCESS.SECTOR
+ 406: 04ab: 
+ 407: 04ab:        WEND
+ 408: 04ba: 
+ 409: 04ba:        IF BLOCK.UPDATED THEN BEGIN
+ 410: 04c9: 
+ 411: 04c9:           GOSUB UPDATE.BLOCK
+ 412: 04db: 
+ 413: 04db:        ENDIF
+ 414: 04e3: 
+ 415: 04e3:        IF BLOCK.NUM% = FULL.BLOCKS% AND                                \
+ 416: 0515:           REMAINING.BYTES% > 0 THEN BEGIN
+ 417: 0515: 
+ 418: 0515:           CLOSE SESS.NUM%
+ 419: 0526: 
+ 420: 0526:           BLOCK.NUM% = (FILE.SIZE% / SECTOR.SIZE%) -                   \
+ 421: 0553:                        (REMAINING.BYTES% / SECTOR.SIZE%)
+ 422: 0553: 
+ 423: 0553:           BLOCK.SIZE% = SECTOR.SIZE%
+ 424: 0561:           FORMAT$     = "C" + STR$(BLOCK.SIZE%)
+ 425: 0584: 
+ 426: 0584:           IF READONLY$ = "N" THEN BEGIN                                ! BAW
+ 427: 059d: 
+ 428: 059d:              IF END # SESS.NUM% THEN OPEN.ERROR
+ 429: 05b6:              OPEN FILE.NAME$ DIRECT RECL BLOCK.SIZE% AS                \ BAW
+ 430: 05db:                   SESS.NUM% BUFFSIZE BLOCK.SIZE%                       ! BAW
+ 431: 05db: 
+ 432: 05db:           ENDIF ELSE BEGIN                                             ! BAW
+ 433: 05e3: 
+ 434: 05e3:              IF END # SESS.NUM% THEN OPEN.ERROR
+ 435: 05fc:              OPEN FILE.NAME$ DIRECT RECL BLOCK.SIZE% AS                \
+ 436: 061f:                   SESS.NUM% BUFFSIZE BLOCK.SIZE% READONLY
+ 437: 061f: 
+ 438: 061f:           ENDIF                                                        ! BAW
+ 439: 0627: 
+ 440: 0627:        ENDIF
+ 441: 062f: 
+ 442: 062f:        BLOCK.NUM% = BLOCK.NUM% + 1
+ 443: 0648: 
+ 444: 0648:        IF END # SESS.NUM% THEN END.OF.FOUND
+ 445: 0661:        READ FORM FORMAT$; # SESS.NUM%, BLOCK.NUM%; BLOCK$
+ 446: 0697: 
+ 447: 0697:        GOTO END.PROCESS.BLOCK
+ 448: 06a1: 
+ 449: 06a1: END.OF.FOUND:
+ 450: 06b1: 
+ 451: 06b1:        END.OF.FILE = TRUE
+ 452: 06bf: 
+ 453: 06bf: END.PROCESS.BLOCK:
+ 454: 06cf: 
+ 455: 06cf:        RETURN
+ 456: 06df: 
+ 457: 06df: \******************************************************************************
+ 458: 06df: \***
+ 459: 06df: \***   SUBROUTINE      :       PROCESS.SECTOR
+ 460: 06df: \***
+ 461: 06df: \******************************************************************************
+ 462: 06df: \***
+ 463: 06df: \***   Processes a block of records
+ 464: 06df: \***
+ 465: 06df: \******************************************************************************
+ 466: 06df: 
+ 467: 06df: PROCESS.SECTOR:
+ 468: 06ef: 
+ 469: 06ef:        IF SECTOR.NUM% = 0 AND                                          \
+ 470: 0721:           BLOCK.NUM% = 1 THEN BEGIN
+ 471: 0721: 
+ 472: 0721:           KFCB$ = MID$(BLOCK$,1,SECTOR.SIZE%)
+ 473: 0745: 
+ 474: 0745:           RECORD.LENGTH% = ASC(MID$(KFCB$,47,1)) +                     \
+ 475: 0788:                            ASC(MID$(KFCB$,48,1)) * 256
+ 476: 0788: 
+ 477: 0788:           KEY.LENGTH%    = ASC(MID$(KFCB$,55,1)) +                     \
+ 478: 07cb:                            ASC(MID$(KFCB$,56,1)) * 256
+ 479: 07cb: 
+ 480: 07cb:           RECS.PER.SECTOR% = SECTOR.SIZE% / RECORD.LENGTH%
+ 481: 07de: 
+ 482: 07de:           SECTOR.NUM% = 1
+ 483: 07ec: 
+ 484: 07ec:        ENDIF
+ 485: 07f4: 
+ 486: 07f4:        SECTOR$ = MID$(BLOCK$,                                          \
+ 487: 081f:                  (SECTOR.NUM% * SECTOR.SIZE%) + 1,                     \
+ 488: 081f:                  SECTOR.SIZE%)
+ 489: 081f: 
+ 490: 081f:        RECORD.COUNT% = 0
+ 491: 082d: 
+ 492: 082d:        EMPTY.RECORD.FOUND = FALSE
+ 493: 083b: 
+ 494: 083b:        WHILE RECORD.COUNT% < RECS.PER.SECTOR% AND                      \
+ 495: 0846:              NOT EMPTY.RECORD.FOUND
+ 496: 0846: 
+ 497: 0846:              BASE% = (RECORD.COUNT% * RECORD.LENGTH%) + 5
+ 498: 085b: 
+ 499: 085b:              RECORD$ = MID$(SECTOR$,BASE%,RECORD.LENGTH%)
+ 500: 0881: 
+ 501: 0881:              KEY$ = MID$(RECORD$,1,KEY.LENGTH%)
+ 502: 08a5: 
+ 503: 08a5:              IF KEY$ = STRING$(KEY.LENGTH%,CHR$(0)) THEN BEGIN
+ 504: 08cf: 
+ 505: 08cf:                 EMPTY.RECORD.FOUND = TRUE
+ 506: 08dd:                 GOTO NEXT.SECTOR
+ 507: 08e7: 
+ 508: 08e7:              ENDIF
+ 509: 08ef: 
+ 510: 08ef:              GOSUB PROCESS.RECORD
+ 511: 0901: 
+ 512: 0901:              RECORD.COUNT% = RECORD.COUNT% + 1
+ 513: 090d: 
+ 514: 090d: NEXT.SECTOR:
+ 515: 091d: 
+ 516: 091d:        WEND
+ 517: 093f: 
+ 518: 093f:        SECTOR.NUM% = SECTOR.NUM% + 1
+ 519: 094b: 
+ 520: 094b:        IF SECTOR.NUM% = (BLOCK.SIZE% / SECTOR.SIZE%) THEN BEGIN
+ 521: 0961: 
+ 522: 0961:           END.OF.BLOCK = TRUE
+ 523: 096f: 
+ 524: 096f:        ENDIF
+ 525: 0977: 
+ 526: 0977:        RETURN
+ 527: 0987: 
+ 528: 0987: \******************************************************************************
+ 529: 0987: \***
+ 530: 0987: \***   SUBROUTINE      :       PROCESS.RECORD
+ 531: 0987: \***
+ 532: 0987: \******************************************************************************
+ 533: 0987: \***
+ 534: 0987: \***   Processes an individual record
+ 535: 0987: \***
+ 536: 0987: \******************************************************************************
+ 537: 0987: 
+ 538: 0987: PROCESS.RECORD:
+ 539: 0997: 
+ 540: 0997:        OLD.RECORD$ = RECORD$
+ 541: 09b0:        NEW.RECORD$ = PROCESS.KEYED.RECORD$(RECORD$)
+ 542: 09ce: 
+ 543: 09ce:        RECORD.INDEX% = (SECTOR.NUM% * SECTOR.SIZE%) + BASE%
+ 544: 09e4: 
+ 545: 09e4:        IF OLD.RECORD$ <> NEW.RECORD$ THEN BEGIN
+ 546: 0a03: 
+ 547: 0a03:           IF LEN(OLD.RECORD$) <> LEN(NEW.RECORD$) THEN BEGIN
+ 548: 0a2f: 
+ 549: 0a2f:              RETURN.CODE% = 2
+ 550: 0a3d:              GOTO END.PSBF30
+ 551: 0a48: 
+ 552: 0a48:           ENDIF
+ 553: 0a50: 
+ 554: 0a50:           GOSUB UPDATE.RECORD
+ 555: 0a62: 
+ 556: 0a62:        ENDIF
+ 557: 0a6a: 
+ 558: 0a6a:        RETURN
+ 559: 0a7a: 
+ 560: 0a7a: \******************************************************************************
+ 561: 0a7a: \***
+ 562: 0a7a: \***   SUBROUTINE      :       UPDATE.RECORD
+ 563: 0a7a: \***
+ 564: 0a7a: \******************************************************************************
+ 565: 0a7a: \***
+ 566: 0a7a: \***   Inserts an amended record into a block
+ 567: 0a7a: \***
+ 568: 0a7a: \******************************************************************************
+ 569: 0a7a: 
+ 570: 0a7a: UPDATE.RECORD:
+ 571: 0a8a: 
+ 572: 0a8a:        LEFT.LEN%  = RECORD.INDEX% - 1
+ 573: 0a99:        RIGHT.LEN% = BLOCK.SIZE% - LEFT.LEN% - RECORD.LENGTH%
+ 574: 0aaf: 
+ 575: 0aaf:        BLOCK$ = LEFT$(BLOCK$,LEFT.LEN%) +                              \
+ 576: 0afa:                 NEW.RECORD$ +                                          \
+ 577: 0afa:                 RIGHT$(BLOCK$,RIGHT.LEN%)
+ 578: 0afa: 
+ 579: 0afa:        BLOCK.UPDATED = TRUE
+ 580: 0b08: 
+ 581: 0b08:        RETURN
+ 582: 0b18: 
+ 583: 0b18: \******************************************************************************
+ 584: 0b18: \***
+ 585: 0b18: \***   SUBROUTINE      :       UPDATE.BLOCK
+ 586: 0b18: \***
+ 587: 0b18: \******************************************************************************
+ 588: 0b18: \***
+ 589: 0b18: \***
+ 590: 0b18: \***
+ 591: 0b18: \******************************************************************************
+ 592: 0b18: 
+ 593: 0b18: UPDATE.BLOCK:
+ 594: 0b28: 
+ 595: 0b28:        IF END # SESS.NUM% THEN WRITE.ERROR
+ 596: 0b41:        WRITE FORM FORMAT$; # SESS.NUM%, BLOCK.NUM%; BLOCK$
+ 597: 0b76: 
+ 598: 0b76:        RETURN
+ 599: 0b86: 
+ 600: 0b86: \******************************************************************************
+ 601: 0b86: \******************************************************************************
+ 602: 0b86: \***                                                                          *
+ 603: 0b86: \***    E N D  O F  S U B R O U T I N E S                                     *
+ 604: 0b86: \***                                                                          *
+ 605: 0b86: \******************************************************************************
+ 606: 0b86: \******************************************************************************
+ 607: 0b86: 
+ 608: 0b86: 
+ 609: 0b86: \******************************************************************************
+ 610: 0b86: \******************************************************************************
+ 611: 0b86: \***                                                                          *
+ 612: 0b86: \***    S T A R T  O F  E R R O R  R O U T I N E S                            *
+ 613: 0b86: \***                                                                          *
+ 614: 0b86: \******************************************************************************
+ 615: 0b86: \******************************************************************************
+ 616: 0b86: 
+ 617: 0b86: \******************************************************************************
+ 618: 0b86: \***
+ 619: 0b86: \***   ERROR ROUTINE   :       FILE.ERROR
+ 620: 0b86: \***
+ 621: 0b86: \******************************************************************************
+ 622: 0b86: 
+ 623: 0b86: FILE.ERROR:
+ 624: 0b96: 
+ 625: 0b96:        EVENT.NO%   = 106
+ 626: 0ba3:        MESSAGE.NO% = 0
+ 627: 0bb1: 
+ 628: 0bb1:        FILE.NO$ = CHR$(SHIFT(REPORT.NUM%,8)) +                         \
+ 629: 0bfa:                   CHR$(SHIFT(REPORT.NUM%,0))
+ 630: 0bfa: 
+ 631: 0bfa:        VAR.STRING.1$ = FILE.OPERATION$ +                               \
+ 632: 0c2e:                        FILE.NO$ +                                      \
+ 633: 0c2e:                        PACK$(STRING$(14,"0"))
+ 634: 0c2e: 
+ 635: 0c2e:        VAR.STRING.2$ = ""
+ 636: 0c43: 
+ 637: 0c43:        CALL APPLICATION.LOG(MESSAGE.NO%,                               \
+ 638: 0c6c:                             VAR.STRING.1$,                             \
+ 639: 0c6c:                             VAR.STRING.2$,                             \
+ 640: 0c6c:                             EVENT.NO%)
+ 641: 0c6c: 
+ 642: 0c6c:        RETURN
+ 643: 0c7c: 
+ 644: 0c7c: \******************************************************************************
+ 645: 0c7c: \***
+ 646: 0c7c: \***   ERROR ROUTINE   :       OPEN.ERROR
+ 647: 0c7c: \***
+ 648: 0c7c: \******************************************************************************
+ 649: 0c7c: 
+ 650: 0c7c: OPEN.ERROR:
+ 651: 0c8c: 
+ 652: 0c8c:        FILE.OPERATION$ = "O"
+ 653: 0ca1:        GOSUB FILE.ERROR
+ 654: 0cb3: 
+ 655: 0cb3:        RETURN.CODE% = 1
+ 656: 0cc1:        GOTO END.PSBF30
+ 657: 0ccc: 
+ 658: 0ccc: \******************************************************************************
+ 659: 0ccc: \***
+ 660: 0ccc: \***   ERROR ROUTINE   :       READ.ERROR
+ 661: 0ccc: \***
+ 662: 0ccc: \******************************************************************************
+ 663: 0ccc: 
+ 664: 0ccc: READ.ERROR:
+ 665: 0cdc: 
+ 666: 0cdc:        FILE.OPERATION$ = "R"
+ 667: 0cf1:        GOSUB FILE.ERROR
+ 668: 0d03: 
+ 669: 0d03:        RETURN.CODE% = 1
+ 670: 0d11:        GOTO END.PSBF30
+ 671: 0d1c: 
+ 672: 0d1c: \******************************************************************************
+ 673: 0d1c: \***
+ 674: 0d1c: \***   ERROR ROUTINE   :       WRITE.ERROR
+ 675: 0d1c: \***
+ 676: 0d1c: \******************************************************************************
+ 677: 0d1c: 
+ 678: 0d1c: WRITE.ERROR:
+ 679: 0d2c: 
+ 680: 0d2c:        FILE.OPERATION$ = "W"
+ 681: 0d41:        GOSUB FILE.ERROR
+ 682: 0d53: 
+ 683: 0d53:        RETURN.CODE% = 1
+ 684: 0d61:        GOTO END.PSBF30
+ 685: 0d6c: 
+ 686: 0d6c: \******************************************************************************
+ 687: 0d6c: \***
+ 688: 0d6c: \***   ERROR ROUTINE   :       ERROR.DETECTED
+ 689: 0d6c: \***
+ 690: 0d6c: \******************************************************************************
+ 691: 0d6c: 
+ 692: 0d6c: ERROR.DETECTED:
+ 693: 0d7c: 
+ 694: 0d7c:        CALL STANDARD.ERROR.DETECTED(ERRN,ERRF%,ERRL,ERR)
+ 695: 0da9: 
+ 696: 0da9:        RETURN.CODE% = 99
+ 697: 0db7:        RESUME END.PSBF30
+ 698: 0dce: 
+ 699: 0dce:        END FUNCTION
+ 700: 0def: 
+ 701: 0def: End of Compilation

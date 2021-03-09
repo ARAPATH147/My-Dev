@@ -1,0 +1,2565 @@
+   1: 0002: 47413\***********************************************************************
+   2: 0009: \***
+   3: 0009: \***    PHKEEP            Ranjith Gopalankutty          05/04/2017  
+   4: 0009: \***                                                                
+   5: 0009: \***    There was a defect with program SRP10. It supposed to house 
+   6: 0009: \***    keep the expired planner records from SRPOG,SRMOD,SRSXF     
+   7: 0009: \***    and SRPDF fiiles. SRPOG is the master planner file SRMOD    
+   8: 0009: \***    is module,SRSXF is notch data and SRPDF is the planner      
+   9: 0009: \***    descriptor fiile.  SRMOD,SRPDF and SRSXF files depends on   
+  10: 0009: \***    the master planner file SRPOG to build the keys for them.   
+  11: 0009: \***                                                                
+  12: 0009: \***    The defect was that, SRP10 program was housekeeping only    
+  13: 0009: \***    records from SRPOG and leaving behind other 3 files.Over    
+  14: 0009: \***    time. Records will be housekept from SRPOG and untouching   
+  15: 0009: \***    other files. Records will get piled up and causing file     
+  16: 0009: \***    full issues. This has resulted in new planner update        
+  17: 0009: \***    was not able to add in to the files.Defect has been found   
+  18: 0009: \***    and fixed by AppsMgmt. change is live in all stores,but     
+  19: 0009: \***    one issue found afterwards that program was not able to     
+  20: 0009: \***    delete the historical expired  records from planner files.  
+  21: 0009: \***                                                                
+  22: 0009: \***    This program will housekeep the data from 3 planner files   
+  23: 0009: \***    and will recreate the planner files fresh using only live   
+  24: 0009: \***    records.                                                    
+  25: 0009: \***                                                                
+  26: 0009: \***********************************************************************
+  27: 0009: \***
+  28: 0009: \***    Function globals
+  29: 0009: \***
+  30: 0009: \***********************************************************************
+  31: 0009: 
+  32: 0009: 
+  33: 0009: %INCLUDE BEMFDEC.J86  
+  34: 0009: \******************************************************************************
+  35: 0009: \***
+  36: 0009: \***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+  37: 0009: \***                                             - FILE REFERENCE PARAMETERS
+  38: 0009: \***
+  39: 0009: \***                         FILE TYPE : Direct
+  40: 0009: \***
+  41: 0009: \***                         REFERENCE : BEMFDEC
+  42: 0009: \***
+  43: 0009: \***	Version A               Mark Walker                  1st November 1993
+  44: 0009: \***
+  45: 0009: \******************************************************************************
+  46: 0009: 
+  47: 0009: 	STRING GLOBAL			BEMF.MESSAGE$,			\
+  48: 0009: 					BEMF.FILE.NAME$
+  49: 0009: 
+  50: 0009: 	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+  51: 0009: 					BEMF.REPORT.NUM%,		\
+  52: 0009: 					BEMF.SESS.NUM%
+  53: 0009: 
+  54: 0009: 	INTEGER*4 GLOBAL		BEMF.REC.NO%
+  55: 0009: %INCLUDE BOOTSDEC.J86 
+  56: 0009: \******************************************************************************
+  57: 0009: \******************************************************************************
+  58: 0009: \***
+  59: 0009: \***
+  60: 0009: \***
+  61: 0009: \******************************************************************************
+  62: 0009: 
+  63: 0009: 
+  64: 0009: %INCLUDE POGDEDEC.J86 
+  65: 0009: \********************************************************************
+  66: 0009: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE POGDE FILE
+  67: 0009: \***      REFERENCE : POGOKDEC.J86
+  68: 0009: \***      Version A           Neil Bennett            6th June 2006
+  69: 0009: \***
+  70: 0009: \********************************************************************
+  71: 0009: 
+  72: 0009:   INTEGER*2 GLOBAL                \
+  73: 0009:     POGDE.SESS.NUM%,              \
+  74: 0009:     POGDE.REPORT.NUM%             !
+  75: 0009: 
+  76: 0009:   STRING GLOBAL                   \
+  77: 0009:     POGDE.COPY.NAME$,             \
+  78: 0009:     POGDE.FILE.NAME$,             \
+  79: 0009:     POGDE.RCD$                    !
+  80: 0009: %INCLUDE POGOKDEC.J86 
+  81: 0009: \********************************************************************
+  82: 0009: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE POGOK FILE
+  83: 0009: \***      REFERENCE : POGOKDEC.J86
+  84: 0009: \***      Version A           Neil Bennett            6th June 2006
+  85: 0009: \***
+  86: 0009: \********************************************************************
+  87: 0009: 
+  88: 0009:   INTEGER*1 GLOBAL                \
+  89: 0009:     POGOK.PE10.RETCODE%,          \
+  90: 0009:     POGOK.PE5.RETCODE%,           \
+  91: 0009:     POGOK.PE6.RETCODE%,           \
+  92: 0009:     POGOK.PE7.RETCODE%,           \
+  93: 0009:     POGOK.PE4.RETCODE%,           \
+  94: 0009:     POGOK.PE19.RETCODE%           !
+  95: 0009: 
+  96: 0009:   INTEGER*2 GLOBAL                \
+  97: 0009:     POGOK.DAYS.TO.RETAIN%,        \
+  98: 0009:     POGOK.SESS.NUM%,              \
+  99: 0009:     POGOK.REPORT.NUM%,            \
+ 100: 0009:     POGOK.RECL%                   !
+ 101: 0009: 
+ 102: 0009:   INTEGER*4 GLOBAL                \
+ 103: 0009:     POGOK.SRD.REC.COUNT%,         \
+ 104: 0009:     POGOK.SRM.REC.COUNT%
+ 105: 0009: 
+ 106: 0009:   STRING GLOBAL                   \
+ 107: 0009:     POGOK.FILE.NAME$,             \
+ 108: 0009:     POGOK.SRD.SER.NO$,            \
+ 109: 0009:     POGOK.SRM.SER.NO$,            \
+ 110: 0009:     POGOK.SRD.DATE$,              \
+ 111: 0009:     POGOK.SRM.DATE$,              \
+ 112: 0009:     POGOK.RELOAD$,                \
+ 113: 0009:     POGOK.PE10.RUNFLAG$,          \
+ 114: 0009:     POGOK.PE5.RUNFLAG$,           \
+ 115: 0009:     POGOK.PE6.RUNFLAG$,           \
+ 116: 0009:     POGOK.PE7.RUNFLAG$,           \
+ 117: 0009:     POGOK.PE4.RUNFLAG$,           \
+ 118: 0009:     POGOK.FAILED.SRD.SER.NO$,     \
+ 119: 0009:     POGOK.FAILED.SRD.DATE$,       \
+ 120: 0009:     POGOK.FAILED.SRM.SER.NO$,     \
+ 121: 0009:     POGOK.FAILED.SRM.DATE$,       \
+ 122: 0009:     POGOK.PE10.RUNDATE$,          \
+ 123: 0009:     POGOK.PE5.RUNDATE$,           \
+ 124: 0009:     POGOK.PE6.RUNDATE$,           \
+ 125: 0009:     POGOK.PE7.RUNDATE$,           \
+ 126: 0009:     POGOK.PE4.RUNDATE$,           \
+ 127: 0009:     POGOK.PE19.RUNFLAG$,          \
+ 128: 0009:     POGOK.PE19.RUNDATE$,          \
+ 129: 0009:     POGOK.FILLER$                 !
+ 130: 0009: %INCLUDE PSBF01G.J86  
+ 131: 0009: REM \
+ 132: 0009: \*******************************************************************************
+ 133: 0009: \*******************************************************************************
+ 134: 0009: \***
+ 135: 0009: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+ 136: 0009: \***
+ 137: 0009: \***                FUNCTION NUMBER    : PSBF01
+ 138: 0009: \***
+ 139: 0009: \***                REFERENCE          : PSBF01G.J86
+ 140: 0009: \***
+ 141: 0009: \***                DATE OF LAST AMENDMENT  - 27/2/86
+ 142: 0009: \***
+ 143: 0009: \***
+ 144: 0009: \*******************************************************************************
+ 145: 0009: 
+ 146: 0009:       INTEGER GLOBAL  F01.RETURN.CODE%
+ 147: 0009: 
+ 148: 0009: 
+ 149: 0009: %INCLUDE PSBF20G.J86  
+ 150: 0009: REM\
+ 151: 0009: \*******************************************************************************
+ 152: 0009: \*******************************************************************************
+ 153: 0009: \***
+ 154: 0009: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 155: 0009: \***
+ 156: 0009: \***                       REFERENCE     : PSBF20G.J86
+ 157: 0009: \*** 
+ 158: 0009: \***     Version A              Bruce Scrive                   5th May 1988   
+ 159: 0009: \*** 
+ 160: 0009: \***     Version B              Robert Cowey                   7th May 1991
+ 161: 0009: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 162: 0009: \***     to two byte integer.
+ 163: 0009: \***
+ 164: 0009: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 165: 0009: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 166: 0009: \***
+ 167: 0009: \*******************************************************************************
+ 168: 0009: \*******************************************************************************
+ 169: 0009: 
+ 170: 0009:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 171: 0009:                        F20.STRING.FILE.NO$,                            \
+ 172: 0009:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 173: 0009:                        SESS.NUM.TABLE$(1)
+ 174: 0009: 
+ 175: 0009:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 176: 0009: 
+ 177: 0009:       ! 1 line deleted from here                                       ! DAW 
+ 178: 0009: 
+ 179: 0009: %INCLUDE SRMODDEC.J86 
+ 180: 0009: \********************************************************************
+ 181: 0009: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRMOD FILE
+ 182: 0009: \***      REFERENCE : SRMODDEC.J86
+ 183: 0009: \***      Version A           Neil Bennett            5th June 2006
+ 184: 0009: \***
+ 185: 0009: \********************************************************************
+ 186: 0009: 
+ 187: 0009:   INTEGER*1 GLOBAL             \
+ 188: 0009:     SRMOD.FACINGS%(1),         \
+ 189: 0009:     SRMOD.MODULE.SEQ%,         \
+ 190: 0009:     SRMOD.RECORD.CHAIN%,       \
+ 191: 0009:     SRMOD.SHELF.NUM%(1)
+ 192: 0009: 
+ 193: 0009:   INTEGER*2 GLOBAL             \
+ 194: 0009:     SRMOD.ITEM.COUNT%,         \
+ 195: 0009:     SRMOD.MAX.ITEMS%,          \
+ 196: 0009:     SRMOD.MDQ%(1),             \
+ 197: 0009:     SRMOD.PSC%(1),             \
+ 198: 0009:     SRMOD.RECL%,               \
+ 199: 0009:     SRMOD.REPORT.NUM%,         \
+ 200: 0009:     SRMOD.SHELF.COUNT%,        \
+ 201: 0009:     SRMOD.SESS.NUM%
+ 202: 0009: 
+ 203: 0009:   INTEGER*4 GLOBAL             \
+ 204: 0009:     SRMOD.POGDB%
+ 205: 0009: 
+ 206: 0009:   STRING GLOBAL                \
+ 207: 0009:     SRMOD.ARRAY$,              \
+ 208: 0009:     SRMOD.COPY.NAME$,          \
+ 209: 0009:     SRMOD.DESCRIPTOR$,         \
+ 210: 0009:     SRMOD.FILE.NAME$,          \
+ 211: 0009:     SRMOD.ITEM.CODE$(1),       \
+ 212: 0009:     SRMOD.FILLER$
+ 213: 0009: %INCLUDE SRPDFDEC.J86 
+ 214: 0009: \********************************************************************
+ 215: 0009: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRPDF FILE
+ 216: 0009: \***      REFERENCE : SRPDFDEC.J86
+ 217: 0009: \***      Version A           Neil Bennett          7th August 2006
+ 218: 0009: \***
+ 219: 0009: \********************************************************************
+ 220: 0009: 
+ 221: 0009:   INTEGER*2 GLOBAL        \
+ 222: 0009:     SRPDF.SESS.NUM%,      \
+ 223: 0009:     SRPDF.REPORT.NUM%,    \
+ 224: 0009:     SRPDF.RECL%           !
+ 225: 0009: 
+ 226: 0009:   INTEGER*4 GLOBAL        \
+ 227: 0009:     SRPDF.POGDB%          ! Unique POG Database key
+ 228: 0009: 
+ 229: 0009:   STRING GLOBAL           \
+ 230: 0009:     SRPDF.FILE.NAME$,     \ File name
+ 231: 0009:     SRPDF.SHRT.DESC$,     \ Medium descriptor (50)
+ 232: 0009:     SRPDF.FULL.DESC$,     \ Full descriptor (100)
+ 233: 0009:     SRPDF.FILLER$         !
+ 234: 0009: 
+ 235: 0009: 
+ 236: 0009: %INCLUDE SRPOGDEC.J86 
+ 237: 0009: \********************************************************************
+ 238: 0009: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRPOG FILE
+ 239: 0009: \***      REFERENCE : SRPOGDEC.J86
+ 240: 0009: \***      Version A           Neil Bennett            5th June 2006
+ 241: 0009: \***
+ 242: 0009: \********************************************************************
+ 243: 0009: 
+ 244: 0009:   INTEGER*1 GLOBAL        \
+ 245: 0009:     SRPOG.MODULE.COUNT%,  \ Number of modules comprising POG
+ 246: 0009:     SRPOG.KEY.LEVEL%,     \ Family hierarchy key level
+ 247: 0009:     SRPOG.LIVE.RPT.CNT%,  \ Computed Live repeat count (Unset -1)
+ 248: 0009:     SRPOG.PEND.RPT.CNT%   ! Computed pending repeat count (Unset -1)
+ 249: 0009: 
+ 250: 0009:   INTEGER*2 GLOBAL        \
+ 251: 0009:     SRPOG.SESS.NUM%,      \
+ 252: 0009:     SRPOG.REPORT.NUM%,    \
+ 253: 0009:     SRPOG.RECL%           !
+ 254: 0009: 
+ 255: 0009:   INTEGER*4 GLOBAL        \
+ 256: 0009:     SRPOG.POGDB%,         \ Unique POG Database key
+ 257: 0009:     SRPOG.CAT.DBKEY%,     \ Family hierarchy key
+ 258: 0009:     SRPOG.CAT1.ID%,       \ hierarchy key
+ 259: 0009:     SRPOG.CAT2.ID%,       \ hierarchy key
+ 260: 0009:     SRPOG.CAT3.ID%,       \ hierarchy key
+ 261: 0009:     SRPOG.POGID%          ! POG Identifier
+ 262: 0009: 
+ 263: 0009:   STRING GLOBAL           \
+ 264: 0009:     SRPOG.FILE.NAME$,     \ File name
+ 265: 0009:     SRPOG.COPY.NAME$,     \ File name
+ 266: 0009:     SRPOG.ACT.DATE$,      \ Activation Date YYYY MM DD
+ 267: 0009:     SRPOG.DEACT.DATE$,    \ Deactivation Date YYYY MM DD
+ 268: 0009:     SRPOG.DESCRIPTION$,   \ Truncated POG description (30)
+ 269: 0009:     SRPOG.PLANNER.FAMILY$,\ Truncated Planner Family description (30)
+ 270: 0009:     SRPOG.DATE.RPT.CNT$,  \ Date repeat count is valid YYYY MM DD
+ 271: 0009:     SRPOG.FILLER$         !
+ 272: 0009: 
+ 273: 0009: 
+ 274: 0009: %INCLUDE SRSXFDEC.J86 
+ 275: 0009: \********************************************************************
+ 276: 0009: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRSXF FILE
+ 277: 0009: \***      REFERENCE : SRSXFDEC.J86
+ 278: 0009: \***      Version A           Neil Bennett          7th August 2006
+ 279: 0009: \***
+ 280: 0009: \********************************************************************
+ 281: 0009: 
+ 282: 0009:   INTEGER*1 GLOBAL        \
+ 283: 0009:     SRSXF.MODULE.SEQ%,    \
+ 284: 0009:     SRSXF.SHELF.NO%,      \
+ 285: 0009:     SRSXF.NOTCH.NO%       !
+ 286: 0009: 
+ 287: 0009:   INTEGER*2 GLOBAL        \
+ 288: 0009:     SRSXF.SESS.NUM%,      \
+ 289: 0009:     SRSXF.REPORT.NUM%,    \
+ 290: 0009:     SRSXF.RECL%           !
+ 291: 0009: 
+ 292: 0009:   INTEGER*4 GLOBAL        \
+ 293: 0009:     SRSXF.POGDB%,         \
+ 294: 0009:     SRSXF.SHELF.KEY%      !
+ 295: 0009: 
+ 296: 0009:   STRING GLOBAL           \
+ 297: 0009:     SRSXF.FILE.NAME$,     \ File name
+ 298: 0009:     SRSXF.SHELF.DESC$,    \
+ 299: 0009:     SRSXF.FILLER$         !
+ 300: 0009: 
+ 301: 0009: 
+ 302: 0009: 
+ 303: 0009: 
+ 304: 0009: \***********************************************************************
+ 305: 0009: \*
+ 306: 0009: \*    Global variable definitions
+ 307: 0009: \*
+ 308: 0009: \***********************************************************************
+ 309: 0009: 
+ 310: 0009: STRING     GLOBAL        \
+ 311: 0009:      PINFO.TABLE$,       \
+ 312: 0009:      PASSED.STRING$,     \
+ 313: 0009:      SVC.PARAM$,         \
+ 314: 0009:      FILE.OPERATION$     !
+ 315: 0009: 
+ 316: 0009: INTEGER*4  GLOBAL        \
+ 317: 0009:    ADX.FUNCTION%,        \
+ 318: 0009:    ADX.PARAM%,           \
+ 319: 0009:    CURRENT.REPORT.NUM%,  \
+ 320: 0009:    EVENT.NO%,            \
+ 321: 0009:    PASSED.INTEGER%,      \
+ 322: 0009:    RC%
+ 323: 0009:    
+ 324: 0009: \***********************************************************************
+ 325: 0009: \*
+ 326: 0009: \*    Local Variables
+ 327: 0009: \*
+ 328: 0009: \***********************************************************************
+ 329: 0009: 
+ 330: 0009: STRING                    \
+ 331: 0009:      ADX.COMMAND$,        \
+ 332: 0009:      COMM.TAIL$,          \
+ 333: 0009:      CURRENT.CODE$,       \
+ 334: 0009:      FLAG$,               \
+ 335: 0009:      FUNCTION.FLAG$,      \
+ 336: 0009:      OK.STRING$,          \
+ 337: 0009:      PROG.NAME$,          \
+ 338: 0009:      PHKEEP.OK.NAME$,     \
+ 339: 0009:      PHKEEP.LOG.NAME$,    \
+ 340: 0009:      RCD$,                \
+ 341: 0009:      SEC$,                \
+ 342: 0009:      SPACE$,              \
+ 343: 0009:      SRMOD.ARR$(1),       \
+ 344: 0009:      SRMOD.DIR.NAME$,     \
+ 345: 0009:      SRMOD.NEW.FILE$,     \
+ 346: 0009:      SRPDF.ARRAY$(1),     \
+ 347: 0009:      SRPDF.DIR.NAME$,     \
+ 348: 0009:      SRPDF.KEY.NAME$,     \
+ 349: 0009:      SRMOD.KEY.NAME$,     \
+ 350: 0009:      SRPOG.ARRAY$(1),     \
+ 351: 0009:      SRPOG.FLAG$,         \
+ 352: 0009:      SRPOG.TEMP.NAME$,    \
+ 353: 0009:      SRSXF.ARRAY$(1),     \
+ 354: 0009:      SRSXF.FLAG$,         \
+ 355: 0009:      SRPOG.STRING$,       \
+ 356: 0009:      SRMOD.STRING$,       \
+ 357: 0009:      SRMOD.FLAG$,         \
+ 358: 0009:      SRSXF.STRING$,       \
+ 359: 0009:      SRSXF.DIR.NAME$,     \
+ 360: 0009:      SRSXF.KEY.NAME$,     \
+ 361: 0009:      SRPDF.STRING$,       \
+ 362: 0009:      SRPDF.FLAG$,         \
+ 363: 0009:      TEMP.ARR$(1),        \
+ 364: 0009:      TEMP.FORM$,          \
+ 365: 0009:      VAR.STRING.1$,       \
+ 366: 0009:      VAR.STRING.2$
+ 367: 0009:                            
+ 368: 0009: INTEGER*4                 \
+ 369: 0009:      ADX.INTEGER%,        \
+ 370: 0009:      I%,                  \
+ 371: 0009:      EOF%,                \
+ 372: 0009:      ERROR.CNT%,          \
+ 373: 0009:      K%,                  \
+ 374: 0009:      FOUND%,              \
+ 375: 0009:      FOUND1%,             \
+ 376: 0009:      J%,                  \
+ 377: 0009:      MESSAGE.NO%,         \
+ 378: 0009:      NOFILE.SRMOD.COUNT%, \
+ 379: 0009:      NOFILE.SRPDF.COUNT%, \
+ 380: 0009:      NOFILE.SRSXF.COUNT%, \
+ 381: 0009:      PHKEEP.OK.SESS%,     \
+ 382: 0009:      PHKEEP.SESS.NUM%,    \
+ 383: 0009:      POGDB%,              \
+ 384: 0009:      RPS%,                \
+ 385: 0009:      RC1%,                \
+ 386: 0009:      SRMOD%,              \
+ 387: 0009:      SRMOD.DIR.SESS%,     \
+ 388: 0009:      SRPDF%,              \
+ 389: 0009:      SRPOG%,              \
+ 390: 0009:      SRSXF%,              \
+ 391: 0009:      SRPOG.COUNT%,        \
+ 392: 0009:      SRPDF.DIR.SESS%,     \
+ 393: 0009:      SRMOD.COUNT%,        \
+ 394: 0009:      SRPDF.COUNT%,        \
+ 395: 0009:      SRSXF.COUNT%,        \
+ 396: 0009:      SRSXF.DIR.SESS%,     \
+ 397: 0009:      TEMP.COUNT%  
+ 398: 0009: 
+ 399: 0009: 
+ 400: 0009: 
+ 401: 0009: \***********************************************************************
+ 402: 0009: \*
+ 403: 0009: \*    Included code defining external Boots functions
+ 404: 0009: \*
+ 405: 0009: \***********************************************************************
+ 406: 0009:     
+ 407: 0009: %INCLUDE BEMFEXT.J86
+ 408: 0009: \******************************************************************************
+ 409: 0009: \***
+ 410: 0009: \***        EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FILE
+ 411: 0009: \***                                                            
+ 412: 0009: \***                        REFERENCE : BEMFEXT
+ 413: 0009: \***
+ 414: 0009: \***    Version A               Mark Walker                   1st November 1993
+ 415: 0009: \***
+ 416: 0009: \***    Version B       Stuart William McConnachie          25th September 2000
+ 417: 0009: \***    READ.BEMF function has got lost!
+ 418: 0009: \***
+ 419: 0009: \******************************************************************************
+ 420: 0009: 
+ 421: 0009:     FUNCTION BEMF.SET EXTERNAL
+ 422: 0009:     END FUNCTION
+ 423: 0009:     
+ 424: 0009:     FUNCTION READ.BEMF EXTERNAL
+ 425: 0009:     INTEGER*1 READ.BEMF
+ 426: 0009:     END FUNCTION
+ 427: 0009:     
+ 428: 0009:     
+ 429: 0009: %INCLUDE BASROUT.J86
+ 430: 0009: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+ 431: 0009: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+ 432: 0009: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+ 433: 0009: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+ 434: 0009: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+ 435: 0009: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+ 436: 0009: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+ 437: 0009: !   the BASROUT.OBJ routines.  These routines were written
+ 438: 0009: !  using Metaware C and are intended to provide functions which
+ 439: 0009: !         are either not available in 4680 CBASIC or which can be more
+ 440: 0009: !               efficiently handled by the C language.  Their usage is
+ 441: 0009: !  offered on an "AT YOUR OWN RISK" basis.
+ 442: 0009: !
+ 443: 0009: !               The insert/extract routines usefulness may not be immediately
+ 444: 0009: !               apparent.  Their intention is that they be used in conjunction
+ 445: 0009: !               with a read/write form command.  They can more efficiently
+ 446: 0009: !               parse a string into many different variables than can the
+ 447: 0009: !               read form statement.  So instead of a long list of data var's
+ 448: 0009: !               it may be more efficient to just read/write one long string
+ 449: 0009: !               and then use the insert/extract routines to parse out the
+ 450: 0009: !   data.
+ 451: 0009: 
+ 452: 0009: ! ******************* SUB PROCESS FUNCTIONS *********************************
+ 453: 0009: 
+ 454: 0009: function osshell(cmd.line$) external   ! routine to start
+ 455: 0009:        ! another program.
+ 456: 0009:            integer*4    osshell    ! Upon completion of
+ 457: 0009:            string       cmd.line$   ! program, control is
+ 458: 0009:        ! returned to calling
+ 459: 0009: end function      ! program.
+ 460: 0009: !
+ 461: 0009: ! NOTES:  Program must be a 286 type file.  This does not exclude
+ 462: 0009: !         the capability to execute a batch file however.  Simply pass the
+ 463: 0009: !         following:
+ 464: 0009: !              c:\adx_spgm\command.286 batfile
+ 465: 0009: !         where batfile is the name of the batch file to be executed.
+ 466: 0009: !
+ 467: 0009: ! IMPORTANT: When using osshell to execute a batch file as described above,
+ 468: 0009: !            the final command in the batch file must be "exit".  If not,
+ 469: 0009: !       control is never given back to the calling program.
+ 470: 0009: 
+ 471: 0009: ! ************************ MEMORY RELATED FUNCTIONS ************************
+ 472: 0009: 
+ 473: 0009: function memfree(choice) external   ! routine to que the
+ 474: 0009:        ! status of the
+ 475: 0009:  integer*4 memfree    ! machine's memory:
+ 476: 0009:  integer*2 choice    ! Options:
+ 477: 0009:        !    1 - free
+ 478: 0009: end function      !    2 - total
+ 479: 0009:        !    3 - system
+ 480: 0009: 
+ 481: 0009: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+ 482: 0009: 
+ 483: 0009: function timedate(choice) external   ! routine to que the
+ 484: 0009:        ! OS's timedate table
+ 485: 0009:  integer*4 timedate   ! Choices:
+ 486: 0009:  integer*2 choice    !    1 - millisec's
+ 487: 0009:        !        since midnight
+ 488: 0009: end function      !    2 - minutes from
+ 489: 0009:        !  UCT (timezone)
+ 490: 0009:        !    3 - day of week
+ 491: 0009:        !   0-Sunday
+ 492: 0009:        !  6-Saturday
+ 493: 0009: 
+ 494: 0009: function settime(msecs) external   ! routine to set the
+ 495: 0009:        ! time on the controller
+ 496: 0009:  integer*4  settime    ! msecs is the desired
+ 497: 0009:  integer*4 msecs    ! number of milliseconds
+ 498: 0009:        ! since midnight
+ 499: 0009: end function      ! Returns negative on
+ 500: 0009:        ! error
+ 501: 0009: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+ 502: 0009: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+ 503: 0009: ! At 1 AM the controller broadcasts the new time to all terminals.
+ 504: 0009: ! Insure this is taken into consideration when using this routine.
+ 505: 0009: 
+ 506: 0009: !******************** DISK FILE RELATED FUNCTIONS *************************
+ 507: 0009: 
+ 508: 0009: function truncate(name,length) external   ! routine to truncate
+ 509: 0009:        ! the specified file
+ 510: 0009:  integer*4 truncate   ! to a given length.
+ 511: 0009:  string  name
+ 512: 0009:  integer*4 length
+ 513: 0009: 
+ 514: 0009: end function
+ 515: 0009: 
+ 516: 0009: !******************** STRING VALUE RELATED FUNCTIONS **********************
+ 517: 0009: 
+ 518: 0009: function isalpha(bstrn) external   ! routine to identify
+ 519: 0009:        ! if the specified
+ 520: 0009:  integer*1 isalpha    ! string contains all
+ 521: 0009:  string  bstrn    ! alphabetic char's
+ 522: 0009:        ! Returns:
+ 523: 0009: end function      !     0 - all alpha
+ 524: 0009:        !     X - byte of 1st
+ 525: 0009:        !         non-alpha
+ 526: 0009:        !   char
+ 527: 0009: 
+ 528: 0009: function isdigit(bstrn) external   ! routine to identify
+ 529: 0009:        ! if the specified
+ 530: 0009:  integer*1 isdigit    ! string contains all
+ 531: 0009:  string  bstrn    ! numeric char's
+ 532: 0009:        ! Returns:
+ 533: 0009: end function      !     0 - all numeric
+ 534: 0009:        !     X - byte of 1st
+ 535: 0009:        !         non-numeric
+ 536: 0009:        !   char
+ 537: 0009: 
+ 538: 0009: function islower(bstrn) external   ! routine to identify
+ 539: 0009:        ! if the specified
+ 540: 0009:  integer*1 islower    ! string contains all
+ 541: 0009:  string  bstrn    ! lower case char's
+ 542: 0009:        ! Returns:
+ 543: 0009: end function      !     0 - all lowercase
+ 544: 0009:        !     X - byte of 1st
+ 545: 0009:        !         non-lowercase
+ 546: 0009:        !   char
+ 547: 0009: 
+ 548: 0009: function isupper(bstrn) external   ! routine to identify
+ 549: 0009:        ! if the specified
+ 550: 0009:  integer*1 isupper    ! string contains all
+ 551: 0009:  string  bstrn    ! upper case char's
+ 552: 0009:        ! Returns:
+ 553: 0009: end function      !     0 - all uppercase
+ 554: 0009:        !     X - byte of 1st
+ 555: 0009:        !         non-uppercase
+ 556: 0009:        !   char
+ 557: 0009: 
+ 558: 0009: function toalpha(bstrn) external   ! routine to convert
+ 559: 0009:        ! non-alpha or non-num
+ 560: 0009:    integer*2 toalpha    ! char's to spaces
+ 561: 0009:  string  bstrn    ! Returns:
+ 562: 0009: end function      !   x - no. of char's
+ 563: 0009:        !       changed
+ 564: 0009: 
+ 565: 0009: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+ 566: 0009: 
+ 567: 0009: function idlecount(choice) external   ! routine to either
+ 568: 0009:        ! set to zero or queue
+ 569: 0009:  integer*4 idlecount   ! the value of the
+ 570: 0009:  integer*1 choice    ! processor's idlecount
+ 571: 0009:        ! Choice:
+ 572: 0009: end function      !     0 - set to zero
+ 573: 0009: !       !     1 - get value
+ 574: 0009: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+ 575: 0009: ! TO WORK - This level is not available unless  !     X - idlecount
+ 576: 0009: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+ 577: 0009: ! is highly unrecommended.
+ 578: 0009: 
+ 579: 0009: function logical(actname,logname,choice) external ! routine to set a
+ 580: 0009:        ! a logical name.
+ 581: 0009:  integer*4 logical    ! parms are self
+ 582: 0009:         string  logname    ! explanatory except
+ 583: 0009:  string  actname    ! for choice:
+ 584: 0009:  integer*1 choice    !   0 - set process
+ 585: 0009:        !   1 - set system
+ 586: 0009: end function      !   2 - get process
+ 587: 0009:        !   3 - get system
+ 588: 0009: 
+ 589: 0009: ! NOTE:  Only the setting of a system level of logical name requires
+ 590: 0009: ! user/group zero level of authorization.  Any application may query any
+ 591: 0009: ! logical name.  Setting of a system logical name is only applicable until
+ 592: 0009: ! the system is IPL'd.  A process logical name is only active when that
+ 593: 0009: ! process is active.
+ 594: 0009: 
+ 595: 0009: !******************** STRING PARSING FUNCTIONS *****************************
+ 596: 0009: 
+ 597: 0009: function inserts(whole,part,offset) external  ! routine to insert a
+ 598: 0009:        ! string (part) into
+ 599: 0009:  integer*2 INSERTS    ! another string (whole)
+ 600: 0009:  string  whole    ! starting at specified
+ 601: 0009:  string  part    ! character (offset)
+ 602: 0009:  integer*2 offset
+ 603: 0009: 
+ 604: 0009: end function
+ 605: 0009: 
+ 606: 0009: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+ 607: 0009:        ! a 4-byte integer into
+ 608: 0009:  integer*1 cinsert4   ! a string starting at
+ 609: 0009:  integer*4 integer4   ! byte specified by
+ 610: 0009:  string  bstring    ! offset (1-based)
+ 611: 0009:  integer*2 offset    ! Returns:
+ 612: 0009:        !     0 - Success
+ 613: 0009: end function      !    -1 - String overrun
+ 614: 0009: 
+ 615: 0009: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+ 616: 0009:        ! a 2-byte integer into
+ 617: 0009:  integer*1 cinsert2   ! a string starting at
+ 618: 0009:  integer*2 integer2   ! byte specified by
+ 619: 0009:  string  bstring    ! offset (1-based)
+ 620: 0009:  integer*2 offset    ! Returns:
+ 621: 0009:        !     0 - Success
+ 622: 0009: end function      !    -1 - String overrun
+ 623: 0009: 
+ 624: 0009: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+ 625: 0009:        ! a 1-byte integer into
+ 626: 0009:  integer*1 cinsert1   ! a string starting at
+ 627: 0009:  integer*1 integer1   ! byte specified by
+ 628: 0009:  string  bstring    ! offset (1-based)
+ 629: 0009:  integer*2 offset    ! Returns:
+ 630: 0009:        !     0 - Success
+ 631: 0009: end function      !    -1 - String overrun
+ 632: 0009: 
+ 633: 0009: function extracts(whole,part,offset) external  ! routine to extract a
+ 634: 0009:        ! string (part) from
+ 635: 0009:  integer*2 EXTRACTS   ! another string (whole)
+ 636: 0009:  string  whole    ! starting at specified
+ 637: 0009:  string  part    ! character (offset)
+ 638: 0009:  integer*2 offset
+ 639: 0009: 
+ 640: 0009: end function
+ 641: 0009: 
+ 642: 0009: function cextract4(bstring,offset) external  ! routine to extract
+ 643: 0009:        ! a 4-byte integer from
+ 644: 0009:  integer*4 cextract4   ! a string starting at
+ 645: 0009:                        ! byte specified by
+ 646: 0009:  string  bstring    ! offset (1-based)
+ 647: 0009:  integer*2 offset    ! Returns:
+ 648: 0009:        !     X - 4 byte integer
+ 649: 0009: end function      !    -1 - String overrun
+ 650: 0009: 
+ 651: 0009: function cextract2(bstring,offset) external  ! routine to extract
+ 652: 0009:        ! a 2-byte integer from
+ 653: 0009:  integer*2 cextract2   ! a string starting at
+ 654: 0009:                        ! byte specified by
+ 655: 0009:  string  bstring    ! offset (1-based)
+ 656: 0009:  integer*2 offset    ! Returns:
+ 657: 0009:        !     X - 2 byte integer
+ 658: 0009: end function      !    -1 - String overrun
+ 659: 0009: 
+ 660: 0009: function cextract1(bstring,offset) external  ! routine to extract
+ 661: 0009:        ! a 1-byte integer from
+ 662: 0009:  integer*1 cextract1   ! a string starting at
+ 663: 0009:                        ! byte specified by
+ 664: 0009:  string  bstring    ! offset (1-based)
+ 665: 0009:  integer*2 offset    ! Returns:
+ 666: 0009:        !     X - 1 byte integer
+ 667: 0009: end function      !    -1 - String overrun
+ 668: 0009: 
+ 669: 0009: 
+ 670: 0009: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+ 671: 0009:        ! file names and sizes
+ 672: 0009:        ! Return values:
+ 673: 0009:        !    -1  no matches
+ 674: 0009:        !        found on first
+ 675: 0009:        !        call
+ 676: 0009:        !    0   no matches
+ 677: 0009:        !        found on sub-
+ 678: 0009:        !        sequent calls
+ 679: 0009:        !    Pos Success
+ 680: 0009:        !    Neg OS Rtn Code
+ 681: 0009: ! Usage Note:  If searching for all occurences of a particular file name,
+ 682: 0009: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+ 683: 0009: ! to srchdir.  If any matches are found, a positive value will be returned.
+ 684: 0009: ! To see if any more matches exist, just issue another call to srchdir without
+ 685: 0009: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+ 686: 0009: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 687: 0009: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+ 688: 0009: ! of this data is defined below.
+ 689: 0009: 
+ 690: 0009:  integer*4 srchdir
+ 691: 0009: 
+ 692: 0009:  string  file.name$   ! file name to start
+ 693: 0009:        ! search (18 bytes max)
+ 694: 0009:        ! Wild cards and logical
+ 695: 0009:        ! names supported.
+ 696: 0009: 
+ 697: 0009:  string  dtbl.buffer$   ! must be initialized
+ 698: 0009:        ! to 48 bytes.  Contains
+ 699: 0009:        ! all of directory info
+ 700: 0009:        ! Initialize to nulls
+ 701: 0009:        ! each time a new file
+ 702: 0009:        ! name is used.
+ 703: 0009: 
+ 704: 0009: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+ 705: 0009: !
+ 706: 0009: ! Offs  Type                    Description Notes
+ 707: 0009: !  0 integer*4  key  use extract4 to access
+ 708: 0009: !  4  string (18 bytes) file name
+ 709: 0009: ! 22 integer*2  attributes use extract2 to access
+ 710: 0009: !      0x01 - Read Only
+ 711: 0009: !      0x02 - Hidden
+ 712: 0009: !      0x04 - System
+ 713: 0009: !      0x08 - Volume Label
+ 714: 0009: !      0x10 - Subdirectory
+ 715: 0009: !      0x20 - Archive (Files)
+ 716: 0009: !      0x40 - Security enabled
+ 717: 0009: !      0x80 - Reserved
+ 718: 0009: !      0x0000 - Local
+ 719: 0009: !      0x4000 - Mirrored/Update
+ 720: 0009: !      0xC000 - Mirrored/Close
+ 721: 0009: !
+ 722: 0009: !      0x6000 - Compound/Update
+ 723: 0009: !      0xE000 - Compound/Close
+ 724: 0009: ! 24 integer*2  record size use extract2 to access
+ 725: 0009: ! 26 integer*1  User ID of Owner
+ 726: 0009: ! 27 integer*1  Group ID of Owner
+ 727: 0009: ! 28 integer*2  File Security
+ 728: 0009: ! 30 string (6 bytes) Reserved
+ 729: 0009: ! 36 integer*4  File Size use extract4 to access
+ 730: 0009: ! 40 integer*2  Year  use extract2 to access
+ 731: 0009: ! 42 integer*1  Month
+ 732: 0009: ! 43 integer*1  Day
+ 733: 0009: ! 44 integer*1  Hour
+ 734: 0009: ! 45 integer*1  Minute
+ 735: 0009: ! 46 integer*1  Second
+ 736: 0009: ! 47 integer*1  Reserved
+ 737: 0009: 
+ 738: 0009: end function
+ 739: 0009: 
+ 740: 0009: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+ 741: 0009:        ! process names and
+ 742: 0009:        ! status.  Handy to
+ 743: 0009:        ! determine if a
+ 744: 0009:        ! program is currently
+ 745: 0009:        ! running.
+ 746: 0009:        ! Return values:
+ 747: 0009:        !    -1  no matches
+ 748: 0009:        !        found on first
+ 749: 0009:        !        call
+ 750: 0009:        !    0   no matches
+ 751: 0009:        !        found on sub-
+ 752: 0009:        !        sequent calls
+ 753: 0009:        !    Pos Success
+ 754: 0009:        !    Neg Failure
+ 755: 0009:        !        OS Rtn Code
+ 756: 0009:        ! 80000001h - Insuff
+ 757: 0009:         !        ptbl buffer
+ 758: 0009:        !        Length
+ 759: 0009: ! Usage Note:  If searching for all occurences of a particular process name,
+ 760: 0009: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+ 761: 0009: ! to srchproc.  If any matches are found, a positive value will be returned.
+ 762: 0009: ! To see if any more matches exist, just issue another call to srchproc without
+ 763: 0009: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+ 764: 0009: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 765: 0009: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+ 766: 0009: ! of this data is defined as follows:
+ 767: 0009: !
+ 768: 0009: !       --------------------------------------------------------
+ 769: 0009: !   0   |                         PID                          |
+ 770: 0009: !       --------------------------------------------------------
+ 771: 0009: !   4   |           FID             |   CID        |   VCID    |
+ 772: 0009: !       --------------------------------------------------------
+ 773: 0009: !   8   |                         NAME                         |
+ 774: 0009: !       --------------------------------------------------------
+ 775: 0009: !  12   |                         NAME cont'd                  |
+ 776: 0009: !       --------------------------------------------------------
+ 777: 0009: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+ 778: 0009: !       --------------------------------------------------------
+ 779: 0009: !  20   |                         MAXMEM                       |
+ 780: 0009: !       --------------------------------------------------------
+ 781: 0009: !  24   |       FLAGS               |   USER        |  GROUP   |
+ 782: 0009: !       --------------------------------------------------------
+ 783: 0009: !  28   |                         PARENT                       |
+ 784: 0009: !       --------------------------------------------------------
+ 785: 0009: !  32   |                         EVENTS                       |
+ 786: 0009: !       --------------------------------------------------------
+ 787: 0009: !  36   |                         CODE                         |
+ 788: 0009: !       --------------------------------------------------------
+ 789: 0009: !  40   |                         CSIZE                        |
+ 790: 0009: !       --------------------------------------------------------
+ 791: 0009: !  44   |                         DATA                         |
+ 792: 0009: !       --------------------------------------------------------
+ 793: 0009: !  48   |                         DSIZE                        |
+ 794: 0009: !       --------------------------------------------------------
+ 795: 0009: !  52   |                         HEAP                         |
+ 796: 0009: !       --------------------------------------------------------
+ 797: 0009: !  56   |                         HSIZE                        |
+ 798: 0009: !       --------------------------------------------------------
+ 799: 0009: !
+ 800: 0009: !       PID   Process ID
+ 801: 0009: !       FID  Process's Family ID
+ 802: 0009: !       CID   Physical Console Device Number
+ 803: 0009: !       VCID  Process's Virtual Console Number
+ 804: 0009: !       NAME  Process Name (Application Running)
+ 805: 0009: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+ 806: 0009: ! PRIOR    Priority
+ 807: 0009: !       MAXMEM  Maximum Memory Allowed
+ 808: 0009: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+ 809: 0009: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+ 810: 0009: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+ 811: 0009: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+ 812: 0009: ! USER  User Number
+ 813: 0009: ! GROUP  Group Number
+ 814: 0009: !       PARENT   Parent Process ID
+ 815: 0009: !       EVENTS   Bit Map of events that have completed but not retrieved
+ 816: 0009: !       CODE  Start of code area in user space
+ 817: 0009: ! CSIZE  Size in bytes of code area
+ 818: 0009: !       DATA  Start of data area in user space
+ 819: 0009: ! DSIZE  Size in bytes of data area
+ 820: 0009: !       HEAP  Start of heap area in user space
+ 821: 0009: ! HSIZE  Size in bytes of heap area
+ 822: 0009: !
+ 823: 0009:  integer*4 srchproc
+ 824: 0009: 
+ 825: 0009:  string  proc.name$   ! process name to start
+ 826: 0009:        ! search (10 bytes max)
+ 827: 0009:        ! Wild cards and logical
+ 828: 0009:        ! names supported.
+ 829: 0009: 
+ 830: 0009:  string  ptbl.buffer$   ! must be initialized
+ 831: 0009:        ! to 60 bytes.  Contains
+ 832: 0009:        ! all of process info
+ 833: 0009:        ! Initialize to nulls
+ 834: 0009:        ! each time a new
+ 835: 0009:        ! process name is used.
+ 836: 0009: 
+ 837: 0009: end function
+ 838: 0009: 
+ 839: 0009: function cconstat(timeout) external       ! function similar
+ 840: 0009:                                               ! to BASIC constat%
+ 841: 0009:  integer*2 cconstat   ! waits for either a
+ 842: 0009:  integer*4 timeout    ! key being hit or
+ 843: 0009:        ! the timer expiring
+ 844: 0009:        ! before returning
+ 845: 0009:        ! returns:
+ 846: 0009:        !   -1 error
+ 847: 0009:        !    0 timer expired
+ 848: 0009:        !    x scan code of
+ 849: 0009:        !      key hit
+ 850: 0009: end function
+ 851: 0009: 
+ 852: 0009: function disksize(disk.name$) external   ! function to find
+ 853: 0009:        ! the total size of
+ 854: 0009:  integer*4 disksize   ! the specified disk
+ 855: 0009:  string  disk.name$   ! name (e.g. "h0:")
+ 856: 0009:        ! if return value is
+ 857: 0009:        ! negative, error
+ 858: 0009: end function      ! was received
+ 859: 0009: 
+ 860: 0009: 
+ 861: 0009: %INCLUDE BOOTSEXT.J86
+ 862: 0009: \******************************************************************************
+ 863: 0009: \******************************************************************************
+ 864: 0009: SUB LOG.ERROR(F.1$) EXTERNAL
+ 865: 0009:     STRING  F.1$
+ 866: 0009: END SUB
+ 867: 0009: 
+ 868: 0009: \******************************************************************************
+ 869: 0009: \******************************************************************************
+ 870: 0009: FUNCTION FORCE.CASE$(DATA$,TYPE%) EXTERNAL
+ 871: 0009:     STRING      FORCE.CASE$
+ 872: 0009:     STRING      DATA$
+ 873: 0009:     INTEGER*2   TYPE%
+ 874: 0009:     STRING      IN$, OUT$
+ 875: 0009:     STRING      LWR$, UPR$
+ 876: 0009: END FUNCTION
+ 877: 0009: 
+ 878: 0009: \******************************************************************************
+ 879: 0009: \******************************************************************************
+ 880: 0009: FUNCTION REMOVE.CHARACTER$(DATA$,F.CHR$) EXTERNAL
+ 881: 0009:     STRING      DATA$
+ 882: 0009:     STRING      F.CHR$
+ 883: 0009:     STRING      REMOVE.CHARACTER$
+ 884: 0009:     INTEGER*2   START%
+ 885: 0009:     INTEGER*2   END%
+ 886: 0009:     INTEGER*2   POS%
+ 887: 0009:     INTEGER*2   F.LEN%
+ 888: 0009: END FUNCTION
+ 889: 0009: 
+ 890: 0009: \******************************************************************************
+ 891: 0009: \******************************************************************************
+ 892: 0009: FUNCTION REMOVE.SPACES$(DATA$) EXTERNAL
+ 893: 0009:     STRING      DATA$
+ 894: 0009:     STRING      REMOVE.SPACES$
+ 895: 0009:     INTEGER*2   START%
+ 896: 0009:     INTEGER*2   END%
+ 897: 0009:     INTEGER*2   POS%
+ 898: 0009: END FUNCTION
+ 899: 0009: 
+ 900: 0009: \*******************************************************************************
+ 901: 0009: \***
+ 902: 0009: \***    FUNCTION     :    TIME.STAMP$
+ 903: 0009: \***    
+ 904: 0009: \***    Returns a string with formatted date and/or time detail
+ 905: 0009: \***                 Passed values are 1 = Date, 2 = Time
+ 906: 0009: \*******************************************************************************
+ 907: 0009: FUNCTION TIME.STAMP$(F.TYPE%) EXTERNAL
+ 908: 0009:     STRING      TIME.STAMP$
+ 909: 0009:     INTEGER*2   F.TYPE%
+ 910: 0009:     STRING      F.DT$
+ 911: 0009:     STRING      F.RET$
+ 912: 0009: END FUNCTION
+ 913: 0009: \*******************************************************************************
+ 914: 0009: 
+ 915: 0009: 
+ 916: 0009: \*******************************************************************************
+ 917: 0009: \*******************************************************************************
+ 918: 0009: FUNCTION PRINT.MSG$(MSG$,F%,L%) EXTERNAL
+ 919: 0009: STRING      PRINT.MSG$
+ 920: 0009: STRING      MSG$
+ 921: 0009: INTEGER*2   F%
+ 922: 0009: INTEGER*2   L%
+ 923: 0009: STRING      IN$
+ 924: 0009: STRING      F.FORM$
+ 925: 0009: END FUNCTION
+ 926: 0009: \*******************************************************************************
+ 927: 0009: 
+ 928: 0009: \*******************************************************************************
+ 929: 0009: \***
+ 930: 0009: \***    SUBROUTINE     :    BACKGROUND.MSG(B.MSG$)
+ 931: 0009: \***    
+ 932: 0009: \***    Displays passed message to the background message.
+ 933: 0009: \*******************************************************************************
+ 934: 0009: SUB BACKGROUND.MSG(B.MSG$) EXTERNAL
+ 935: 0009:     STRING      B.MSG$
+ 936: 0009:     INTEGER*4   B.RET%
+ 937: 0009: END SUB
+ 938: 0009: \*******************************************************************************
+ 939: 0009: 
+ 940: 0009: !*****************************************************************************!
+ 941: 0009: !***                                                                          !
+ 942: 0009: !*** SUBROUTINE :   NO.OPEN.FILE                                              !
+ 943: 0009: !***                    F.REPORT%       - Passed report number for logging    !
+ 944: 0009: !***                    F.OPEN.FLAG$    - Returned flag for not-opened        !
+ 945: 0009: !***                                                                          !
+ 946: 0009: !*** This subroutine logs an application 106 error with the passed report     !
+ 947: 0009: !*** number. It also sets a return variable to "N" to flag that the file is   !
+ 948: 0009: !*** not Open because of the failure.                                         !
+ 949: 0009: !***                                                                          !
+ 950: 0009: !*****************************************************************************!
+ 951: 0009: SUB NO.OPEN.FILE(F.REPORT%,F.OPEN.FLAG$) EXTERNAL                                      
+ 952: 0009:     INTEGER*2   F.REPORT%                                                         
+ 953: 0009:     STRING      F.OPEN.FLAG$                                                      
+ 954: 0009:     STRING      F.1$, F.2$
+ 955: 0009:     INTEGER*2   F.EVENT%
+ 956: 0009: END SUB                                                                       
+ 957: 0009: !*****************************************************************************!
+ 958: 0009: 
+ 959: 0009: 
+ 960: 0009: FUNCTION NUMBER.OF.DAYS%(START$,END$) EXTERNAL
+ 961: 0009: INTEGER*2   NUMBER.OF.DAYS%
+ 962: 0009: STRING      START$
+ 963: 0009: STRING      END$
+ 964: 0009: INTEGER*2   F.DAYS%
+ 965: 0009: INTEGER*4   S.DAYS%
+ 966: 0009: INTEGER*4   E.DAYS%
+ 967: 0009: END FUNCTION
+ 968: 0009: 
+ 969: 0009: FUNCTION HEX.FORMAT$(F.DATA$) EXTERNAL
+ 970: 0009: STRING  HEX.FORMAT$
+ 971: 0009: STRING  F.DATA$
+ 972: 0009: STRING      F.RET$
+ 973: 0009: INTEGER*2   F.LEN%
+ 974: 0009: STRING      F.TMP$(2)
+ 975: 0009: STRING      F.FORM$
+ 976: 0009: STRING      F.ASCII$
+ 977: 0009: STRING      F.ASC$
+ 978: 0009: STRING      F.HEX$
+ 979: 0009: STRING      F.WORK$, F.W2$
+ 980: 0009: INTEGER*2   F.LOOP%, F.L2%
+ 981: 0009: END FUNCTION
+ 982: 0009: 
+ 983: 0009: FUNCTION FORMAT.NUMBER$(F.NUM$,F.DEC%) EXTERNAL
+ 984: 0009: STRING      FORMAT.NUMBER$
+ 985: 0009: STRING      F.NUM$
+ 986: 0009: INTEGER*2   F.DEC%
+ 987: 0009: INTEGER*4   F.NUM%
+ 988: 0009: END FUNCTION
+ 989: 0009: 
+ 990: 0009: \*******************************************************************************
+ 991: 0009: FUNCTION FORMAT.BOOTS.CODE$(F.CODE$) EXTERNAL
+ 992: 0009: STRING  FORMAT.BOOTS.CODE$
+ 993: 0009: STRING  F.CODE$
+ 994: 0009: END FUNCTION
+ 995: 0009: 
+ 996: 0009: FUNCTION FORMAT.STRING$(F.STRING$,F.L%,F.P$,F.J%) EXTERNAL
+ 997: 0009: STRING    FORMAT.STRING$
+ 998: 0009: STRING    F.STRING$
+ 999: 0009: INTEGER*2 F.L%
+1000: 0009: STRING    F.P$
+1001: 0009: INTEGER*2 F.J%
+1002: 0009: END FUNCTION
+1003: 0009: 
+1004: 0009: SUB GET.BLOCK.SIZE(F.BLOCK.SIZE%,F.FILENAME$,F.SIZE%) EXTERNAL
+1005: 0009: INTEGER*4   F.BLOCK.SIZE%
+1006: 0009: STRING      F.FILENAME$
+1007: 0009: INTEGER*4   F.SIZE%
+1008: 0009: INTEGER*4   F.BLOCK%
+1009: 0009: INTEGER*2   F.SECTOR%
+1010: 0009: INTEGER*2   F.LOOP%
+1011: 0009: STRING      F.BLOCK.LENGTH$
+1012: 0009: END SUB
+1013: 0009: %INCLUDE BTCMEM.J86
+1014: 0009: !********************************************************************
+1015: 0009: !***
+1016: 0009: !***    INCLUDED CODE:  BTCMEM.J86
+1017: 0009: !***    AUTHOR:         Stuart William McConnachie
+1018: 0009: !***    DATE:           26th February 2006
+1019: 0009: !***
+1020: 0009: !********************************************************************
+1021: 0009: !***
+1022: 0009: !***    Controller CBASIC Memory Functions
+1023: 0009: !***
+1024: 0009: !********************************************************************
+1025: 0009: 
+1026: 0009: !Get a single byte integer from a string offset
+1027: 0009: FUNCTION GETN1 (S$, P%) EXTERNAL
+1028: 0009:     STRING S$
+1029: 0009:     INTEGER*2 P%
+1030: 0009:     INTEGER*2 GETN1
+1031: 0009: END FUNCTION
+1032: 0009: 
+1033: 0009: !Get a two byte integer from a string offset
+1034: 0009: FUNCTION GETN2 (S$, P%) EXTERNAL
+1035: 0009:     STRING S$
+1036: 0009:     INTEGER*2 P%
+1037: 0009:     INTEGER*2 GETN2
+1038: 0009: END FUNCTION
+1039: 0009: 
+1040: 0009: !Get a four byte integer from a string offset
+1041: 0009: FUNCTION GETN4 (S$, P%) EXTERNAL
+1042: 0009:     STRING S$
+1043: 0009:     INTEGER*2 P%
+1044: 0009:     INTEGER*4 GETN4
+1045: 0009: END FUNCTION
+1046: 0009: 
+1047: 0009: !Get a 10 byte CBASIC real from a string offset
+1048: 0009: FUNCTION GETR10 (S$, P%) EXTERNAL
+1049: 0009:     STRING S$
+1050: 0009:     INTEGER*2 P%
+1051: 0009:     REAL GETR10
+1052: 0009: END FUNCTION
+1053: 0009: 
+1054: 0009: !Put a single byte integer into a string at offset
+1055: 0009: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+1056: 0009:     STRING S$
+1057: 0009:     INTEGER*2 P%
+1058: 0009:     INTEGER*1 N%
+1059: 0009:     INTEGER*1 PUTN1
+1060: 0009: END FUNCTION
+1061: 0009: 
+1062: 0009: !Put a two byte integer into a string at offset
+1063: 0009: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+1064: 0009:     STRING S$
+1065: 0009:     INTEGER*2 P%
+1066: 0009:     INTEGER*2 N%
+1067: 0009:     INTEGER*1 PUTN2
+1068: 0009: END FUNCTION
+1069: 0009: 
+1070: 0009: !Put a four byte integer into a string at offset
+1071: 0009: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+1072: 0009:     STRING S$
+1073: 0009:     INTEGER*2 P%
+1074: 0009:     INTEGER*4 N%
+1075: 0009:     INTEGER*1 PUTN4
+1076: 0009: END FUNCTION
+1077: 0009: 
+1078: 0009: !Put a 10 byte CBASIC real into a string at offset
+1079: 0009: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+1080: 0009:     STRING S$
+1081: 0009:     INTEGER*2 P%
+1082: 0009:     REAL R
+1083: 0009:     INTEGER*1 PUTR10
+1084: 0009: END FUNCTION
+1085: 0009: 
+1086: 0009: !Peek a two byte integer from a memory address
+1087: 0009: FUNCTION PEEKN2 (A%) EXTERNAL
+1088: 0009:     INTEGER*4 A%
+1089: 0009:     INTEGER*2 PEEKN2
+1090: 0009: END FUNCTION
+1091: 0009: 
+1092: 0009: !Peek a four byte integer from a memory address
+1093: 0009: FUNCTION PEEKN4 (A%) EXTERNAL
+1094: 0009:     INTEGER*4 A%
+1095: 0009:     INTEGER*4 PEEKN4
+1096: 0009: END FUNCTION
+1097: 0009: 
+1098: 0009: !Peek a 10 byte CBASIC real from a memory address
+1099: 0009: FUNCTION PEEKR10 (A%) EXTERNAL
+1100: 0009:     INTEGER*4 A%
+1101: 0009:     REAL PEEKR10
+1102: 0009: END FUNCTION
+1103: 0009: 
+1104: 0009: !Poke a two byte integer to a memory address
+1105: 0009: FUNCTION POKEN2 (A%, N%) EXTERNAL
+1106: 0009:     INTEGER*4 A%
+1107: 0009:     INTEGER*2 N%
+1108: 0009:     INTEGER*1 POKEN2
+1109: 0009: END FUNCTION
+1110: 0009: 
+1111: 0009: !Poke a four byte integer to a memory address
+1112: 0009: FUNCTION POKEN4 (A%, N%) EXTERNAL
+1113: 0009:     INTEGER*4 A%
+1114: 0009:     INTEGER*4 N%
+1115: 0009:     INTEGER*1 POKEN4
+1116: 0009: END FUNCTION
+1117: 0009: 
+1118: 0009: !Poke a 10 byte CBASIC real to a memory address
+1119: 0009: FUNCTION POKER10 (A%, R) EXTERNAL
+1120: 0009:     INTEGER*4 A%
+1121: 0009:     REAL R
+1122: 0009:     INTEGER*1 POKER10
+1123: 0009: END FUNCTION
+1124: 0009: 
+1125: 0009: %INCLUDE POGDEEXT.J86
+1126: 0009: \********************************************************************
+1127: 0009: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE POGDE FILE
+1128: 0009: \***      REFERENCE : POGDEEXT.J86
+1129: 0009: \***      Version A           Neil Bennett            8th June 2006
+1130: 0009: \***
+1131: 0009: \********************************************************************
+1132: 0009: 
+1133: 0009:        FUNCTION POGDE.SET EXTERNAL
+1134: 0009:        END FUNCTION
+1135: 0009: 
+1136: 0009:        FUNCTION READ.POGDE EXTERNAL
+1137: 0009:           INTEGER*2 READ.POGDE
+1138: 0009:        END FUNCTION
+1139: 0009: %INCLUDE POGOKEXT.J86      
+1140: 0009: \********************************************************************
+1141: 0009: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE POGOK FILE
+1142: 0009: \***      REFERENCE : POGOKEXT.J86
+1143: 0009: \***      Version A           Neil Bennett            6th June 2006
+1144: 0009: \***
+1145: 0009: \********************************************************************
+1146: 0009: 
+1147: 0009:        FUNCTION POGOK.SET EXTERNAL
+1148: 0009:        END FUNCTION
+1149: 0009: 
+1150: 0009:        FUNCTION READ.POGOK EXTERNAL
+1151: 0009:           INTEGER*2 READ.POGOK
+1152: 0009:        END FUNCTION
+1153: 0009: 
+1154: 0009:        FUNCTION READ.POGOK.LOCK EXTERNAL
+1155: 0009:           INTEGER*2 READ.POGOK.LOCK
+1156: 0009:        END FUNCTION
+1157: 0009: 
+1158: 0009:        FUNCTION WRITE.POGOK EXTERNAL
+1159: 0009:           INTEGER*2 WRITE.POGOK
+1160: 0009:        END FUNCTION
+1161: 0009: 
+1162: 0009:        FUNCTION WRITE.POGOK.UNLOCK EXTERNAL
+1163: 0009:           INTEGER*2 WRITE.POGOK.UNLOCK
+1164: 0009:        END FUNCTION
+1165: 0009: 
+1166: 0009:        FUNCTION CREATE.POGOK EXTERNAL
+1167: 0009:           INTEGER*2 CREATE.POGOK
+1168: 0009:        END FUNCTION
+1169: 0009: %INCLUDE PSBF01E.J86     
+1170: 0009: REM \
+1171: 0009: \*******************************************************************************
+1172: 0009: \*******************************************************************************
+1173: 0009: \***
+1174: 0009: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+1175: 0009: \***
+1176: 0009: \***                      FUNCTION NUMBER   : PSBF01
+1177: 0009: \***
+1178: 0009: \***                    INCLUDE REFERENCE : PSBF01E.J86
+1179: 0009: \*** 
+1180: 0009: \***      Version B           Andrew Wedgeworth          1st July 1992
+1181: 0009: \***      Three parameters which passed to the function have been removed.
+1182: 0009: \***      APPLICATION.LOG has been added as a variable name (this holds the
+1183: 0009: \***      return code).
+1184: 0009: \***
+1185: 0009: \*******************************************************************************
+1186: 0009: 
+1187: 0009: 
+1188: 0009:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+1189: 0009:                              VAR.STRING.1$,                                   \
+1190: 0009:                              VAR.STRING.2$,                                   \
+1191: 0009:                              EVENT.NO%)  EXTERNAL
+1192: 0009: 
+1193: 0009:       INTEGER*1 EVENT.NO%
+1194: 0009: 
+1195: 0009:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+1196: 0009:                 MESSAGE.NO%
+1197: 0009: 
+1198: 0009:       STRING VAR.STRING.1$,                                            \
+1199: 0009:              VAR.STRING.2$
+1200: 0009: 
+1201: 0009:    END FUNCTION
+1202: 0009: 
+1203: 0009: \*******************************************************************************
+1204: 0009: %INCLUDE PSBF20E.J86     
+1205: 0009: REM\
+1206: 0009: \*******************************************************************************
+1207: 0009: \*******************************************************************************
+1208: 0009: \***
+1209: 0009: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+1210: 0009: \***
+1211: 0009: \***                  REFERENCE     : PSBF20E.J86
+1212: 0009: \***
+1213: 0009: \***     VERSION C            Janet Smith                13th May 1992
+1214: 0009: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+1215: 0009: \***     128 files.
+1216: 0009: \***
+1217: 0009: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+1218: 0009: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+1219: 0009: \***     as a variable.  This new variable contains the function's return
+1220: 0009: \***     code.
+1221: 0009: \***
+1222: 0009: \*******************************************************************************
+1223: 0009: \*******************************************************************************
+1224: 0009: 
+1225: 0009:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+1226: 0009:                               PASSED.INTEGER%,                         \
+1227: 0009:                               PASSED.STRING$)                          \
+1228: 0009:    EXTERNAL
+1229: 0009: 
+1230: 0009:    STRING    FUNCTION.FLAG$,                                           \
+1231: 0009:              PASSED.STRING$
+1232: 0009:    ! 3 variables removed from here                                     ! CAW
+1233: 0009: 
+1234: 0009: 
+1235: 0009:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+1236: 0009:              PASSED.INTEGER%				               ! CJAS
+1237: 0009: 
+1238: 0009:    END FUNCTION
+1239: 0009: 
+1240: 0009: %INCLUDE PSBF24E.J86
+1241: 0009: REM \
+1242: 0009: \*******************************************************************************
+1243: 0009: \*******************************************************************************
+1244: 0009: \***
+1245: 0009: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+1246: 0009: \***
+1247: 0009: \***                      REFERENCE     : PSBF24E.J86
+1248: 0009: \***
+1249: 0009: \***    Version A                 Janet Smith                  13th May 1992
+1250: 0009: \***
+1251: 0009: \*******************************************************************************
+1252: 0009: \*******************************************************************************
+1253: 0009: 
+1254: 0009:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+1255: 0009: 				    ERRFILE%,              \
+1256: 0009: 				    ERRL%,                 \
+1257: 0009: 				    ERR$)        EXTERNAL
+1258: 0009: 				    
+1259: 0009:           STRING    ERR$
+1260: 0009: 
+1261: 0009:           INTEGER*2 ERRFILE%,              \
+1262: 0009: 	            ERRL%,                 \
+1263: 0009: 		    STANDARD.ERROR.DETECTED
+1264: 0009: 		    
+1265: 0009:           INTEGER*4 ERRN%
+1266: 0009: 	  		    
+1267: 0009:    END FUNCTION
+1268: 0009: 
+1269: 0009: 
+1270: 0009: %INCLUDE SRPEXT.J86
+1271: 0009: \********************************************************************
+1272: 0009: \***      Space and Range Planner Common Functions  (SRPFUN)
+1273: 0009: \***      Version A           Neil Bennett          24.08.2006
+1274: 0009: \***
+1275: 0009: \....................................................................
+1276: 0009: \***
+1277: 0009: \***    GET.CATID Construct a 4 byte integer Category ID from 3
+1278: 0009: \***              hierarchical (I4) keys supplied.
+1279: 0009: \***
+1280: 0009: \********************************************************************
+1281: 0009: 
+1282: 0009:    FUNCTION GET.CATID%(lev1%,lev2%,lev3%) EXTERNAL
+1283: 0009: 
+1284: 0009:     INTEGER*4 GET.CATID%
+1285: 0009:     INTEGER*4 lev1%, lev2%, lev3%
+1286: 0009: 
+1287: 0009:    END FUNCTION
+1288: 0009: 
+1289: 0009: \********************************************************************
+1290: 0009: %INCLUDE SRPDFEXT.J86
+1291: 0009: \********************************************************************
+1292: 0009: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRPDF FILE
+1293: 0009: \***      REFERENCE : SRPDFEXT.J86
+1294: 0009: \***      Version A           Neil Bennett          7th August 2006
+1295: 0009: \***
+1296: 0009: \********************************************************************
+1297: 0009: 
+1298: 0009:        FUNCTION SRPDF.SET EXTERNAL
+1299: 0009:        END FUNCTION
+1300: 0009: 
+1301: 0009:        FUNCTION READ.SRPDF EXTERNAL
+1302: 0009:           INTEGER*2 READ.SRPDF
+1303: 0009:        END FUNCTION
+1304: 0009: 
+1305: 0009:        FUNCTION WRITE.SRPDF EXTERNAL
+1306: 0009:           INTEGER*2 WRITE.SRPDF
+1307: 0009:        END FUNCTION
+1308: 0009: 
+1309: 0009:        FUNCTION DELREC.SRPDF EXTERNAL
+1310: 0009:           INTEGER*2 DELREC.SRPDF
+1311: 0009:        END FUNCTION
+1312: 0009: %INCLUDE SRPOGEXT.J86
+1313: 0009: \********************************************************************
+1314: 0009: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRPOG FILE
+1315: 0009: \***      REFERENCE : SRPOGEXT.J86
+1316: 0009: \***      Version A           Neil Bennett            5th June 2006
+1317: 0009: \***
+1318: 0009: \********************************************************************
+1319: 0009: 
+1320: 0009:        FUNCTION SRPOG.SET EXTERNAL
+1321: 0009:        END FUNCTION
+1322: 0009: 
+1323: 0009:        FUNCTION READ.SRPOG EXTERNAL
+1324: 0009:           INTEGER*2 READ.SRPOG
+1325: 0009:        END FUNCTION
+1326: 0009: 
+1327: 0009:        FUNCTION WRITE.SRPOG EXTERNAL
+1328: 0009:           INTEGER*2 WRITE.SRPOG
+1329: 0009:        END FUNCTION
+1330: 0009: 
+1331: 0009:        FUNCTION DELREC.SRPOG EXTERNAL
+1332: 0009:           INTEGER*2 DELREC.SRPOG
+1333: 0009:        END FUNCTION
+1334: 0009: %INCLUDE SRMODEXT.J86
+1335: 0009: \********************************************************************
+1336: 0009: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRMOD FILE
+1337: 0009: \***      REFERENCE : SRMODEXT.J86
+1338: 0009: \***      Version A           Neil Bennett            5th June 2006
+1339: 0009: \***
+1340: 0009: \********************************************************************
+1341: 0009: 
+1342: 0009:        FUNCTION SRMOD.SET EXTERNAL
+1343: 0009:        END FUNCTION
+1344: 0009: 
+1345: 0009:        FUNCTION READ.SRMOD EXTERNAL
+1346: 0009:           INTEGER*2 READ.SRMOD
+1347: 0009:        END FUNCTION
+1348: 0009: 
+1349: 0009:        FUNCTION WRITE.SRMOD EXTERNAL
+1350: 0009:           INTEGER*2 WRITE.SRMOD
+1351: 0009:        END FUNCTION
+1352: 0009: 
+1353: 0009:        FUNCTION DELREC.SRMOD EXTERNAL
+1354: 0009:           INTEGER*2 DELREC.SRMOD
+1355: 0009:        END FUNCTION
+1356: 0009: 
+1357: 0009:        SUB SRMOD.SPLIT.SHELF.ITEM EXTERNAL
+1358: 0009:        END SUB
+1359: 0009: %INCLUDE SRSXFEXT.J86 
+1360: 0009: \********************************************************************
+1361: 0009: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRSXF FILE
+1362: 0009: \***      REFERENCE : SRSXFEXT.J86
+1363: 0009: \***      Version A           Neil Bennett          7th August 2006
+1364: 0009: \***
+1365: 0009: \********************************************************************
+1366: 0009: 
+1367: 0009:        FUNCTION SRSXF.SET EXTERNAL
+1368: 0009:        END FUNCTION
+1369: 0009: 
+1370: 0009:        FUNCTION READ.SRSXF EXTERNAL
+1371: 0009:           INTEGER*2 READ.SRSXF
+1372: 0009:        END FUNCTION
+1373: 0009: 
+1374: 0009:        FUNCTION WRITE.SRSXF EXTERNAL
+1375: 0009:           INTEGER*2 WRITE.SRSXF
+1376: 0009:        END FUNCTION
+1377: 0009: 
+1378: 0009:        FUNCTION DELREC.SRSXF EXTERNAL
+1379: 0009:           INTEGER*2 DELREC.SRSXF
+1380: 0009:        END FUNCTION
+1381: 0009: 
+1382: 0009: \***********************************************************************
+1383: 0009: \*
+1384: 0009: \*    INITIALISATION : This Sub-routine does all the initial processing
+1385: 0009: \*                     before starting the main process
+1386: 0009: \*
+1387: 0009: \***********************************************************************
+1388: 0009: 
+1389: 0009: FUNCTION FLEXOSSVC(COMMAND%, PARAM$) EXTERNAL                           
+1390: 0009:                                                                         
+1391: 0009:       STRING PARAM$                                                     
+1392: 0009:       INTEGER*2 COMMAND%, FLEXOSSVC                                     
+1393: 0009:                                                                         
+1394: 0009: END FUNCTION                                                            
+1395: 0009: 
+1396: 0009: \**********************************************************************
+1397: 0009: \***
+1398: 0009: \***    ADXSERVE
+1399: 0009: \***    IBM routine to request Application Services.
+1400: 0009: \***
+1401: 0009: \**********************************************************************
+1402: 0009: 
+1403: 0009: SUB ADXSERVE (RET, FUNC, PARM1, PARM2$) EXTERNAL
+1404: 0009: 
+1405: 0009:     INTEGER*4  RET
+1406: 0009:     INTEGER*2  FUNC,PARM1
+1407: 0009:     STRING     PARM2$
+1408: 0009: 
+1409: 0009: END SUB
+1410: 0009: 
+1411: 0009: \**********************************************************************
+1412: 0009: \***
+1413: 0009: \***    ADXCOPYF
+1414: 0009: \***    IBM routine to request Application Services.
+1415: 0009: \***
+1416: 0009: \**********************************************************************
+1417: 0009: 
+1418: 0009: SUB ADXCOPYF (RETC,INFILE,OUTFILE,OPT0,OPT1) EXTERNAL
+1419: 0009: 
+1420: 0009:     INTEGER*4 RETC
+1421: 0009:     STRING    INFILE,OUTFILE
+1422: 0009:     INTEGER*2 OPT0,OPT1
+1423: 0009: 
+1424: 0009: END SUB 
+1425: 0009: 
+1426: 0009: \***********************************************************************
+1427: 0009: \*                                                                     *
+1428: 0009: \*          S T A R T   O F   M A I N L I N E   C O D E                *
+1429: 0009: \*                                                                     *
+1430: 0009: \***********************************************************************
+1431: 0009: \***********************************************************************
+1432: 0009: 
+1433: 0009: ON ERROR GOTO ERROR.DETECTED
+1434: 0038: 
+1435: 0038:     PRINT  TIME.STAMP$(2)  + "-Program started"         
+1436: 0066: 
+1437: 0066:     GOSUB INITIALISATION
+1438: 0078: 
+1439: 0078:     PRINT #PHKEEP.SESS.NUM% ; TIME.STAMP$(2)  + "-Program started" 
+1440: 00b5:     GOSUB MAIN.PROCESSING
+1441: 00c7:     GOSUB TERMINATION
+1442: 00d9:  
+1443: 00d9: STOP.PROGRAM:
+1444: 00e1:     STOP
+1445: 00ee: 
+1446: 00ee: \***********************************************************************
+1447: 00ee: \*
+1448: 00ee: \*    INITIALISATION : This Sub-routine does all the initial processing
+1449: 00ee: \*                     before starting the main process
+1450: 00ee: \*
+1451: 00ee: \***********************************************************************
+1452: 00ee: INITIALISATION:
+1453: 00fe: 
+1454: 00fe:     GOSUB INITIAL.CHECKS          
+1455: 0110:     GOSUB INITIALISE.VARIABLES    
+1456: 0122:     GOSUB ALLOCATE.SESSION.NUMBERS
+1457: 0134:     GOSUB OPEN.FILES              
+1458: 0146:     GOSUB CREATE.FILES            
+1459: 0158: 
+1460: 0158: RETURN
+1461: 0168: 
+1462: 0168: \***********************************************************************
+1463: 0168: \*
+1464: 0168: \*    INITIALISE.VARIABLES :   
+1465: 0168: \*                
+1466: 0168: \*
+1467: 0168: \***********************************************************************
+1468: 0168: INITIALISE.VARIABLES:
+1469: 0178: 
+1470: 0178:    CALL SRPOG.SET
+1471: 0193:    CALL SRMOD.SET
+1472: 01ae:    CALL SRPDF.SET
+1473: 01c9:    CALL SRSXF.SET
+1474: 01e4:    
+1475: 01e4:    ERROR.CNT% = 0
+1476: 01f9:    
+1477: 01f9:    SRPOG% = 10000
+1478: 020e:    DIM SRPOG.ARRAY$(SRPOG%)
+1479: 023d:    
+1480: 023d:    SRMOD% = 10000
+1481: 0252:    DIM SRMOD.ARR$(SRMOD%)
+1482: 0281:    
+1483: 0281:    SRSXF% = 10000
+1484: 0296:    DIM SRSXF.ARRAY$(SRSXF%)
+1485: 02c5:    
+1486: 02c5:    SRPDF% = 10000
+1487: 02da:    DIM SRPDF.ARRAY$(SRPDF%)
+1488: 0309:    
+1489: 0309:    DIM TEMP.ARR$(SRPDF%)
+1490: 0338:      
+1491: 0338:    FOUND% = 0
+1492: 034d:    
+1493: 034d:    PHKEEP.LOG.NAME$ = "W:/PHKEEP.LOG"
+1494: 0362:    PHKEEP.SESS.NUM% = 456
+1495: 0377:    
+1496: 0377:    PHKEEP.OK.NAME$  = "W:/PHKEEP.ERR"
+1497: 038c:    PHKEEP.OK.SESS%  = 457   
+1498: 03a1:    
+1499: 03a1:    SRMOD.DIR.NAME$  = "ADXLXACN::W:\SRMOD.DIR"
+1500: 03b6:    SRMOD.KEY.NAME$  = "ADXLXACN::W:\SRMOD.KEY"
+1501: 03cb:    SRPDF.DIR.NAME$  = "ADXLXACN::W:\SRPDF.DIR"
+1502: 03e0:    SRPDF.KEY.NAME$  = "ADXLXACN::W:\SRPDF.KEY" 
+1503: 03f5:    SRSXF.DIR.NAME$  = "ADXLXACN::W:\SRSXF.DIR" 
+1504: 040a:    SRSXF.KEY.NAME$  = "ADXLXACN::W:\SRSXF.KEY"
+1505: 041f:    
+1506: 041f:    SPACE$ = " "   
+1507: 0434:    
+1508: 0434:   ! CREATE PHKEEP.LOG.NAME$ AS PHKEEP.SESS.NUM%   
+1509: 0434:    
+1510: 0434:    CREATE PHKEEP.OK.NAME$ AS PHKEEP.OK.SESS%
+1511: 0459:     
+1512: 0459:    
+1513: 0459:    SRPOG.FLAG$ = ""
+1514: 046e:    SRMOD.FLAG$ = ""
+1515: 0483:    SRSXF.FLAG$ = ""
+1516: 0498:    SRPDF.FLAG$ = ""
+1517: 04ad:    
+1518: 04ad: RETURN 
+1519: 04bd: 
+1520: 04bd: \***********************************************************************
+1521: 04bd: \*
+1522: 04bd: \*    ALLOCATE.SESSION.NUMBERS:   
+1523: 04bd: \*                
+1524: 04bd: \*
+1525: 04bd: \***********************************************************************
+1526: 04bd: ALLOCATE.SESSION.NUMBERS:
+1527: 04cd: 
+1528: 04cd:     FUNCTION.FLAG$ = "O"                                                
+1529: 04e2:     
+1530: 04e2:     PASSED.INTEGER% = SRPOG.REPORT.NUM%                                 
+1531: 04ff:     PASSED.STRING$  = SRPOG.FILE.NAME$                                  
+1532: 051d:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1533: 052f:     SRPOG.SESS.NUM% = F20.INTEGER.FILE.NO%                              
+1534: 0545: 
+1535: 0545:     PASSED.INTEGER% = SRMOD.REPORT.NUM%                                 
+1536: 0562:     PASSED.STRING$  = SRMOD.FILE.NAME$                                  
+1537: 0580:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1538: 0592:     SRMOD.SESS.NUM% = F20.INTEGER.FILE.NO%                              
+1539: 05a8: 
+1540: 05a8:     PASSED.INTEGER% = SRSXF.REPORT.NUM%                                 
+1541: 05c5:     PASSED.STRING$  = SRSXF.FILE.NAME$                                  
+1542: 05e3:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1543: 05f5:     SRSXF.SESS.NUM% = F20.INTEGER.FILE.NO%                              
+1544: 060b: 
+1545: 060b:     PASSED.INTEGER% = SRPDF.REPORT.NUM%                                 
+1546: 0628:     PASSED.STRING$  = SRPDF.FILE.NAME$                                  
+1547: 0646:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1548: 0658:     SRPDF.SESS.NUM% = F20.INTEGER.FILE.NO%                              
+1549: 066e: 
+1550: 066e:     PASSED.INTEGER% = PHKEEP.SESS.NUM%                                  
+1551: 0685:     PASSED.STRING$  = PHKEEP.LOG.NAME$                                  
+1552: 06a0:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1553: 06b2:     PHKEEP.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+1554: 06cd: 
+1555: 06cd:     PASSED.INTEGER% = PHKEEP.OK.SESS%                                   
+1556: 06e4:     PASSED.STRING$  = PHKEEP.OK.NAME$                                   
+1557: 06ff:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1558: 0711:     PHKEEP.OK.SESS% = F20.INTEGER.FILE.NO%                              
+1559: 072c: 
+1560: 072c:     PASSED.INTEGER% = 458                                               
+1561: 0743:     PASSED.STRING$  = SRMOD.DIR.NAME$                                   
+1562: 075e:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1563: 0770:     SRMOD.DIR.SESS% = F20.INTEGER.FILE.NO%                              
+1564: 078b: 
+1565: 078b:     PASSED.INTEGER% = 459                                               
+1566: 07a2:     PASSED.STRING$  = SRPDF.DIR.NAME$                                   
+1567: 07bd:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1568: 07cf:     SRPDF.DIR.SESS% = F20.INTEGER.FILE.NO%                              
+1569: 07ea: 
+1570: 07ea:     PASSED.INTEGER% = 460                                               
+1571: 0801:     PASSED.STRING$  = SRSXF.DIR.NAME$                                   
+1572: 081c:     GOSUB CALL.F20.SESS.NUM.UTILITY                                     
+1573: 082e:     SRSXF.DIR.SESS% = F20.INTEGER.FILE.NO%                              
+1574: 0849: 
+1575: 0849: RETURN
+1576: 0859: 
+1577: 0859: \***********************************************************************
+1578: 0859: \*
+1579: 0859: \*    CALL.F20.SESS.NUM.UTILITY:  
+1580: 0859: \*                
+1581: 0859: \*
+1582: 0859: \***********************************************************************
+1583: 0859: CALL.F20.SESS.NUM.UTILITY: 
+1584: 0869:         
+1585: 0869:    FILE.OPERATION$ = FUNCTION.FLAG$
+1586: 0884:    CURRENT.REPORT.NUM% = PASSED.INTEGER%
+1587: 089d:    RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+1588: 08da:                                  PASSED.STRING$)
+1589: 08da:    IF RC% <> 0 THEN GOTO ERROR.DETECTED
+1590: 08fc: 
+1591: 08fc: RETURN
+1592: 090c: 
+1593: 090c: \***********************************************************************
+1594: 090c: \*
+1595: 090c: \*    CREATE.PHKEEP.LOG:  
+1596: 090c: \*             
+1597: 090c: \***********************************************************************
+1598: 090c: CREATE.FILES:
+1599: 091c: 
+1600: 091c:    PRINT  TIME.STAMP$(2)  + "-Creating Direct And Log Files"        
+1601: 094a: 
+1602: 094a:    CREATE POSFILE SRMOD.DIR.NAME$ AS SRMOD.DIR.SESS% BUFFSIZE 32256 
+1603: 096f: 
+1604: 096f:    CREATE POSFILE SRPDF.DIR.NAME$ AS SRPDF.DIR.SESS% BUFFSIZE 32256 
+1605: 0994: 
+1606: 0994:    CREATE POSFILE SRSXF.DIR.NAME$ AS SRSXF.DIR.SESS% BUFFSIZE 32256 
+1607: 09b9: 
+1608: 09b9: RETURN
+1609: 09c9: 
+1610: 09c9: \***********************************************************************
+1611: 09c9: \*
+1612: 09c9: \*    OPEN.FILES:  
+1613: 09c9: \*              
+1614: 09c9: \*
+1615: 09c9: \***********************************************************************
+1616: 09c9: OPEN.FILES:
+1617: 09d9: 
+1618: 09d9:    IF END #PHKEEP.SESS.NUM% THEN PHKEEP.END
+1619: 09f6:    OPEN PHKEEP.LOG.NAME$ AS PHKEEP.SESS.NUM% APPEND 
+1620: 0a1b:    
+1621: 0a1b:    PRINT "NOT COMING HERE"
+1622: 0a2c: 
+1623: 0a2c: RETURN
+1624: 0a3c: 
+1625: 0a3c: PHKEEP.END:
+1626: 0a4c:     
+1627: 0a4c:    PRINT  TIME.STAMP$(2)  + "- No PHKEEP Log File Program cant be continued"  
+1628: 0a7a:   
+1629: 0a7a:  STOP
+1630: 0a87: \***********************************************************************
+1631: 0a87: \*
+1632: 0a87: \*    MAIN.PROCESSING
+1633: 0a87: \*
+1634: 0a87: \***********************************************************************
+1635: 0a87: MAIN.PROCESSING:   
+1636: 0a97: 
+1637: 0a97:    GOSUB SEQUENTIAL.READ.SRPOG
+1638: 0aa9: 
+1639: 0aa9:    GOSUB SEQUENTIAL.READ.SRMOD
+1640: 0abb: 
+1641: 0abb:    GOSUB SEQUENTIAL.READ.SRSXF
+1642: 0acd: 
+1643: 0acd:    GOSUB SEQUENTIAL.READ.SRPDF 
+1644: 0adf: 
+1645: 0adf:    GOSUB COMPARE.SRMOD
+1646: 0af1:    GOSUB COMPARE.SRPDF
+1647: 0b03: 
+1648: 0b03:    GOSUB CREATE.SRMOD.KEY
+1649: 0b15:    GOSUB CREATE.SRSXF.KEY
+1650: 0b27:    GOSUB CREATE.SRPDF.KEY
+1651: 0b39: 
+1652: 0b39:    GOSUB STOP.BACKGROUNDS
+1653: 0b4b:    GOSUB BACKUP.ORIGINAL  
+1654: 0b5d:    GOSUB DELETE.EXISTING
+1655: 0b6f:    GOSUB COPY.NEW    
+1656: 0b81:    GOSUB START.BACKGROUNDS   
+1657: 0b93: 
+1658: 0b93: RETURN
+1659: 0ba3: 
+1660: 0ba3: \***********************************************************************
+1661: 0ba3: \*
+1662: 0ba3: \*    INITIAL.CHECKS:  
+1663: 0ba3: \*               
+1664: 0ba3: \*
+1665: 0ba3: \***********************************************************************
+1666: 0ba3: INITIAL.CHECKS:
+1667: 0bb3: 
+1668: 0bb3:    PRINT  TIME.STAMP$(2)  + "-Checking the existence of Files"    
+1669: 0be1:    
+1670: 0be1:    
+1671: 0be1:    CALL OSSHELL ("IF EXIST W:/SRMOD.DIR DEL W:/SRMOD.DIR")   
+1672: 0bf5:    CALL OSSHELL ("IF EXIST W:/SRSXF.DIR DEL W:/SRSXF.DIR")
+1673: 0c09:    CALL OSSHELL ("IF EXIST W:/SRPDF.DIR DEL W:/SRPDF.DIR")
+1674: 0c1d:    CALL OSSHELL ("IF EXIST W:/SRMOD.KEY DEL W:/SRMOD.KEY")   
+1675: 0c31:    CALL OSSHELL ("IF EXIST W:/SRSXF.KEY DEL W:/SRSXF.KEY")
+1676: 0c45:    CALL OSSHELL ("IF EXIST W:/SRPDF.KEY DEL W:/SRPDF.KEY")
+1677: 0c59:    CALL OSSHELL ("IF EXIST W:/PHKEEP.OK DEL W:/PHKEEP.OK")
+1678: 0c6d:    CALL OSSHELL ("IF EXIST W:/PHKEEP.ERR DEL W:/PHKEEP.ERR")
+1679: 0c81:    CALL OSSHELL ("IF EXIST W:/PHKEEP.LOG DEL W:/PHKEEP.LOG")  
+1680: 0c95:    
+1681: 0c95:    PRINT  TIME.STAMP$(2)  + "-Checking the existence of D: drive SR files"
+1682: 0cc3:       
+1683: 0cc3:    CALL OSSHELL ("IF EXIST D:/SRPOG.DAT DEL D:/SRPOG.DAT")
+1684: 0cd7:    CALL OSSHELL ("IF EXIST D:/SRMOD.DAT DEL D:/SRMOD.DAT")
+1685: 0ceb:    CALL OSSHELL ("IF EXIST D:/SRSXF.DAT DEL D:/SRSXF.DAT")
+1686: 0cff:    CALL OSSHELL ("IF EXIST D:/SRPDF.DAT DEL D:/SRPDF.DAT")   
+1687: 0d13:     
+1688: 0d13:   RETURN        
+1689: 0d23: 
+1690: 0d23: \***********************************************************************
+1691: 0d23: \*
+1692: 0d23: \*   SEQUENTIAL.READ.SRPOG 
+1693: 0d23: \*               
+1694: 0d23: \*
+1695: 0d23: \***********************************************************************
+1696: 0d23: SEQUENTIAL.READ.SRPOG:
+1697: 0d33: 
+1698: 0d33:    PRINT  TIME.STAMP$(2)  + "-Sequential Reading SRPOG"
+1699: 0d61:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Sequential Reading SRPOG"
+1700: 0d9e:    
+1701: 0d9e:    FILE.OPERATION$ = "O" 
+1702: 0db5:    OPEN SRPOG.FILE.NAME$ DIRECT RECL 512 AS SRPOG.SESS.NUM% NOWRITE NODEL   
+1703: 0dde:    
+1704: 0dde:    I% = 1
+1705: 0df3:    SRPOG% = 0
+1706: 0e08:    RPS%  = 4  
+1707: 0e1d: 
+1708: 0e1d:    SRPOG.FLAG$ = "S"   
+1709: 0e32:    
+1710: 0e32:    WHILE NOT EOF%
+1711: 0e3d:    
+1712: 0e3d:       I% = I% +1 
+1713: 0e56:       IF END #SRPOG.SESS.NUM% THEN SRPOG.END 
+1714: 0e72:       READ FORM "T5,C508"; #SRPOG.SESS.NUM%,I%; SEC$      
+1715: 0ea7: 
+1716: 0ea7:       FOR J% = 1 TO RPS%
+1717: 0ebf: 
+1718: 0ebf:          SRPOG.STRING$ = MID$(SEC$, ((J%-1)* SRPOG.RECL%) +1, SRPOG.RECL%)
+1719: 0f0e:          IF GETN4(SRPOG.STRING$,0) <> 0 THEN BEGIN
+1720: 0f36: 
+1721: 0f36:             SRPOG% = SRPOG% + 1	 
+1722: 0f4f:             SRPOG.ARRAY$(SRPOG%) = SRPOG.STRING$
+1723: 0f7b: 
+1724: 0f7b:          ENDIF ELSE J% = RPS%
+1725: 0f90:       NEXT J%
+1726: 0fbd: 
+1727: 0fbd:    WEND
+1728: 0fd3: 
+1729: 0fd3: SRPOG.END:  
+1730: 0fe3:    
+1731: 0fe3:    EOF% = -1
+1732: 0ff8:    CLOSE SRPOG.SESS.NUM%
+1733: 100c: 
+1734: 100c: RETURN
+1735: 101c: 
+1736: 101c: \***********************************************************************
+1737: 101c: \*
+1738: 101c: \*    SEQUENTIAL.READ.SRMOD
+1739: 101c: \*                
+1740: 101c: \*
+1741: 101c: \***********************************************************************
+1742: 101c: SEQUENTIAL.READ.SRMOD:                                                  
+1743: 102c: 
+1744: 102c:    PRINT  TIME.STAMP$(2)  + "-Sequential Reading SRMOD"               
+1745: 105a:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Sequential Reading SRMOD"             
+1746: 1097:   
+1747: 1097: 
+1748: 1097:    FILE.OPERATION$ = "O"  
+1749: 10ae:    OPEN SRMOD.FILE.NAME$ DIRECT RECL 512 AS SRMOD.SESS.NUM% NOWRITE NODEL
+1750: 10d7:     
+1751: 10d7:    I% = 1
+1752: 10ec:    RPS%  = 1                        
+1753: 1101:    EOF%  = 0 
+1754: 1116:    SRMOD% = 0
+1755: 112b:    SRMOD.FLAG$ = "S"
+1756: 1140:    
+1757: 1140:    WHILE NOT EOF%
+1758: 114b:    
+1759: 114b:       I% = I% +1
+1760: 1164:       IF END #SRMOD.SESS.NUM% THEN SRMOD.END
+1761: 1180:       READ FORM "T5,C508"; #SRMOD.SESS.NUM%,I%; SEC$
+1762: 11b5:                                                                         
+1763: 11b5:       FOR J% = 1 TO RPS%                                                
+1764: 11cd:          SRMOD.STRING$ = SEC$                                           
+1765: 11e6:          SRMOD.STRING$ = MID$(SEC$, 1,508)                              
+1766: 1209:          IF GETN4(SRMOD.STRING$,0) <> 0 THEN BEGIN                      
+1767: 1231:             SRMOD% = SRMOD% + 1                                         
+1768: 124a:             SRMOD.ARR$(SRMOD%) = SRMOD.STRING$                          
+1769: 1276:                                                                         
+1770: 1276: 
+1771: 1276:          ENDIF  ELSE J% = RPS%
+1772: 128b:       NEXT J%
+1773: 12b8:    WEND
+1774: 12ce: 
+1775: 12ce: SRMOD.END:    
+1776: 12de:   
+1777: 12de:    EOF% = -1
+1778: 12f3:    CLOSE SRMOD.SESS.NUM%
+1779: 1307: 
+1780: 1307: RETURN
+1781: 1317: 
+1782: 1317: \***********************************************************************
+1783: 1317: \*
+1784: 1317: \*    SEQUENTIAL.READ.SRSXF 
+1785: 1317: \*                
+1786: 1317: \*
+1787: 1317: \***********************************************************************
+1788: 1317: SEQUENTIAL.READ.SRSXF:   
+1789: 1327: 
+1790: 1327:    PRINT  TIME.STAMP$(2)  + "-Sequential Reading SRSXF and filtering with SRPOG"
+1791: 1355:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2) + "-Sequential Reading SRSXF and filtering with SRPOG"
+1792: 1392: 
+1793: 1392:    FILE.OPERATION$ = "O"  
+1794: 13a9:    OPEN SRSXF.FILE.NAME$ DIRECT RECL 512 AS SRSXF.SESS.NUM% NOWRITE NODEL
+1795: 13d2:     
+1796: 13d2:    I% = 1
+1797: 13e7:    RPS% = 8                        
+1798: 13fc:    EOF% = 0 
+1799: 1411:    SRSXF% = 0
+1800: 1426:    
+1801: 1426:    SRSXF.FLAG$ = "S"
+1802: 143b:    
+1803: 143b:    WHILE NOT EOF%
+1804: 1446:    
+1805: 1446:       I% = I% +1
+1806: 145f:       IF END #SRSXF.SESS.NUM% THEN SRSXF.END
+1807: 147b:       READ FORM "T5,C508"; #SRSXF.SESS.NUM%,I%; SEC$
+1808: 14b0:       
+1809: 14b0:       FOR J% = 1 TO RPS%
+1810: 14c8: 
+1811: 14c8:          SRSXF.STRING$ = MID$(SEC$, ((J%-1)* SRSXF.RECL%) +1, SRSXF.RECL%) 
+1812: 1517:          IF GETN4(SRSXF.STRING$,0) <> 0 THEN BEGIN                       
+1813: 1542: 
+1814: 1542:             SRSXF% = SRSXF% + 1
+1815: 155b: 
+1816: 155b:             ! AS SRSXF file will generally have anything between 10000 to 
+1817: 155b:             ! 90000 records based on the number of planners. It is 
+1818: 155b:             ! impossible to do an array sort so filtering the records
+1819: 155b:             ! and writing it individually to the SRSXF file
+1820: 155b: 
+1821: 155b:             K%     = 1
+1822: 1570: 
+1823: 1570:             WHILE K% <= SRPOG%
+1824: 157b: 
+1825: 157b:                 IF STR$(GETN4(SRSXF.STRING$,0)) = STR$(GETN4(SRPOG.ARRAY$(K%),0)) THEN BEGIN
+1826: 15e0: 
+1827: 15e0:                     SRSXF.COUNT% = SRSXF.COUNT% + 1	
+1828: 15f9: 
+1829: 15f9:                     GOSUB CREATE.SRSXF.DIR
+1830: 160b: 
+1831: 160b:                  ENDIF
+1832: 1613: 
+1833: 1613:                     K% = K% + 1
+1834: 162c:             WEND
+1835: 164a: 
+1836: 164a:          ENDIF  ELSE J% = RPS%
+1837: 165f: 
+1838: 165f:       NEXT J%
+1839: 168c: 
+1840: 168c:    WEND
+1841: 16a2: 
+1842: 16a2: SRSXF.END:      
+1843: 16b2:     
+1844: 16b2:    EOF% = -1
+1845: 16c7:    CLOSE SRSXF.SESS.NUM%
+1846: 16db: 
+1847: 16db: RETURN 
+1848: 16eb: 
+1849: 16eb: \***********************************************************************
+1850: 16eb: \*
+1851: 16eb: \*    SEQUENTIAL.READ.SRPDF 
+1852: 16eb: \*              
+1853: 16eb: \*
+1854: 16eb: \***********************************************************************
+1855: 16eb: SEQUENTIAL.READ.SRPDF:   
+1856: 16fb: 
+1857: 16fb:    PRINT  TIME.STAMP$(2)  + "-Sequential Reading SRPDF"
+1858: 1729:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Sequential Reading SRPDF"
+1859: 1766: 
+1860: 1766:    FILE.OPERATION$ = "O" 
+1861: 177d:    OPEN SRPDF.FILE.NAME$ DIRECT RECL 512 AS SRPDF.SESS.NUM% NOWRITE NODEL
+1862: 17a6:     
+1863: 17a6:    I%     = 1
+1864: 17bb:    RPS%   = 3                        
+1865: 17d0:    EOF%   = 0 
+1866: 17e5:    SRPDF% = 0
+1867: 17fa:    
+1868: 17fa:    SRPDF.FLAG$ = "S"
+1869: 180f:    
+1870: 180f:    WHILE NOT EOF%
+1871: 181a:    
+1872: 181a:       I% = I% +1
+1873: 1833:       IF END #SRPDF.SESS.NUM% THEN SRPDF.END
+1874: 184f:       READ FORM "T5,C508"; #SRPDF.SESS.NUM%,I%; SEC$
+1875: 1884:       
+1876: 1884:       FOR J% = 1 TO RPS%
+1877: 189c: 
+1878: 189c:          SRPDF.STRING$ = SEC$
+1879: 18b5:          SRPDF.STRING$ = MID$(SEC$, ((J%-1)* SRPDF.RECL%) +1, SRPDF.RECL%)
+1880: 1904: 
+1881: 1904:          IF GETN4(SRPDF.STRING$,0) <> 0 THEN BEGIN 
+1882: 192c: 
+1883: 192c:             SRPDF% = SRPDF% + 1
+1884: 1945:             SRPDF.ARRAY$(SRPDF%) = SRPDF.STRING$
+1885: 1971: 
+1886: 1971:          ENDIF  ELSE J% = RPS%
+1887: 1986: 
+1888: 1986:       NEXT J%
+1889: 19b3: 
+1890: 19b3:    WEND
+1891: 19c9: 
+1892: 19c9: SRPDF.END:     
+1893: 19d9:    
+1894: 19d9:    EOF% = -1
+1895: 19ee:    CLOSE SRPDF.SESS.NUM%
+1896: 1a02: 
+1897: 1a02: RETURN 
+1898: 1a12: 
+1899: 1a12: \***********************************************************************
+1900: 1a12: \*
+1901: 1a12: \*    WRITE.PHKEEP.OK  
+1902: 1a12: \*                
+1903: 1a12: \*
+1904: 1a12: \***********************************************************************
+1905: 1a12: WRITE.PHKEEP.OK:
+1906: 1a22:     
+1907: 1a22:    OPEN PHKEEP.OK.NAME$ AS PHKEEP.OK.SESS% APPEND
+1908: 1a47: 
+1909: 1a47:    OK.STRING$ = SRPOG.FLAG$ + SRMOD.FLAG$ + SRSXF.FLAG$ + SRSXF.FLAG$
+1910: 1a7b: 
+1911: 1a7b:    WRITE #PHKEEP.OK.SESS% ; OK.STRING$
+1912: 1a9f:    
+1913: 1a9f:    CLOSE PHKEEP.OK.SESS%
+1914: 1ab4: 
+1915: 1ab4: RETURN
+1916: 1ac4: 
+1917: 1ac4: 
+1918: 1ac4: \***********************************************************************
+1919: 1ac4: \*
+1920: 1ac4: \*    COMPARE.SRMOD   
+1921: 1ac4: \*                
+1922: 1ac4: \*
+1923: 1ac4: \***********************************************************************
+1924: 1ac4: COMPARE.SRMOD:
+1925: 1ad4: 
+1926: 1ad4:    PRINT  TIME.STAMP$(2)  + "-Comparing SRMOD records against SRPOG"
+1927: 1b02:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Comparing SRMOD records against SRPOG"
+1928: 1b3f:     
+1929: 1b3f:    I% = 1
+1930: 1b54:    J% = 1 
+1931: 1b69:    TEMP.COUNT% = 0
+1932: 1b7e:    SRMOD.COUNT% = 0      
+1933: 1b93: 
+1934: 1b93:    FOR J% = 1 TO SRMOD% 
+1935: 1bab: 
+1936: 1bab:         FOUND% = 0        
+1937: 1bc0:         I% = 1
+1938: 1bd5:  
+1939: 1bd5:         WHILE FOUND% = 0 AND I% <= SRPOG% 
+1940: 1be0: 
+1941: 1be0:            IF STR$(GETN4(SRMOD.ARR$(J%),0)) = STR$(GETN4(SRMOD.ARR$(J%),0)) THEN BEGIN
+1942: 1c57: 
+1943: 1c57:                 SRMOD.COUNT% = SRMOD.COUNT% +1
+1944: 1c70: 
+1945: 1c70:                 GOSUB CREATE.SRMOD.DIR 
+1946: 1c82: 
+1947: 1c82:                 FOUND% = -1
+1948: 1c97: 
+1949: 1c97:                 I% = SRPOG%
+1950: 1cac: 
+1951: 1cac:           ENDIF
+1952: 1cb4: 
+1953: 1cb4:                 I% = I% + 1
+1954: 1ccd:         WEND
+1955: 1d08: 
+1956: 1d08:    NEXT J%     
+1957: 1d35: 
+1958: 1d35: RETURN 
+1959: 1d45: 
+1960: 1d45: \***********************************************************************
+1961: 1d45: \*
+1962: 1d45: \*    COMPARE.SRPDF  
+1963: 1d45: \*                
+1964: 1d45: \*
+1965: 1d45: \***********************************************************************
+1966: 1d45: COMPARE.SRPDF:    
+1967: 1d55: 
+1968: 1d55:    PRINT  TIME.STAMP$(2)  + "-Comparing SRPDF records against SRPOG"
+1969: 1d83:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Comparing SRPDF records against SRPOG"
+1970: 1dc0: 
+1971: 1dc0:    I% = 1
+1972: 1dd5:    J% = 1    
+1973: 1dea:    SRPDF.COUNT% = 0
+1974: 1dff: 
+1975: 1dff:    FOR J% = 1 TO SRPDF%        
+1976: 1e17: 
+1977: 1e17:         FOUND% = 0        
+1978: 1e2c:         I% = 1
+1979: 1e41: 
+1980: 1e41:         WHILE FOUND% = 0 AND I% <= SRPOG%
+1981: 1e4c: 
+1982: 1e4c:             IF STR$(GETN4(SRPDF.ARRAY$(J%),0)) = STR$(GETN4(SRPOG.ARRAY$(I%),0)) THEN BEGIN
+1983: 1ec3: 
+1984: 1ec3:                 SRPDF.COUNT%  =  SRPDF.COUNT% + 1
+1985: 1edc: 
+1986: 1edc:                 GOSUB CREATE.SRPDF.DIR
+1987: 1eee:                 FOUND% = -1 
+1988: 1f03: 
+1989: 1f03:                 I% = SRPOG%
+1990: 1f18: 
+1991: 1f18:             ENDIF    
+1992: 1f20: 
+1993: 1f20:                 I% = I% + 1
+1994: 1f39:         WEND
+1995: 1f74: 
+1996: 1f74:    NEXT J%  
+1997: 1fa1: 
+1998: 1fa1: RETURN
+1999: 1fb1: 
+2000: 1fb1: \***********************************************************************
+2001: 1fb1: \*
+2002: 1fb1: \*    CREATE.SRMOD  
+2003: 1fb1: \*                
+2004: 1fb1: \*
+2005: 1fb1: \***********************************************************************
+2006: 1fb1: CREATE.SRMOD.DIR: 
+2007: 1fc1: 
+2008: 1fc1:    WRITE FORM "C508" ;#SRMOD.DIR.SESS% ; SRMOD.ARR$(J%)  
+2009: 1ffb:    
+2010: 1ffb: RETURN
+2011: 200b: 
+2012: 200b: \***********************************************************************
+2013: 200b: \*
+2014: 200b: \*    CREATE.SRSXF 
+2015: 200b: \*                
+2016: 200b: \*
+2017: 200b: \***********************************************************************
+2018: 200b: CREATE.SRSXF.DIR:
+2019: 201b: 
+2020: 201b:    WRITE FORM "C63" ;#SRSXF.DIR.SESS% ; SRSXF.STRING$	
+2021: 2043: 
+2022: 2043: RETURN  
+2023: 2053: 
+2024: 2053: \***********************************************************************
+2025: 2053: \*
+2026: 2053: \*    CREATE.SRPDF  
+2027: 2053: \*               
+2028: 2053: \*
+2029: 2053: \***********************************************************************
+2030: 2053: CREATE.SRPDF.DIR:  
+2031: 2063: 
+2032: 2063:   WRITE FORM "C169" ;#SRPDF.DIR.SESS% ; SRPDF.ARRAY$(J%)   
+2033: 209d: 
+2034: 209d: RETURN
+2035: 20ad: 
+2036: 20ad: \***********************************************************************
+2037: 20ad: \*
+2038: 20ad: \*    CREATE.SRMOD.KEY  
+2039: 20ad: \*               
+2040: 20ad: \*
+2041: 20ad: \***********************************************************************
+2042: 20ad: CREATE.SRMOD.KEY:
+2043: 20bd: 
+2044: 20bd:     PRINT  TIME.STAMP$(2)  + "-Creating SRMOD Key file from direct file"
+2045: 20eb:     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Creating SRMOD Key file from direct file"   
+2046: 2128:      
+2047: 2128:     CLOSE SRMOD.DIR.SESS%
+2048: 213d: 
+2049: 213d:     PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+2050: 2152:     COMM.TAIL$ = "-C TURBO.286 KEYUP"     + " "                         \
+2051: 2212:                    +  SRMOD.DIR.NAME$     + " "                         \
+2052: 2212:                    +  SRMOD.KEY.NAME$     + " "                         \
+2053: 2212:                    + "-k:" + STR$(6)      + " "                         \
+2054: 2212:                    + "-l:" + STR$(508)    + " "                         \
+2055: 2212:                    + "-r:" + STR$(4000)   + " "                         \
+2056: 2212:                    + "-o"  +  " "         + " "                         \
+2057: 2212:                    + "-d:" + STR$(3)      + " "                         !
+2058: 2212: 
+2059: 2212:     SVC.PARAM$   = STRING$(28,"0")
+2060: 2230:     GOSUB EXECUTE.SVC
+2061: 2242: 
+2062: 2242: 
+2063: 2242: RETURN
+2064: 2252: \***********************************************************************
+2065: 2252: \*                
+2066: 2252: \*    CREATE.SRSXF.KEY  
+2067: 2252: \*                
+2068: 2252: \*
+2069: 2252: \***********************************************************************
+2070: 2252: CREATE.SRSXF.KEY:
+2071: 2262: 
+2072: 2262:     PRINT  TIME.STAMP$(2)  + "-Creating SRSXF Key file from direct file"
+2073: 2290:     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Creating SRSXF Key file from direct file" 
+2074: 22cd: 
+2075: 22cd:     CLOSE SRSXF.DIR.SESS%
+2076: 22e2: 
+2077: 22e2:     PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+2078: 22f7:     COMM.TAIL$ = "-C TURBO.286 KEYUP"     + " "                         \
+2079: 23b7:                    +  SRSXF.DIR.NAME$     + " "                         \
+2080: 23b7:                    +  SRSXF.KEY.NAME$     + " "                         \
+2081: 23b7:                    + "-k:" + STR$(6)      + " "                         \
+2082: 23b7:                    + "-l:" + STR$(63)     + " "                         \
+2083: 23b7:                    + "-r:" + STR$(60000)  + " "                         \
+2084: 23b7:                    + "-o"  +  " "         + " "                         \
+2085: 23b7:                    + "-d:" + STR$(3)      + " "                         !
+2086: 23b7: 
+2087: 23b7:     SVC.PARAM$   = STRING$(28,"0")
+2088: 23d5:     GOSUB EXECUTE.SVC
+2089: 23e7: 
+2090: 23e7: RETURN
+2091: 23f7: 
+2092: 23f7: \***********************************************************************
+2093: 23f7: \*
+2094: 23f7: \*    CREATE.SRPDF.KEY 
+2095: 23f7: \*               
+2096: 23f7: \*
+2097: 23f7: \***********************************************************************
+2098: 23f7: CREATE.SRPDF.KEY:
+2099: 2407: 
+2100: 2407:    PRINT  TIME.STAMP$(2)  + "-Creating SRPDF Key file from direct file"
+2101: 2435:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Creating SRPDF Key file from direct file"
+2102: 2472:      
+2103: 2472:    CLOSE SRPDF.DIR.SESS%
+2104: 2487: 
+2105: 2487:    PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+2106: 249c:    COMM.TAIL$ = "-C TURBO.286 KEYUP"     + " "                          \
+2107: 255c:                    +  SRPDF.DIR.NAME$    + " "                          \
+2108: 255c:                    +  SRPDF.KEY.NAME$    + " "                          \
+2109: 255c:                    + "-k:" + STR$(4)     + " "                          \
+2110: 255c:                    + "-l:" + STR$(169)   + " "                          \
+2111: 255c:                    + "-r:" + STR$(6000)  + " "                          \
+2112: 255c:                    + "-o"  +  " "        + " "                          \
+2113: 255c:                    + "-d:" + STR$(3)     + " "                          !
+2114: 255c: 
+2115: 255c:    SVC.PARAM$   = STRING$(28,"0")
+2116: 257a:    GOSUB EXECUTE.SVC
+2117: 258c:     
+2118: 258c: RETURN
+2119: 259c: 
+2120: 259c: \*****************************************************************************
+2121: 259c: \***    SUBROUTINE : EXECUTE.SVC                                             *
+2122: 259c: \***    DETAILS    : EXECUTES APPLICATION ASYNC                              *
+2123: 259c: \*****************************************************************************
+2124: 259c: 
+2125: 259c: EXECUTE.SVC:
+2126: 25ac: 
+2127: 25ac:     PINFO.TABLE$  = "DURATION  " + CHR$(200) + STRING$(9,CHR$(00))
+2128: 25e7:     PROG.NAME$   = PROG.NAME$ + CHR$(00)
+2129: 260a:     COMM.TAIL$   = COMM.TAIL$ + CHR$(00)
+2130: 262d:     CALL PUTN4(SVC.PARAM$,  0, 00000000H)
+2131: 2652:     CALL PUTN4(SVC.PARAM$,  4, 00000000H)
+2132: 2677:     CALL PUTN4(SVC.PARAM$,  8, SADD(PROG.NAME$) + 2)
+2133: 26a9:     CALL PUTN4(SVC.PARAM$, 12, SADD(COMM.TAIL$) + 2)
+2134: 26db:     CALL PUTN4(SVC.PARAM$, 16, LEN(COMM.TAIL$) - 1)
+2135: 270c:     CALL PUTN4(SVC.PARAM$, 20, SADD(PINFO.TABLE$) + 2)
+2136: 2741:     CALL PUTN4(SVC.PARAM$, 24, 00000000H)
+2137: 2766:     CALL FLEXOSSVC(38, SVC.PARAM$)
+2138: 2783: 
+2139: 2783: RETURN
+2140: 2793: \***********************************************************************
+2141: 2793: \*
+2142: 2793: \*    STOP.BACKGROUNDS 
+2143: 2793: \*                
+2144: 2793: \*
+2145: 2793: \***********************************************************************
+2146: 2793: STOP.BACKGROUNDS:
+2147: 27a3:  
+2148: 27a3:    PRINT  TIME.STAMP$(2)  + "-Stopping BGMON Application"
+2149: 27d1:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Stopping BGMON Application"   
+2150: 280e:    
+2151: 280e:    CALL OSSHELL("C:\ADX_UPGM\BGSTOP" + SPACE$ + "ADX_UPGM:BGMON.286")   
+2152: 2839:    
+2153: 2839:    PRINT  TIME.STAMP$(2)  + "-Stopping TRANSACT Application"
+2154: 2867:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Stopping TRANSACT Application" 
+2155: 28a4:    
+2156: 28a4:    CALL OSSHELL("C:\ADX_UPGM\BGSTOP" + SPACE$ + "ADX_UPGM:TRANSACT.286")  
+2157: 28cf:  
+2158: 28cf: RETURN
+2159: 28df: 
+2160: 28df: \***********************************************************************
+2161: 28df: \*
+2162: 28df: \*    BACKUP.ORIGINALS
+2163: 28df: \*                
+2164: 28df: \*
+2165: 28df: \***********************************************************************
+2166: 28df: BACKUP.ORIGINAL:
+2167: 28ef: 
+2168: 28ef:    PRINT  TIME.STAMP$(2)  + "-Creating backups"
+2169: 291d:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Creating backups"    
+2170: 295a: 
+2171: 295a:    CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRPOG.DAT",                 \               
+2172: 29b6:                      "ADXLXACN::D:\SRPOG.DAT",0,0)   
+2173: 29b6: 
+2174: 29b6:    IF RC% = 0 THEN BEGIN
+2175: 29d5: 
+2176: 29d5:        PRINT  TIME.STAMP$(2)  + "-Backing up of SRPOG Successful"
+2177: 2a03:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Backinup of SRPOG Successful"
+2178: 2a40: 
+2179: 2a40:    ENDIF
+2180: 2a48: 
+2181: 2a48:    CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRMOD.DAT",                 \               
+2182: 2aa4:                      "ADXLXACN::D:\SRMOD.DAT",0,0)
+2183: 2aa4: 
+2184: 2aa4:    IF RC% = 0 THEN BEGIN
+2185: 2ac3: 
+2186: 2ac3:        PRINT  TIME.STAMP$(2)  + "-Backing up of SRMOD Successful"
+2187: 2af1:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Backinup of SRMOD Successful"
+2188: 2b2e: 
+2189: 2b2e:    ENDIF   
+2190: 2b36: 
+2191: 2b36: 
+2192: 2b36:    CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRSXF.DAT",                 \               
+2193: 2b92:                      "ADXLXACN::D:\SRSXF.DAT",0,0) 
+2194: 2b92: 
+2195: 2b92:    IF RC% = 0 THEN BEGIN
+2196: 2bb1: 
+2197: 2bb1:        PRINT  TIME.STAMP$(2)  + "-Backing up of SRSXF Successful"
+2198: 2bdf:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Backinup of SRSXF Successful"
+2199: 2c1c: 
+2200: 2c1c:    ENDIF
+2201: 2c24: 
+2202: 2c24:    CALL ADXCOPYF(RC%,"ADXLXACN::D:\ADX_UDT3\SRPDF.DAT",                 \               
+2203: 2c80:                      "ADXLXACN::D:\SRPDF.DAT",0,0)   
+2204: 2c80: 
+2205: 2c80:    IF RC% = 0 THEN BEGIN
+2206: 2c9f: 
+2207: 2c9f:        PRINT  TIME.STAMP$(2)  + "-Backing up of SRPDF Successful"
+2208: 2ccd:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Backinup of SRPDF Successful"
+2209: 2d0a: 
+2210: 2d0a:    ENDIF
+2211: 2d12: 
+2212: 2d12: RETURN
+2213: 2d22: 
+2214: 2d22: \***********************************************************************
+2215: 2d22: \*
+2216: 2d22: \*    DELETE EXISTING 
+2217: 2d22: \*              
+2218: 2d22: \*
+2219: 2d22: \***********************************************************************
+2220: 2d22: DELETE.EXISTING: 
+2221: 2d32: 
+2222: 2d32:    PRINT  TIME.STAMP$(2)  + "-Deleting SRMOD original"
+2223: 2d60:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Deleting SRMOD original"    
+2224: 2d9d:   
+2225: 2d9d:    OPEN SRMOD.FILE.NAME$ AS SRMOD.SESS.NUM%
+2226: 2dc4: 
+2227: 2dc4:    DELETE SRMOD.SESS.NUM%
+2228: 2dd8:    
+2229: 2dd8:    PRINT  TIME.STAMP$(2)  + "-Deleting SRPDF original"
+2230: 2e06:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Deleting SRPDF original"    
+2231: 2e43:   
+2232: 2e43:    OPEN SRPDF.FILE.NAME$ AS SRPDF.SESS.NUM%
+2233: 2e6a: 
+2234: 2e6a:    DELETE SRPDF.SESS.NUM%
+2235: 2e7e:    
+2236: 2e7e:    PRINT  TIME.STAMP$(2)  + "-Deleting SRSXF original"
+2237: 2eac:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Deleting SRSXF original"    
+2238: 2ee9:   
+2239: 2ee9:    OPEN SRSXF.FILE.NAME$ AS SRSXF.SESS.NUM%
+2240: 2f10: 
+2241: 2f10:    DELETE SRSXF.SESS.NUM%  
+2242: 2f24: 
+2243: 2f24: RETURN
+2244: 2f34: 
+2245: 2f34: \***********************************************************************
+2246: 2f34: \*
+2247: 2f34: \*    COPY NEW 
+2248: 2f34: \*             
+2249: 2f34: \*
+2250: 2f34: \***********************************************************************
+2251: 2f34: COPY.NEW:
+2252: 2f44: 
+2253: 2f44:    GOSUB REKEY.SRPOG
+2254: 2f56: 
+2255: 2f56:    PRINT  TIME.STAMP$(2)  + "-Copying New files"
+2256: 2f84:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Copying New Files"    
+2257: 2fc1: 
+2258: 2fc1:    CALL ADXCOPYF(RC%,"ADXLXACN::W:\SRMOD.KEY",                 \               
+2259: 301d:                      "ADXLXACN::D:\ADX_UDT3\SRMOD.DAT",0,0)   
+2260: 301d: 
+2261: 301d:    IF RC% = 0 THEN BEGIN
+2262: 303f: 
+2263: 303f:        PRINT  TIME.STAMP$(2)  + "- New SRMOD has been copied successfuly"
+2264: 306d:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-New SRMOD has been copied successfuly"
+2265: 30aa:        SRMOD.FLAG$ = "E"
+2266: 30bf: 
+2267: 30bf:    ENDIF
+2268: 30c7:    
+2269: 30c7:    CALL ADXCOPYF(RC%,"ADXLXACN::W:\SRSXF.KEY",                 \               
+2270: 3123:                      "ADXLXACN::D:\ADX_UDT3\SRSXF.DAT",0,0)   
+2271: 3123: 
+2272: 3123:    IF RC% = 0 THEN BEGIN
+2273: 3145: 
+2274: 3145:        PRINT  TIME.STAMP$(2)  + "- New SRSXF has been copied successfuly"
+2275: 3173:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-New SRSXF has been copied successfuly"
+2276: 31b0:        SRSXF.FLAG$ = "E"
+2277: 31c5: 
+2278: 31c5:    ENDIF   
+2279: 31cd: 
+2280: 31cd:    CALL ADXCOPYF(RC%,"ADXLXACN::W:\SRPDF.KEY",                 \               
+2281: 3229:                      "ADXLXACN::D:\ADX_UDT3\SRPDF.DAT",0,0) 
+2282: 3229: 
+2283: 3229:    IF RC% = 0 THEN BEGIN
+2284: 324b:    
+2285: 324b:        PRINT  TIME.STAMP$(2)  + "- New SRPDF has been copied successfuly"
+2286: 3279:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-New SRPDF has been copied successfuly"
+2287: 32b6: 
+2288: 32b6:        SRPDF.FLAG$ = "E"
+2289: 32cb: 
+2290: 32cb:    ENDIF
+2291: 32d3: 
+2292: 32d3: 
+2293: 32d3: RETURN
+2294: 32e3: 
+2295: 32e3: \***********************************************************************
+2296: 32e3: \*
+2297: 32e3: \*    REKEY.SRPOG   
+2298: 32e3: \*                
+2299: 32e3: \*
+2300: 32e3: \***********************************************************************
+2301: 32e3: REKEY.SRPOG:
+2302: 32f3: 
+2303: 32f3:     PRINT  TIME.STAMP$(2)  + "-Rekeying SRPOG File"
+2304: 3321:     PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Rekeying SRPOG File" 
+2305: 335e: 
+2306: 335e:     SRPOG.TEMP.NAME$ = "ADXLXACN::D:\ADX_UDT3\SRPOG.TST"
+2307: 3373: 
+2308: 3373:     PROG.NAME$ = "C:\ADX_SPGM\COMMAND.286"
+2309: 3388:     COMM.TAIL$ = "-C TURBO.286 REKEY"     + " "                         \
+2310: 341f:                    +  SRPOG.FILE.NAME$    + " "                         \
+2311: 341f:                    +  SRPOG.TEMP.NAME$    + " "                         \
+2312: 341f:                    + "-r:" + STR$(100)    + "%"                         \
+2313: 341f:                    +  SPACE$ +                                          \
+2314: 341f:                    + "-o"  +  " "         + " "                         \
+2315: 341f:                    + "-z"  +  " "         + " "                         \
+2316: 341f:                    + "-d:" + STR$(3)      + " "                         !
+2317: 341f: 
+2318: 341f:     SVC.PARAM$   = STRING$(28,"0")
+2319: 343d:     GOSUB EXECUTE.SVC
+2320: 344f: 
+2321: 344f:     SRPOG.FLAG$ = "E"
+2322: 3464: 
+2323: 3464: RETURN
+2324: 3474: \***********************************************************************
+2325: 3474: \*
+2326: 3474: \*    START.BACKGROUNDS 
+2327: 3474: \*                
+2328: 3474: \*
+2329: 3474: \***********************************************************************
+2330: 3474: START.BACKGROUNDS:
+2331: 3484:  
+2332: 3484:    PRINT  TIME.STAMP$(2)  + "-Starting BGMON Application"
+2333: 34b2:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Starting BGMON Application"   
+2334: 34ef:    
+2335: 34ef:    CALL OSSHELL("C:\ADX_UPGM\BGSTART" + SPACE$ + "ADX_UPGM:BGMON.286")   
+2336: 351a:    
+2337: 351a:    PRINT  TIME.STAMP$(2)  + "-Starting TRANSACT Application"
+2338: 3548:    PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Starting TRANSACT Application" 
+2339: 3585:    
+2340: 3585:    CALL OSSHELL("C:\ADX_UPGM\BGSTART" + SPACE$ + "ADX_UPGM:TRANSACT.286")  
+2341: 35b0:  
+2342: 35b0: RETURN
+2343: 35c0: 
+2344: 35c0: \***********************************************************************
+2345: 35c0: \*
+2346: 35c0: \*    TERMINATION   
+2347: 35c0: \*               
+2348: 35c0: \*
+2349: 35c0: \***********************************************************************
+2350: 35c0: TERMINATION:
+2351: 35d0: 
+2352: 35d0:    GOSUB WRITE.PHKEEP.OK     
+2353: 35e2:    
+2354: 35e2:    IF ERROR.CNT% = 0 THEN BEGIN  
+2355: 3600: 
+2356: 3600:        PRINT  TIME.STAMP$(2)  + "-Renaming error file to OK file"
+2357: 362e:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Renaming error file to OK file"    
+2358: 366b: 
+2359: 366b:        RC% = RENAME("W:/PHKEEP.OK","W:/PHKEEP.ERR")   
+2360: 368e: 
+2361: 368e: 
+2362: 368e:        PRINT  TIME.STAMP$(2)  + "-Read " +  STR$(SRMOD%) + " SRMOD records"  + \
+2363: 36f8:                            + " Written " + STR$(SRMOD.COUNT%) + " In to New file"
+2364: 36f8: 
+2365: 36f8:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Read " +  STR$(SRMOD%) +   \
+2366: 3771:           " SRMOD records" + " Written " + STR$(SRMOD.COUNT%) + " In to New file"
+2367: 3771: 
+2368: 3771:        PRINT  TIME.STAMP$(2)  + "-Read " +  STR$(SRSXF%) + " SRSXF records"  + \
+2369: 37db:                            + " Written " + STR$(SRSXF.COUNT%) + " In to New file"
+2370: 37db: 
+2371: 37db:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Read " +  STR$(SRSXF%) +   \
+2372: 3854:           " SRSXF records" + " Written " + STR$(SRSXF.COUNT%) + " In to New file"
+2373: 3854: 
+2374: 3854:        PRINT  TIME.STAMP$(2)  + "-Read " +  STR$(SRPDF%) + " SRPDF records"  + \
+2375: 38be:                           + " Written " + STR$(SRPDF.COUNT%) + " In to New file"
+2376: 38be: 
+2377: 38be:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-Read " +  STR$(SRPDF%) +   \
+2378: 3937:          " SRPDF records" + " Written " + STR$(SRPDF.COUNT%) + " In to New file"
+2379: 3937: 
+2380: 3937:        PRINT  TIME.STAMP$(2)  + "- Program completed successfully"
+2381: 3965:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "- Program completed successfuly"
+2382: 39a2: 
+2383: 39a2:    ENDIF
+2384: 39aa:    
+2385: 39aa:     
+2386: 39aa:    GOSUB CLOSE.FILES
+2387: 39bc:    GOSUB HOUSEKEEP.WDRIVE
+2388: 39ce:    GOSUB DEALLOCATE.SESS.NUM
+2389: 39e0:      
+2390: 39e0: 
+2391: 39e0: RETURN
+2392: 39f0: 
+2393: 39f0: \***********************************************************************
+2394: 39f0: \*
+2395: 39f0: \*    HOUSEKEEP.WDRIVE  
+2396: 39f0: \*               
+2397: 39f0: \*
+2398: 39f0: \*********************************************************************** 
+2399: 39f0: HOUSEKEEP.WDRIVE:
+2400: 3a00: 
+2401: 3a00: 
+2402: 3a00:    CALL OSSHELL ("IF EXIST W:/SRMOD.DIR DEL W:/SRMOD.DIR")   
+2403: 3a14:    CALL OSSHELL ("IF EXIST W:/SRSXF.DIR DEL W:/SRSXF.DIR")   
+2404: 3a28:    CALL OSSHELL ("IF EXIST W:/SRPDF.DIR DEL W:/SRPDF.DIR")   
+2405: 3a3c:    CALL OSSHELL ("IF EXIST W:/SRMOD.KEY DEL W:/SRMOD.KEY")   
+2406: 3a50:    CALL OSSHELL ("IF EXIST W:/SRSXF.KEY DEL W:/SRSXF.KEY")   
+2407: 3a64:    CALL OSSHELL ("IF EXIST W:/SRPDF.KEY DEL W:/SRPDF.KEY")   
+2408: 3a78: 
+2409: 3a78: 
+2410: 3a78: RETURN
+2411: 3a88: 
+2412: 3a88: \***********************************************************************
+2413: 3a88: \*
+2414: 3a88: \*    ERROR.LOG  
+2415: 3a88: \*               
+2416: 3a88: \*
+2417: 3a88: \***********************************************************************
+2418: 3a88: ERROR.LOG: 
+2419: 3a98:         
+2420: 3a98:          VAR.STRING.1$ = FILE.OPERATION$                     +          \
+2421: 3b2e:                 CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +          \
+2422: 3b2e:                 CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +          \
+2423: 3b2e:                 CURRENT.CODE$
+2424: 3b2e:          VAR.STRING.2$ = "PHKEEP"
+2425: 3b43:          MESSAGE.NO%   = 0
+2426: 3b58:          EVENT.NO%     = 106
+2427: 3b6f: 
+2428: 3b6f:          RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,               \
+2429: 3bb2:                       VAR.STRING.2$,EVENT.NO%)
+2430: 3bb2: 
+2431: 3bb2:          GOSUB WRITE.PHKEEP.OK
+2432: 3bc4: 
+2433: 3bc4:          GOTO END.PROGRAM
+2434: 3bcf: 
+2435: 3bcf: RETURN
+2436: 3bdf: 
+2437: 3bdf: \***********************************************************************
+2438: 3bdf: \*
+2439: 3bdf: \*    CLOSEFILES:
+2440: 3bdf: \*                
+2441: 3bdf: \*
+2442: 3bdf: \***********************************************************************
+2443: 3bdf: 
+2444: 3bdf: CLOSE.FILES:
+2445: 3bef:    
+2446: 3bef:    CLOSE PHKEEP.SESS.NUM%
+2447: 3c04:    
+2448: 3c04: RETURN  
+2449: 3c14: \***********************************************************************
+2450: 3c14: \*
+2451: 3c14: \*    DEALLOCATE.SESS.NUM%  
+2452: 3c14: \*                
+2453: 3c14: \*
+2454: 3c14: \***********************************************************************
+2455: 3c14: DEALLOCATE.SESS.NUM: 
+2456: 3c24: 
+2457: 3c24:     FUNCTION.FLAG$ = "C"   
+2458: 3c39:     
+2459: 3c39:     PASSED.INTEGER% = SRPOG.REPORT.NUM%                                
+2460: 3c56:     PASSED.STRING$  = SRPOG.FILE.NAME$                                 
+2461: 3c74:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2462: 3c86:     SRPOG.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+2463: 3c9c: 
+2464: 3c9c:     PASSED.INTEGER% = SRMOD.REPORT.NUM%                                
+2465: 3cb9:     PASSED.STRING$  = SRMOD.FILE.NAME$                                 
+2466: 3cd7:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2467: 3ce9:     SRMOD.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+2468: 3cff: 
+2469: 3cff:     PASSED.INTEGER% = SRSXF.REPORT.NUM%                                
+2470: 3d1c:     PASSED.STRING$  = SRSXF.FILE.NAME$                                 
+2471: 3d3a:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2472: 3d4c:     SRSXF.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+2473: 3d62: 
+2474: 3d62:     PASSED.INTEGER% = SRPDF.REPORT.NUM%                                
+2475: 3d7f:     PASSED.STRING$  = SRPDF.FILE.NAME$                                 
+2476: 3d9d:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2477: 3daf:     SRPDF.SESS.NUM% = F20.INTEGER.FILE.NO%                             
+2478: 3dc5: 
+2479: 3dc5:     PASSED.INTEGER% = PHKEEP.SESS.NUM%                                 
+2480: 3ddc:     PASSED.STRING$  = PHKEEP.LOG.NAME$                                 
+2481: 3df7:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2482: 3e09:     PHKEEP.SESS.NUM% = F20.INTEGER.FILE.NO%                            
+2483: 3e24: 
+2484: 3e24:     PASSED.INTEGER% = PHKEEP.OK.SESS%                                  
+2485: 3e3b:     PASSED.STRING$  = PHKEEP.OK.NAME$                                  
+2486: 3e56:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2487: 3e68:     PHKEEP.OK.SESS% = F20.INTEGER.FILE.NO%                             
+2488: 3e83: 
+2489: 3e83:     PASSED.INTEGER% = 458                                              
+2490: 3e9a:     PASSED.STRING$  = SRMOD.DIR.NAME$                                  
+2491: 3eb5:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2492: 3ec7:     SRMOD.DIR.SESS% = F20.INTEGER.FILE.NO%                             
+2493: 3ee2: 
+2494: 3ee2:     PASSED.INTEGER% = 459                                              
+2495: 3ef9:     PASSED.STRING$  = SRPDF.DIR.NAME$                                  
+2496: 3f14:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2497: 3f26:     SRPDF.DIR.SESS% = F20.INTEGER.FILE.NO%                             
+2498: 3f41: 
+2499: 3f41:     PASSED.INTEGER% = 460                                              
+2500: 3f58:     PASSED.STRING$  = SRSXF.DIR.NAME$                                  
+2501: 3f73:     GOSUB CALL.F20.SESS.NUM.UTILITY                                    
+2502: 3f85:     SRSXF.DIR.SESS% = F20.INTEGER.FILE.NO%                             
+2503: 3fa0: 
+2504: 3fa0: 
+2505: 3fa0: RETURN
+2506: 3fb0: 
+2507: 3fb0: \***********************************************************************
+2508: 3fb0: \*
+2509: 3fb0: \*    ERROR.DETECTED  
+2510: 3fb0: \*              
+2511: 3fb0: \*
+2512: 3fb0: \***********************************************************************
+2513: 3fb0: ERROR.DETECTED:
+2514: 3fc0: 
+2515: 3fc0: 
+2516: 3fc0:    ERROR.CNT% = ERROR.CNT% + 1
+2517: 3fd9: 
+2518: 3fd9:    IF ERR = "OE" AND ERRF% = SRPOG.SESS.NUM% THEN BEGIN
+2519: 402c:        PRINT  TIME.STAMP$(2)  + "-NO SRPOG File, program can't be continued"
+2520: 405a:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-NO SRPOG File, program can't be continued"
+2521: 4097:        SRPOG.FLAG$ = "X" 
+2522: 40ac:        GOSUB ERROR.LOG
+2523: 40be:    ENDIF
+2524: 40c6:    
+2525: 40c6:    IF ERR = "OE" AND ERRF% = SRMOD.SESS.NUM% THEN BEGIN
+2526: 4119:        PRINT  TIME.STAMP$(2)  + "-NO SRMOD File, program can't be continued"
+2527: 4147:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-NO SRMOD File, program can't be continued"
+2528: 4184:        SRMOD.FLAG$ = "X" 
+2529: 4199:        GOSUB ERROR.LOG
+2530: 41ab:    ENDIF
+2531: 41b3:    
+2532: 41b3:    IF ERR = "OE" AND ERRF% = SRSXF.SESS.NUM% THEN BEGIN
+2533: 4206:        PRINT  TIME.STAMP$(2)  + "-NO SRSXF File, program can't be continued"
+2534: 4234:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-NO SRSXF File, program can't be continued"
+2535: 4271:        SRSXF.FLAG$ = "X" 
+2536: 4286:        GOSUB ERROR.LOG
+2537: 4298:    ENDIF
+2538: 42a0:    
+2539: 42a0:    IF ERR = "OE" AND ERRF% = SRPDF.SESS.NUM% THEN BEGIN
+2540: 42f3:        PRINT  TIME.STAMP$(2)  + "-NO SRPDF File, program can't be continued"
+2541: 4321:        PRINT  #PHKEEP.SESS.NUM%; TIME.STAMP$(2)  + "-NO SRPDF File, program can't be continued"
+2542: 435e:        SRPDF.FLAG$ = "X" 
+2543: 4373:        GOSUB ERROR.LOG
+2544: 4385:    ENDIF    
+2545: 438d:    
+2546: 438d:    
+2547: 438d:    PRINT ERR
+2548: 43a2:    PRINT ERRF%
+2549: 43b5:    PRINT ERRL
+2550: 43c8: 
+2551: 43c8: RETURN  
+2552: 43d8: 
+2553: 43d8: \***********************************************************************
+2554: 43d8: \*
+2555: 43d8: \*    STOP.PROGRAM 
+2556: 43d8: \*              
+2557: 43d8: \*
+2558: 43d8: \***********************************************************************
+2559: 43d8: 
+2560: 43d8:    END.PROGRAM:
+2561: 43ed: 
+2562: 43ed:    END 
+2563: 43ed:        
+2564: 43ed: 
+2565: 43ed: End of Compilation

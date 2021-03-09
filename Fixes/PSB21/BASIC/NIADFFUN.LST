@@ -1,0 +1,191 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***                NIADF FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***                REFERENCE   : NIADFFUN.BAS
+   8: 0000: \***
+   9: 0000: \***    VERSION A.       Charles Skadorwa                         20 July 2011
+  10: 0000: \***
+  11: 0000: \******************************************************************************
+  12: 0000: \******************************************************************************
+  13: 0000: 
+  14: 0000:   INTEGER*2 GLOBAL            \
+  15: 0000:          CURRENT.REPORT.NUM%
+  16: 0000: 
+  17: 0000:   STRING GLOBAL               \
+  18: 0000:          CURRENT.CODE$,       \
+  19: 0000:          FILE.OPERATION$
+  20: 0000: 
+  21: 0000:   %INCLUDE NIADFDEC.J86
+  22: 0000: REM \
+  23: 0000: \******************************************************************************
+  24: 0000: \******************************************************************************
+  25: 0000: \***
+  26: 0000: \***         %INCLUDE FOR NIADF FILE - FIELD DECLARATIONS
+  27: 0000: \***                                  FILE REFERENCE PARAMETERS
+  28: 0000: \***
+  29: 0000: \***                  FILE TYPE    : Keyed
+  30: 0000: \***
+  31: 0000: \***                  REFERENCE    : NIADFDEC.J86
+  32: 0000: \***
+  33: 0000: \***         VERSION A :Charles Skadorwa     20 July 2011
+  34: 0000: \***
+  35: 0000: \***    New Items in Active Deals.                     
+  36: 0000: \*******************************************************************************
+  37: 0000: \*******************************************************************************
+  38: 0000: 
+  39: 0000:   STRING GLOBAL           \
+  40: 0000:     NIADF.FILE.NAME$,      \ File name - NIADF.BIN
+  41: 0000:     NIADF.ITEM.CODE$,      \ 3  byte UPD Boots item code (excluding check digit)
+  42: 0000:     NIADF.DATE.ADDED$      ! 3 byte UPD Date Added
+  43: 0000: 
+  44: 0000:   INTEGER*2 GLOBAL        \
+  45: 0000:     NIADF.RECL%,           \ Record Length - 56
+  46: 0000:     NIADF.REPORT.NUM%,     \ Drug File session Report Number
+  47: 0000:     NIADF.SESS.NUM%        ! Drug File Session Number
+  48: 0000:     
+  49: 0000: 
+  50: 0000:   FUNCTION NIADF.SET PUBLIC
+  51: 0014: \*************************
+  52: 0014: 
+  53: 0014:      NIADF.REPORT.NUM% = 830
+  54: 001d:      NIADF.RECL%       = 6
+  55: 0026:      NIADF.FILE.NAME$  = "NIADF"
+  56: 0035: 
+  57: 0035:   END FUNCTION
+  58: 0041: \------------------------------------------------------------------------------
+  59: 0041: 
+  60: 0041: 
+  61: 0041:   FUNCTION READ.NIADF PUBLIC
+  62: 0055: \**************************
+  63: 0055:   INTEGER*2 READ.NIADF
+  64: 0055: 
+  65: 0055:     READ.NIADF = 1
+  66: 005a:     IF END #NIADF.SESS.NUM% THEN READ.ERROR
+  67: 006e:     READ FORM "T4,C3";                         \
+  68: 00a0:          #NIADF.SESS.NUM%                       \
+  69: 00a0:          KEY NIADF.ITEM.CODE$;                  \
+  70: 00a0:          NIADF.DATE.ADDED$                      \
+  71: 00a0: 
+  72: 00a0:      READ.NIADF = 0
+  73: 00a5: 
+  74: 00a5:      EXIT FUNCTION
+  75: 00a7: 
+  76: 00a7:      READ.ERROR:
+  77: 00a7:         FILE.OPERATION$     EQ "R"
+  78: 00b6:         CURRENT.REPORT.NUM% EQ NIADF.REPORT.NUM%
+  79: 00c4:         CURRENT.CODE$       EQ UNPACK$(NIADF.ITEM.CODE$)
+  80: 00df: 
+  81: 00df:         EXIT FUNCTION
+  82: 00e1: 
+  83: 00e1:   END FUNCTION
+  84: 00f0: \------------------------------------------------------------------------------
+  85: 00f0: 
+  86: 00f0:   FUNCTION READ.NIADF.LOCK PUBLIC
+  87: 0104: \*******************************
+  88: 0104: 
+  89: 0104:     INTEGER*2 READ.NIADF.LOCK
+  90: 0104: 
+  91: 0104:     READ.NIADF.LOCK = 1
+  92: 0109: 
+  93: 0109:     IF END #NIADF.SESS.NUM% THEN READ.LOCK.ERROR
+  94: 011d:     READ FORM "T4,C3";                        \
+  95: 014f:          #NIADF.SESS.NUM% AUTOLOCK             \
+  96: 014f:          KEY NIADF.ITEM.CODE$;                 \
+  97: 014f:          NIADF.DATE.ADDED$
+  98: 014f: 
+  99: 014f:     READ.NIADF.LOCK = 0
+ 100: 0154:     EXIT FUNCTION
+ 101: 0156: 
+ 102: 0156:     READ.LOCK.ERROR:
+ 103: 0156: 
+ 104: 0156:        CURRENT.CODE$ = UNPACK$(NIADF.ITEM.CODE$)
+ 105: 0171:        FILE.OPERATION$ = "R"
+ 106: 0180:        CURRENT.REPORT.NUM% = NIADF.REPORT.NUM%
+ 107: 018e: 
+ 108: 018e:        EXIT FUNCTION
+ 109: 0190: 
+ 110: 0190:   END FUNCTION
+ 111: 019f: \------------------------------------------------------------------------------
+ 112: 019f: 
+ 113: 019f:   FUNCTION WRITE.NIADF PUBLIC
+ 114: 01b3: \**************************
+ 115: 01b3: 
+ 116: 01b3:     INTEGER*2 WRITE.NIADF
+ 117: 01b3: 
+ 118: 01b3:     WRITE.NIADF = 1
+ 119: 01b8:     IF END #NIADF.SESS.NUM% THEN WRITE.ERROR
+ 120: 01cc:     WRITE FORM "C3,C3";             \
+ 121: 01fe:              #NIADF.SESS.NUM%;       \
+ 122: 01fe:              NIADF.ITEM.CODE$,       \
+ 123: 01fe:              NIADF.DATE.ADDED$
+ 124: 01fe: 
+ 125: 01fe:     WRITE.NIADF = 0
+ 126: 0203:     EXIT FUNCTION
+ 127: 0205: 
+ 128: 0205:     WRITE.ERROR:
+ 129: 0205: 
+ 130: 0205:        FILE.OPERATION$ = "W"
+ 131: 0214:        CURRENT.REPORT.NUM% = NIADF.REPORT.NUM%
+ 132: 0222:        CURRENT.CODE$ = UNPACK$(NIADF.ITEM.CODE$)
+ 133: 023d: 
+ 134: 023d:        EXIT FUNCTION
+ 135: 023f: 
+ 136: 023f:   END FUNCTION
+ 137: 024e: \------------------------------------------------------------------------------
+ 138: 024e: 
+ 139: 024e:   FUNCTION WRITE.NIADF.HOLD PUBLIC
+ 140: 0262:     INTEGER*2 WRITE.NIADF.HOLD
+ 141: 0262: 
+ 142: 0262:     WRITE.NIADF.HOLD = 1
+ 143: 0267: 
+ 144: 0267:     IF END #NIADF.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 145: 027b:     WRITE FORM "C3,C3"; HOLD        \
+ 146: 02ad:              #NIADF.SESS.NUM%;       \
+ 147: 02ad:              NIADF.ITEM.CODE$,       \
+ 148: 02ad:              NIADF.DATE.ADDED$
+ 149: 02ad: 
+ 150: 02ad:     WRITE.NIADF.HOLD = 0
+ 151: 02b2:     EXIT FUNCTION
+ 152: 02b4: 
+ 153: 02b4:     WRITE.HOLD.ERROR:
+ 154: 02b4: 
+ 155: 02b4:        FILE.OPERATION$ = "W"
+ 156: 02c3:        CURRENT.REPORT.NUM% = NIADF.REPORT.NUM%
+ 157: 02d1:        CURRENT.CODE$ = UNPACK$(NIADF.ITEM.CODE$)
+ 158: 02ec: 
+ 159: 02ec:        EXIT FUNCTION
+ 160: 02ee: 
+ 161: 02ee:   END FUNCTION
+ 162: 02fd: \------------------------------------------------------------------------------
+ 163: 02fd: 
+ 164: 02fd:   FUNCTION WRITE.NIADF.UNLOCK PUBLIC
+ 165: 0311: \**********************************
+ 166: 0311: 
+ 167: 0311:     INTEGER*2 WRITE.NIADF.UNLOCK
+ 168: 0311: 
+ 169: 0311:     WRITE.NIADF.UNLOCK = 1
+ 170: 0316: 
+ 171: 0316:     IF END #NIADF.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 172: 032a:     WRITE FORM "C3,C3";                    \
+ 173: 035c:              #NIADF.SESS.NUM% AUTOUNLOCK;   \
+ 174: 035c:              NIADF.ITEM.CODE$,              \
+ 175: 035c:              NIADF.DATE.ADDED$
+ 176: 035c: 
+ 177: 035c:     WRITE.NIADF.UNLOCK = 0
+ 178: 0361:     EXIT FUNCTION
+ 179: 0363: 
+ 180: 0363:     WRITE.UNLOCK.ERROR:
+ 181: 0363: 
+ 182: 0363:     FILE.OPERATION$ = "W"
+ 183: 0372:     CURRENT.REPORT.NUM% = NIADF.REPORT.NUM%
+ 184: 0380:     CURRENT.CODE$ = UNPACK$(NIADF.ITEM.CODE$)
+ 185: 039b: 
+ 186: 039b:     EXIT FUNCTION
+ 187: 039d: 
+ 188: 039d:   END FUNCTION
+ 189: 03ac: \------------------------------------------------------------------------------
+ 190: 03ac: 
+ 191: 03ac: End of Compilation

@@ -1,0 +1,170 @@
+
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+\***
+\***                   FILE TYPE:  DIRECT
+\***
+\***                   REFERENCE:  CCMVTDEC.J86
+\***
+\***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+\***				   CREDIT CLAIMS STOCK MOVEMENT FILE
+\***
+\***
+\***      VERSION B : Clive Norris           13th January 1994
+\***      
+\*****************************************************************************
+\***
+\***  Notes:
+\***
+\***  The length of the records on this file is 256 bytes.  The different
+\***  record types are detailed as follows:
+\***
+\***  The tables used to store the items must be dimensioned in the calling
+\***  program......
+\***  
+\***
+\***  Transaction type 00 (Header record) - TRANS TYPE, SERIAL NUMBER, DATE,
+\***     STORE NUMBER, HEADER FILLER, SEQUENCE NUMBER.
+\***
+\***  Transaction type 01 (Credit claim hdr record) - TRANS TYPE, CREDIT CLAIM
+\***     NUMBER, UOD NUMBER, CLAIM STATUS, NUMBER OF ITEMS, SUPPLY ROUTE,
+\***     DISP LOCATION, BUSINESS CENTRE, RECALL NUMBER, AUTH NUMBER, SUPPLIER,
+\***     RETURN METHOD, CARRIER, BIRD NUMBER, REASON, RECEIVING STORE, 
+\***     DESTINATION, WAREHOUSE ROUTE, UOD TYPE, REASON FOR DAMAGE, INVOICE NO,
+\***     FOLIO NUMBER, BATCH REF NUMBER, WHOLE/PART CONSIGNMENT, 
+\***     REPAIR CATEGORY, REPAIR NUMBER, PLAN4 POLICY NUMBER, DDDA/DCDR,
+\***     DELIV NOTE NUMBER, DELIV DATE, NUMBER OF CARTONS, ORDER NUMBER,
+\***     COMMENTS, DATE OF CLAIM OR DESPATCH, TIME OF CLAIM OR DESPATCH, 
+\***     FILLER TYPE 1, SEQUENCE NUMBER
+\***
+\***  Transaction type 02 (Credit claim item level record) - TRANS TYPE, 
+\***     CREDIT CLAIM NUMBER, 
+\***     >>> ITEM/BARCODE FLAG, ITEM/BARCODE, QUANTITY, PRICE, 
+\***     TYPE 2 ITEM FILLER <<<, TYPE 2 FILLER, SEQUENCE NUMBER.
+\***     (Sixteen records (>>> <<<) stored to meet record length of 256 bytes)
+\***
+\***  Transaction type 03 (Return item level record) - TRANS TYPE, 
+\***   >>> ITEM/BARCODE FLAG, ITEM/BARCODE, QUANTITY, REASON CODE,
+\***     TYPE 3 ITEM FILLER <<<, TYPE 3 FILLER, SEQUENCE NUMBER.
+\***     (Sixteen records (>>> <<<) stored to meet record length of 256 bytes)
+\***
+\***  Transaction type 04 (Local Price Reduction item level recd) - TRANS TYPE, 
+\***   >>> ITEM CODE, REASON CODE, AUTH NUMBER, STOCK VALUE, INCREASE/DECREASE
+\***     FLAG, TYPE 4 ITEM FILLER <<<, TYPE 4 FILLER, SEQUENCE NUMBER.
+\***     (Eight records (>>> <<<) stored to meet record length of 256 bytes)
+\***
+\***  Transaction type 99 (Trailer record) - TRANS TYPE, RECORD COUNT,
+\***     TRAILER FILLER, SEQUENCE NUMBER.
+\***
+\*****************************************************************************
+\*****************************************************************************
+
+  STRING GLOBAL                 \
+    CCMVT.FILE.NAME$,		\
+    CCMVT.TRANS.TYPE$,          \   2 bytes ASC  00 = Header record
+                                \                01 = Credit claim hdr record
+                                \                02 = Credit claim item record
+                                \                03 = Return item record
+                                \                04 = Local Pricing item record
+                                \                99 = Trailer record
+    CCMVT.RECORD$		!				
+
+  INTEGER*2 GLOBAL              \
+    CCMVT.SESS.NUM%,            \
+    CCMVT.REPORT.NUM%
+
+  INTEGER*4 GLOBAL              \
+    CCMVT.COUNT%
+
+  STRING GLOBAL                 \
+    CCMVT.SERIAL.NUM$,          \   5 bytes ASC (with leading zeroes)
+    CCMVT.DATE$,                \   6 bytes ASC (YYMMDD)
+    CCMVT.STORE.NUMBER$,        \   2 bytes UPD (with leading zeroes)
+    CCMVT.HEADER.FILLER$,       \*239 bytes ASC (set to spaces by SET.CCMVT)
+    CCMVT.CREDIT.CLAIM.NUM$,    \   4 bytes UPD
+    CCMVT.UOD.NUM$,             \   7 bytes UPD
+    CCMVT.STATUS$,	        \   1 byte  ASC  "D" = Despatched,
+    			        \                "X" = Cancelled. 
+    			        \   CCMVT.NUM.OF.ITEMS% here (I2)
+    CCMVT.SUPPLY.ROUTE$,        \   1 byte ASC;  "W" = Warehouse,
+   			        \	 	 "E" = EPSOM,
+			        \	         "O" = Other Directs,
+			        \                "D" = Dispensary.
+    CCMVT.DISP.LOCATION$,       \   1 byte ASC   "M" = MDS, "D" = Dispensary.
+    CCMVT.BC.LETTER$,	        \   1 byte ASC    
+    CCMVT.RECALL.NUM$,	        \   8 byte ASC
+    CCMVT.AUTHORISATION$,       \  15 byte ASC
+    CCMVT.SUPPLIER$,	        \  15 byte ASC
+    CCMVT.METHOD.OF.RETURN$,    \   1 byte UPD;   1 = Carrier,
+   			        \                 2 = BIRD,
+			        \ 	  	  3 = Via D6,
+			        \		  4 = Representative.
+    CCMVT.CARRIER$,	        \   1 byte UPD;   1 = GPO,
+   			        \                 2 = Parcelforce,
+			        \ 	 	  3 = Securicor,
+			        \ 		  4 = Other.
+    CCMVT.BIRD.NUM$,	        \   8 byte ASC					
+    CCMVT.REASON.NUM$,	        \   1 byte UPD     (See CSRNS declaration)
+    CCMVT.RECEIVING.STORE$,     \   2 byte UPD    
+    CCMVT.DESTINATION$,	        \   1 byte UPD    1 = Business Centre, 
+   			        \	          2 = MTS,
+   			        \	  	  3 = Pharmacy, 
+			        \		  4 = Other.
+    CCMVT.WAREHOUSE.ROUTE$,     \   1 byte ASC   "R" = RDC, "C" = CSR.
+    CCMVT.UOD.TYPE$,	        \   1 byte UPD    1 = Travel Outer,
+   			        \		  2 = Town tray,
+			        \		  3 = Roll cage,
+			        \     	          4 = Other.
+    CCMVT.DAMAGE.REASON$,       \   1 byte UPD    1 = Bad packaging,	
+   			        \		  2 = Poor handling.
+    CCMVT.INVOICE.NUM$,	        \  *9 byte ASC 
+    CCMVT.FOLIO.NUM$,	        \   3 byte UPD
+    CCMVT.BATCH.REF$,	        \   3 byte UPD
+    CCMVT.WHOLE.PART.CON$,      \   1 byte ASC   "W" = Whole, "P" = Part.
+    CCMVT.REPAIR.CATEGORY$,     \   1 byte UPD;   1 = Plan4,
+   			        \   		  2 = Estimate,
+			        \		  3 = Boots guarantee,
+			        \		  4 = Supplier guarantee,
+			        \		  5 = Other guarantee,
+    CCMVT.REPAIR.NUM$,          \   6 byte UPD
+    CCMVT.PLAN4.POLICY.NUM$,    \   6 byte UPD 
+    CCMVT.DDDA.DCDR.NUM$,       \   4 byte UPD
+    CCMVT.DELIV.NOTE.NUM$,      \  *9 byte ASC
+    CCMVT.DELIV.DATE$,		\   3 byte UPD (YYMMDD)
+    CCMVT.NUM.CARTONS.RECEIV$,	\   1 byte UPD
+    CCMVT.ORDER.NUM$,		\  *7 byte ASC
+    CCMVT.COMMENT$,		\ *20 byte ASC
+    CCMVT.DATE.OF.CLAIM$,	\   3 byte UPD; Date of UOD despatch (YYMMDD)
+    CCMVT.TIME.OF.CLAIM$,	\   3 byte UPD; Time of UOD despatch
+    CCMVT.FILLER.01$,		\*101 byte ASC; Spaces.
+				\
+				\
+				\
+    CCMVT.ITEM.BARCODE.FLAG$(1),\   1 byte ASC;  "I" = Boots item code,
+    				\                "B" = Barcode.
+    CCMVT.ITEM.BARCODE$(1),        \   7 byte UPD
+    CCMVT.ITEM.QTY$(1),		   \   2 byte UPD
+    CCMVT.ITEM.PRICE$(1),	   \   3 byte UPD
+    CCMVT.ITEM.FILLER.02$(1),	   \   2 byte ASC;  Spaces.
+    CCMVT.ITEM.REASON$(1),         \   1 byte UPD
+    CCMVT.ITEM.FILLER.03$(1),	   \   4 byte ASC;  Spaces.
+    CCMVT.ITEM.ITEM.CODE$(1),  	   \   7 byte UPD
+    CCMVT.ITEM.ITEM.CODE.04$(1),   \   4 byte UPD
+    CCMVT.ITEM.REASON.CODE.04$(1), \   3 byte ASC 
+    CCMVT.ITEM.AUTH.NUM.04$(1),    \   4 byte UPD
+    CCMVT.ITEM.STOCK.VALUE.04$(1), \   6 byte UPD
+    CCMVT.ITEM.INCR.DECR.FLAG$(1), \   1 byte ASC;  I = Increase, D = Decrease
+    CCMVT.ITEM.FILLER.04$(1),	   \  13 byte ASC;  Spaces.
+    CCMVT.RECORD.COUNT$,	   \   6 byte ASC
+    CCMVT.FILLER.02$,		   \  *8 byte ASC
+    CCMVT.FILLER.03$,		   \ *12 byte ASC
+    CCMVT.FILLER.04$,		   \ *12 byte ASC
+    CCMVT.TRAILER.FILLER$          !*246 byte ASC;  Spaces.
+
+
+  INTEGER*2 GLOBAL		   \
+    CCMVT.RECL%,    		   \
+    CCMVT.NUM.OF.ITEMS%,    	   \
+    CCMVT.SEQUENCE%

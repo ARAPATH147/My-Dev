@@ -1,0 +1,308 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* CIPOK File Functions                                           */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : CIPOKFUN.BAS                                     */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.            16 April 2007     */
+   8: 0000: \/*                                                                */
+   9: 0000: \/* VERSION B.          Charles Skadorwa         31 May 2007       */
+  10: 0000: \/*                     Added PSD76 fields.                        */
+  11: 0000: \/*                                                                */
+  12: 0000: \/* VERSION C.          Steve Perkins            12 September 2007 */
+  13: 0000: \/*                     Added new report flag.                     */
+  14: 0000: \/*                     Initially used to control the weekly       */
+  15: 0000: \/*                     production of a particular section of the  */
+  16: 0000: \/*                     PSD69 report.                              */    
+  17: 0000: \/******************************************************************/
+  18: 0000: 
+  19: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  20: 0000: 
+  21: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  22: 0000:                     FILE.OPERATION$
+  23: 0000: 
+  24: 0000:    %INCLUDE CIPOKDEC.J86
+  25: 0000: \/******************************************************************/
+  26: 0000: \/*                                                                */
+  27: 0000: \/* CIPOK FILE GLOBAl VARIABLE DECLARATIONS                        */
+  28: 0000: \/*                                                                */
+  29: 0000: \/* REFERENCE   : CIPOKDEC.J86                                     */
+  30: 0000: \/*                                                                */
+  31: 0000: \/* VERSION A.          Neil Bennett.              16 APRIL 2007   */
+  32: 0000: \/*                                                                */
+  33: 0000: \/* VERSION B.          Charles Skadorwa           31 MAY 2007     */
+  34: 0000: \/*                     Added PSD76 fields.                        */
+  35: 0000: \/*                                                                */
+  36: 0000: \/* VERSION C.          Steve Perkins              13 SEP 2007     */
+  37: 0000: \/*                                                                */
+  38: 0000: \/******************************************************************/
+  39: 0000: 
+  40: 0000:    STRING GLOBAL                   \
+  41: 0000:       CIPOK.FILE.NAME$,            \
+  42: 0000:                                    \
+  43: 0000:       CIPOK.CIP.STATUS$,           \
+  44: 0000:       CIPOK.DATE$,                 \
+  45: 0000:       CIPOK.MARKDOWN.DAYS$,        \
+  46: 0000:       CIPOK.PSD66.RUNFLAG$,        \
+  47: 0000:       CIPOK.PSD67.RUNDATE$,        \
+  48: 0000:       CIPOK.PSD67.RUNFLAG$,        \
+  49: 0000:       CIPOK.PSD67.RUNTIME$,        \
+  50: 0000:       CIPOK.PSD69.RUNDATE$,        \
+  51: 0000:       CIPOK.PSD69.RUNFLAG$,        \
+  52: 0000:       CIPOK.PSD69.RUNTIME$,        \
+  53: 0000:       CIPOK.PSD76.RUNDATE$,        \                                 !BCSK
+  54: 0000:       CIPOK.PSD76.RUNTIME$,        \                                 !BCSK
+  55: 0000:       CIPOK.PSD76.RUNFLAG$,        \                                 !BCSK
+  56: 0000:       CIPOK.SER.NO$,               \
+  57: 0000:       CIPOK.STORE$,                \
+  58: 0000:       CIPOK.THISWEEK.FLAG$,        \                                 
+  59: 0000:       CIPOK.REPORT.THISWEEK.FLAG$, \                                 ! CSP
+  60: 0000:       CIPOK.FILLER$             !
+  61: 0000: 
+  62: 0000:    INTEGER*2 GLOBAL             \
+  63: 0000:       CIPOK.RECL%,              \
+  64: 0000:       CIPOK.REPORT.NUM%,        \
+  65: 0000:       CIPOK.SESS.NUM%           !
+  66: 0000: 
+  67: 0000: \/******************************************************************/
+  68: 0000: 
+  69: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  70: 0000: \/* FUNCTION CIPOK.SET                                             */
+  71: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  72: 0000: 
+  73: 0000:    FUNCTION CIPOK.SET PUBLIC
+  74: 0014: 
+  75: 0014:       INTEGER*1 CIPOK.SET
+  76: 0014: 
+  77: 0014:       CIPOK.REPORT.NUM% = 738
+  78: 001d:       CIPOK.RECL%       =  80
+  79: 0026:       CIPOK.FILE.NAME$  = "CIPOK"
+  80: 0035: 
+  81: 0035:    END FUNCTION
+  82: 0044: 
+  83: 0044: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  84: 0044: \/* FUNCTION READ.CIPOK                                            */
+  85: 0044: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  86: 0044: 
+  87: 0044:    FUNCTION READ.CIPOK PUBLIC
+  88: 0058: 
+  89: 0058:       INTEGER*2 READ.CIPOK
+  90: 0058: 
+  91: 0058:       READ.CIPOK = 1
+  92: 005d: 
+  93: 005d:       IF END #CIPOK.SESS.NUM% THEN READ.ERROR
+  94: 0071:       READ FORM "C4,C4,C8,C1,C8,C6,C1,C3,C1,C1,C8,C6,C1,C8,C6,C1,C1,C12";  \ !CSP
+  95: 015b:            #CIPOK.SESS.NUM%, 1;                                     \
+  96: 015b:                CIPOK.STORE$,                                        \
+  97: 015b:                CIPOK.SER.NO$,                                       \
+  98: 015b:                CIPOK.DATE$,                                         \
+  99: 015b:                CIPOK.PSD66.RUNFLAG$,                                \
+ 100: 015b:                CIPOK.PSD67.RUNDATE$,                                \
+ 101: 015b:                CIPOK.PSD67.RUNTIME$,                                \
+ 102: 015b:                CIPOK.PSD67.RUNFLAG$,                                \
+ 103: 015b:                CIPOK.MARKDOWN.DAYS$,                                \
+ 104: 015b:                CIPOK.CIP.STATUS$,                                   \
+ 105: 015b:                CIPOK.THISWEEK.FLAG$,                                \
+ 106: 015b:                CIPOK.PSD69.RUNDATE$,                                \
+ 107: 015b:                CIPOK.PSD69.RUNTIME$,                                \
+ 108: 015b:                CIPOK.PSD69.RUNFLAG$,                                \
+ 109: 015b:                CIPOK.PSD76.RUNDATE$,                                \      !BCSK
+ 110: 015b:                CIPOK.PSD76.RUNTIME$,                                \      !BCSK
+ 111: 015b:                CIPOK.PSD76.RUNFLAG$,                                \      !BCSK
+ 112: 015b:                CIPOK.REPORT.THISWEEK.FLAG$,                         \      !CSP
+ 113: 015b:                CIPOK.FILLER$
+ 114: 015b: 
+ 115: 015b:       READ.CIPOK = 0
+ 116: 0160:    EXIT FUNCTION
+ 117: 0162: 
+ 118: 0162: 
+ 119: 0162: READ.ERROR:
+ 120: 0162: 
+ 121: 0162:       FILE.OPERATION$     = "R"
+ 122: 0171:       CURRENT.REPORT.NUM% = CIPOK.REPORT.NUM%
+ 123: 017f:       CURRENT.CODE$       = ""
+ 124: 018e: 
+ 125: 018e:    END FUNCTION
+ 126: 019d: 
+ 127: 019d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 128: 019d: \/* FUNCTION READ.CIPOK.LOCK                                       */
+ 129: 019d: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 130: 019d: 
+ 131: 019d:    FUNCTION READ.CIPOK.LOCK PUBLIC
+ 132: 01b1: 
+ 133: 01b1:       INTEGER*2 READ.CIPOK.LOCK
+ 134: 01b1: 
+ 135: 01b1:       READ.CIPOK.LOCK = 1
+ 136: 01b6: 
+ 137: 01b6:       IF END #CIPOK.SESS.NUM% THEN READ.ERROR
+ 138: 01ca:       READ FORM "C4,C4,C8,C1,C8,C6,C1,C3,C1,C1,C8,C6,C1,C8,C6,C1,C1,C12";  \  !CSP
+ 139: 02b4:            #CIPOK.SESS.NUM% AUTOLOCK, 1;                            \
+ 140: 02b4:                CIPOK.STORE$,                                        \
+ 141: 02b4:                CIPOK.SER.NO$,                                       \
+ 142: 02b4:                CIPOK.DATE$,                                         \
+ 143: 02b4:                CIPOK.PSD66.RUNFLAG$,                                \
+ 144: 02b4:                CIPOK.PSD67.RUNDATE$,                                \
+ 145: 02b4:                CIPOK.PSD67.RUNTIME$,                                \
+ 146: 02b4:                CIPOK.PSD67.RUNFLAG$,                                \
+ 147: 02b4:                CIPOK.MARKDOWN.DAYS$,                                \
+ 148: 02b4:                CIPOK.CIP.STATUS$,                                   \
+ 149: 02b4:                CIPOK.THISWEEK.FLAG$,                                \
+ 150: 02b4:                CIPOK.PSD69.RUNDATE$,                                \
+ 151: 02b4:                CIPOK.PSD69.RUNTIME$,                                \
+ 152: 02b4:                CIPOK.PSD69.RUNFLAG$,                                \
+ 153: 02b4:                CIPOK.PSD76.RUNDATE$,                                \      !BCSK
+ 154: 02b4:                CIPOK.PSD76.RUNTIME$,                                \      !BCSK
+ 155: 02b4:                CIPOK.PSD76.RUNFLAG$,                                \      !BCSK
+ 156: 02b4:                CIPOK.REPORT.THISWEEK.FLAG$,                         \      !CSP
+ 157: 02b4:                CIPOK.FILLER$
+ 158: 02b4: 
+ 159: 02b4:       READ.CIPOK.LOCK = 0
+ 160: 02b9:    EXIT FUNCTION
+ 161: 02bb: 
+ 162: 02bb: 
+ 163: 02bb: READ.ERROR:
+ 164: 02bb: 
+ 165: 02bb:       FILE.OPERATION$     = "R"
+ 166: 02ca:       CURRENT.REPORT.NUM% = CIPOK.REPORT.NUM%
+ 167: 02d8:       CURRENT.CODE$       = ""
+ 168: 02e7: 
+ 169: 02e7:    END FUNCTION
+ 170: 02f6: 
+ 171: 02f6: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 172: 02f6: \/* FUNCTION WRITE.CIPOK                                           */
+ 173: 02f6: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 174: 02f6: 
+ 175: 02f6:    FUNCTION WRITE.CIPOK PUBLIC
+ 176: 030a: 
+ 177: 030a:       INTEGER*2 WRITE.CIPOK
+ 178: 030a: 
+ 179: 030a:       WRITE.CIPOK = 1
+ 180: 030f: 
+ 181: 030f:       IF END #CIPOK.SESS.NUM% THEN WRITE.ERROR
+ 182: 0323:       WRITE FORM "C4,C4,C8,C1,C8,C6,C1,C3,C1,C1,C8,C6,C1,C8,C6,C1,C1,C12";  \ !CSP
+ 183: 0462:            #CIPOK.SESS.NUM%, 1;                                     \
+ 184: 0462:                CIPOK.STORE$,                                        \
+ 185: 0462:                CIPOK.SER.NO$,                                       \
+ 186: 0462:                CIPOK.DATE$,                                         \
+ 187: 0462:                CIPOK.PSD66.RUNFLAG$,                                \
+ 188: 0462:                CIPOK.PSD67.RUNDATE$,                                \
+ 189: 0462:                CIPOK.PSD67.RUNTIME$,                                \
+ 190: 0462:                CIPOK.PSD67.RUNFLAG$,                                \
+ 191: 0462:                CIPOK.MARKDOWN.DAYS$,                                \
+ 192: 0462:                CIPOK.CIP.STATUS$,                                   \
+ 193: 0462:                CIPOK.THISWEEK.FLAG$,                                \
+ 194: 0462:                CIPOK.PSD69.RUNDATE$,                                \
+ 195: 0462:                CIPOK.PSD69.RUNTIME$,                                \
+ 196: 0462:                CIPOK.PSD69.RUNFLAG$,                                \
+ 197: 0462:                CIPOK.PSD76.RUNDATE$,                                \      !BCSK
+ 198: 0462:                CIPOK.PSD76.RUNTIME$,                                \      !BCSK
+ 199: 0462:                CIPOK.PSD76.RUNFLAG$,                                \      !BCSK
+ 200: 0462:                CIPOK.REPORT.THISWEEK.FLAG$,                         \      !CSP
+ 201: 0462:                CIPOK.FILLER$
+ 202: 0462: 
+ 203: 0462:       WRITE.CIPOK = 0
+ 204: 0467:       EXIT FUNCTION
+ 205: 0469: 
+ 206: 0469: WRITE.ERROR:
+ 207: 0469: 
+ 208: 0469:       FILE.OPERATION$ = "W"
+ 209: 0478:       CURRENT.REPORT.NUM% = CIPOK.REPORT.NUM%
+ 210: 0486:       CURRENT.CODE$ = ""
+ 211: 0495: 
+ 212: 0495:    END FUNCTION
+ 213: 04a4: 
+ 214: 04a4: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 215: 04a4: \/* FUNCTION WRITE.CIPOK.UNLOCK                                    */
+ 216: 04a4: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 217: 04a4: 
+ 218: 04a4:    FUNCTION WRITE.CIPOK.UNLOCK PUBLIC
+ 219: 04b8: 
+ 220: 04b8:       INTEGER*2 WRITE.CIPOK.UNLOCK
+ 221: 04b8: 
+ 222: 04b8:       WRITE.CIPOK.UNLOCK = 1
+ 223: 04bd: 
+ 224: 04bd:       IF END #CIPOK.SESS.NUM% THEN WRITE.ERROR
+ 225: 04d1:       WRITE FORM "C4,C4,C8,C1,C8,C6,C1,C3,C1,C1,C8,C6,C1,C8,C6,C1,C1,C12";  \ !CSP
+ 226: 0610:            #CIPOK.SESS.NUM% AUTOUNLOCK, 1;                          \
+ 227: 0610:                CIPOK.STORE$,                                        \
+ 228: 0610:                CIPOK.SER.NO$,                                       \
+ 229: 0610:                CIPOK.DATE$,                                         \
+ 230: 0610:                CIPOK.PSD66.RUNFLAG$,                                \
+ 231: 0610:                CIPOK.PSD67.RUNDATE$,                                \
+ 232: 0610:                CIPOK.PSD67.RUNTIME$,                                \
+ 233: 0610:                CIPOK.PSD67.RUNFLAG$,                                \
+ 234: 0610:                CIPOK.MARKDOWN.DAYS$,                                \
+ 235: 0610:                CIPOK.CIP.STATUS$,                                   \
+ 236: 0610:                CIPOK.THISWEEK.FLAG$,                                \
+ 237: 0610:                CIPOK.PSD69.RUNDATE$,                                \
+ 238: 0610:                CIPOK.PSD69.RUNTIME$,                                \
+ 239: 0610:                CIPOK.PSD69.RUNFLAG$,                                \
+ 240: 0610:                CIPOK.PSD76.RUNDATE$,                                \      !BCSK
+ 241: 0610:                CIPOK.PSD76.RUNTIME$,                                \      !BCSK
+ 242: 0610:                CIPOK.PSD76.RUNFLAG$,                                \      !BCSK
+ 243: 0610:                CIPOK.REPORT.THISWEEK.FLAG$,                         \      !CSP
+ 244: 0610:                CIPOK.FILLER$
+ 245: 0610: 
+ 246: 0610:       WRITE.CIPOK.UNLOCK = 0
+ 247: 0615:       EXIT FUNCTION
+ 248: 0617: 
+ 249: 0617: WRITE.ERROR:
+ 250: 0617: 
+ 251: 0617:       FILE.OPERATION$ = "W"
+ 252: 0626:       CURRENT.REPORT.NUM% = CIPOK.REPORT.NUM%
+ 253: 0634:       CURRENT.CODE$ = ""
+ 254: 0643: 
+ 255: 0643:    END FUNCTION
+ 256: 0652: 
+ 257: 0652: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 258: 0652: \/* FUNCTION WRITE.CIPOK.UNLOCK                                    */
+ 259: 0652: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 260: 0652: 
+ 261: 0652:    FUNCTION CREATE.CIPOK PUBLIC
+ 262: 0666: 
+ 263: 0666:       INTEGER*2 CREATE.CIPOK
+ 264: 0666:       INTEGER*2 rc%
+ 265: 0666: 
+ 266: 0666:       CREATE.CIPOK = 1
+ 267: 066b: 
+ 268: 066b:       CIPOK.STORE$         = "0000"
+ 269: 067a:       CIPOK.SER.NO$        = "0000"
+ 270: 0689:       CIPOK.DATE$          = "00000000"
+ 271: 0698:       CIPOK.PSD66.RUNFLAG$ = " "
+ 272: 06a7:       CIPOK.PSD67.RUNDATE$ = "00000000"
+ 273: 06b6:       CIPOK.PSD67.RUNTIME$ = "000000"
+ 274: 06c5:       CIPOK.PSD67.RUNFLAG$ = " "
+ 275: 06d4:       CIPOK.MARKDOWN.DAYS$ = "000"
+ 276: 06e3:       CIPOK.CIP.STATUS$    = " "
+ 277: 06f2:       CIPOK.THISWEEK.FLAG$ = "N"
+ 278: 0701:       CIPOK.PSD69.RUNDATE$ = "00000000"
+ 279: 0710:       CIPOK.PSD69.RUNTIME$ = "000000"
+ 280: 071f:       CIPOK.PSD69.RUNFLAG$ = " "
+ 281: 072e:       CIPOK.PSD76.RUNDATE$ = "00000000"                                     !BCSK
+ 282: 073d:       CIPOK.PSD76.RUNTIME$ = "000000"                                       !BCSK
+ 283: 074c:       CIPOK.PSD76.RUNFLAG$ = " "                                            !BCSK
+ 284: 075b:       CIPOK.REPORT.THISWEEK.FLAG$ = "N"                                     !CSP
+ 285: 076a:       CIPOK.FILLER$        = STRING$(13, " ")                               !BCSK
+ 286: 0780: 
+ 287: 0780:       IF END #CIPOK.SESS.NUM% THEN CREATE.ERROR
+ 288: 0794:       CREATE POSFILE CIPOK.FILE.NAME$ DIRECT 1 RECL CIPOK.RECL%     \
+ 289: 07bd:           AS CIPOK.SESS.NUM% MIRRORED PERUPDATE
+ 290: 07bd: 
+ 291: 07bd:       rc% = WRITE.CIPOK
+ 292: 07c4: 
+ 293: 07c4:       IF rc% = 0 THEN BEGIN
+ 294: 07c9:          CREATE.CIPOK = 0
+ 295: 07ce:       ENDIF
+ 296: 07ce: 
+ 297: 07ce:       EXIT FUNCTION
+ 298: 07d0: 
+ 299: 07d0: CREATE.ERROR:
+ 300: 07d0: 
+ 301: 07d0:       FILE.OPERATION$ = "C"
+ 302: 07df:       CURRENT.REPORT.NUM% = CIPOK.REPORT.NUM%
+ 303: 07ed:       CURRENT.CODE$ = ""
+ 304: 07fc: 
+ 305: 07fc:    END FUNCTION
+ 306: 080b: 
+ 307: 080b: \/******************************************************************/
+ 308: 080b: End of Compilation

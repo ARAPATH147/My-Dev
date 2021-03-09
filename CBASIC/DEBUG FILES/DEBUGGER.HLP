@@ -1,0 +1,1732 @@
+:group.debugger
+.******************************************************************************
+:help.
+:name.Introduction
+:descr.Introduction
+:body.
+:p.
+This information describes the 4690 Application DEBUGGER Tool which
+debugs applications running under the 4690 OS.
+Using the DEBUGGER you can:
+:ul compact.
+:li.Debug 4690 BASIC or Meta Ware (R)** "C" application programs
+:li.Display or alter arrays while debugging
+:li.Debug controller or terminal application programs
+:li.Debug foreground or background controller applications
+:li.Debug on line or off line terminal applications
+:li.Set code break points, set data breakpoints, single step,
+change variables by name, and display a function call trace
+:li.Displaying the contents of 4690 pipes,
+application screen, or program's load segments
+:li.Display your application in the source language or in the
+resultant assembler code.
+:eul
+:ehelp.
+.******************************************************************************
+:help.
+:name.Fast path commands
+:descr.Fast path commands
+:body.
+:p.
+A "Fast Path" command is activated by pressing the capital
+letter in the command name. For example, a W A would first pull down
+the Window menu and then select the Assembler screen.
+:ehelp.
+.******************************************************************************
+:help.
+:name.4690 Basic language debug
+:descr.4690 Basic language debug
+:body.
+:p.
+4690 BASIC source files must have a .BAS extension.
+:p.
+Two versions of the 4690 BASIC Compiler are available.
+BASIC Compiler versions prior to 3.0 limit
+debugger function.
+:p.
+Use the BAS.BAT file, included on the debugger diskette,
+to prepare BASIC version 3 programs for debugging
+or use these five steps. A detailed explanation follows.
+:xmp.
+4690 BASIC ver 3 or later
+-----------------------------
+"BASIC filename [DF]"
+"DEBUGFRM filename"
+"LINK86 filename [S,M,DBI]"
+"DEBUGCDV filename"
+"DEBUG filename"
+
+4690 BASIC prior to ver 3
+------------------------------
+"BASIC filename [VF]"
+"DEBUGFRM filename"
+"LINK86 filename [S,M]"
+"DEBUGCDV filename"
+"DEBUG filename"
+:exmp.
+:ol compact.
+:li."BASIC filename [ DF... ]" to compile a filename.BAS file.
+The "D" option generates debug information within the .OBJ file
+and the "F" option saves the listing file. The listing file
+is used in the next step.
+Versions of 4690 BASIC prior to version 3, use the [V,F] options.
+:li."DEBUGFRM filename nn" where nn is the read buffer
+size of 1 to 31 Kbytes, the default is 16K bytes. This operation
+adjusts the listing file for the debugger and creates a filename.LCV
+file. This LCV file will serve as the source file during debug.
+DEBUGFRM must be run on each listing file / object file.
+:li."LINK86 filename [S,M,DBI]" to Link and
+create a filename.286 file.
+This operation creates the .MAP, .LIN and .SYM
+files for DEBUGCDV.
+The S option instructs LINK86 to search the library and only link
+externally referenced modules.
+The M option creates the .MAP file.
+The DBI option creates the necessary information for the debugger.
+Don't use the DBI option with 4690 BASIC versions prior to version 3.
+Do not use the NOLIN option.
+:p.
+Don't use either the %NOLIST or the %DEBUG -V option in your source
+code. These options will cause problems when the debugger attempts
+to match the source line numbers with the executable file.
+:eol.
+:ehelp.
+.****************************************************************************
+:help.
+:name.COBOL Language Debug
+:descr.COBOL Language Debug
+:body.
+:p.
+COBOL is no longer supported.
+:ehelp.
+.****************************************************************************
+:help.
+:name.C Language Debug
+:descr.C Language Debug
+:body.
+:p.The only C compiler supported by the Application Debugger is
+the Meta Ware (R)** High C (R) Compiler 1.7 available through
+Digital Research (R)** as part of their EPOS Application Developers Kit.
+:p.Use the MW.BAT file, included on the 4690 Application Debugger
+diskette or use the following 4 steps to prepare C code for debugging:
+:ol compact.
+:li."HC filename -mm big -DEBUG -ON CODEVIEW -OFF OPTIMIZE_XJMP
+-OFF OPTIMIZE_FP -OFF OPTIMIZE_XJMP_SPACE"
+:li."LINK86 filename [S,M,DBI],HCBE.L86[S]"
+:li."DEBUGCDV filename"
+:li."DEBUG filename"
+:eol.
+A detailed explanation of the four steps follows:
+:ol compact.
+:li."HC filename -mm big -DEBUG - ON CODEVIEW -OFF OPTIMIZE_XJMP
+-OFF OPTIMIZE_FP -OFF OPTIMIZE_XJMP_SPACE"
+to compile a filename.C file.
+The "-mm big option uses the BIG memory model for compiling.
+The "-DEBUG" and -ON CODEVIEW options provides support
+for the debugger.
+The -OFF OPTIMIZE_... options turn off optimization features that are
+confusing while debugging. For your production level compile using
+optimization options can significantly enhance the performance
+of your program.
+The DEBUG and ON CODEVIEW options should be turned
+on for your final compile.
+:li."LINK86 filename [S,M,DBI],HCBE.L86[S]"
+to Link and create a filename.286 file.
+This operation creates the
+MAP, LIN and SYM files for the DEBUGCDV operation.
+The S option instructs LINK86 to search the library and only link
+externally referenced modules.
+The M option creates the MAP file.
+The DBI option creates the necessary information for the debugger.
+The HCBE is linked in for the BIG memory model.
+If you are using an .INP file, make sure that the these options
+are included.
+:li."DEBUGCDV filename" to create a filename.CDV file required for
+debugging.
+:li."DEBUG filename" to start the debugger. Filename refers to the 286
+name created by the previous operations. The debugger will require the
+source, .CDV and .286 files.
+Refer to the section "Starting Debug"
+in this document for information on options and arguments.
+:eol.
+:ehelp.
+.****************************************************************************
+:help.
+:name.keys
+:descr.keys
+:body.
+:p.
+:ul compact.
+:li. CTRL+BREAK - Stop running program/application
+:li. F1 - help
+:li. F2 - step into function
+:li. F3 - exit debugger and program
+:li. F4 - set/clear code break point
+:li. F5 - run to cursor
+:li. F6 - run the program
+:li. F7 - find executing line and show its public function name
+:li. F8 - search for function
+:li. F8 - print all global variables (Storage screen only)
+:li. F9 - format variable or storage (Storage screen only)
+:li. F10 - go to the Action Bar
+:li. SPACEBAR - single step to next instruction
+:li. PLUS     (+) - show variable window
+:li. MINUS    (-) - remove variable window
+:li. EQUAL    (=) - display value of variable at cursor, or display source code of a function
+:li. ASTERISK (*) - display what variable points to
+:li. AMPERSAND(&) - display all addresses of a variable name
+:li. INSERT - put variable in storage window
+:li. CTRL+INS - put what variable points to in storage window
+:li. CTRL+ALT+TAB - toggle between current window and application window
+:li. CTRL+UP - shrink the storage window
+:li. CTRL+DOWN - expand the storage window
+:li. CTRL+F2 - run to next CBASIC function call
+:li. CTRL+F4 or ALT+F4 - set or clear a data breakpoint
+:li. SHIFT+F4 - indirectly set or clear a data breakpoint (pointer contents)
+:li. CTRL+F6 - set the CS:IP to the source statement where the cursor is located
+:li. ALT+F7 - return to window from previous RUN (F2, F5 or F6) or search function
+:li. CTRL+F7 - show calling statement
+:li. SHIFT+F8 - search for (local) function
+:li. @ - show name of function where cursor is located (source window only)
+:li. CTRL+u - move the variable UP one line (Storage screen only)
+:li. CTRL+d - move the variable DOWN one line (Storage screen only)
+:li. CTRL+t - move the variable to the TOP of the storage screen (Storage screen only)
+:li. CTRL+b - move the variable to the BOTTOM of the storage screen (Storage screen only)
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.about
+:descr.about
+:body.
+:p.
+Use this option to find the release and version of this program.
+:ehelp.
+.******************************************************************************
+:help.
+:name.application window
+:descr.application window
+:body.
+:p.
+Use this option to switch to the application screen.
+In other words switch to the screen that
+user or operator would normally see.
+:ehelp.
+.******************************************************************************
+:help.
+:name.assembler window
+:descr.assembler window
+:body.
+:p.
+You are viewing the assembler code for the application being debugged.
+:p.
+The first character of the options on the pull down can be used to select
+that option. The letter H will jump into the Help pull-down.
+Many of the options on the pull-down windows are available on hot-key.
+For a list of the hot-keys press F1 then F9.
+:p.
+To switch to the source code window, press W to go to the window pull-down
+and select S for the source option. If you cannot switch to the source
+window or if the debugger started in assembler window there is a problem
+with the method used to create the files used by the debugger. Refer to
+the section of help about 4690 Basic code. To see
+the index of help screens press F1 then F11.
+:ehelp.
+.******************************************************************************
+:help.
+:name.assembler window help
+:descr.assembler window help
+:body.
+:p.
+Use this option to switch to the assembler window
+from the source code window. Selecting this option will
+cause the screen to display the assembler code related to
+the source code that is currently displayed.
+:Note: Source screen only.
+:ehelp.
+.******************************************************************************
+:help.
+:name.basic real format
+:descr.basic real format
+:body.
+:p.
+A 4690 basic real number is represented by an 18 digit
+BCD floating point format. It is in engineering notation. The
+DEBUGGER shows a basic real number as:
+:ul.
+:li.[-]3.1415926E[-]3
+:eol.
+A minus sign preceding the number makes the number negative. A minus sign
+after the E makes the engineering notation negative. For example:
+:ul.
+:li.3.1415926E3 is equal to 3141.5926
+:li.3.1415926E-3 is equal to 0.0031415926.
+:li.-3.1415926E-3 is equal to -0.0031415926.
+:eol.
+:ehelp.
+.******************************************************************************
+:help.
+:name.basic string format
+:descr.basic string format
+:body.
+:p.
+A string in 4690 basic is a string of ASCII characters preceded by
+its length.
+The DEBUGGER shows the characters in the string for the specified length.
+First it shows the string in hexadecimal format followed by an ASCII
+interpretation of these characters.
+:ehelp.
+.******************************************************************************
+:help.
+:name.cbasic call history
+:descr.cbasic call history
+:body.
+:p.
+CBASIC updates an internal trace buffer each time a CALL or a RETURN is
+processed.  The information displayed is from this trace.  The entry number is
+displayed, along with the protect address of the function call.  The name of
+the function being called is also shown, indented so that you can easily
+identify its parent function.
+:p.
+Only functions that are PUBLIC can be resolved.  If a local, non-public
+function is called, the name shown is the name of the first public function
+with the same selector immediately prior to that called function, along with
+an offset shown in hex. If there are no public functions with the same
+selector prior to the function being called, the name is shown as "?Unknown?".
+:p.
+You can use the PgUp, PgDn, UpArrow and DownArrow keys to scroll through
+the list of calls.  To quickly locate the source code for any of
+these functions, use the UpArrow and DownArrow keys to highlight the
+function you want to display, and then press Enter.  You cannot select
+any of the ?Unknown? functions in this manner.
+:p.
+The CBASIC internal trace was added to SB286LT.L86 in February 2003.  Your
+application must be relinked with this new library in order to be able to
+show the contents of this new trace.  The size of this trace is normally 25
+entries.  To increase the number of trace entries to, e.g. 2500, run tool
+settrace against your postlinked application file as follows:
+SETTRACE T EAMTS10L.286 2500
+:p.
+There is one additional piece of information at the end of each line, dT, which
+is the delta time in milliseconds as measured from when that function call
+occurred until the next function call occurred.
+For each call, the CBASIC runtimes capture
+the current value of the processor timestamp counter and save it in 'timebuffer'.
+The debugger interprets entries in this trace buffer so that you can find hotspots
+in your program.  The last entry in the trace has a value of '****' because its
+ending time is not yet known. Processor timestamp delta values of ten seconds
+or more are shown as '****'.
+:p.
+Delays caused by I/O operations, kernal operations, concurrent task activity,
+debugger breakpoints, or operator intervention will cause the function that is
+active at the point of that delay to show a dT value that is larger than
+you might normally expect it to be.
+:p.
+The timebuffer trace was added to SB286LT.L86 in August 2003, and was further
+refined in December 2003.  The trace is
+turned on by default.  After postlinking your application, you can run
+SETTIME yourapplication.286 to turn off timestamp capturing if you so desire.
+:ehelp.
+.******************************************************************************
+:help.
+:name.cbasic error trace
+:descr.cbasic error trace
+:body.
+:p.
+The CBASIC runtimes maintain a wrapping trace buffer that contains information
+from the last fifteen errors.  Each entry contains the time in hours, minutes,
+seconds and milliseconds, the two letter runtime error (ERR), the four-byte
+error code (ERRN) and the session number (ERRF).
+:p.
+Duplicate, consecutive entries are suppressed, and the ## field shows the
+number of additional entries.  The time stamp shown for duplicate entries is
+associated with the first occurrence in that set of duplicate entries.
+:p.
+Prior to defect 1796 (November, 2004), the CBASIC runtimes capture only the
+hours and minutes in the trace buffer, and do not suppress duplicate entries.
+:p.
+After defect 2096 (June, 2005), the CBASIC runtimes capture the address of the
+ON ERROR routine in each trace entry.  The debugger shows the name of the
+enclosing function for each of those addresses.
+:ehelp.
+.******************************************************************************
+:help.
+:name.cbasic on error routine
+:descr.cbasic on error routine
+:body.
+:p.
+This menu selection will display the source or assembler code for the
+current CBASIC ON ERROR catcher.
+:ehelp.
+.******************************************************************************
+:help.
+:name.cbasic open files
+:descr.cbasic open files
+:body.
+:p.
+For each open session, the session number and the name of the file,
+logical file name or pipe that was used on its OPEN statement is shown.
+Session numbers from 1 to 99 are shown.  Closed sessions are not shown.
+Use the PgDn, PgUp, DownArrow or UpArrow keys to see additional sessions
+if all of them do not fit on one screen.
+:ehelp.
+.******************************************************************************
+:help.
+:name.character format
+:descr.character format
+:body.
+:p.
+The DEBUGGER shows a single character for a requested character format
+of a variable.
+:ehelp.
+.******************************************************************************
+:help.
+:name.commands
+:descr.commands
+:body.
+:p.
+Use this option to select a command. A menu of the commands will display
+in that window. The following commands are available:
+:ul.
+:li.Single step the program
+:li.Set/Clear break point
+:li.Run to cursor
+:li.Run
+:li.S Step into function
+:li.Find executing line
+:li.Restart application
+:li.Terminal status (online or offline)
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.continue debugging
+:descr.continue debugging
+:body.
+:p.
+Continue debugging the current program. Does not exit.
+:ehelp.
+.******************************************************************************
+:help.
+:name.control break
+:descr.control break
+:body.
+:p.
+Stop the current program immediately so that debugging actions can continue
+from that point.
+:ehelp.
+.******************************************************************************
+:help.
+:name.debug current application
+:descr.debug current application
+:body.
+:p.
+Continue to debug the current application. Do not switch the debugger to
+the new BASIC 'chain' application.
+:ehelp.
+.******************************************************************************
+:help.
+:name.debug new application
+:descr.debug new application
+:body.
+:p.
+Quit debugging the current application and switch the debugger to the
+new BASIC 'chain' application.
+:ehelp.
+.******************************************************************************
+:help.
+:name.DEBUGGER overview
+:descr.DEBUGGER overview
+:body.
+:p.
+The 4690 APPLICATION DEBUGGER is a debugger for 4690 BASIC and C
+application programs running under 4690.
+The debugger is designed to help speed up program development
+and debugging 4690.  It will support any model 1 4683 terminal
+attached to the 4690 controller.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display
+:descr.display
+:body.
+:p.
+Use this option to display an item. A menu of the items available will
+display in a pull down window. The following items are available:
+:ul.
+:li.Variable - display the contents of variable name.
+:li.What variable points to - display the contents of memory using a pointer.
+:li.Memory - display the memory location specified.
+:li.Function call trace - display a history of functions called.
+:li.Segment information - display the segment description.
+:li.Pipes - display the data in an active pipe.
+:li.CBASIC Call History - display SB286L*.L86 internal trace.
+:li.CBASIC Open Files - display Open session numbers and file names.
+:li.CBASIC Error Trace - display the last fifteen CBASIC runtime errors.
+:li.CBASIC ON ERROR routine - go to the current ON ERROR catcher.
+:li.Data Breakpoints - display the names of the breakpoint variables.
+:li.Code Breakpoints - not implemented.
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display memory
+:descr.display memory
+:body.
+:p.
+Display the contents of the memory location specified. You will be
+asked to enter the memory location in the hexadecimal format -> segment:
+:p.
+To recall the last address you entered, press the up arrow key.  To cycle
+through previous addresses, repeatedly press the up arrow or down arrow keys.
+offset.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display code breakpoints
+:descr.display code breakpoints
+:body.
+:p.
+Sorry, this function is not implemented yet.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display data breakpoints
+:descr.display data breakpoints
+:body.
+:p.
+Three fields are shown for each of the four possible data breakpoints:
+Cond, Mask and Name.
+:p.
+Cond is a comparison operator to be performed on the value of the variable, as
+it compares to Mask.  Mask is shown in hex, and is always considered to
+be unsigned.  Choices for Cond are:
+"=" (stop if the variable is equal to Mask);
+"!" (stop if the variable is not equal to Mask);
+"<" (stop if the variable is less than Mask);
+">" (stop if the variable is greater than Mask);
+"&" (stop if any Mask bits in the variable are ON);
+"~" (stop if any Mask bits in the variable are OFF);
+"C" (stop if the new value actually changes from its previous value);
+"R" (stop on every READ or change of the variable); and
+" " (stop on every WRITE).
+:p.
+The debugger will stop if the result of the comparison is true.  The contents
+of the Source/Assembler and Data windows will be updated at each data breakpoint,
+irregardless of the result of the Cond and Mask test.  When a data breakpoint
+is initially set (or cleared and then reset), the Cond is set to blank and the
+mask is set to 0.
+:p.Use the Tab key or the Enter key to move to the next field, and type in the
+value you want.  Then press ESC to return to the Source or Assembler window.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display pipes
+:descr.display pipes
+:body.
+:p.
+Display information about application pipes. Selecting this option
+will cause a window to appear with a list of the active pipes for the
+application. From this window you can choose the pipe that you want
+to view.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display ptr variable
+:descr.display ptr variable
+:body.
+:p.
+Enter the name of the pointer and the DEBUGGER will display the
+memory location contents associated with this pointer.
+:p.
+To recall the last pointer you entered, press the up arrow key.  To cycle
+through previous pointers, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display variable
+:descr.display variable
+:body.
+:p.
+Use this option to display the contents of a variable.
+You will be asked to enter a variable name.
+:p.
+To recall the last name you entered, press the up arrow key.  To cycle
+through previous names, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.do not restart application
+:descr.do not restart application
+:body.
+:p.
+Do not restart application. Continue debugging from the current line.
+:ehelp.
+.******************************************************************************
+:help.
+:name.double format
+:descr.double format
+:body.
+:p.
+This is an eight byte floating point number. It is shown in
+scientific notation (1.2345E-3).
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter address
+:descr.enter address
+:body.
+:p.
+Enter the address you want to display. It must be in the format
+segment:offset. 0 thru 9 and A thru F are valid input.
+:p.
+To recall the last address you entered, press the up arrow key.  To cycle
+through previous addresses, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter display variable
+:descr.enter display variable
+:body.
+:p.
+Enter the name of the variable you want to display.
+:p.
+You can enter the entire name or any unique portion of it.  If the partial
+name you enter exists as a portion of two or more variable names, then a popup
+window is displayed and you can select one of those variable names.
+:p.
+To recall the last name you entered, press the up arrow key.  To cycle
+through previous names, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter function name
+:descr.enter function name
+:body.
+:p.
+Enter the name of the function you want to locate.
+:p.
+You can enter the entire name or any unique portion of it.  If the partial
+name you enter exists as a portion of two or more function names, then a popup
+window is displayed and you can select one of those function names.
+:p.
+To recall the last name you entered, press the up arrow key.  To cycle
+through previous names, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter search string
+:descr.enter search string
+:body.
+:p.
+Enter the string you wish to find.
+:p.
+If you enter the string in lower case, a case insensitive search is
+initiated. If, however, you enter any uppercase characters as a search
+argument, a case sensitive (exact) search is performed.
+:p.
+To recall the last string you entered, press the up arrow key.  To cycle
+through previous strings, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.exit
+:descr.exit
+:body.
+:p.
+This option allows you to exit the debugger and terminate the program
+being debugged. If you select this option a pull down menu will give
+you the option of exiting or continuing to debug the current program.
+:ehelp.
+.******************************************************************************
+:help.
+:name.exit debugger
+:descr.exit debugger
+:body.
+:p.
+Exit the debugger and terminate the program being debugged.
+:ehelp.
+.******************************************************************************
+:help.
+:name.extended help
+:descr.extended help
+:body.
+:p.
+The DEBUG start command syntax is:
+:ul.
+:li.DEBUG  [ options ]  [ filename ]  arguments
+:li.OPTIONS may be any of the following.  Each option must be prefaced with
+a dash (-) or a slash (/).
+:ul.
+:li./B  Debug a 4690 Background Application.
+:li./C  Forces case sensitivity for variable names.
+:li./I  Debug initialization or start-up code.
+:li./M  Use the 4690 Basic Medium Memory Model. The DEBUG default
+is large memory model. The terminal application code is
+usually medium memory model.
+:li./On Program options.  See DEBUGUSE.PDF.
+:li./Tnnn Debug a 4683 Terminal Application (nnn = terminal number).
+:li./Vnnn Debug a Terminal Session Server Application (nnn = terminal number).
+:li./Wnn Wait for nn minutes. This option will allow time for an application
+to load. If the application loads in less time, this option has
+no effect. Use this option for terminal loads in a busy environment.
+:eul.
+:li.FILENAME is the name of the 286 file you wish to debug.
+:p.
+The 286, and corresponding source files must be available to
+DEBUG.  DEBUG searches for your program's source files in this
+order:
+:ol.
+:li.Path specified (C:\TEST\TEST2.286)
+:li.Current directory
+:li.Environment variable (DEBUGSRC)
+:li.Path
+:p.
+Note: Use the DEBUGSRC environment variable for source files
+not in the same directory as the resulting object files or if
+the directory is not in the system path.  For example, if
+your source is contained in C:\MYPROG\SRC and your object and
+286 files are in C:\MYPROG\OBJ, and if \MYPROG\SRC is not in the
+path and is not the current directory, then you should set the
+DEBUGSRC environment variable to C:\MYPROG\SRC before invoking
+DEBUG.  To set or reset this environment variable, for example:
+:ul compact.
+:li.DEFINE DEBUGSRC=C:\MYPROG\SRC
+:eul.
+DEBUG will attempt to set the first breakpoint at the address of
+the main function of your program. Start-up and initialization
+code may get in the way of this process.
+:eol.
+:li.ARGUMENTS are the standard input character strings normally
+passed to the main program.
+:p.
+Note: The debugger is only as accurate as the information provided by
+the compiler.  The correspondence between machine code and source file
+line number is taken from the CDV file when this information is
+generated.  In particular, if the program is optimized, (a compiler
+option)  code movement may make it difficult to associate machine code
+with its corresponding source line number.  Therefore, any compiler that
+provides speed or size options should set these option off.
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.find executing line
+:descr.find executing line
+:body.
+:p.
+Switch to the file containing the statement or instruction that is
+about to be executed and place the cursor on that line. Same function as
+F7.
+:ehelp.
+.******************************************************************************
+:help.
+:name.find next string
+:descr.find next string
+:body.
+:p.
+Locate the next occurrence of a given string.
+:p.
+Note: Source screen only.
+:ehelp.
+.******************************************************************************
+:help.
+:name.float format
+:descr.float format
+:body.
+:p.
+This is a four byte floating point number. It is in scientific
+notation (1.2345E-3).
+:ehelp.
+.******************************************************************************
+:help.
+:name.format variable
+:descr.format variable
+:body.
+:p.
+With the format variable option you can change the format
+that a variable is displayed. The format options are:
+:ul.
+:li.Hex - Series of hexadecimal values
+:li.Char - Hex value followed by ASCII character in quotes
+:li.Int - Two-byte decimal
+:li.Long - Four-byte decimal
+:li.Float - Four-byte floating-point
+:li.Double - Eight-byte floating-point
+:li.Ptr - Selector:Offset = memory contents
+:li.Char array - Hex value (16 bytes per line) followed by
+corresponding ASCII chars
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.function call trace
+:descr.function call trace
+:body.
+:p.
+Use this option to
+display a history of the functions called since the program started.
+:ehelp.
+.******************************************************************************
+:help.
+:name.function trace
+:descr.function trace
+:body.
+:p.
+The function call trace is a history of the functions called since
+the test application program started.
+:p.
+You can display the source code for any of the functions in the
+history by selecting that function and pressing enter.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help
+:descr.help
+:body.
+:p.
+Use the help option to select help on one of the available topics.
+The options are:
+:ol compact.
+:li. help for help
+:li. extended help
+:li. keys help
+:li. help index
+:li. about
+:eol.
+:p.
+When you request help, a help window is displayed. The kind of help you get
+is determined by the position of the cursor when you request help.
+:p.
+To get help for an action bar or pull-down selection, highlight the
+selection and then press F1.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help: extended help
+:descr.help: extended help
+:body.
+:p.
+Selecting the extended help option will display a description
+of the DEBUGGER tool and its capabilities.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help: cbasicrc
+:descr.help: cbasicrc
+:body.
+:p.
+This help option will interpret the current value of CBASIC ERR and ERRN
+variables. Text for the interpretation of these error codes is defined in
+file DEBUG:CBASICRC.DAT.
+:p.
+If ERR and ERRN are not currently set, interpretation is based upon the
+last value that was seen by the debugger.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help: help for help
+:descr.help: help for help
+:body.
+:p.
+Selecting the help for help option will display a summary of how
+to use the help facility.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help for help
+:descr.help for help
+:body.
+:p.
+Help is always available. You can obtain help at any time by pressing the F1
+key.
+:p.
+When you request help, a help window is displayed. The kind of help you get
+is determined by the position of the cursor when you request help.
+:p.
+To get help for an action bar or pull-down selection, highlight the
+selection and then press F1.
+:p.
+A help choice appears on the action bar. The associated help pull-down
+include additional help for:
+:ul.
+:li. Extended help
+:li. Keys help
+:li. Help index
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help index
+:descr.help index
+:body.
+:p.
+Select this option or
+press F11 to display an index of all the available help screens.
+From this help index menu you can
+highlight the desired subject and press enter to get help with any
+subject in the index.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help not available
+:descr.help not available
+:body.
+:p.
+Help is not available for this selection.
+:ehelp.
+.******************************************************************************
+:help.
+:name.hex format
+:descr.hex format
+:body.
+:p.
+The format of hex data is 16 bytes of hexadecimal data followed by an
+ASCII interpretation.
+:ehelp.
+.******************************************************************************
+:help.
+:name.index
+:descr.index
+:body.
+:p.
+Selecting this option will display a list of available help screens.
+Highlight the desired item you want help with and press enter.
+:ehelp.
+.******************************************************************************
+:help.
+:name.integer format
+:descr.integer format
+:body.
+:p.
+The format for integers is a signed number between -32,768 and
+32,767.
+:ehelp.
+.******************************************************************************
+:help.
+:name.keys help
+:descr.keys help
+:body.
+:p.
+Selecting the keys option will display a short description
+of the keys and their function.
+:ehelp.
+.******************************************************************************
+:help.
+:name.keystroke recording and playback
+:descr.keystroke recording and playback
+:body.
+:p.
+This allows you to establish a repeatable starting point that can do
+such things as setting breakpoints, inserting variables into the
+storage window and running to a specific breakpoint.
+:p.
+The debugger automatically writes each keystroke to file
+DEBUG.KBR.  The format of this file is one keystroke per line,
+interpreted as four hex nibbles in columns 1 through 4.  There
+is also an interpretation for all normal character keys
+and for *some* of the more common control keys such as F3, PgUp,
+UpArrow, Spacebar, ...  The name of the current LCV file, the
+currently-executing source code line number and source-text line
+or assembler interpretation is also provided.
+:p.
+To playback a session, copy file DEBUG.KBR to DEBUG.KBP.  Then
+restart DEBUG.  The KBR file normally has an <F3> record at the
+end, because that is how you stop the debugger. You do not have
+to delete this record before playing back a script, because it
+is a flag to the debugger that instructs it to stop processing
+the KBP file.
+:p.
+During playback, characters are read from the KBP file as needed.
+There is no artificial delay added, so the processing
+of the KBP file can occur very quickly.  After all keystrokes
+are played back, reading from the keyboard is resumed so that
+you can manually observe the current state of your application
+and manually continue on from that point.
+:p.
+The main purpose for this function is to allow you to quickly
+establish the same breakpoints in a new DEBUG session that you
+set in a previous session.  You can also use it to switch to
+other source files, display or modify memory, insert variables
+in the storage window, run to a breakpoint or to several
+breakpoints any number of times, or most other functions not
+described here.  It can be simple or complex, but MUST BE
+REPEATABLE!
+:p.
+Another handy use of this feature is to review code flow at a later
+time.  When single-stepping through a set of source code, each
+source line is saved in DEBUG.KBR.  You can print this file and
+compare the code flow from a future DEBUG run against it.
+:p.
+To stop running of the Playback on subsequent DEBUG sessions,
+erase file DEBUG.KBP.
+:ehelp.
+.******************************************************************************
+:help.
+:name.long format
+:descr.long format
+:body.
+:p.
+The format for long is a signed number between -2,147,483,648 and
++2,147,483,647.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify
+:descr.modify
+:body.
+:p.
+You can modify the contents of the registers with this option.
+:p.
+Note: Assembler screen only.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify basic real
+:descr.modify basic real
+:body.
+:p.
+You can modify the value of a 4690 basic real number by moving the
+cursor to that floating point value
+and entering a decimal number.  It must be of a format consistent with
+4690 basic.
+:p.
+A 4690 basic real number is represented by an 18 digit
+BCD floating point format. It is in engineering notation. The
+DEBUGGER shows a basic real number as:
+:ul.
+:li.[-]3.1415926E[-]3
+:eol.
+A minus sign preceding the number makes the number negative. A minus sign
+after the E makes the engineering notation negative. For example:
+:ul.
+:li.3.1415926E3 is equal to 3141.5926
+:li.3.1415926E-3 is equal to 0.0031415926.
+:li.-3.1415926E-3 is equal to -0.0031415926.
+:eol.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify basic string
+:descr.modify basic string
+:body.
+:p.
+You can change the contents of a basic string by typing over
+the characters in the string on the storage screen. You have the option
+of changing the hexadecimal or ASCII characters.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify character
+:descr.modify character
+:body.
+:p.
+You can modify a character by moving the cursor to that character and
+typing over it. Any keyboard character is valid.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify double
+:descr.modify double
+:body.
+:p.
+You can modify the value of a double floating point number by moving the
+cursor to that double floating point value
+and entering a decimal number.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify expression
+:descr.modify expression
+:body.
+:p.
+You can modify the value of an algebraic expression by moving the
+cursor to the expression and entering the new or modified expression.
+An example of an expression is total_items/transactions. The result will
+be the numbers per transaction.
+:p.
+Refer to the 4690 Application Debugger User's Guide for more information
+on expressions.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify integer
+:descr.modify integer
+:body.
+:p.
+You can modify the value of an integer by moving the cursor to that
+integer and entering a valid signed number. This number has a range of
+-32,768 to +32,767.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify floating point
+:descr.modify floating point
+:body.
+:p.
+You can modify the value of a floating point number by moving the
+cursor to that floating point value
+and entering a decimal number.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify long
+:descr.modify long
+:body.
+:p.
+You can modify the value of a long by moving the cursor to that
+long value and entering a valid signed number. This number has a range
+from -2,147,483,648 to +2,147,483,647.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify pointer offset
+:descr.modify pointer offset
+:body.
+:p.
+You can modify the value of a pointer offset by moving the
+cursor to the hexadecimal after the colon in the segment offset notation
+and entering a four digit hexadecimal number.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify pointer segment
+:descr.modify pointer segment
+:body.
+:p.
+You can modify the value of a pointer offset by moving the
+cursor to the hexadecimal before the colon in the segment offset notation
+and entering a four digit hexadecimal number.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify storage
+:descr.modify storage
+:body.
+:p.
+You can change the contents of a storage by typing over
+the characters on the screen. You have the option
+of changing the hexadecimal or ASCII characters.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify unsigned character
+:descr.modify unsigned character
+:body.
+:p.
+You can modify an unsigned character by moving the cursor to that character
+and typing over it. Any keyboard character is valid.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify unsigned integer
+:descr.modify unsigned integer
+:body.
+:p.
+You can modify the value of an unsigned integer by moving the cursor to that
+integer and entering a valid signed number. This number has a range of
+0 to 65535.
+:ehelp.
+.******************************************************************************
+:help.
+:name.modify unsigned long
+:descr.modify unsigned long
+:body.
+:p.
+You can modify the value of a long by moving the cursor to that
+long value and entering a valid signed number. This number has a range of
+0 to 2e32-1.
+:ehelp.
+.******************************************************************************
+:help.
+:name.next file
+:descr.next file
+:body.
+:p.
+Switch to the next available window. Does nothing if only one
+debug window is active.
+:ehelp.
+.****************************************************************************
+:help.
+:name.other formats
+:descr.other formats
+:body.
+:p.
+The compiler determines the format of the variable.
+:ehelp.
+.******************************************************************************
+:help.
+:name.pipe selection
+:descr.pipe selection
+:body.
+:p.
+Select the pipe you want by using the arrow keys. Page up and Page down
+keys are active if more than one page of pipes are available.
+:p.
+After you have selected the pipe, press enter to display the contents.
+:ehelp.
+.******************************************************************************
+:help.
+:name.pipe information
+:descr.pipe information
+:body.
+:p.
+The following pipe information is available:
+:ul compact.
+:li.Type can be read or write.
+:li.Address is the location in storage of the pipe.
+:li.Size is the size of the pipe buffer.
+:li.Next byte is the next available byte to be read from the pipe.
+:eul.
+To display the contents of the entire pipe, enter the address of the
+pipe in the storage window.
+:ehelp.
+.******************************************************************************
+:help.
+:name.register window
+:descr.register window
+:body.
+:p.
+You can modify the contents of the registers with this option.
+0 thru 9 and A thru F are valid input. Use caution when modifying
+the contents of registers. Incorrect values can cause unpredictable
+results.
+:ehelp.
+.******************************************************************************
+:help.
+:name.register window help
+:descr.register window help
+:body.
+:p.
+Use this option to change the contents of the registers.
+Changing the register values can cause unpredictable
+results.
+:p.
+Note: Assembler screen only.
+:ehelp.
+.******************************************************************************
+:help.
+:name.restart application
+:descr.restart application
+:body.
+:p.
+Restart the application from the beginning. All break points are
+cleared and all memory variables remain active in the storage screen.
+:ehelp.
+.******************************************************************************
+:help.
+:name.resume
+:descr.resume
+:body.
+:p.
+Resume the current debug session, this is the alternative to
+exiting.
+:ehelp.
+.******************************************************************************
+:help.
+:name.run to next CBASIC function call
+:descr.run to next CBASIC function call
+:body.
+:p.
+Press <CTRL>F2 to step into the next CBASIC function, regardless of its
+location or your current location.
+:p.
+You can use this feature when you are not familiar with a large program that
+you are debugging, and want some guidance concerning the order and purpose of
+called functions in the program.  A breakpoint occurs at the beginning of each
+function that normally would be added to the CBASIC call history.  If
+you are not concerned about the function where any breakpoint occurs, press
+<CTRL>F2 again to run to the next called function.  Code prerequisites for
+CBASIC call history also apply to this feature.
+:ehelp.
+.******************************************************************************
+:help.
+:name.return to window from previous RUN
+:descr.return to window from previous RUN
+:body.
+:p.
+ALT+F7 will return to the source window that was displayed when you last pressed
+F2 (step), F5 (run to cursor), F6 (run), or Search Function.  This is useful
+when you stepped
+beyond a desired point or stepped into a function, or after you press CTRL+BRK
+during a running application.  It returns you to a more familiar source-code
+point so that you can set breakpoints, display or alter memory, or any other
+function.  Repeatedly pressing ALT+F7 will show prior windows.  A maximum of
+twenty windows are saved.
+:p.
+Note that ALT+F7 only changes the source code location that you are viewing.
+It does not change the location of the next sequential instruction or the
+contents of application memory.  To return to showing the next sequential
+instruction, press F7.
+:ehelp.
+.******************************************************************************
+:help.
+:name.run
+:descr.run
+:body.
+:p.
+Run will cause the program being debugged to execute. Program execution
+will continue until a code or data break point is encountered or
+until Ctrl+Break is pressed.
+:ehelp.
+.******************************************************************************
+:help.
+:name.run to cursor
+:descr.run to cursor
+:body.
+:p.
+Set a breakpoint at the cursor, run the target program until a
+code or data breakpoint or event occurs. Same function as F5.
+The breakpoint at the cursor is not kept once it is reached.
+:ehelp.
+.******************************************************************************
+:help.
+:name.run without breakpoints
+:descr.run without breakpoints
+:body.
+:p.
+This option temporarily clears all code and data breakpoints and issues
+a RUN.  It is useful if you want to let your application quiesce, and do not
+want to be bothered with presentation of each breakpoint that occurs before
+the point of quiescence.
+:p.
+After using this feature, you must press <CTRL>+BRK if you want
+to regain control of your application in the debugger.  At that point,
+all code and data breakpoints that were in effect previously, will again
+be in effect.
+:ehelp.
+.******************************************************************************
+:help.
+:name.search
+:descr.search
+:body.
+:p.
+With this option you can start a search of the code being debugged.
+Search has the following options:
+:ul.
+:li.for a string
+:li.for the next string
+:li.for a function
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.search for string
+:descr.search for string
+:body.
+:p.
+Locate the first occurrence of a given string. You will be asked to
+enter the string to be found.
+:p.
+Note: Source screen only.
+:p.
+To recall the last string you entered, press the up arrow key.  To cycle
+through previous strings, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.search for function or file
+:descr.search for function or file
+:body.
+:p.
+Locate a function. You will be asked to enter the name of the function.
+Enter the full name, or any unique portion of it.
+:p.
+You can also switch to a specific OBJ file by specifying its name.
+Enter the full name, or any unique portion of it.
+:p.
+To recall the last name you entered, press the up arrow key.  To cycle
+through previous names, repeatedly press the up arrow or down arrow keys.
+:p.
+Normally, a function must be Global/Public to be found by using S F or <F8>.
+If you want to expand the scope to include a local function and do not
+know the file name containing it, use <SHIFT>+F8 instead of S F or F8.
+All files will be searched for the name of the function you enter.  If more than
+one function with that partial name is found, the Select-A-Symbol window
+is shown to allow you to choose the desired name from a list.
+:ehelp.
+.******************************************************************************
+:help.
+:name.search for variable
+:descr.search for variable
+:body.
+:p.
+This feature finds the usage of a variable in any file.  It determines which
+files reference the variable you enter, then displays the source file where that
+variable is used and locates an occurrence of it.  To see the next occurrence
+in the file, type N.
+:p.
+Short variable names can be entered.  If the variable name cannot be uniquely
+resolved, then the Select-A-Symbol popup allows you to select the desired
+variable name.
+:p.
+If more than one source file uses the variable name you entered or selected,
+then the Select-A-Symbol popup allows you to select which source file name
+should be displayed.
+:ehelp.
+.******************************************************************************
+:help.
+:name.segment data
+:descr.segment data
+:body.
+:p.
+The information displayed is from the local descriptor table. It displays
+the protect mode address space for the application being debugged. For more
+information on the data refer to the Programmers Reference manual from "Intel
+Corporation" for the 80286 or 80386 microprocessor.
+:p.
+The segment data includes the segment number for each segment, the selector
+number, the selector limit or size, the flag bits associated with this
+segment, and the attributes which describe the type of access and whether or
+not it is active. The selectors all define 16 bit segments. The 32 bit mode
+of the 80386 is not used.
+:ehelp.
+.******************************************************************************
+:help.
+:name.segment information
+:descr.segment information
+:body.
+:p.
+Use this option to
+display information on all the code and data segments used by the current
+application. It will display the local descriptor table. The table defines
+the protect mode address space for the application.
+:ehelp.
+.******************************************************************************
+:help.
+:name.select a symbol name
+:descr.select a symbol name
+:body.
+:p.
+The string that you typed does not exist as the complete name of a variable or
+function.  This string however is found as part of the name of two or more
+existing symbols.
+:p.
+When specifying variable or function names, you do not need to type every
+character of the name you desire, but should specify enough characters so that
+the name you specify can be uniquely identified.
+:p.
+If the name you specified exactly matches the name of a symbol, that symbol
+will be selected.  If there is no exact match, but the name you typed is found
+in only one symbol, that symbol will be selected exactly as if you had typed
+its entire name.
+:p.
+If two or more symbols contain the string you typed, this menu is displayed
+with the first of up to five symbols which contain that string.
+:p.
+Use the up or down arrows to highlight one of the names and press ENTER.
+:p.
+Use the PgDn (or PgUp) keys to scroll to the next (or previous) five
+entries in the list.
+:p.
+If more than 100 symbols contain the string you typed, an error message is
+displayed.  Re-enter a more unique string.
+:ehelp.
+.******************************************************************************
+:help.
+:name.set/clear code break point
+:descr.set/clear code break point
+:body.
+:p.
+Set or reset a program execution breakpoint on
+the cursor line. Performs the same function as F4.
+If debugging at source level, you may notice that not all lines may be
+selected for breakpoints.
+This is due to your compiler, which generates a table of line numbers
+versus module addresses.
+The debugger can set breakpoints only on those lines that have an entry
+in this table (for example, you cannot set breakpoints on comments,
+some declarations, some terminating braces, nor various other places).
+:p.
+Resetting a breakpoint at the Source level resets the breakpoints on
+all assembler instructions covered by that source line.
+:ehelp.
+.******************************************************************************
+:help.
+:name.set/clear data break point
+:descr.set/clear data break point
+:body.
+:p.
+Move the cursor to the line and column that contains the variable
+name.  Press CTRL+F4 or ALT+F4.  The breakpoint is set to the
+address of that variable.  The breakpoint field length is set to two
+bytes for two-byte integers, or four bytes for four-byte integers or
+string pointers.  For all other types, the field length is set to one byte.
+:p.
+To set a data breakpoint on the storage address referenced by a
+pointer, move the cursor to the line and column that contains the
+name of the pointer and press SHIFT+F4.  The breakpoint is set to the
+single-byte address of the beginning of that storage address.
+:p.
+To run to a data breakpoint, press F5 or F6.  A data breakpoint is
+considered by the processor hardware to be a trap rather that a
+true breakpoint.  Therefore, when a data breakpoint is hit, the data
+at the breakpoint address is modified and the next sequential instruction
+is marked as if it is the instruction that caused the break.  This
+could be somewhat confusing to you until you get used to it.
+:p.
+You can specify a value and a comparison operator to be used with data
+breakpoints, so that you can continue to run when the value of the
+variable is not significant.
+Type D D from a source or assembler window to specify a comparison
+operator and value.  See 'display data breakpoints'.
+:p.
+Each data breakpoint will remain set until you reset it.  To reset a
+data breakpoint, place the cursor on the name of the variable and
+press CTRL+F4 or ALT+F4.
+:p.
+You can set up to four data breakpoints, limited by Intel hardware
+architecture.
+:p.
+Because of a required change in the 4690 OS Kernel, data breakpoints
+require 4690 OS V3R2, or V3R1 with appropriate APARs.
+:p.
+Data breakpoints will work only on 486-class machines or better.
+:ehelp.
+.******************************************************************************
+:help.
+:name.show calling statement
+:descr.show calling statement
+:body.
+:p.
+CTRL+F7 will show the statement that calls the current function.
+Your application must use a standard stack frame in order for this shortcut
+to work correctly.
+:p.
+Note that CTRL+F7 only changes the source code location that you are viewing.
+It does not change the location of the next sequential instruction or the
+contents of application memory.  To return to showing the next sequential
+instruction, press F7.
+:ehelp.
+.******************************************************************************
+:help.
+:name.single step
+:descr.single step
+:body.
+:p.
+Single step the program in the current window. This performs the
+same function as the spacebar. If the current program calls a function,
+this function will not be stopped.
+:ehelp.
+.******************************************************************************
+:help.
+:name.single step into function
+:descr.single step into function
+:body.
+:p.
+Single step the target program (trace) with code breakpoints
+enabled. If a function is called, instead of continuing with the current
+program, the debugger will begin to debug the function code.
+This option is the same as the F2 key.
+:p.
+Note: When you step into a function, the parameters
+and the call stack will not be correct
+until the function prologue code is executed.
+To correct this, step one additional statement.
+:ehelp.
+.****************************************************************************
+:help.
+:name.source window
+:descr.source window
+:body.
+:p.
+The source window is a look at the source code being debugged.
+:p.
+The first character of the options on the pull down can be used to select
+that option. The letter H will jump into the Help pull-down.
+Many of the options on the pull-down windows are available on hot-key.
+For a list of the hot-keys press F1 then F9.
+:p.
+To switch to the assembler code window, press W to go to the window pull-down
+and select A for the source option. Refer to
+the section of help on 4690 Basic language debug. To see
+the index of help screens press F1 then F11.
+:ehelp.
+.******************************************************************************
+:help.
+:name.source window help
+:descr.source window help
+:body.
+:p.
+Use this option to switch to the source window. Selecting this option will
+display the source window instead of the current window. The source window is
+used to display and control the application being debugged from a
+source level.
+:ehelp.
+.******************************************************************************
+:help.
+:name.storage pointed to
+:descr.storage pointed to
+:body.
+:p.
+Display the contents of the memory location that a given variable
+is pointing to. You will be asked to enter the name of the pointer.
+:p.
+To recall the last location you entered, press the up arrow key.  To cycle
+through previous locations, repeatedly press the up arrow or down arrow keys.
+:ehelp.
+.******************************************************************************
+:help.
+:name.storage window
+:descr.storage window
+:body.
+:p.
+The storage window is a look at the selected variables from
+the application being debugged.
+To return to the previous screen press the ESCape key.
+:p.
+The action bar functions are not available in the storage window.
+Instead a function key line is shown on the next line after the storage
+window.
+:p.
+:Note: The data displayed on the storage window can be modified. For example:
+You can change the value of a variable to test an error path of a function.
+:p.
+:You can move the position of a variable by placing the cursor on its line and
+pressing <CTRL>+u (move it UP one line), <CTRL>+d (move it DOWN one line),
+<CTRL>+t (move it to the TOP of the window), or <CTRL>+b (move it to the
+BOTTOM of the window).
+:ehelp.
+.******************************************************************************
+:help.
+:name.storage window help
+:descr.storage window help
+:body.
+:p.
+Use this option to switch to the storage window. Selecting this option will
+display the storage window over your current window. The storage window is
+used to display the variables and pointers selected in the application being
+debugged.
+:ehelp.
+.******************************************************************************
+:help.
+:name.terminal status
+:descr.terminal status
+:body.
+:p.
+Use this option to toggle the terminal status. The options are:
+:ul.
+:li.ON-LINE - Normal mode. Terminal is still communicating
+with the controller on the loop.
+:li.OFF-LINE - Special Mode- Terminal is not communicating
+with the controller on the loop. The DEBUGGER still has control of
+the terminal program being debugged.
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.terminal online
+:descr.terminal online
+:body.
+:p.
+Terminal being debugged is in an ON-LINE status. This is the
+normal mode and the terminal is still communicating with the
+controller on the store loop.
+:ehelp.
+.******************************************************************************
+:help.
+:name.terminal session server applications
+:descr.terminal session server applications
+:body.
+:p.
+Special rules apply to the debugging of Terminal Session Server applications.
+In the traditional environment, the debugger loads EWTTERM.286 which in turn
+loads the application you are debugging.  This method does not work in the
+TSS environment, because the debugger cannot directly start a TSS application.
+:p.
+When debugging a TSS application, you must change your TSS configuration
+so that DEBUG:EWTTERM.286 starts instead of your terminal application.  You
+also must use the /Vnnn flag instead of the /Tnnn flag when starting DEBUG.
+:p.
+If EWTTERM terminates, abends or is canceled and you want to do more debugging,
+you must restart EWTTERM before you restart DEBUG.
+:p.
+If DEBUG terminates, abends or is canceled and you want to do more debugging,
+just restart DEBUG.  You usually do not need to restart EWTTERM if it is still
+running from the last session.
+:ehelp.
+.******************************************************************************
+:help.
+:name.terminal offline
+:descr.terminal offline
+:body.
+:p.
+Terminal being debugged is in an OFF-LINE mode. The terminal is
+not in communications with the store controller on the loop.
+The DEBUGGER still can debug the terminal program.
+:ehelp.
+.******************************************************************************
+:help.
+:name.toggle function breakpoints in this file
+:descr.toggle function breakpoints in this file
+:body.
+:p.
+This feature sets (or clears) a breakpoint at the beginning of each global or
+local procedure in the currently-displayed file.  It is useful for watching the
+flow of control when you believe that a problem exists in the current source
+file, but you are not certain which function in the file is causing the
+problem.  It is somewhat similar to <CTRL>+F2 (step into any CBASIC function),
+but limits the scope to the current file.  A message indicates how many
+breakpoints were set or cleared.
+:p.
+You can manually clear breakpoints that were set using this feature for
+functions that are of no concern to you.  The debugger remembers the function
+breakpoint settings independently for each file.
+:p.
+You can set or clear breakpoints independently in any number of LCV files.
+:ehelp.
+.******************************************************************************
+:help.
+:name.toggle name lengths
+:descr.toggle name lengths
+:body.
+:p.
+The names of variables can be fully displayed in the storage window, on the
+same line as their contents, only if the length of the name is 11 characters or
+less.
+:p.
+If this option is OFF, an '=' appears in column 12 for long names, to indicate
+that the complete name is not shown.
+:p.
+If this option is ON, variable names greater than 11 characters in length are
+displayed on a separate line just above their contents.  Up to the first 76
+characters are shown.
+:p.
+Selecting this option will toggle it ON or OFF from its previous setting.  It
+is initially set OFF.
+:ehelp.
+.******************************************************************************
+:help.
+:name.toggle zero/null elements
+:descr.toggle zero/null elements
+:body.
+:p.
+Arrays in the storage window are shown one element per line.  Except for the
+first and last array elements, which are always shown, values that are zero
+or null are not shown.  This reduces clutter.
+:p.
+To see all array elements, regardless of value, type C Z.  To go back to the
+default behavior, type C Z again.
+:p.
+Scalar variables are unaffected by this toggle setting, and are always shown.
+:ehelp.
+.******************************************************************************
+:help.
+:name.window
+:descr.window
+:body.
+:p.
+With this option you can switch the display screen to another window.
+The following windows are available:
+:ul.
+:li.Source or assembler
+:li.Storage
+:li.Registers (assembler screen only)
+:li.Application  (operator's view)
+:li.Next window in a ring
+:eul.
+:ehelp.
+.******************************************************************************
+:egroup.
+ÿÿÿÿäü  ªU        j   INTRODUCTION         INTRODUCTION         Introduction                                                            ñ  FAST PATH COMMANDS   FAST PATH COMMANDS   Fast path commands                                                      N  4690 BASIC LANGUAGE  4690 BASIC LANGUAGE  4690 Basic language debug                                               ´  COBOL LANGUAGE DEBUG COBOL LANGUAGE DEBUG COBOL Language Debug                                                    y  C LANGUAGE DEBUG     C LANGUAGE DEBUG     C Language Debug                                                        #  KEYS                 KEYS                 keys                                                                    :  ABOUT                ABOUT                about                                                                      APPLICATION WINDOW   APPLICATION WINDOW   application window                                                      0!  ASSEMBLER WINDOW     ASSEMBLER WINDOW     assembler window                                                        ©$  ASSEMBLER WINDOW HEL ASSEMBLER WINDOW HEL assembler window help                                                   D&  BASIC REAL FORMAT    BASIC REAL FORMAT    basic real format                                                       Å(  BASIC STRING FORMAT  BASIC STRING FORMAT  basic string format                                                     r*  CBASIC CALL HISTORY  CBASIC CALL HISTORY  cbasic call history                                                     T5  CBASIC ERROR TRACE   CBASIC ERROR TRACE   cbasic error trace                                                      o9  CBASIC ON ERROR ROUT CBASIC ON ERROR ROUT cbasic on error routine                                                 †:  CBASIC OPEN FILES    CBASIC OPEN FILES    cbasic open files                                                       s<  CHARACTER FORMAT     CHARACTER FORMAT     character format                                                        k=  COMMANDS             COMMANDS             commands                                                                R?  CONTINUE DEBUGGING   CONTINUE DEBUGGING   continue debugging                                                      .@  CONTROL BREAK        CONTROL BREAK        control break                                                           'A  DEBUG CURRENT APPLIC DEBUG CURRENT APPLIC debug current application                                               GB  DEBUG NEW APPLICATIO DEBUG NEW APPLICATIO debug new application                                                   XC  DEBUGGER OVERVIEW    DEBUGGER OVERVIEW    DEBUGGER overview                                                       E  DISPLAY              DISPLAY              display                                                                 I  DISPLAY MEMORY       DISPLAY MEMORY       display memory                                                          ëJ  DISPLAY CODE BREAKPO DISPLAY CODE BREAKPO display code breakpoints                                                ÉK  DISPLAY DATA BREAKPO DISPLAY DATA BREAKPO display data breakpoints                                                YQ  DISPLAY PIPES        DISPLAY PIPES        display pipes                                                           ÍR  DISPLAY PTR VARIABLE DISPLAY PTR VARIABLE display ptr variable                                                    ŒT  DISPLAY VARIABLE     DISPLAY VARIABLE     display variable                                                        )V  DO NOT RESTART APPLI DO NOT RESTART APPLI do not restart application                                              $W  DOUBLE FORMAT        DOUBLE FORMAT        double format                                                           X  ENTER ADDRESS        ENTER ADDRESS        enter address                                                           ÏY  ENTER DISPLAY VARIAB ENTER DISPLAY VARIAB enter display variable                                                  .\  ENTER FUNCTION NAME  ENTER FUNCTION NAME  enter function name                                                     †^  ENTER SEARCH STRING  ENTER SEARCH STRING  enter search string                                                     ·`  EXIT                 EXIT                 exit                                                                    b  EXIT DEBUGGER        EXIT DEBUGGER        exit debugger                                                           êb  EXTENDED HELP        EXTENDED HELP        extended help                                                           Žm  FIND EXECUTING LINE  FIND EXECUTING LINE  find executing line                                                     Çn  FIND NEXT STRING     FIND NEXT STRING     find next string                                                        ¶o  FLOAT FORMAT         FLOAT FORMAT         float format                                                            ¥p  FORMAT VARIABLE      FORMAT VARIABLE      format variable                                                         2s  FUNCTION CALL TRACE  FUNCTION CALL TRACE  function call trace                                                     2t  FUNCTION TRACE       FUNCTION TRACE       function trace                                                          ·u  HELP                 HELP                 help                                                                    ýw  HELP: EXTENDED HELP  HELP: EXTENDED HELP  help: extended help                                                     y  HELP: CBASICRC       HELP: CBASICRC       help: cbasicrc                                                          Òz  HELP: HELP FOR HELP  HELP: HELP FOR HELP  help: help for help                                                     Õ{  HELP FOR HELP        HELP FOR HELP        help for help                                                           n~  HELP INDEX           HELP INDEX           help index                                                              Ù  HELP NOT AVAILABLE   HELP NOT AVAILABLE   help not available                                                      ¨€  HEX FORMAT           HEX FORMAT           hex format                                                              š  INDEX                INDEX                index                                                                   ª‚  INTEGER FORMAT       INTEGER FORMAT       integer format                                                          ƒ  KEYS HELP            KEYS HELP            keys help                                                               ~„  KEYSTROKE RECORDING  KEYSTROKE RECORDING  keystroke recording and playback                                        Ç  LONG FORMAT          LONG FORMAT          long format                                                             ±Ž  MODIFY               MODIFY               modify                                                                     MODIFY BASIC REAL    MODIFY BASIC REAL    modify basic real                                                       ä’  MODIFY BASIC STRING  MODIFY BASIC STRING  modify basic string                                                     C”  MODIFY CHARACTER     MODIFY CHARACTER     modify character                                                        \•  MODIFY DOUBLE        MODIFY DOUBLE        modify double                                                           Œ–  MODIFY EXPRESSION    MODIFY EXPRESSION    modify expression                                                       ƒ˜  MODIFY INTEGER       MODIFY INTEGER       modify integer                                                          Á™  MODIFY FLOATING POIN MODIFY FLOATING POIN modify floating point                                                   óš  MODIFY LONG          MODIFY LONG          modify long                                                             :œ  MODIFY POINTER OFFSE MODIFY POINTER OFFSE modify pointer offset                                                   ™  MODIFY POINTER SEGME MODIFY POINTER SEGME modify pointer segment                                                  ûž  MODIFY STORAGE       MODIFY STORAGE       modify storage                                                          5   MODIFY UNSIGNED CHAR MODIFY UNSIGNED CHAR modify unsigned character                                               j¡  MODIFY UNSIGNED INTE MODIFY UNSIGNED INTE modify unsigned integer                                                 »¢  MODIFY UNSIGNED LONG MODIFY UNSIGNED LONG modify unsigned long                                                    ý£  NEXT FILE            NEXT FILE            next file                                                               å¤  OTHER FORMATS        OTHER FORMATS        other formats                                                           ´¥  PIPE SELECTION       PIPE SELECTION       pipe selection                                                          %§  PIPE INFORMATION     PIPE INFORMATION     pipe information                                                        .©  REGISTER WINDOW      REGISTER WINDOW      register window                                                         žª  REGISTER WINDOW HELP REGISTER WINDOW HELP register window help                                                    ã«  RESTART APPLICATION  RESTART APPLICATION  restart application                                                     ­  RESUME               RESUME               resume                                                                  æ­  RUN TO NEXT CBASIC F RUN TO NEXT CBASIC F run to next CBASIC function call                                        ±  RETURN TO WINDOW FRO RETURN TO WINDOW FRO return to window from previous RUN                                      â´  RUN                  RUN                  run                                                                     ¶  RUN TO CURSOR        RUN TO CURSOR        run to cursor                                                           h·  RUN WITHOUT BREAKPOI RUN WITHOUT BREAKPOI run without breakpoints                                                 û¹  SEARCH               SEARCH               search                                                                  ;»  SEARCH FOR STRING    SEARCH FOR STRING    search for string                                                       ý¼  SEARCH FOR FUNCTION  SEARCH FOR FUNCTION  search for function or file                                             Á  SEARCH FOR VARIABLE  SEARCH FOR VARIABLE  search for variable                                                     Ä  SEGMENT DATA         SEGMENT DATA         segment data                                                            Ç  SEGMENT INFORMATION  SEGMENT INFORMATION  segment information                                                     šÈ  SELECT A SYMBOL NAME SELECT A SYMBOL NAME select a symbol name                                                    …Í  SET/CLEAR CODE BREAK SET/CLEAR CODE BREAK set/clear code break point                                              »Ð  SET/CLEAR DATA BREAK SET/CLEAR DATA BREAK set/clear data break point                                              hØ  SHOW CALLING STATEME SHOW CALLING STATEME show calling statement                                                  ¹Ú  SINGLE STEP          SINGLE STEP          single step                                                             þÛ  SINGLE STEP INTO FUN SINGLE STEP INTO FUN single step into function                                               ^Þ  SOURCE WINDOW        SOURCE WINDOW        source window                                                           &á  SOURCE WINDOW HELP   SOURCE WINDOW HELP   source window help                                                      ·â  STORAGE POINTED TO   STORAGE POINTED TO   storage pointed to                                                      ƒä  STORAGE WINDOW       STORAGE WINDOW       storage window                                                          óç  STORAGE WINDOW HELP  STORAGE WINDOW HELP  storage window help                                                     ‹é  TERMINAL STATUS      TERMINAL STATUS      terminal status                                                         {ë  TERMINAL ONLINE      TERMINAL ONLINE      terminal online                                                         ´ì  TERMINAL SESSION SER TERMINAL SESSION SER terminal session server applications                                    ìð  TERMINAL OFFLINE     TERMINAL OFFLINE     terminal offline                                                        ?ò  TOGGLE FUNCTION BREA TOGGLE FUNCTION BREA toggle function breakpoints in this file                                !ö  TOGGLE NAME LENGTHS  TOGGLE NAME LENGTHS  toggle name lengths                                                     
+ù  TOGGLE ZERO/NULL ELE TOGGLE ZERO/NULL ELE toggle zero/null elements                                               Pû  WINDOW               WINDOW               window                                                          *3  äü  ªU

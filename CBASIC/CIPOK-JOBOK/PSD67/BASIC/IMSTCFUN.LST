@@ -1,0 +1,487 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***          CURRENT ITEM MOVEMENT & STOCK FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***               REFERENCE    : IMSTCFUN.BAS
+   7: 0000: \***
+   8: 0000: \***          VERSION A       Les Cook     21st August 1992
+   9: 0000: \***
+  10: 0000: \*****************************************************************************
+  11: 0000: \***            VERSION 1.1 JULIA STONES     13/6/05
+  12: 0000: \***            Added new external functions for
+  13: 0000: \***            MIMSTC - Merged IMSTC
+  14: 0000: \***            CIMSTC - Copy of IMSTC
+  15: 0000: \***            BIMSTC - Backup of IMSTC
+  16: 0000: \***
+  17: 0000: \******************************************************************************
+  18: 0000: \******************************************************************************
+  19: 0000: 
+  20: 0000:    INTEGER*2 GLOBAL               \
+  21: 0000:       CURRENT.REPORT.NUM%
+  22: 0000: 
+  23: 0000:    STRING GLOBAL                  \
+  24: 0000:       CURRENT.CODE$,              \
+  25: 0000:       FILE.OPERATION$
+  26: 0000: 
+  27: 0000:    %INCLUDE IMSTCDEC.J86
+  28: 0000: REM \
+  29: 0000: \******************************************************************************
+  30: 0000: \******************************************************************************
+  31: 0000: \***
+  32: 0000: \***         %INCLUDE FOR ITEM MOVEMENT & STOCK FILE CURRENT FIELD DEFINITIONS
+  33: 0000: \***
+  34: 0000: \***               FILE TYPE    : Keyed
+  35: 0000: \***
+  36: 0000: \***               REFERENCE    : IMSTCDEC.J86
+  37: 0000: \***
+  38: 0000: \***               DATE OF LAST AMENDMENT - 21/8/92
+  39: 0000: \***
+  40: 0000: \***
+  41: 0000: \*****************************************************************************
+  42: 0000: \***            VERSION 1.1 JULIA STONES     13/6/05
+  43: 0000: \***            Added new external functions for
+  44: 0000: \***            MIMSTC - merged IMSTC
+  45: 0000: \***            CIMSTC - Copy of IMSTC
+  46: 0000: \***            BIMSTC - Backup of IMSTC
+  47: 0000: \******************************************************************************
+  48: 0000: *******************************************************************************
+  49: 0000: 
+  50: 0000:   STRING GLOBAL             \
+  51: 0000:     IMSTC.FILE.NAME$,       \
+  52: 0000:     MIMSTC.FILE.NAME$,      \ ! 1.1 JAS
+  53: 0000:     CIMSTC.FILE.NAME$,      \ ! 1.1JAS
+  54: 0000:     BIMSTC.FILE.NAME$,      \ ! 1.1JAS
+  55: 0000:     IMSTC.HOLD.PENDING$,    \
+  56: 0000:     IMSTC.BAR.CODE$,        \  11 byte UPD without check digit (key)
+  57: 0000:     MIMSTC.BAR.CODE$,       \ ! 1.1JAS 11 byte UPD without check digit (key)
+  58: 0000:     CIMSTC.BAR.CODE$,       \ ! 1.1JAS 11 byte UPD without check digit (key)
+  59: 0000:     IMSTC.FILLER$,          \
+  60: 0000:     MIMSTC.FILLER$,         \ ! 1.1JAS
+  61: 0000:     CIMSTC.FILLER$,         \ ! 1.1JAS
+  62: 0000:     IMSTC.REASON.ITEM.REMOVED$, \
+  63: 0000:     MIMSTC.REASON.ITEM.REMOVED$,  \ ! 1.1JAS
+  64: 0000:     CIMSTC.REASON.ITEM.REMOVED$,  \ ! 1.1JAS
+  65: 0000:     IMSTC.STATUS.FLAG$,     \  BIT "80" - IN STOCK SYSTEM
+  66: 0000:                             \  BIT "40" - COUNTED TODAY
+  67: 0000:     MIMSTC.STATUS.FLAG$,    \  BIT "80" - IN STOCK SYSTEM  ! 1.1JAS
+  68: 0000:                             \  BIT "40" - COUNTED TODAY    ! 1.1JAS
+  69: 0000:     CIMSTC.STATUS.FLAG$     \  BIT "80" - IN STOCK SYSTEM  ! 1.1JAS
+  70: 0000:                             \  BIT "40" - COUNTED TODAY    ! 1.1JAS
+  71: 0000: 
+  72: 0000:   INTEGER*2 GLOBAL          \
+  73: 0000:     IMSTC.SESS.NUM%,        \
+  74: 0000:     MIMSTC.SESS.NUM%,       \ ! 1.1JAS
+  75: 0000:     CIMSTC.SESS.NUM%,       \ ! 1.1JAS
+  76: 0000:     BIMSTC.SESS.NUM%,       \ ! 1.1JAS
+  77: 0000:     IMSTC.REPORT.NUM%,      \
+  78: 0000:     MIMSTC.REPORT.NUM%,     \ ! 1.1JAS
+  79: 0000:     CIMSTC.REPORT.NUM%,     \ ! 1.1JAS
+  80: 0000:     BIMSTC.REPORT.NUM%,     \ ! 1.1JAS
+  81: 0000:     IMSTC.RECL%,            \
+  82: 0000:     MIMSTC.RECL%,           \ ! 1.1JAS
+  83: 0000:     CIMSTC.RECL%,           \ ! 1.1JAS
+  84: 0000:     BIMSTC.RECL%,           \ ! 1.1JAS
+  85: 0000:     IMSTC.STOCK.FIGURE%,    \
+  86: 0000:     MIMSTC.STOCK.FIGURE%,   \ ! 1.1JAS
+  87: 0000:     CIMSTC.STOCK.FIGURE%,   \ ! 1.1JAS
+  88: 0000:     TIMST.RECL%
+  89: 0000: 
+  90: 0000:   INTEGER*4 GLOBAL          \
+  91: 0000:     IMSTC.RESTART%,         \
+  92: 0000:     MIMSTC.RESTART%,        \ ! 1.1JAS
+  93: 0000:     CIMSTC.RESTART%,        \ ! 1.1JAS
+  94: 0000:     IMSTC.NUMITEMS%,        \ Count of the number of items sold
+  95: 0000:     MIMSTC.NUMITEMS%,       \ ! 1.1JAS count of the number of items sold
+  96: 0000:     CIMSTC.NUMITEMS%,       \ ! 1.1JAS count of the number of items sold
+  97: 0000:     IMSTC.AMTSALE%,         \ Sum of the sale amount for the item
+  98: 0000:     MIMSTC.AMTSALE%,        \ ! 1.1JAS Sum of the sale amount for the item
+  99: 0000:     CIMSTC.AMTSALE%,        \ ! 1.1JAS Sum of the sale amount for the item
+ 100: 0000:     IMSTC.RESERVED%,        \
+ 101: 0000:     MIMSTC.RESERVED%,       \ ! 1.1JAS
+ 102: 0000:     CIMSTC.RESERVED%,       \ ! 1.1JAS
+ 103: 0000:     IMSTC.STKMQ.RESTART%,   \ ! 1.1JAS
+ 104: 0000:     MIMSTC.STKMQ.RESTART%,  \ ! 1.1JAS
+ 105: 0000:     CIMSTC.STKMQ.RESTART%     ! 1.1JAS
+ 106: 0000: 
+ 107: 0000:   FUNCTION IMSTC.SET PUBLIC
+ 108: 0014: \***************************
+ 109: 0014: 
+ 110: 0014:      IMSTC.REPORT.NUM% = 31
+ 111: 001d:      IMSTC.RECL%       = 40
+ 112: 0026:      IMSTC.FILE.NAME$  = "IMSTC"
+ 113: 0035: 
+ 114: 0035:   END FUNCTION
+ 115: 0041: 
+ 116: 0041:   FUNCTION MIMSTC.SET PUBLIC                                  ! 1.1JAS
+ 117: 0055: \***************************
+ 118: 0055:                                                               ! 1.1JAS
+ 119: 0055:      MIMSTC.REPORT.NUM% = 703                                 ! 1.1JAS
+ 120: 005e:      MIMSTC.RECL%       = 40                                  ! 1.1JAS
+ 121: 0067:      MIMSTC.FILE.NAME$  = "ADXLXACN::C:\ADX_IDT1\MIMSTC.BIN"  ! 1.1JAS
+ 122: 0076: 
+ 123: 0076:   END FUNCTION                                                ! 1.1JAS
+ 124: 0082: 
+ 125: 0082:   FUNCTION CIMSTC.SET PUBLIC                                  ! 1.1JAS
+ 126: 0096: \***************************
+ 127: 0096:                                                               ! 1.1JAS
+ 128: 0096:      CIMSTC.REPORT.NUM% = 704                                 ! 1.1JAS
+ 129: 009f:      CIMSTC.RECL%       = 40                                  ! 1.1JAS
+ 130: 00a8:      CIMSTC.FILE.NAME$  = "ADXLXACN::C:\ADX_IDT1\CIMSTC.BIN"  ! 1.1JAS
+ 131: 00b7: 
+ 132: 00b7:   END FUNCTION                                                ! 1.1JAS
+ 133: 00c3: 
+ 134: 00c3:   FUNCTION BIMSTC.SET PUBLIC                                  ! 1.1JAS
+ 135: 00d7: \***************************
+ 136: 00d7:                                                               ! 1.1JAS
+ 137: 00d7:      BIMSTC.REPORT.NUM% = 705                                 ! 1.1JAS
+ 138: 00e0:      BIMSTC.RECL%       = 40                                  ! 1.1JAS
+ 139: 00e9:      BIMSTC.FILE.NAME$  = "ADXLXACN::C:\ADX_IDT1\BIMSTC.BIN"  ! 1.1JAS
+ 140: 00f8: 
+ 141: 00f8:   END FUNCTION                                                ! 1.1JAS
+ 142: 0104: 
+ 143: 0104: \-----------------------------------------------------------------------------
+ 144: 0104: 
+ 145: 0104:   FUNCTION READ.IMSTC PUBLIC
+ 146: 0118: \****************************
+ 147: 0118: 
+ 148: 0118:     INTEGER*1 READ.IMSTC
+ 149: 0118: 
+ 150: 0118:     READ.IMSTC = 1
+ 151: 011c: 
+ 152: 011c:     IF END #IMSTC.SESS.NUM% THEN READ.IMSTC.ERROR
+ 153: 0130:     READ FORM "T12,5I4,C1,I2,C1,C5"; #IMSTC.SESS.NUM%                 \
+ 154: 01ba:          KEY IMSTC.BAR.CODE$;                                         \
+ 155: 01ba:              IMSTC.RESTART%,                                          \
+ 156: 01ba:              IMSTC.NUMITEMS%,                                         \
+ 157: 01ba:              IMSTC.AMTSALE%,                                          \
+ 158: 01ba:              IMSTC.RESERVED%,                                         \
+ 159: 01ba:              IMSTC.STKMQ.RESTART%,                                    \
+ 160: 01ba:              IMSTC.STATUS.FLAG$,                                      \
+ 161: 01ba:              IMSTC.STOCK.FIGURE%,                                     \
+ 162: 01ba:              IMSTC.REASON.ITEM.REMOVED$,                              \
+ 163: 01ba:              IMSTC.FILLER$
+ 164: 01ba:     READ.IMSTC = 0
+ 165: 01be:     EXIT FUNCTION
+ 166: 01c0: 
+ 167: 01c0:     READ.IMSTC.ERROR:
+ 168: 01c0: 
+ 169: 01c0:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 170: 01ce:        FILE.OPERATION$ = "R"
+ 171: 01dd:        CURRENT.CODE$ = IMSTC.BAR.CODE$
+ 172: 01f3: 
+ 173: 01f3:        EXIT FUNCTION
+ 174: 01f5: 
+ 175: 01f5:   END FUNCTION
+ 176: 0204: 
+ 177: 0204: \-----------------------------------------------------------------------------
+ 178: 0204: 
+ 179: 0204:   FUNCTION READ.MIMSTC PUBLIC                                             ! 1.1JAS
+ 180: 0218: \****************************                                             ! 1.1JAS
+ 181: 0218: 
+ 182: 0218:     INTEGER*1 READ.MIMSTC                                                 ! 1.1JAS
+ 183: 0218: 
+ 184: 0218:     READ.MIMSTC = 1                                                       ! 1.1JAS
+ 185: 021c: 
+ 186: 021c:     IF END #MIMSTC.SESS.NUM% THEN READ.MIMSTC.ERROR                       ! 1.1JAS
+ 187: 0230:     READ FORM "T12,5I4,C1,I2,C1,C5"; #MIMSTC.SESS.NUM%                \   ! 1.1JAS
+ 188: 02ba:          KEY MIMSTC.BAR.CODE$;                                         \  ! 1.1JAS
+ 189: 02ba:              MIMSTC.RESTART%,                                          \  ! 1.1JAS
+ 190: 02ba:              MIMSTC.NUMITEMS%,                                         \  ! 1.1JAS
+ 191: 02ba:              MIMSTC.AMTSALE%,                                          \  ! 1.1JAS
+ 192: 02ba:              MIMSTC.RESERVED%,                                         \  ! 1.1JAS
+ 193: 02ba:              MIMSTC.STKMQ.RESTART%,                                    \  ! 1.1JAS
+ 194: 02ba:              MIMSTC.STATUS.FLAG$,                                      \  ! 1.1JAS
+ 195: 02ba:              MIMSTC.STOCK.FIGURE%,                                     \  ! 1.1JAS
+ 196: 02ba:              MIMSTC.REASON.ITEM.REMOVED$,                              \  ! 1.1JAS
+ 197: 02ba:              MIMSTC.FILLER$                                               ! 1.1JAS
+ 198: 02ba:     READ.MIMSTC = 0                                                       ! 1.1JAS
+ 199: 02be:     EXIT FUNCTION                                                         ! 1.1JAS
+ 200: 02c0: 
+ 201: 02c0:     READ.MIMSTC.ERROR:                                                    ! 1.1JAS
+ 202: 02c0: 
+ 203: 02c0:        CURRENT.REPORT.NUM% = MIMSTC.REPORT.NUM%                           ! 1.1JAS
+ 204: 02ce:        FILE.OPERATION$ = "R"                                              ! 1.1JAS
+ 205: 02dd:        CURRENT.CODE$ = MIMSTC.BAR.CODE$                                   ! 1.1JAS
+ 206: 02f3: 
+ 207: 02f3:        EXIT FUNCTION                                                      ! 1.1JAS
+ 208: 02f5: 
+ 209: 02f5:   END FUNCTION                                                            ! 1.1JAS
+ 210: 0304: 
+ 211: 0304: \-----------------------------------------------------------------------------
+ 212: 0304: 
+ 213: 0304:   FUNCTION READ.CIMSTC PUBLIC                                             ! 1.1JAS
+ 214: 0318: \****************************                                             ! 1.1JAS
+ 215: 0318: 
+ 216: 0318:     INTEGER*1 READ.CIMSTC                                                 ! 1.1JAS
+ 217: 0318: 
+ 218: 0318:     READ.CIMSTC = 1                                                       ! 1.1JAS
+ 219: 031c: 
+ 220: 031c:     IF END #CIMSTC.SESS.NUM% THEN READ.CIMSTC.ERROR                       ! 1.1JAS
+ 221: 0330:     READ FORM "T12,5I4,C1,I2,C1,C5"; #CIMSTC.SESS.NUM%                \   ! 1.1JAS
+ 222: 03ba:          KEY CIMSTC.BAR.CODE$;                                         \  ! 1.1JAS
+ 223: 03ba:              CIMSTC.RESTART%,                                          \  ! 1.1JAS
+ 224: 03ba:              CIMSTC.NUMITEMS%,                                         \  ! 1.1JAS
+ 225: 03ba:              CIMSTC.AMTSALE%,                                          \  ! 1.1JAS
+ 226: 03ba:              CIMSTC.RESERVED%,                                         \  ! 1.1JAS
+ 227: 03ba:              CIMSTC.STKMQ.RESTART%,                                    \  ! 1.1JAS
+ 228: 03ba:              CIMSTC.STATUS.FLAG$,                                      \  ! 1.1JAS
+ 229: 03ba:              CIMSTC.STOCK.FIGURE%,                                     \  ! 1.1JAS
+ 230: 03ba:              CIMSTC.REASON.ITEM.REMOVED$,                              \  ! 1.1JAS
+ 231: 03ba:              CIMSTC.FILLER$                                               ! 1.1JAS
+ 232: 03ba:     READ.CIMSTC = 0                                                       ! 1.1JAS
+ 233: 03be:     EXIT FUNCTION                                                         ! 1.1JAS
+ 234: 03c0: 
+ 235: 03c0:     READ.CIMSTC.ERROR:                                                    ! 1.1JAS
+ 236: 03c0: 
+ 237: 03c0:        CURRENT.REPORT.NUM% = CIMSTC.REPORT.NUM%                           ! 1.1JAS
+ 238: 03ce:        FILE.OPERATION$ = "R"                                              ! 1.1JAS
+ 239: 03dd:        CURRENT.CODE$ = CIMSTC.BAR.CODE$                                   ! 1.1JAS
+ 240: 03f3: 
+ 241: 03f3:        EXIT FUNCTION                                                      ! 1.1JAS
+ 242: 03f5: 
+ 243: 03f5:   END FUNCTION                                                            ! 1.1JAS
+ 244: 0404: 
+ 245: 0404: \-----------------------------------------------------------------------------
+ 246: 0404: 
+ 247: 0404:   FUNCTION READ.IMSTC.LOCK PUBLIC
+ 248: 0418: \*********************************
+ 249: 0418: 
+ 250: 0418:     INTEGER*1 READ.IMSTC.LOCK
+ 251: 0418: 
+ 252: 0418:     READ.IMSTC.LOCK = 1
+ 253: 041c: 
+ 254: 041c:     IF END #IMSTC.SESS.NUM% THEN READ.IMSTC.LOCK.ERROR
+ 255: 0430:     READ FORM "T12,5I4,C1,I2,C1,C5"; #IMSTC.SESS.NUM% AUTOLOCK           \
+ 256: 04ba:          KEY IMSTC.BAR.CODE$;                                         \
+ 257: 04ba:              IMSTC.RESTART%,                                          \
+ 258: 04ba:              IMSTC.NUMITEMS%,                                         \
+ 259: 04ba:              IMSTC.AMTSALE%,                                          \
+ 260: 04ba:              IMSTC.RESERVED%,                                         \
+ 261: 04ba:              IMSTC.STKMQ.RESTART%,                                    \
+ 262: 04ba:              IMSTC.STATUS.FLAG$,                                      \
+ 263: 04ba:              IMSTC.STOCK.FIGURE%,                                     \
+ 264: 04ba:              IMSTC.REASON.ITEM.REMOVED$,                              \
+ 265: 04ba:              IMSTC.FILLER$
+ 266: 04ba:     READ.IMSTC.LOCK = 0
+ 267: 04be:     EXIT FUNCTION
+ 268: 04c0: 
+ 269: 04c0:     READ.IMSTC.LOCK.ERROR:
+ 270: 04c0: 
+ 271: 04c0:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 272: 04ce:        FILE.OPERATION$ = "R"
+ 273: 04dd:        CURRENT.CODE$ = IMSTC.BAR.CODE$
+ 274: 04f3: 
+ 275: 04f3:        EXIT FUNCTION
+ 276: 04f5: 
+ 277: 04f5:   END FUNCTION
+ 278: 0504: 
+ 279: 0504: \-----------------------------------------------------------------------------
+ 280: 0504: 
+ 281: 0504: 
+ 282: 0504:   FUNCTION WRITE.IMSTC.UNLOCK.HOLD PUBLIC
+ 283: 0518: \*****************************************
+ 284: 0518: 
+ 285: 0518:     INTEGER*1 WRITE.IMSTC.UNLOCK.HOLD
+ 286: 0518: 
+ 287: 0518:     WRITE.IMSTC.UNLOCK.HOLD = 1
+ 288: 051c: 
+ 289: 051c:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.UNLOCK.HOLD.ERROR
+ 290: 0530:     WRITE FORM "C11,5I4,C1,I2,C1,C5"; HOLD #IMSTC.SESS.NUM% AUTOUNLOCK;  \
+ 291: 05de:              IMSTC.BAR.CODE$,                                         \
+ 292: 05de:              IMSTC.RESTART%,                                          \
+ 293: 05de:              IMSTC.NUMITEMS%,                                         \
+ 294: 05de:              IMSTC.AMTSALE%,                                          \
+ 295: 05de:              IMSTC.RESERVED%,                                         \
+ 296: 05de:              IMSTC.STKMQ.RESTART%,                                    \
+ 297: 05de:              IMSTC.STATUS.FLAG$,                                      \
+ 298: 05de:              IMSTC.STOCK.FIGURE%,                                     \
+ 299: 05de:              IMSTC.REASON.ITEM.REMOVED$,                              \
+ 300: 05de:              IMSTC.FILLER$
+ 301: 05de:     WRITE.IMSTC.UNLOCK.HOLD = 0
+ 302: 05e2:     EXIT FUNCTION
+ 303: 05e4: 
+ 304: 05e4:     WRITE.IMSTC.UNLOCK.HOLD.ERROR:
+ 305: 05e4: 
+ 306: 05e4:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 307: 05f2:        FILE.OPERATION$ = "O"
+ 308: 0601:        CURRENT.CODE$ = IMSTC.BAR.CODE$
+ 309: 0617: 
+ 310: 0617:        EXIT FUNCTION
+ 311: 0619: 
+ 312: 0619:   END FUNCTION
+ 313: 0628: 
+ 314: 0628: \-----------------------------------------------------------------------------
+ 315: 0628: 
+ 316: 0628: 
+ 317: 0628:   FUNCTION WRITE.IMSTC.UNLOCK PUBLIC
+ 318: 063c: \************************************
+ 319: 063c: 
+ 320: 063c:     INTEGER*1 WRITE.IMSTC.UNLOCK
+ 321: 063c: 
+ 322: 063c:     WRITE.IMSTC.UNLOCK = 1
+ 323: 0640: 
+ 324: 0640:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.UNLOCK.ERROR
+ 325: 0654:     WRITE FORM "C11,5I4,C1,I2,C1,C5";  #IMSTC.SESS.NUM% AUTOUNLOCK;   \
+ 326: 0702:              IMSTC.BAR.CODE$,                                         \
+ 327: 0702:              IMSTC.RESTART%,                                          \
+ 328: 0702:              IMSTC.NUMITEMS%,                                         \
+ 329: 0702:              IMSTC.AMTSALE%,                                          \
+ 330: 0702:              IMSTC.RESERVED%,                                         \
+ 331: 0702:              IMSTC.STKMQ.RESTART%,                                    \
+ 332: 0702:              IMSTC.STATUS.FLAG$,                                      \
+ 333: 0702:              IMSTC.STOCK.FIGURE%,                                     \
+ 334: 0702:              IMSTC.REASON.ITEM.REMOVED$,                              \
+ 335: 0702:              IMSTC.FILLER$
+ 336: 0702:     WRITE.IMSTC.UNLOCK = 0
+ 337: 0706:     EXIT FUNCTION
+ 338: 0708: 
+ 339: 0708:     WRITE.IMSTC.UNLOCK.ERROR:
+ 340: 0708: 
+ 341: 0708:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 342: 0716:        FILE.OPERATION$ = "O"
+ 343: 0725:        CURRENT.CODE$ = IMSTC.BAR.CODE$
+ 344: 073b: 
+ 345: 073b:        EXIT FUNCTION
+ 346: 073d: 
+ 347: 073d:   END FUNCTION
+ 348: 074c: 
+ 349: 074c: \-----------------------------------------------------------------------------
+ 350: 074c: 
+ 351: 074c: 
+ 352: 074c:   FUNCTION WRITE.IMSTC.HOLD PUBLIC
+ 353: 0760: \**********************************
+ 354: 0760: 
+ 355: 0760:     INTEGER*1 WRITE.IMSTC.HOLD
+ 356: 0760: 
+ 357: 0760:     WRITE.IMSTC.HOLD = 1
+ 358: 0764: 
+ 359: 0764:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.HOLD.ERROR
+ 360: 0778:     WRITE FORM "C11,5I4,C1,I2,C1,C5"; HOLD #IMSTC.SESS.NUM%;          \
+ 361: 0826:              IMSTC.BAR.CODE$,                                         \
+ 362: 0826:              IMSTC.RESTART%,                                          \
+ 363: 0826:              IMSTC.NUMITEMS%,                                         \
+ 364: 0826:              IMSTC.AMTSALE%,                                          \
+ 365: 0826:              IMSTC.RESERVED%,                                         \
+ 366: 0826:              IMSTC.STKMQ.RESTART%,                                    \
+ 367: 0826:              IMSTC.STATUS.FLAG$,                                      \
+ 368: 0826:              IMSTC.STOCK.FIGURE%,                                     \
+ 369: 0826:              IMSTC.REASON.ITEM.REMOVED$,                              \
+ 370: 0826:              IMSTC.FILLER$
+ 371: 0826:     WRITE.IMSTC.HOLD = 0
+ 372: 082a:     EXIT FUNCTION
+ 373: 082c: 
+ 374: 082c:     WRITE.IMSTC.HOLD.ERROR:
+ 375: 082c: 
+ 376: 082c:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 377: 083a:        FILE.OPERATION$ = "O"
+ 378: 0849:        CURRENT.CODE$ = IMSTC.BAR.CODE$
+ 379: 085f: 
+ 380: 085f:        EXIT FUNCTION
+ 381: 0861: 
+ 382: 0861:   END FUNCTION
+ 383: 0870: 
+ 384: 0870: \-----------------------------------------------------------------------------
+ 385: 0870: 
+ 386: 0870: 
+ 387: 0870:   FUNCTION WRITE.IMSTC PUBLIC
+ 388: 0884: \*****************************
+ 389: 0884: 
+ 390: 0884:     INTEGER*1 WRITE.IMSTC
+ 391: 0884: 
+ 392: 0884:     WRITE.IMSTC = 1
+ 393: 0888: 
+ 394: 0888:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.ERROR
+ 395: 089c:     WRITE FORM "C11,5I4,C1,I2,C1,C5"; #IMSTC.SESS.NUM%;               \
+ 396: 094a:              IMSTC.BAR.CODE$,                                         \
+ 397: 094a:              IMSTC.RESTART%,                                          \
+ 398: 094a:              IMSTC.NUMITEMS%,                                         \
+ 399: 094a:              IMSTC.AMTSALE%,                                          \
+ 400: 094a:              IMSTC.RESERVED%,                                         \
+ 401: 094a:              IMSTC.STKMQ.RESTART%,                                    \
+ 402: 094a:              IMSTC.STATUS.FLAG$,                                      \
+ 403: 094a:              IMSTC.STOCK.FIGURE%,                                     \
+ 404: 094a:              IMSTC.REASON.ITEM.REMOVED$,                              \
+ 405: 094a:              IMSTC.FILLER$
+ 406: 094a:     WRITE.IMSTC = 0
+ 407: 094e:     EXIT FUNCTION
+ 408: 0950: 
+ 409: 0950:     WRITE.IMSTC.ERROR:
+ 410: 0950: 
+ 411: 0950:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 412: 095e:        FILE.OPERATION$ = "O"
+ 413: 096d:        CURRENT.CODE$ = IMSTC.BAR.CODE$
+ 414: 0983: 
+ 415: 0983:        EXIT FUNCTION
+ 416: 0985: 
+ 417: 0985:   END FUNCTION
+ 418: 0994: 
+ 419: 0994: \-----------------------------------------------------------------------------
+ 420: 0994: 
+ 421: 0994: 
+ 422: 0994:   FUNCTION WRITE.MIMSTC.HOLD PUBLIC                                       ! 1.1JAS
+ 423: 09a8: \**********************************                                       ! 1.1JAS
+ 424: 09a8: 
+ 425: 09a8:     INTEGER*1 WRITE.MIMSTC.HOLD                                           ! 1.1JAS
+ 426: 09a8: 
+ 427: 09a8:     WRITE.MIMSTC.HOLD = 1                                                 ! 1.1JAS
+ 428: 09ac: 
+ 429: 09ac:     IF END #MIMSTC.SESS.NUM% THEN WRITE.MIMSTC.HOLD.ERROR                 ! 1.1JAS
+ 430: 09c0:     WRITE FORM "C11,5I4,C1,I2,C1,C5"; HOLD #MIMSTC.SESS.NUM%;         \   ! 1.1JAS
+ 431: 0a6e:              MIMSTC.BAR.CODE$,                                        \   ! 1.1JAS
+ 432: 0a6e:              MIMSTC.RESTART%,                                         \   ! 1.1JAS
+ 433: 0a6e:              MIMSTC.NUMITEMS%,                                        \   ! 1.1JAS
+ 434: 0a6e:              MIMSTC.AMTSALE%,                                         \   ! 1.1JAS
+ 435: 0a6e:              MIMSTC.RESERVED%,                                        \   ! 1.1JAS
+ 436: 0a6e:              MIMSTC.STKMQ.RESTART%,                                   \   ! 1.1JAS
+ 437: 0a6e:              MIMSTC.STATUS.FLAG$,                                     \   ! 1.1JAS
+ 438: 0a6e:              MIMSTC.STOCK.FIGURE%,                                    \   ! 1.1JAS
+ 439: 0a6e:              MIMSTC.REASON.ITEM.REMOVED$,                             \   ! 1.1JAS
+ 440: 0a6e:              MIMSTC.FILLER$                                               ! 1.1JAS
+ 441: 0a6e:     WRITE.MIMSTC.HOLD = 0                                                 ! 1.1JAS
+ 442: 0a72:     EXIT FUNCTION                                                         ! 1.1JAS
+ 443: 0a74: 
+ 444: 0a74:     WRITE.MIMSTC.HOLD.ERROR:                                              ! 1.1JAS
+ 445: 0a74: 
+ 446: 0a74:        CURRENT.REPORT.NUM% = MIMSTC.REPORT.NUM%                           ! 1.1JAS
+ 447: 0a82:        FILE.OPERATION$ = "O"                                              ! 1.1JAS
+ 448: 0a91:        CURRENT.CODE$ = MIMSTC.BAR.CODE$                                   ! 1.1JAS
+ 449: 0aa7: 
+ 450: 0aa7:        EXIT FUNCTION                                                      ! 1.1JAS
+ 451: 0aa9: 
+ 452: 0aa9:   END FUNCTION                                                            ! 1.1JAS
+ 453: 0ab8: 
+ 454: 0ab8: \-----------------------------------------------------------------------------
+ 455: 0ab8: 
+ 456: 0ab8:   FUNCTION WRITE.MIMSTC PUBLIC                                            ! 1.1JAS
+ 457: 0acc: \*****************************                                            ! 1.1JAS
+ 458: 0acc: 
+ 459: 0acc:     INTEGER*1 WRITE.MIMSTC                                                ! 1.1JAS
+ 460: 0acc: 
+ 461: 0acc:     WRITE.MIMSTC = 1                                                      ! 1.1JAS
+ 462: 0ad0: 
+ 463: 0ad0:     IF END #MIMSTC.SESS.NUM% THEN WRITE.MIMSTC.ERROR                      ! 1.1JAS
+ 464: 0ae4:     WRITE FORM "C11,5I4,C1,I2,C1,C5"; #MIMSTC.SESS.NUM%;               \  ! 1.1JAS
+ 465: 0b92:              MIMSTC.BAR.CODE$,                                         \  ! 1.1JAS
+ 466: 0b92:              MIMSTC.RESTART%,                                          \  ! 1.1JAS
+ 467: 0b92:              MIMSTC.NUMITEMS%,                                         \  ! 1.1JAS
+ 468: 0b92:              MIMSTC.AMTSALE%,                                          \  ! 1.1JAS
+ 469: 0b92:              MIMSTC.RESERVED%,                                         \  ! 1.1JAS
+ 470: 0b92:              MIMSTC.STKMQ.RESTART%,                                    \  ! 1.1JAS
+ 471: 0b92:              MIMSTC.STATUS.FLAG$,                                      \  ! 1.1JAS
+ 472: 0b92:              MIMSTC.STOCK.FIGURE%,                                     \  ! 1.1JAS
+ 473: 0b92:              MIMSTC.REASON.ITEM.REMOVED$,                              \  ! 1.1JAS
+ 474: 0b92:              MIMSTC.FILLER$                                               ! 1.1JAS
+ 475: 0b92:     WRITE.MIMSTC = 0                                                      ! 1.1JAS
+ 476: 0b96:     EXIT FUNCTION                                                         ! 1.1JAS
+ 477: 0b98: 
+ 478: 0b98:     WRITE.MIMSTC.ERROR:                                                   ! 1.1JAS
+ 479: 0b98: 
+ 480: 0b98:        CURRENT.REPORT.NUM% = MIMSTC.REPORT.NUM%                           ! 1.1JAS
+ 481: 0ba6:        FILE.OPERATION$ = "O"                                              ! 1.1JAS
+ 482: 0bb5:        CURRENT.CODE$ = MIMSTC.BAR.CODE$                                   ! 1.1JAS
+ 483: 0bcb: 
+ 484: 0bcb:        EXIT FUNCTION                                                      ! 1.1JAS
+ 485: 0bcd: 
+ 486: 0bcd:   END FUNCTION                                                            ! 1.1JAS
+ 487: 0bdc: End of Compilation

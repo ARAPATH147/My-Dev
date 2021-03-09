@@ -1,0 +1,1809 @@
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 1
+KFASMFUN.ASM
+
+
+
+      1					 ;******************************************************************************
+      2					 ;******************************************************************************
+      3					 ;***
+      4					 ;***		   KEYED FILE ASSEMBLER	FUNCTIONS (KFASMFUN)
+      5					 ;***
+      6					 ;******************************************************************************
+      7					 ;******************************************************************************
+      8
+      9					 ;******************************************************************************
+     10					 ;***
+     11					 ;***	Version	A.		Mark Walker			    5th	Feb 1998
+     12					 ;***	Initial	version. This includes INITKF, READKF and TERMKF routines.
+     13					 ;***
+     14					 ;***	Version	B.		Mark Walker			   19th	Feb 1998
+     15					 ;***	Fixed subtle bug which can cause 'FirstTime' flag to be	reset.
+     16					 ;***
+     17					 ;***	Version	C.		Mark Walker			   28th	Oct 1998
+     18					 ;***	Added a	check for return string	being null on entry to READKF.
+     19					 ;***
+     20					 ;***	Version	D.		Mark Walker			    9th	Sep 2013
+     21					 ;***	Changed	FlexOS includes	from ASM to A86	to prevent compilation.
+     22					 ;***
+     23					 ;***	Version	E.		Mark Walker			   28th	Jan 2014
+     24					 ;***	- Added	new WRITEKF routine.
+     25					 ;***	- Modified READKF and TERMKF routines to perform disk writes if	the
+     26					 ;***	  read buffer has been updated.
+     27					 ;***
+     28					 ;***	Version	F.		Mark Walker			   21st	May 2014
+     29					 ;***	- Extended the READKF interface	to include a mode parameter. If	this is
+     30					 ;***	  set to 1, the	pattern	string will be treated as a bit	mask.
+     31					 ;***
+     32					 ;******************************************************************************
+     33
+     34	    0000				.MODEL large
+     35						.386
+     36
+     37						INCLUDE	flexdef.a86							 ;DMW
+1    38		  = 0000			 STDIN		 equ 0
+1    39		  = 0001			 STDOUT		 equ 1
+1    40		  = 0002			 STDERR		 equ 2
+1    41		  = 0001			 M_ASYNC	 equ 01h     ; Asynchronous function
+1    42		  = 0002			 M_UADDR	 equ 02h     ; Addresses are in	user space
+1    43		  = 0004			 M_COMMAND	 equ 04h     ; Originated by COMMAND RM
+1    44		  = 0008			 M_FE		 equ 08h     ; Originated by Front End
+1    45
+1    46		  = 0040			 A_DATABUF	 equ 40h     ; Write (send buffer) (0=Read(receive buffer))
+1    47		  = 0080			 A_PARMBUF	 equ 80h     ; Write (send buffer) (0=Read(receive buffer))
+1    48
+1    49		  = 0000			 O_FILE		 equ 00h     ; CREATE -	Disk or	Message	Pipe
+1    50		  = 0001			 O_DIR		 equ 01h     ; CREATE -	Directory
+1    51		  = 0002			 O_VCON		 equ 02h     ; CREATE -	Virtual	Console
+1    52
+1    53		  = 0001			 O_LOAD		 equ 01h     ; Load program for	control
+1    54		  = 0002			 O_REMOVE	 equ 02h     ; Remove program
+1    55		  = 0003			 O_READCODE	 equ 03h     ; Read target code	memory
+1    56		  = 0004			 O_READATA	 equ 04h     ; Read target data	memory
+1    57		  = 0005			 O_WRITECODE	 equ 05h     ; Write target code memory
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 2
+KFASMFUN.ASM
+
+
+
+1    58		  = 0006			 O_WRITEDATA	 equ 06h     ; Write target data memory
+1    59		  = 0007			 O_READREG	 equ 07h     ; Read target registers
+1    60		  = 0008			 O_WRITEREG	 equ 08h     ; Write target registers
+1    61		  = 0009			 O_START	 equ 09h     ; Start executing
+1    62		  = 000A			 O_TRACE	 equ 0Ah     ; Trace a single instruction
+1    63		  = 000B			 O_HALT		 equ 0Bh     ; Force a halt
+1    64		  = 000C			 O_ALLON	 equ 0Ch     ; All exception traps on
+1    65		  = 000D			 O_ALLOFF	 equ 0Dh     ; All exception traps off
+1    66		  = 000E			 O_TRAPON	 equ 0Eh     ; Select exception	trap on
+1    67		  = 000F			 O_TRAPOFF	 equ 0Fh     ; Select exception	trap off
+1    68		  = 0010			 O_CHKBUF	 equ 10h     ; Range check target buffer
+1    69
+1    70		  = 0000			 O_RETURN	 equ 0	     ; Return to main program
+1    71		  = 0001			 O_APID		 equ 1	     ; Assume pid from main program
+1    72
+1    73		  = 0000			 O_REMUNIT	 equ 00h     ; Remove previously installed driver unit
+1    74		  = 0001			 O_LOADDEV	 equ 01h     ; Load device driver from disk
+1    75		  = 0002			 O_ADDUNIT	 equ 02h     ; Add unit	to existing device driver
+1    76		  = 0003			 O_LINKUNIT	 equ 03h     ; Link a subdriver	to a device driver
+1    77
+1    78		  = 0000			 O_GROWHEAP	 equ 00h     ; Expand an existing heap
+1    79		  = 0001			 O_NEWHEAP	 equ 01h     ; Allocate	a new heap
+1    80
+1    81		  = 0001			 A_CHARPL	 equ 0001h   ; Character Plane
+1    82		  = 0001			 A_PCLOSE	 equ 0001h   ; Partial Close
+1    83		  = 0001			 A_BSCREEN	 equ 0001h   ; Bit Map Screen
+1    84		  = 0001			 A_SYSTEM	 equ 0001h   ; Set System Level	(0=Process)
+1    85		  = 0001			 A_MCTRL	 equ 0001h   ; Mouse Control (0=KB control)
+1    86		  = 0001			 A_FLUSH	 equ 0001h   ; Flush  before or	after I/O
+1    87		  = 0001			 A_ABSOLUTE	 equ 0001h   ; Absolute	(0=Relative)
+1    88		  = 0001			 A_REPLACE	 equ 0001h   ; Replace (0=Add)
+1    89		  = 0001			 A_EXIT		 equ 0001h   ; Wait for	exit (0=entry)
+1    90		  = 0001			 A_SET		 equ 0001h   ; Set
+1    91		  = 0001			 A_MOUSE	 equ 0001h   ; Mouse control
+1    92		  = 0001			 A_HIDDEN	 equ 0001h   ; Lookup Hidden Files
+1    93		  = 0001			 A_REG		 equ 0001h   ; 386 register set
+1    94
+1    95		  = 0002			 A_ATTRPL	 equ 0002h   ; Attribute Plane
+1    96		  = 0002			 A_BADTRK	 equ 0002h   ; Mark track as bad
+1    97		  = 0002			 A_EXEC		 equ 0002h   ; Execute Privs
+1    98		  = 0002			 A_BBORDER	 equ 0002h   ; Bit map Borders
+1    99		  = 0002			 A_CLIP		 equ 0002h   ; Clip to current window
+1   100		  = 0002			 A_RETURN	 equ 0002h   ; Return (0=Set)
+1   101		  = 0002			 A_DELIM	 equ 0002h   ; Read until Delimiter
+1   102		  = 0002			 A_TRUNCATE	 equ 0002h   ; Truncate	File
+1   103		  = 0002			 A_SYSFILE	 equ 0002h   ; Lookup System Files
+1   104
+1   105		  = 0000			 A_UNLOCK	 equ 0000h   ; Unlock
+1   106		  = 0001			 A_EXLOCK	 equ 0001h   ; Exlusive	Lock
+1   107		  = 0002			 A_EWLOCK	 equ 0002h   ; Exclusive Write Lock
+1   108		  = 0003			 A_SWLOCK	 equ 0003h   ; Shared Write Lock
+1   109		  = 0003			 A_LCKMSK	 equ 0003h   ; Lock Mask
+1   110
+1   111		  = 0000			 A_PROLOCK	 equ 0000h   ; Lock for	process
+1   112		  = 0001			 A_FAMLOCK	 equ 0001h   ; Lock for	family
+1   113		  = 0002			 A_UNLKDEV	 equ 0002h   ; Unlock device
+1   114
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 3
+KFASMFUN.ASM
+
+
+
+1   115		  = 0004			 A_EXTPL	 equ 0004h   ; Extension Plane
+1   116		  = 0004			 A_WRITE	 equ 0004h   ; Write
+1   117		  = 0004			 A_SIZE		 equ 0004h   ; Size Spec (0=same as parent)
+1   118		  = 0004			 A_NODESCT	 equ 0004h   ; Non-Destructive
+1   119		  = 0004			 A_VOLUME	 equ 0004h   ; Lookup Volume Label
+1   120		  = 0004			 A_GEMRECT	 equ 0004h   ; Use GEM RECT instead of Flex RECT
+1   121		  = 0004			 A_READPHYS_V	 equ 0004h   ; Verify media (0=read media)
+1   122		  = 0004			 A_USECSHN	 equ 0004h   ; Use C,H,	S, and N fields
+1   123
+1   124		  = 0008			 A_READ		 equ 0008h   ; Read
+1   125		  = 0008			 A_DELSC	 equ 0008h   ; Remove Parent Screen
+1   126		  = 0008			 A_PREINIT	 equ 0008h   ; Preinitialized
+1   127		  = 0008			 A_INCLDIR	 equ 0008h   ; Lookup DIR files
+1   128		  = 0008			 A_USEHEAD	 equ 0008h   ; Use Head, Cylinder, etc.	fields
+1   129
+1   130		  = 0010			 A_NOPROC	 equ 0010h   ; No process
+1   131		  = 0010			 A_SHARE	 equ 0010h   ; Shared
+1   132		  = 0010			 A_DELINCL	 equ 0010h   ; Include Delimiter
+1   133		  = 0010			 A_EXCLNORM	 equ 0010h   ; Don't Lookup Normal files
+1   134		  = 0010			 A_CONFLICT	 equ 0010h   ; Return error on conflict
+1   135
+1   136		  = 0020			 A_CHAIN	 equ 0020h   ; Chain (0=procedure)
+1   137		  = 0020			 A_SHRO		 equ 0020h   ; Allow R/O shared	(0=Allow R/W)
+1   138
+1   139		  = 0020			 A_REMOVE	 equ 0020h   ; Removeable Driver
+1   140		  = 0020			 A_EDIT		 equ 0020h   ; Edited
+1   141
+1   142		  = 0040			 A_SHFP		 equ 0040h   ; Share FP	with  Family (0=unique)
+1   143
+1   144		  = 0040			 A_DEVLOCK	 equ 0040h   ; Device Locks Allowed
+1   145		  = 0040			 A_NONBLOCK	 equ 0040h   ; Non-Blocked I/O.
+1   146
+1   147		  = 0080			 A_NOEXCL	 equ 0080h   ; No Exclusive Access
+1   148		  = 0080			 A_ZFILL	 equ 0080h   ; Zero Fill Space
+1   149		  = 0080			 A_REDUCE	 equ 0080h   ; Allow Reduced Access
+1   150		  = 0080			 A_NEWFMLY	 equ 0080h   ; Create a	new family
+1   151
+1   152		  = 0100			 A_PART		 equ 0100h   ; Partitions enabled
+1   153		  = 0100			 A_TEMP		 equ 0100h   ; Delete on Last Close
+1   154		  = 0100			 A_SUBPROC	 equ 0100h   ; Spawn a subprocess
+1   155
+1   156		  = 0200			 A_VERIFY	 equ 0200h   ; Verify Writes on	this media
+1   157		  = 0200			 A_CONTIG	 equ 0200h   ; Contiguous File
+1   158		  = 0200			 A_FORK		 equ 0200h   ; Spawn a FORK process
+1   159
+1   160		  = 0100			 A_LOGMNT	 equ 0100h   ; Force logical remount on	device
+1   161		  = 0200			 A_PHYSMNT	 equ 0200h   ; Force physical remount on device
+1   162
+1   163		  = 0300			 A_OFFMSK	 equ 0300h   ; Offset Mask
+1   164		  = 0000			 A_BOFOFF	 equ 0000h   ; Relative	to Beginning of	File
+1   165		  = 0100			 A_FPOFF	 equ 0100h   ; Relative	to File	Pointer
+1   166		  = 0200			 A_EOFOFF	 equ 0200h   ; Relative	to End of File
+1   167
+1   168		  = 0400			 A_DELETE	 equ 0400h   ; Delete File if exists
+1   169		  = 0400			 A_SUBFUNC	 equ 0400h   ; Use primary subfunction number
+1   170
+1   171		  = 0800			 A_OEM		 equ 0800h   ; OEM specific bit	everywhere
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 4
+KFASMFUN.ASM
+
+
+
+1   172		  = 0800			 A_NOCACHE	 equ 0800h   ; Force write to disk (Flexos 2.2 or + )
+1   173
+1   174		  = 1000			 A_SECURITY	 equ 1000h   ; Use specified Security Word
+1   175
+1   176		  = 2000			 A_FORCE	 equ 2000h   ; Force Case
+1   177
+1   178		  = 4000			 A_LIT		 equ 4000h   ; Literal Name
+1   179
+1   180		  = 8000			 A_UADDR	 equ 8000h
+1   181
+1   182
+    183						INCLUDE	flextab.a86							 ;DMW
+1   184		  = 0001			 DVR_TIME    equ 01h	     ; Timer Driver
+1   185		  = 0011			 DVR_PIPE    equ 11h	     ; Pipe Driver
+1   186		  = 0012			 DVR_SHMEM   equ 12h	     ; Shared Memory Driver
+1   187		  = 0021			 DVR_DISK    equ 21h	     ; Disk Driver
+1   188		  = 0031			 DVR_CON     equ 31h	     ; Console Driver (old)
+1   189		  = 0038			 DVR_CVDI    equ 38h	     ; Console VDI Driver
+1   190		  = 0071			 DVR_PRN     equ 71h	     ; Printer Driver (old)
+1   191		  = 0072			 DVR_SER     equ 72h	     ; Serial Driver
+1   192		  = 0078			 DVR_PRTVDI  equ 78h	     ; Printer Graphics	Driver
+1   193		  = 0079			 DVR_METAVDI equ 79h	     ; MetaFile	Graphics Driver(old)
+1   194		  = 007A			 DVR_PLOTVDI equ 7ah	     ; Plotter VDI Driver
+1   195		  = 007B			 DVR_CAMVDI  equ 7bh	     ; Camera VDI Driver
+1   196		  = 007C			 DVR_SCANVDI equ 7ch	     ; Scanner VDI Driver
+1   197		  = 007D			 DVR_NETMAN  equ 7dh	     ; Network Resource	Manager
+1   198		  = 007E			 DVR_CLOCK   equ 7eh	     ; DOS Clock Driver	Emulator
+1   199		  = 007F			 DVR_NULL    equ 7fh	     ; Null Device
+1   200		  = 0081			 DVR_PORT    equ 81h	     ; Port Driver
+1   201		  = 0082			 DVR_MOUSE   equ 82h	     ; mouse VDI subdriver
+1   202		  = 0083			 DVR_KB	     equ 83h	     ; keyboard	VDI subdriver
+1   203		  = 0038			 DVR_SCRVDI  equ 38h	     ; Screen VDI subdriver
+1   204		  = 0085			 DVR_TEXT    equ 85h	     ; Text Subdriver (old)
+1   205		  = 0090			 DVR_OEM     equ 90h	     ; 1st OEM Driver
+1   206
+1   207		  = 0000			 T_PROC	     equ 00h	     ; Process table
+1   208		  = 0001			 T_ENV	     equ 01h	     ; Environment table
+1   209		  = 0002			 T_TD	     equ 02h	     ; Time and	date table
+1   210		  = 0003			 T_MEM	     equ 03h	     ; Memory table
+1   211		  = 0010			 T_PIPE	     equ 10h	     ; Pipe table
+1   212		  = 0011			 T_SHMEM     equ 11h	     ; Shared memory table
+1   213		  = 0020			 T_FILE	     equ 20h	     ; Disk File table
+1   214						 T_DISK	     equ DVR_DISK    ; Disk table
+1   215		  = 0030			 T_CON	     equ 30h	     ; Screen table
+1   216						 T_PCON	     equ DVR_CON     ; Physical	Console	table
+1   217		  = 0032			 T_VCON	     equ 32h	     ; Virtual Console table
+1   218		  = 0033			 T_MOUSE     equ 33h	     ; Mouse table
+1   219		  = 0034			 T_TOP	     equ 34h	     ; Top Border (no table)
+1   220		  = 0035			 T_BOTTOM    equ 35h	     ; Bottom Border (no table)
+1   221		  = 0036			 T_LEFT	     equ 36h	     ; Left Border (no table)
+1   222		  = 0037			 T_RIGHT     equ 37h	     ; Right Border (no	table)
+1   223		  = 0038			 T_VIRCON    equ 38h	     ; vircon table number
+1   224		  = 0040			 T_SYS	     equ 40h	     ; System table
+1   225		  = 0041			 T_FNUM	     equ 41h	     ; File number table
+1   226		  = 0042			 T_SDEF	     equ 42h	     ; System Defines table
+1   227		  = 0043			 T_PDEF	     equ 43h	     ; Process Defines table
+1   228		  = 0044			 T_CMDENV    equ 44h	     ; Command Environment table
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 5
+KFASMFUN.ASM
+
+
+
+1   229		  = 0045			 T_DEV	     equ 45h	     ; Device table
+1   230		  = 0046			 T_PNAME     equ 46h	     ; Pathname	table
+1   231		  = 0047			 T_SRTL	     equ 47h	     ; SRTL table
+1   232		  = 0078			 T_PRTVDI    equ 78h	     ; vdi printer driver and table number
+1   233						 T_SER	     equ DVR_SER     ; Serial table
+1   234						 T_PRN	     equ DVR_PRN     ; Printer table
+1   235						 T_CLOCK     equ DVR_CLOCK   ; DOS Clock Driver	table
+1   236						 T_NULL	     equ DVR_NULL    ; Null Device table
+1   237						 T_PORT	     equ DVR_PORT    ; Port table
+1   238
+1   239
+    240						INCLUDE	flexif.a86							 ;DMW
+1   241		  = 00DC			 OSINT	     equ 220
+1   242
+1   243		  = 0000			 F_GET	     equ 0
+1   244		  = 0001			 F_SET	     equ 1
+1   245		  = 0002			 F_LOOKUP    equ 2
+1   246		  = 0003			 F_CREATE    equ 3
+1   247		  = 0004			 F_DELETE    equ 4
+1   248		  = 0005			 F_OPEN	     equ 5
+1   249		  = 0006			 F_CLOSE     equ 6
+1   250		  = 0007			 F_READ	     equ 7
+1   251		  = 0008			 F_WRITE     equ 8
+1   252		  = 0009			 F_SPECIAL   equ 9
+1   253		  = 000A			 F_RENAME    equ 10
+1   254		  = 000B			 F_DEFINE    equ 11
+1   255		  = 000C			 F_DEVLOCK   equ 12
+1   256		  = 000D			 F_INSTALL   equ 13
+1   257		  = 000E			 F_LOCK	     equ 14
+1   258		  = 000F			 F_COPY	     equ 15
+1   259		  = 0010			 F_ALTER     equ 16
+1   260		  = 0011			 F_XLAT	     equ 17
+1   261		  = 0012			 F_RWAIT     equ 18
+1   262		  = 0013			 F_KCTRL     equ 19
+1   263		  = 0014			 F_ORDER     equ 20
+1   264		  = 0015			 F_KEYPUT    equ 21
+1   265		  = 0016			 F_GIVE	     equ 22
+1   266		  = 0017			 F_BWAIT     equ 23
+1   267		  = 0018			 F_TIMER     equ 24
+1   268		  = 0019			 F_EXIT	     equ 25
+1   269		  = 001A			 F_ABORT     equ 26
+1   270		  = 001B			 F_CANCEL    equ 27
+1   271		  = 001C			 F_WAIT	     equ 28
+1   272		  = 001D			 F_STATUS    equ 29
+1   273		  = 001E			 F_RETURN    equ 30
+1   274		  = 001F			 F_EXCEPTION equ 31
+1   275		  = 0020			 F_ENABLE    equ 32
+1   276		  = 0021			 F_DISABLE   equ 33
+1   277		  = 0022			 F_SWIRET    equ 34
+1   278		  = 0023			 F_MALLOC    equ 35
+1   279		  = 0024			 F_MFREE     equ 36
+1   280		  = 0025			 F_OVERLAY   equ 37
+1   281		  = 0026			 F_COMMAND   equ 38
+1   282		  = 0027			 F_CONTROL   equ 39
+1   283						 ; Reserved	 40
+1   284		  = 0029			 F_SEEK	     equ 41
+1   285
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 6
+KFASMFUN.ASM
+
+
+
+1   286
+    287
+    288					 ;	Constants for size of memory block used	for reading
+    289		  = 0000			BLOCK_SIZE_LOW	equ 0000h
+    290		  = 0001			BLOCK_SIZE_HIGH	equ 0001h
+    291
+    292	00000000			 MPB_STR     STRUC
+    293	00000000  01*(02*(????))		start	    DW 2    DUP	(?)
+    294	00000004  01*(02*(????))		min	    DW 2    DUP	(?)
+    295	00000008  01*(02*(????))		max	    DW 2    DUP	(?)
+    296	0000000C			 MPB_STR     ENDS
+    297
+    298	    0000			 DSeg	 SEGMENT PARA PUBLIC 'DATA' USE16
+    299	    0000  02*(0000)			ReadOffset		DW 2	DUP (0)
+    300	    0004  0E*(0000)			ParameterBlock		DW 14	DUP (0)
+    301	    0020  02*(0000)			FileID			DW 2	DUP (0)
+    302	    0024  02*(0000)			ReadBuffer		DW 2	DUP (0)
+    303	    0028  02*(0000)			ReadBufsiz		DW 2	DUP (0)					 ;EMW
+    304	    002C  40*(00)			PatternString		DB 64	DUP (0)
+    305	    006C  40*(00)			FileName		DB 64	DUP (0)
+    306	    00AC  46 53	46 41 43 41 44+		KeyedFileString		DB 'FSFACADX'
+    307		  58
+    308	    00B4  0000				RecordLength		DW 0
+    309	    00B6  0000				KeyLength		DW 0
+    310	    00B8  0000				PatternLength		DW 0
+    311	    00BA  0000				RecordsPerSector	DW 0
+    312	    00BC  0000				SectorsPerBlock		DW 0
+    313	    00BE  0000				PatternOffset		DW 0
+    314	    00C0  0000				Mode			DW 0						 ;FMW
+    315	    00C2  0000				SectorCount		DW 0
+    316	    00C4  0000				RecordCount		DW 0
+    317	    00C6  0000				FirstTime		DW 0
+    318	    00C8  0000				AllRecords		DW 0
+    319	    00CA  0000				WriteRequired		DW 0						 ;EMW
+    320	    00CC  0000				RecordPointer		DW 0
+    321	    00CE  0000				SectorPointer		DW 0
+    322	    00D0  02*(0000)			rc			DW 2	DUP (0)
+    323	    00D4  0C*(??)			mpb			MPB_STR	 ?
+    324
+    325	    00E0			 DSeg	 ENDS
+    326
+    327	    0000			 CSeg	 SEGMENT PARA PUBLIC 'CODE' USE16
+    328						       ASSUME cs:CSeg, ds:DSeg
+    329
+    330					 ;******************************************************************************
+    331					 ;******************************************************************************
+    332					 ;***
+    333					 ;***	FUNCTION	:	INITKF
+    334					 ;***
+    335					 ;******************************************************************************
+    336					 ;***
+    337					 ;***	Opens a	keyed file, allocates memory for reading and initialises
+    338					 ;***	variables required by the READKF function.
+    339					 ;***
+    340					 ;******************************************************************************
+    341					 ;***
+    342					 ;***	BASIC function call usage:
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 7
+KFASMFUN.ASM
+
+
+
+    343					 ;***
+    344					 ;***	FID% = INITKF(FILE.NAME$,	File name			ASC
+    345					 ;***		      OPTIONS%)		Open options (e.g. read	only)	INT 2
+    346					 ;***
+    347					 ;***	Return code:							INT 4
+    348					 ;***	FID% > 0			File identification number
+    349					 ;***	FID% <=	0			Error code
+    350					 ;***
+    351					 ;******************************************************************************
+    352					 ;******************************************************************************
+    353
+    354	    0000			 INITKF	PROC
+    355
+    356						PUBLIC INITKF
+    357
+    358	    0000  55				push bp
+    359	    0001  1E				push ds
+    360	    0002  8B EC				mov bp,	sp
+    361
+    362	    0004  B8 0000s			mov ax,	DSeg
+    363	    0007  8E D8				mov ds,	ax
+    364
+    365					 ;	Clear file name	storage
+    366	    0009  B8 0000s			mov ax,	SEG FileName
+    367	    000C  8E C0				mov es,	ax
+    368	    000E  33 C0				xor ax,	ax
+    369	    0010  BF 006Cr			mov di,	OFFSET FileName
+    370	    0013  B9 0040			mov cx,	64
+    371	    0016  F3> AA			rep stosb
+    372
+    373					 ;	Parameter 1 - File name
+    374	    0018  1E				push ds
+    375	    0019  C5 76	08			lds si,	8[bp]
+    376	    001C  BF 006Cr			mov di,	OFFSET FileName
+    377	    001F  B8 0000s			mov ax,	SEG FileName
+    378	    0022  8E C0				mov es,	ax
+    379	    0024  8B 0C				mov cx,	ds:[si]
+    380	    0026  83 C6	02			add si,	2
+    381	    0029  FC				cld
+    382	    002A  F3> A4			rep movsb
+    383	    002C  1F				pop ds
+    384
+    385					 ;	Parameter 2 - Options
+    386	    002D  8B 46	0C			mov ax,	12[bp]
+    387	    0030  8B D0				mov dx,	ax
+    388
+    389					 ;	 Parameter block for SVC OPEN is as follows:				 ;EMW
+    390					 ;	+-------------------------------------------------------------------+	 ;EMW
+    391					 ;	|  0 |	    0	     |	 Options     |		  Flags		    |	 ;EMW
+    392					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    393					 ;	|  4 |				     0				    |	 ;EMW
+    394					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    395					 ;	|  8 |				  Filename			    |	 ;EMW
+    396					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    397
+    398					 ;	Setup parameter	block for file open
+    399	    0032  33 C0				xor ax,	ax
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 8
+KFASMFUN.ASM
+
+
+
+    400	    0034  A3 0004r			mov [ParameterBlock], ax
+    401	    0037  8B C2				mov ax,	dx
+    402	    0039  A3 0006r			mov 2[ParameterBlock], ax
+    403	    003C  33 C0				xor ax,	ax
+    404	    003E  A3 0008r			mov 4[ParameterBlock], ax
+    405	    0041  A3 000Ar			mov 6[ParameterBlock], ax
+    406	    0044  B8 006Cr			mov ax,	OFFSET FileName
+    407	    0047  A3 000Cr			mov 8[ParameterBlock], ax
+    408	    004A  B8 0000s			mov ax,	SEG FileName
+    409	    004D  A3 000Er			mov 10[ParameterBlock],	ax
+    410
+    411					 ;	Open file
+    412	    0050  B9 0005			mov cx,	F_OPEN
+    413	    0053  B8 0004r			mov ax,	OFFSET ParameterBlock
+    414	    0056  BB 0000s			mov bx,	SEG ParameterBlock
+    415	    0059  CD DC				int OSINT
+    416
+    417					 ;	Store the file ID
+    418	    005B  A3 0020r			mov [FileID], ax
+    419	    005E  89 1E	0022r			mov 2[FileID], bx
+    420
+    421					 ;	Check whether open error occurred
+    422	    0062  83 FB	00			cmp bx,	0
+    423	    0065  7F 05	90 90			jg AllocMem
+    424	    0069  E9 0170			jmp ExitINITKF
+    425
+    426	    006C			 AllocMem:
+    427					 ;	 Parameter block for SVC MALLOC	is as follows:				 ;EMW
+    428					 ;	+-------------------------------------------------------------------+	 ;EMW
+    429					 ;	|  0 |	    0	     |	 Options     |		   0		    |	 ;EMW
+    430					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    431					 ;	|  4 |				     0				    |	 ;EMW
+    432					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    433					 ;	|  8 |				     0				    |	 ;EMW
+    434					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    435					 ;	| 12 |				  MPBPTR			    |	 ;EMW
+    436					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    437					 ;	| 16 |			    12 (size of	MPBPTR)			    |	 ;EMW
+    438					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    439
+    440					 ;	Setup parameter	block for memory allocation
+    441	    006C  33 C0				xor ax,	ax
+    442	    006E  A3 00D4r			mov [mpb.start], ax
+    443	    0071  A3 00D6r			mov 2[mpb.start], ax
+    444	    0074  B8 0000			mov ax,	BLOCK_SIZE_LOW
+    445	    0077  A3 00D8r			mov [mpb.min], ax
+    446	    007A  A3 00DCr			mov [mpb.max], ax
+    447	    007D  B8 0001			mov ax,	BLOCK_SIZE_HIGH
+    448	    0080  A3 00DAr			mov 2[mpb.min],	ax
+    449	    0083  A3 00DEr			mov 2[mpb.max],	ax
+    450
+    451	    0086  32 C0				xor al,	al
+    452	    0088  A3 0004r			mov [ParameterBlock], ax
+    453	    008B  B0 01				mov al,	O_NEWHEAP
+    454	    008D  A3 0005r			mov 1[ParameterBlock], ax
+    455	    0090  33 C0				xor ax,	ax
+    456	    0092  A3 0006r			mov 2[ParameterBlock], ax
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 9
+KFASMFUN.ASM
+
+
+
+    457	    0095  A3 0008r			mov 4[ParameterBlock], ax
+    458	    0098  A3 000Ar			mov 6[ParameterBlock], ax
+    459	    009B  A3 000Cr			mov 8[ParameterBlock], ax
+    460	    009E  A3 000Er			mov 10[ParameterBlock],	ax
+    461	    00A1  BB 00D4r			mov bx,	OFFSET mpb
+    462	    00A4  89 1E	0010r			mov 12[ParameterBlock],	bx
+    463	    00A8  BB 0000s			mov bx,	SEG mpb
+    464	    00AB  89 1E	0012r			mov 14[ParameterBlock],	bx
+    465	    00AF  B8 000C			mov ax,	12
+    466	    00B2  A3 0014r			mov 16[ParameterBlock],	ax
+    467	    00B5  33 C0				xor ax,	ax
+    468	    00B7  A3 0016r			mov 18[ParameterBlock],	ax
+    469	    00BA  A3 0018r			mov 20[ParameterBlock],	ax
+    470	    00BD  A3 001Ar			mov 22[ParameterBlock],	ax
+    471	    00C0  A3 001Cr			mov 24[ParameterBlock],	ax
+    472	    00C3  A3 001Er			mov 26[ParameterBlock],	ax
+    473
+    474					 ;	Allocate memory	block
+    475	    00C6  B9 0023			mov cx,	F_MALLOC
+    476	    00C9  B8 0004r			mov ax,	OFFSET ParameterBlock
+    477	    00CC  8C DB				mov bx,	ds
+    478	    00CE  CD DC				int OSINT
+    479
+    480					 ;	Check whether memory allocation	failed
+    481	    00D0  3D 0000			cmp ax,	0
+    482	    00D3  0F 85	0105			jne ExitINITKF
+    483	    00D7  83 FB	00			cmp bx,	0
+    484	    00DA  0F 85	00FE			jne ExitINITKF
+    485
+    486	    00DE  A1 00D4r			mov ax,	[mpb.start]
+    487	    00E1  A3 0024r			mov [ReadBuffer], ax
+    488	    00E4  A1 00D6r			mov ax,	2[mpb.start]
+    489	    00E7  A3 0026r			mov 2[ReadBuffer], ax
+    490
+    491					 ;	 Parameter block for SVC READ is as follows:				 ;EMW
+    492					 ;	+-------------------------------------------------------------------+	 ;EMW
+    493					 ;	|  0 |	Sync/Async   |	 Options     |		  Flags		    |	 ;EMW
+    494					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    495					 ;	|  4 |				    SWI				    |	 ;EMW
+    496					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    497					 ;	|  8 |				    FNUM			    |	 ;EMW
+    498					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    499					 ;	| 12 |				   BUFFER			    |	 ;EMW
+    500					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    501					 ;	| 16 |				   BUFSIZ			    |	 ;EMW
+    502					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    503					 ;	| 20 |				   OFFSET			    |	 ;EMW
+    504					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    505					 ;	| 24 |				 Delimiters			    |	 ;EMW
+    506					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    507
+    508					 ;	Setup parameter	block to read first sector
+    509	    00EA  33 C0				xor ax,	ax
+    510	    00EC  A3 0004r			mov [ParameterBlock], ax
+    511	    00EF  A3 0006r			mov 2[ParameterBlock], ax
+    512	    00F2  A3 0008r			mov 4[ParameterBlock], ax
+    513	    00F5  A3 000Ar			mov 6[ParameterBlock], ax
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 10
+KFASMFUN.ASM
+
+
+
+    514	    00F8  A1 0020r			mov ax,	[FileID]
+    515	    00FB  A3 000Cr			mov 8[ParameterBlock], ax
+    516	    00FE  A1 0022r			mov ax,	2[FileID]
+    517	    0101  A3 000Er			mov 10[ParameterBlock],	ax
+    518	    0104  A1 0024r			mov ax,	[ReadBuffer]
+    519	    0107  A3 0010r			mov 12[ParameterBlock],	ax
+    520	    010A  A1 0026r			mov ax,	2[ReadBuffer]
+    521	    010D  A3 0012r			mov 14[ParameterBlock],	ax
+    522	    0110  B8 0200			mov ax,	512			; 512 bytes required
+    523	    0113  A3 0014r			mov 16[ParameterBlock],	ax	;
+    524	    0116  33 C0				xor ax,	ax			;
+    525	    0118  A3 0016r			mov 18[ParameterBlock],	ax	;
+    526	    011B  A3 0018r			mov 20[ParameterBlock],	ax
+    527	    011E  A3 001Ar			mov 22[ParameterBlock],	ax
+    528	    0121  A3 001Cr			mov 24[ParameterBlock],	ax
+    529	    0124  A3 001Er			mov 26[ParameterBlock],	ax
+    530
+    531					 ;	Read first sector of file
+    532	    0127  B9 0007			mov cx,	F_READ
+    533	    012A  B8 0004r			mov ax,	OFFSET ParameterBlock
+    534	    012D  8C DB				mov bx,	ds
+    535	    012F  CD DC				int OSINT
+    536
+    537					 ;	Check whether 512 bytes	read
+    538	    0131  3D 0200			cmp ax,	512
+    539	    0134  75 1B	90 90			jnz NotKeyed
+    540
+    541					 ;	Check whether this is a	keyed file
+    542					 ;	(i.e. contains 'FSFACADX' starting at byte 160 in first	sector)
+    543	    0138  8B 3E	0024r			mov di,	[ReadBuffer]
+    544	    013C  8E 06	0026r			mov es,	2[ReadBuffer]
+    545	    0140  81 C7	00A0			add di,	160
+    546	    0144  BE 00ACr			mov si,	OFFSET KeyedFileString
+    547	    0147  B9 0008			mov cx,	8
+    548	    014A  FC				cld
+    549	    014B  F3> A6			repe cmpsb
+    550	    014D  74 30	90 90			je Keyed
+    551
+    552	    0151			 NotKeyed:
+    553
+    554					 ;	 Parameter block for SVC CLOSE is as follows:				 ;EMW
+    555					 ;	+-------------------------------------------------------------------+	 ;EMW
+    556					 ;	|  0 |	    0	     |	 Options     |		  Flags		    |	 ;EMW
+    557					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    558					 ;	|  4 |				     0				    |	 ;EMW
+    559					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    560					 ;	|  8 |				   FNUM				    |	 ;EMW
+    561					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    562
+    563					 ;	Setup parameter	block to close file
+    564	    0151  33 C0				xor ax,	ax
+    565	    0153  A3 0004r			mov [ParameterBlock], ax
+    566	    0156  A3 0006r			mov 2[ParameterBlock], ax
+    567	    0159  A3 0008r			mov 4[ParameterBlock], ax
+    568	    015C  A3 000Ar			mov 6[ParameterBlock], ax
+    569	    015F  A1 0020r			mov ax,	[FileID]
+    570	    0162  A3 000Cr			mov 8[ParameterBlock], ax
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 11
+KFASMFUN.ASM
+
+
+
+    571	    0165  A1 0022r			mov ax,	2[FileID]
+    572	    0168  A3 000Er			mov 10[ParameterBlock],	ax
+    573
+    574					 ;	Close file
+    575	    016B  B9 0006			mov cx,	F_CLOSE
+    576	    016E  B8 0004r			mov ax,	OFFSET ParameterBlock
+    577	    0171  BB 0000s			mov bx,	SEG ParameterBlock
+    578	    0174  CD DC				int OSINT
+    579
+    580					 ;	Set return code	= -1 (not a keyed file)
+    581	    0176  B8 FFFF			mov ax,	0FFFFh
+    582	    0179  BB FFFF			mov bx,	0FFFFh
+    583	    017C  EB 5E	90			jmp ExitINITKF
+    584
+    585	    017F			 Keyed:
+    586					 ;	Get record length (byte	46 from	first sector)
+    587	    017F  8B 3E	0024r			mov di,	[ReadBuffer]
+    588	    0183  83 C7	2E			add di,	46
+    589	    0186  A1 0026r			mov ax,	2[ReadBuffer]
+    590	    0189  8E C0				mov es,	ax
+    591	    018B  26: 8B 1D			mov bx,	es:[di]
+    592	    018E  89 1E	00B4r			mov [RecordLength], bx
+    593	    0192  33 C0				xor ax,	ax
+    594	    0194  A3 00B6r			mov 2[RecordLength], ax
+    595
+    596					 ;	Get maximum number of records per sector
+    597	    0197  BA 0000			mov dx,	0
+    598	    019A  B8 01FC			mov ax,	508
+    599	    019D  F7 F3				div bx
+    600	    019F  A3 00BAr			mov [RecordsPerSector],	ax
+    601
+    602					 ;	Get key	length (byte 54	from first sector)
+    603	    01A2  8B 3E	0024r			mov di,	[ReadBuffer]
+    604	    01A6  83 C7	36			add di,	54
+    605	    01A9  A1 0026r			mov ax,	2[ReadBuffer]
+    606	    01AC  8E C0				mov es,	ax
+    607	    01AE  26: 8B 05			mov ax,	es:[di]
+    608	    01B1  A3 00B6r			mov [KeyLength], ax
+    609	    01B4  B8 0000			mov ax,	0
+    610	    01B7  A3 00B8r			mov 2[KeyLength], ax
+    611
+    612					 ;	Initialise block pointer to ignore first sector
+    613	    01BA  C7 06	0000r 0200		mov [ReadOffset], 512
+    614	    01C0  C7 06	0002r 0000		mov 2[ReadOffset], 0
+    615
+    616					 ;	Initialise flags
+    617	    01C6  C6 06	00C6r 00		mov BYTE PTR [FirstTime], 0
+    618	    01CB  C6 06	00C8r 00		mov BYTE PTR [AllRecords], 0
+    619	    01D0  C6 06	00CAr 00		mov BYTE PTR [WriteRequired], 0						 ;EMW
+    620
+    621					 ;	Return the file	ID
+    622	    01D5  A1 0020r			mov ax,	[FileID]
+    623	    01D8  8B 1E	0022r			mov bx,	2[FileID]
+    624
+    625	    01DC			 ExitINITKF:
+    626	    01DC  1F				pop ds
+    627	    01DD  5D				pop bp
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 12
+KFASMFUN.ASM
+
+
+
+    628
+    629	    01DE  CB				retf
+    630
+    631	    01DF			 INITKF	ENDP
+    632
+    633					 ;******************************************************************************
+    634					 ;******************************************************************************
+    635					 ;***
+    636					 ;***	FUNCTION	:	TERMKF
+    637					 ;***
+    638					 ;******************************************************************************
+    639					 ;***
+    640					 ;***	Commit any outstanding disk writes due to updates to the read buffer,
+    641					 ;***	close file and deallocate memory.
+    642					 ;***
+    643					 ;******************************************************************************
+    644					 ;***
+    645					 ;***	BASIC function call usage:
+    646					 ;***
+    647					 ;***	RC% = TERMKF(FID%)		File identification no		INT 4
+    648					 ;***
+    649					 ;***	Return code:							INT 4
+    650					 ;***	RC% = 0				Successful
+    651					 ;***	RC% < 0				Error code
+    652					 ;***
+    653					 ;******************************************************************************
+    654					 ;******************************************************************************
+    655
+    656	    01DF			 TERMKF	PROC
+    657
+    658						PUBLIC TERMKF
+    659
+    660	    01DF  55				push bp
+    661	    01E0  1E				push ds
+    662	    01E1  8B EC				mov bp,	sp
+    663
+    664	    01E3  B8 0000s			mov ax,	DSeg
+    665	    01E6  8E D8				mov ds,	ax
+    666
+    667					 ;	------------------------------------------------------------------------ ;EMW
+    668					 ;	As we are now allowing disk writes, we must check whether there	are any	 ;EMW
+    669					 ;	updates	to the current read buffer that	we have	not yet	committed to	 ;EMW
+    670					 ;	disk. This is necessary	to cater for the scenario where	the file	 ;EMW
+    671					 ;	processing has been deliberately terminated before the end of the file	 ;EMW
+    672					 ;	has been reached.							 ;EMW
+    673					 ;	------------------------------------------------------------------------ ;EMW
+    674															 ;EMW
+    675					 ;	Check the 'write required' flag						 ;EMW
+    676	    01E8  A1 00CAr			mov ax,	[WriteRequired]							 ;EMW
+    677	    01EB  3D 0000			cmp ax,	0								 ;EMW
+    678	    01EE  74 5E	90 90			jz CloseFile								 ;EMW
+    679															 ;EMW
+    680					 ;	 Parameter block for SVC WRITE is as follows:				 ;EMW
+    681					 ;	+-------------------------------------------------------------------+	 ;EMW
+    682					 ;	|  0 |	Sync/Async   |	 Options     |		  Flags		    |	 ;EMW
+    683					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    684					 ;	|  4 |				    SWI				    |	 ;EMW
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 13
+KFASMFUN.ASM
+
+
+
+    685					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    686					 ;	|  8 |				    FNUM			    |	 ;EMW
+    687					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    688					 ;	| 12 |				   BUFFER			    |	 ;EMW
+    689					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    690					 ;	| 16 |				   BUFSIZ			    |	 ;EMW
+    691					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    692					 ;	| 20 |				   OFFSET			    |	 ;EMW
+    693					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    694					 ;	| 24 |				 Delimiters			    |	 ;EMW
+    695					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    696															 ;EMW
+    697					 ;	Setup parameter	block to write file block				 ;EMW
+    698	    01F2  33 C0				xor ax,	ax								 ;EMW
+    699	    01F4  A3 0004r			mov [ParameterBlock], ax						 ;EMW
+    700	    01F7  A3 0006r			mov 2[ParameterBlock], ax						 ;EMW
+    701	    01FA  A3 0008r			mov 4[ParameterBlock], ax						 ;EMW
+    702	    01FD  A3 000Ar			mov 6[ParameterBlock], ax						 ;EMW
+    703	    0200  A1 0020r			mov ax,	[FileID]							 ;EMW
+    704	    0203  A3 000Cr			mov 8[ParameterBlock], ax						 ;EMW
+    705	    0206  A1 0022r			mov ax,	2[FileID]							 ;EMW
+    706	    0209  A3 000Er			mov 10[ParameterBlock],	ax						 ;EMW
+    707	    020C  A1 0024r			mov ax,	[ReadBuffer]							 ;EMW
+    708	    020F  A3 0010r			mov 12[ParameterBlock],	ax						 ;EMW
+    709	    0212  A1 0026r			mov ax,	2[ReadBuffer]							 ;EMW
+    710	    0215  A3 0012r			mov 14[ParameterBlock],	ax						 ;EMW
+    711	    0218  A1 0028r			mov ax,	[ReadBufsiz]							 ;EMW
+    712	    021B  A3 0014r			mov 16[ParameterBlock],	ax						 ;EMW
+    713	    021E  A1 002Ar			mov ax,	2[ReadBufsiz]							 ;EMW
+    714	    0221  A3 0016r			mov 18[ParameterBlock],	ax						 ;EMW
+    715	    0224  A1 0000r			mov ax,	[ReadOffset]							 ;EMW
+    716	    0227  A3 0018r			mov 20[ParameterBlock],	ax						 ;EMW
+    717	    022A  A1 0002r			mov ax,	2[ReadOffset]							 ;EMW
+    718	    022D  A3 001Ar			mov 22[ParameterBlock],	ax						 ;EMW
+    719	    0230  33 C0				xor ax,	ax								 ;EMW
+    720	    0232  A3 001Cr			mov 24[ParameterBlock],	ax						 ;EMW
+    721	    0235  A3 001Er			mov 26[ParameterBlock],	ax						 ;EMW
+    722															 ;EMW
+    723					 ;	Write file block							 ;EMW
+    724	    0238  B9 0008			mov cx,	F_WRITE								 ;EMW
+    725	    023B  B8 0004r			mov ax,	OFFSET ParameterBlock						 ;EMW
+    726	    023E  8C DB				mov bx,	ds								 ;EMW
+    727	    0240  CD DC				int OSINT								 ;EMW
+    728															 ;EMW
+    729					 ;	Check for file write errors						 ;EMW
+    730	    0242  83 FB	00			cmp bx,	0								 ;EMW
+    731	    0245  7C 3C	90 90			jl ExitTERMKF								 ;EMW
+    732															 ;EMW
+    733					 ;	Reset the 'write required' flag						 ;EMW
+    734	    0249  C6 06	00CAr 00		mov BYTE PTR [WriteRequired], 0						 ;EMW
+    735															 ;EMW
+    736	    024E			 CloseFile:									 ;EMW
+    737					 ;	Parameter 1 - File ID
+    738	    024E  8B 5E	08			mov bx,	8[bp]
+    739	    0251  8B 4E	0A			mov cx,	10[bp]
+    740
+    741					 ;	 Parameter block for SVC CLOSE is as follows:				 ;EMW
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 14
+KFASMFUN.ASM
+
+
+
+    742					 ;	+-------------------------------------------------------------------+	 ;EMW
+    743					 ;	|  0 |	    0	     |	 Options     |		  Flags		    |	 ;EMW
+    744					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    745					 ;	|  4 |				     0				    |	 ;EMW
+    746					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    747					 ;	|  8 |				   FNUM				    |	 ;EMW
+    748					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    749
+    750					 ;	Setup parameter	block to close file
+    751	    0254  33 C0				xor ax,	ax
+    752	    0256  A3 0004r			mov [ParameterBlock], ax
+    753	    0259  A3 0006r			mov 2[ParameterBlock], ax
+    754	    025C  A3 0008r			mov 4[ParameterBlock], ax
+    755	    025F  A3 000Ar			mov 6[ParameterBlock], ax
+    756	    0262  8B C3				mov ax,	bx
+    757	    0264  A3 000Cr			mov 8[ParameterBlock], ax
+    758	    0267  8B C1				mov ax,	cx
+    759	    0269  A3 000Er			mov 10[ParameterBlock],	ax
+    760
+    761					 ;	Close file
+    762	    026C  B9 0006			mov cx,	F_CLOSE
+    763	    026F  B8 0004r			mov ax,	OFFSET ParameterBlock
+    764	    0272  BB 0000s			mov bx,	SEG ParameterBlock
+    765	    0275  CD DC				int OSINT
+    766
+    767					 ;	Deallocate memory block
+    768	    0277  B9 0024			mov cx,	F_MFREE
+    769	    027A  A1 0024r			mov ax,	[ReadBuffer]
+    770	    027D  8B 1E	0026r			mov bx,	2[ReadBuffer]
+    771	    0281  CD DC				int OSINT
+    772
+    773	    0283			 ExitTERMKF:									 ;EMW
+    774	    0283  1F				pop ds
+    775	    0284  5D				pop bp
+    776
+    777	    0285  CB				retf
+    778
+    779	    0286			 TERMKF	ENDP
+    780
+    781					 ;******************************************************************************
+    782					 ;******************************************************************************
+    783					 ;***
+    784					 ;***	FUNCTION	:	READKF
+    785					 ;***
+    786					 ;******************************************************************************
+    787					 ;***
+    788					 ;***	Reads the first	occurence of a record in a keyed file that contains
+    789					 ;***	a particular pattern string at a specified offset within the record.
+    790					 ;***
+    791					 ;***	Subsequent calls to the	function will result in	the next record	being
+    792					 ;***	returned that matches the specified pattern criteria.
+    793					 ;***
+    794					 ;***	Note that if the offset	specified is ZERO, the pattern string parameter
+    795					 ;***	is ignored and ALL records within the file will	be processed.
+    796					 ;***
+    797					 ;***	If the mode parameter is set to	1, the pattern string will be treated	 ;FMW
+    798					 ;***	as a bit mask. The pattern string will be ANDed	with the corresponding	 ;FMW
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 15
+KFASMFUN.ASM
+
+
+
+    799					 ;***	bytes in the record at the specified offset, and the record will be	 ;FMW
+    800					 ;***	returned if the	value of the masked record bytes exactly matches the	 ;FMW
+    801					 ;***	pattern	mask.								 ;FMW
+    802					 ;***										 ;FMW
+    803					 ;***	The matching record strings are	returned in the	RECORD$	parameter.
+    804					 ;***
+    805					 ;***	The length of RECORD$ determines how many bytes	of the file are
+    806					 ;***	returned. For example, you may only require the	keys being returned or
+    807					 ;***	the whole record. Varying the length of	RECORD$	on entry to the	function
+    808					 ;***	will enable you	to do either of	these.
+    809					 ;***
+    810					 ;******************************************************************************
+    811					 ;***
+    812					 ;***	BASIC function call :
+    813					 ;***
+    814					 ;***	RC% = READKF(RECORD$,		n-byte return string		ASC
+    815					 ;***		     PATTERN$,		n-byte pattern/mask string	ASC	 ;FMW
+    816					 ;***		     OFFSET%,		pattern	offset			INT 4	 ;FMW
+    817					 ;***		     MODE%)		mode				INT 2	 ;FMW
+    818					 ;***					possible values	are:			 ;FMW
+    819					 ;***					   0 = pattern is a value		 ;FMW
+    820					 ;***					   1 = pattern is a bit	mask		 ;FMW
+    821					 ;***
+    822					 ;***	Return code:							INT 4
+    823					 ;***	RC% = 0				read successful
+    824					 ;***	RC% = -1			end of file
+    825					 ;***	RC% = -2			null return string specified
+    826					 ;***	RC% < -2			error code
+    827					 ;***
+    828					 ;***	Record (or part	record)	returned in RECORD$			ASC
+    829					 ;***
+    830					 ;******************************************************************************
+    831					 ;******************************************************************************
+    832
+    833	    0286			 READKF	PROC
+    834
+    835						PUBLIC READKF
+    836
+    837	    0286  55				push bp
+    838	    0287  1E				push ds
+    839	    0288  8B EC				mov bp,	sp
+    840
+    841	    028A  B8 0000s			mov ax,	DSeg
+    842	    028D  8E D8				mov ds,	ax
+    843
+    844					 ;	Test whether this is the first execution
+    845	    028F  80 3E	00C6r 00		cmp BYTE PTR [FirstTime], 0
+    846	    0294  74 0F	90 90			jz GetReadParams							 ;EMW
+    847	    0298  8B 0E	00C2r			mov cx,	[SectorCount]
+    848	    029C  51				push cx
+    849	    029D  8B 0E	00C4r			mov cx,	[RecordCount]
+    850	    02A1  51				push cx
+    851
+    852					 ;	Continue from next record position
+    853	    02A2  E9 0187			jmp ContinueREADKF
+    854
+    855	    02A5			 GetReadParams:									 ;EMW
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 16
+KFASMFUN.ASM
+
+
+
+    856					 ;	Set flag to prevent further executions
+    857	    02A5  C6 06	00C6r 01		mov BYTE PTR [FirstTime], 1
+    858
+    859					 ;	Initialise the read buffer size						 ;EMW
+    860	    02AA  B8 0000			mov ax,	BLOCK_SIZE_LOW							 ;EMW
+    861	    02AD  A3 0028r			mov [ReadBufsiz], ax							 ;EMW
+    862	    02B0  B8 0001			mov ax,	BLOCK_SIZE_HIGH							 ;EMW
+    863	    02B3  A3 002Ar			mov 2[ReadBufsiz], ax							 ;EMW
+    864
+    865					 ;	Parameter 1 - Return string
+    866	    02B6  8B 46	08			mov ax,	8[bp]
+    867	    02B9  8B 5E	0A			mov bx,	10[bp]
+    868
+    869					 ;	Ensure address of return string	is not NULL
+    870	    02BC  3D 0000			cmp ax,	0
+    871	    02BF  75 09	90 90			jnz GetPatternOffset
+    872	    02C3  83 FB	00			cmp bx,	0
+    873	    02C6  0F 84	0116			jz  ReadReturnStringNull						 ;EMW
+    874
+    875	    02CA			 GetPatternOffset:
+    876					 ;	Parameter 3 - Pattern offset within record
+    877	    02CA  8B 46	10			mov ax,	16[bp]
+    878
+    879					 ;	Check whether all records required i.e.	pattern	offset = 0
+    880	    02CD  3D 0000			cmp ax,	0
+    881	    02D0  7F 0F	90 90			jg StorePatternOffset
+    882
+    883					 ;	Set flag to get	ALL records
+    884	    02D4  C6 06	00C8r 01		mov BYTE PTR [AllRecords], 1
+    885	    02D9  33 C0				xor ax,	ax
+    886	    02DB  A3 00BEr			mov [PatternOffset], ax
+    887	    02DE  E9 0095			jmp ReadBlock								 ;EMW
+    888
+    889	    02E1			 StorePatternOffset:
+    890					 ;	Store pattern offset
+    891	    02E1  48				dec ax
+    892	    02E2  A3 00BEr			mov [PatternOffset], ax
+    893
+    894					 ;	Parameter 2 - Pattern string to	search for
+    895	    02E5  1E				push ds
+    896	    02E6  C5 76	0C			lds si,	12[bp]
+    897	    02E9  BF 002Cr			mov di,	OFFSET PatternString
+    898	    02EC  B8 0000s			mov ax,	SEG PatternString
+    899	    02EF  8E C0				mov es,	ax
+    900	    02F1  8B 0C				mov cx,	ds:[si]
+    901	    02F3  51				push cx
+    902	    02F4  83 C6	02			add si,	2
+    903	    02F7  FC				cld
+    904	    02F8  F3> A4			rep movsb
+    905	    02FA  59				pop cx
+    906	    02FB  1F				pop ds
+    907	    02FC  89 0E	00B8r			mov [PatternLength], cx
+    908
+    909					 ;	Parameter 4 - Mode							 ;FMW
+    910	    0300  8B 46	14			mov ax,	20[bp]								 ;FMW
+    911	    0303  A3 00C0r			mov [Mode], ax								 ;FMW
+    912
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 17
+KFASMFUN.ASM
+
+
+
+    913					 ;	Read the first file block						 ;EMW
+    914	    0306  EB 6E	90			jmp ReadBlock								 ;EMW
+    915
+    916	    0309			 NextBlock:
+    917					 ;	Check the 'write required' flag						 ;EMW
+    918	    0309  A1 00CAr			mov ax,	[WriteRequired]							 ;EMW
+    919	    030C  3D 0000			cmp ax,	0								 ;EMW
+    920	    030F  74 5E	90 90			jz IncrementBlock							 ;EMW
+    921															 ;EMW
+    922	    0313			 WriteBlock:									 ;EMW
+    923					 ;	 Parameter block for SVC WRITE is as follows:				 ;EMW
+    924					 ;	+-------------------------------------------------------------------+	 ;EMW
+    925					 ;	|  0 |	Sync/Async   |	 Options     |		  Flags		    |	 ;EMW
+    926					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    927					 ;	|  4 |				    SWI				    |	 ;EMW
+    928					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    929					 ;	|  8 |				    FNUM			    |	 ;EMW
+    930					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    931					 ;	| 12 |				   BUFFER			    |	 ;EMW
+    932					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    933					 ;	| 16 |				   BUFSIZ			    |	 ;EMW
+    934					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    935					 ;	| 20 |				   OFFSET			    |	 ;EMW
+    936					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    937					 ;	| 24 |				 Delimiters			    |	 ;EMW
+    938					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    939															 ;EMW
+    940					 ;	Setup parameter	block to write file block				 ;EMW
+    941	    0313  33 C0				xor ax,	ax								 ;EMW
+    942	    0315  A3 0004r			mov [ParameterBlock], ax						 ;EMW
+    943	    0318  A3 0006r			mov 2[ParameterBlock], ax						 ;EMW
+    944	    031B  A3 0008r			mov 4[ParameterBlock], ax						 ;EMW
+    945	    031E  A3 000Ar			mov 6[ParameterBlock], ax						 ;EMW
+    946	    0321  A1 0020r			mov ax,	[FileID]							 ;EMW
+    947	    0324  A3 000Cr			mov 8[ParameterBlock], ax						 ;EMW
+    948	    0327  A1 0022r			mov ax,	2[FileID]							 ;EMW
+    949	    032A  A3 000Er			mov 10[ParameterBlock],	ax						 ;EMW
+    950	    032D  A1 0024r			mov ax,	[ReadBuffer]							 ;EMW
+    951	    0330  A3 0010r			mov 12[ParameterBlock],	ax						 ;EMW
+    952	    0333  A1 0026r			mov ax,	2[ReadBuffer]							 ;EMW
+    953	    0336  A3 0012r			mov 14[ParameterBlock],	ax						 ;EMW
+    954	    0339  A1 0028r			mov ax,	[ReadBufsiz]							 ;EMW
+    955	    033C  A3 0014r			mov 16[ParameterBlock],	ax						 ;EMW
+    956	    033F  A1 002Ar			mov ax,	2[ReadBufsiz]							 ;EMW
+    957	    0342  A3 0016r			mov 18[ParameterBlock],	ax						 ;EMW
+    958	    0345  A1 0000r			mov ax,	[ReadOffset]							 ;EMW
+    959	    0348  A3 0018r			mov 20[ParameterBlock],	ax						 ;EMW
+    960	    034B  A1 0002r			mov ax,	2[ReadOffset]							 ;EMW
+    961	    034E  A3 001Ar			mov 22[ParameterBlock],	ax						 ;EMW
+    962	    0351  33 C0				xor ax,	ax								 ;EMW
+    963	    0353  A3 001Cr			mov 24[ParameterBlock],	ax						 ;EMW
+    964	    0356  A3 001Er			mov 26[ParameterBlock],	ax						 ;EMW
+    965															 ;EMW
+    966					 ;	Write file block							 ;EMW
+    967	    0359  B9 0008			mov cx,	F_WRITE								 ;EMW
+    968	    035C  B8 0004r			mov ax,	OFFSET ParameterBlock						 ;EMW
+    969	    035F  8C DB				mov bx,	ds								 ;EMW
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 18
+KFASMFUN.ASM
+
+
+
+    970	    0361  CD DC				int OSINT								 ;EMW
+    971															 ;EMW
+    972					 ;	Check for file write errors						 ;EMW
+    973	    0363  83 FB	00			cmp bx,	0								 ;EMW
+    974	    0366  0F 8C	015A			jl ExitREADKF								 ;EMW
+    975															 ;EMW
+    976					 ;	Reset the 'write required' flag						 ;EMW
+    977	    036A  C6 06	00CAr 00		mov BYTE PTR [WriteRequired], 0						 ;EMW
+    978															 ;EMW
+    979	    036F			 IncrementBlock:								 ;EMW
+    980					 ;	Increment read offset to get next file block				 ;EMW
+    981	    036F  A1 0002r			mov ax,	2[ReadOffset]							 ;EMW
+    982	    0372  40				inc ax									 ;EMW
+    983	    0373  A3 0002r			mov 2[ReadOffset], ax							 ;EMW
+    984															 ;EMW
+    985	    0376			 ReadBlock:									 ;EMW
+    986					 ;	 Parameter block for SVC READ is as follows:				 ;EMW
+    987					 ;	+-------------------------------------------------------------------+	 ;EMW
+    988					 ;	|  0 |	Sync/Async   |	 Options     |		  Flags		    |	 ;EMW
+    989					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    990					 ;	|  4 |				    SWI				    |	 ;EMW
+    991					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    992					 ;	|  8 |				    FNUM			    |	 ;EMW
+    993					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    994					 ;	| 12 |				   BUFFER			    |	 ;EMW
+    995					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    996					 ;	| 16 |				   BUFSIZ			    |	 ;EMW
+    997					 ;	+----+--------------------------------------------------------------+	 ;EMW
+    998					 ;	| 20 |				   OFFSET			    |	 ;EMW
+    999					 ;	+----+--------------------------------------------------------------+	 ;EMW
+   1000					 ;	| 24 |				 Delimiters			    |	 ;EMW
+   1001					 ;	+----+--------------------------------------------------------------+	 ;EMW
+   1002
+   1003					 ;	Setup parameter	block to read file block
+   1004	    0376  33 C0				xor ax,	ax
+   1005	    0378  A3 0004r			mov [ParameterBlock], ax
+   1006	    037B  A3 0006r			mov 2[ParameterBlock], ax
+   1007	    037E  A3 0008r			mov 4[ParameterBlock], ax
+   1008	    0381  A3 000Ar			mov 6[ParameterBlock], ax
+   1009	    0384  A1 0020r			mov ax,	[FileID]
+   1010	    0387  A3 000Cr			mov 8[ParameterBlock], ax
+   1011	    038A  A1 0022r			mov ax,	2[FileID]
+   1012	    038D  A3 000Er			mov 10[ParameterBlock],	ax
+   1013	    0390  A1 0024r			mov ax,	[ReadBuffer]
+   1014	    0393  A3 0010r			mov 12[ParameterBlock],	ax
+   1015	    0396  A1 0026r			mov ax,	2[ReadBuffer]
+   1016	    0399  A3 0012r			mov 14[ParameterBlock],	ax
+   1017	    039C  A1 0028r			mov ax,	[ReadBufsiz]							 ;EMW
+   1018	    039F  A3 0014r			mov 16[ParameterBlock],	ax						 ;EMW
+   1019	    03A2  A1 002Ar			mov ax,	2[ReadBufsiz]							 ;EMW
+   1020	    03A5  A3 0016r			mov 18[ParameterBlock],	ax						 ;EMW
+   1021	    03A8  A1 0000r			mov ax,	[ReadOffset]
+   1022	    03AB  A3 0018r			mov 20[ParameterBlock],	ax
+   1023	    03AE  A1 0002r			mov ax,	2[ReadOffset]
+   1024	    03B1  A3 001Ar			mov 22[ParameterBlock],	ax
+   1025	    03B4  33 C0				xor ax,	ax
+   1026	    03B6  A3 001Cr			mov 24[ParameterBlock],	ax
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 19
+KFASMFUN.ASM
+
+
+
+   1027	    03B9  A3 001Er			mov 26[ParameterBlock],	ax
+   1028
+   1029					 ;	Read file block
+   1030	    03BC  B9 0007			mov cx,	F_READ
+   1031	    03BF  B8 0004r			mov ax,	OFFSET ParameterBlock
+   1032	    03C2  8C DB				mov bx,	ds
+   1033	    03C4  CD DC				int OSINT
+   1034
+   1035					 ;	------------------------------------------------------------------------ ;EMW
+   1036					 ;	At this	point, the BX:AX registers will	either hold the	error code	 ;EMW
+   1037					 ;	or the number of bytes returned	by the file read.			 ;EMW
+   1038					 ;	Note that as we	are now	writing	modified file blocks, we must take	 ;EMW
+   1039					 ;	into account the fact that the last file block will almost certainly	 ;EMW
+   1040					 ;	be smaller than	the rest!						 ;EMW
+   1041					 ;	------------------------------------------------------------------------ ;EMW
+   1042
+   1043					 ;	Check whether end of file has been reached
+   1044	    03C6  3D 4003			cmp ax,	4003h
+   1045	    03C9  74 0C	90 90			je Eof
+   1046
+   1047					 ;	Check for other	file read errors					 ;EMW
+   1048	    03CD  83 FB	00			cmp bx,	0
+   1049	    03D0  7D 17	90 90			jge ReadSuccessful
+   1050	    03D4  E9 00ED			jmp ExitREADKF
+   1051
+   1052	    03D7			 Eof:
+   1053					 ;	Set return code	= -1 (end of file reached)
+   1054	    03D7  B8 FFFF			mov ax,	0FFFFh
+   1055	    03DA  BB FFFF			mov bx,	0FFFFh
+   1056	    03DD  E9 00E4			jmp ExitREADKF
+   1057
+   1058	    03E0			 ReadReturnStringNull:								 ;EMW
+   1059					 ;	Set return code	= -2 (null return string)
+   1060	    03E0  B8 FFFE			mov ax,	0FFFEh
+   1061	    03E3  BB FFFF			mov bx,	0FFFFh
+   1062	    03E6  E9 00DB			jmp ExitREADKF
+   1063
+   1064	    03E9			 ReadSuccessful:
+   1065					 ;	Set the	read buffer size (as it	could be smaller than the maximum)	 ;EMW
+   1066	    03E9  A3 0028r			mov [ReadBufsiz], ax							 ;EMW
+   1067	    03EC  89 1E	002Ar			mov 2[ReadBufsiz], bx							 ;EMW
+   1068
+   1069					 ;	Calculate number of sectors in block
+   1070	    03F0  52				push dx
+   1071	    03F1  8B D3				mov dx,	bx
+   1072	    03F3  BB 0200			mov bx,	512
+   1073	    03F6  F7 F3				div bx
+   1074	    03F8  5A				pop dx
+   1075	    03F9  8B C8				mov cx,	ax
+   1076
+   1077					 ;	Set sector count to number of sectors in block
+   1078	    03FB  89 0E	00BCr			mov [SectorsPerBlock], cx
+   1079
+   1080	    03FF			 NextSector:
+   1081					 ;	Save sector count on stack
+   1082	    03FF  51				push cx
+   1083
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 20
+KFASMFUN.ASM
+
+
+
+   1084					 ;	Calculate the position of the next sector within the block
+   1085	    0400  8B 1E	00BCr			mov bx,	[SectorsPerBlock]
+   1086	    0404  2B D9				sub bx,	cx
+   1087	    0406  B8 0200			mov ax,	512
+   1088	    0409  F7 E3				mul bx
+   1089	    040B  A3 00CEr			mov [SectorPointer], ax
+   1090
+   1091					 ;	Set record count to number of records per sector
+   1092	    040E  8B 0E	00BAr			mov cx,	[RecordsPerSector]
+   1093
+   1094	    0412			 NextRecord:
+   1095					 ;	Save record count on stack
+   1096	    0412  51				push cx
+   1097
+   1098					 ;	Calculate the position of the next record within the sector
+   1099	    0413  8B 1E	00BAr			mov bx,	[RecordsPerSector]
+   1100	    0417  2B D9				sub bx,	cx
+   1101	    0419  A1 00B4r			mov ax,	[RecordLength]
+   1102	    041C  F7 E3				mul bx
+   1103	    041E  8B 1E	00CEr			mov bx,	[SectorPointer]
+   1104	    0422  03 C3				add ax,	bx
+   1105	    0424  05 0004			add ax,	4
+   1106
+   1107					 ;	Store record pointer (dx)
+   1108	    0427  8B D0				mov dx,	ax
+   1109
+   1110	    0429  EB 0A	90			jmp CheckNullKey							 ;FMW
+   1111															 ;FMW
+   1112					 ;CheckNullKey:									 ;FMW
+   1113					 ;	Check whether current record has a null	key				 ;FMW
+   1114					 ;	mov di,	[ReadBuffer]							 ;FMW
+   1115					 ;	mov es,	2[ReadBuffer]							 ;FMW
+   1116					 ;	add di,	dx								 ;FMW
+   1117					 ;	mov cx,	[KeyLength]							 ;FMW
+   1118					 ;	mov al,	0								 ;FMW
+   1119					 ;	cld									 ;FMW
+   1120					 ;	repe scasb								 ;FMW
+   1121					 ;	je FoundNullKey								 ;FMW
+   1122					 ;										 ;FMW
+   1123					 ;CheckPattern:									 ;FMW
+   1124					 ;	Check whether ALL records are required					 ;FMW
+   1125					 ;	cmp BYTE PTR [AllRecords], 1						 ;FMW
+   1126					 ;	jz FoundMatch								 ;FMW
+   1127															 ;FMW
+   1128					 ;	Compare	pattern	string with record string				 ;FMW
+   1129					 ;	mov di,	[ReadBuffer]							 ;FMW
+   1130					 ;	mov es,	2[ReadBuffer]							 ;FMW
+   1131					 ;	add di,	dx								 ;FMW
+   1132					 ;	add di,	[PatternOffset]							 ;FMW
+   1133					 ;	mov si,	OFFSET PatternString						 ;FMW
+   1134					 ;	mov cx,	[PatternLength]							 ;FMW
+   1135					 ;	cld									 ;FMW
+   1136					 ;	repe cmpsb								 ;FMW
+   1137					 ;	je FoundMatch								 ;FMW
+   1138
+   1139					 ;+++++++++++++++++++++++++++++++++++++++++++++++++++
+   1140					 ;>>>>>	Entry point for	repeated function calls	<<<<<
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 21
+KFASMFUN.ASM
+
+
+
+   1141					 ;+++++++++++++++++++++++++++++++++++++++++++++++++++
+   1142	    042C			 ContinueREADKF:
+   1143					 ;	Recover	record count from stack
+   1144	    042C  59				pop cx
+   1145
+   1146					 ;	Get next record
+   1147	    042D  E2 E3				Loop NextRecord
+   1148
+   1149					 ;	Recover	sector count from stack
+   1150	    042F  59				pop cx
+   1151
+   1152					 ;	Get next sector
+   1153	    0430  E2 CD				Loop NextSector
+   1154
+   1155					 ;	Get next block
+   1156	    0432  E9 FED4			jmp NextBlock
+   1157
+   1158	    0435			 CheckNullKey:									 ;FMW
+   1159					 ;	Check whether current record has a null	key				 ;FMW
+   1160	    0435  8B 3E	0024r			mov di,	[ReadBuffer]							 ;FMW
+   1161	    0439  8E 06	0026r			mov es,	2[ReadBuffer]							 ;FMW
+   1162	    043D  03 FA				add di,	dx								 ;FMW
+   1163	    043F  8B 0E	00B6r			mov cx,	[KeyLength]							 ;FMW
+   1164	    0443  B0 00				mov al,	0								 ;FMW
+   1165	    0445  FC				cld									 ;FMW
+   1166	    0446  F3> AE			repe scasb								 ;FMW
+   1167	    0448  74 44	90 90			je FoundNullKey								 ;FMW
+   1168															 ;FMW
+   1169	    044C			 CheckPattern:									 ;FMW
+   1170					 ;	Check whether ALL records are required					 ;FMW
+   1171	    044C  80 3E	00C8r 01		cmp BYTE PTR [AllRecords], 1						 ;FMW
+   1172	    0451  74 42	90 90			jz FoundMatch								 ;FMW
+   1173															 ;FMW
+   1174					 ;	Point to pattern string	and record string				 ;FMW
+   1175	    0455  8B 3E	0024r			mov di,	[ReadBuffer]							 ;FMW
+   1176	    0459  8E 06	0026r			mov es,	2[ReadBuffer]							 ;FMW
+   1177	    045D  03 FA				add di,	dx								 ;FMW
+   1178	    045F  03 3E	00BEr			add di,	[PatternOffset]							 ;FMW
+   1179	    0463  BE 002Cr			mov si,	OFFSET PatternString						 ;FMW
+   1180															 ;FMW
+   1181					 ;	Get pattern length							 ;FMW
+   1182	    0466  8B 0E	00B8r			mov cx,	[PatternLength]							 ;FMW
+   1183															 ;FMW
+   1184					 ;	Check whether 'pattern value' mode specified				 ;FMW
+   1185	    046A  80 3E	00C0r 00		cmp BYTE PTR [Mode], 0							 ;FMW
+   1186	    046F  74 14	90 90			jz ComparePatternValue							 ;FMW
+   1187															 ;FMW
+   1188	    0473			 ComparePatternBitmap:								 ;FMW
+   1189					 ;	Get next pattern byte and record byte					 ;FMW
+   1190	    0473  26: 8A 05			mov al,	es:[di]								 ;FMW
+   1191	    0476  8A 1C				mov bl,	ds:[si]								 ;FMW
+   1192															 ;FMW
+   1193					 ;	Check for a bitmap pattern match					 ;FMW
+   1194	    0478  22 C3				and al,	bl								 ;FMW
+   1195	    047A  3A C3				cmp al,	bl								 ;FMW
+   1196	    047C  75 AE				jnz ContinueREADKF							 ;FMW
+   1197															 ;FMW
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 22
+KFASMFUN.ASM
+
+
+
+   1198					 ;	Move to	next pattern and record	string byte				 ;FMW
+   1199	    047E  47				inc di									 ;FMW
+   1200	    047F  46				inc si									 ;FMW
+   1201															 ;FMW
+   1202					 ;	Check next pattern bitmap						 ;FMW
+   1203	    0480  E2 F1				Loop ComparePatternBitmap						 ;FMW
+   1204															 ;FMW
+   1205	    0482  EB 11	90			jmp FoundMatch								 ;FMW
+   1206															 ;FMW
+   1207	    0485			 ComparePatternValue:								 ;FMW
+   1208					 ;	Compare	pattern	value with record string				 ;FMW
+   1209	    0485  FC				cld									 ;FMW
+   1210	    0486  F3> A6			repe cmpsb								 ;FMW
+   1211	    0488  74 0B	90 90			je FoundMatch								 ;FMW
+   1212															 ;FMW
+   1213	    048C  EB 9E				jmp ContinueREADKF							 ;FMW
+   1214
+   1215	    048E			 FoundNullKey:
+   1216					 ;	Reset record count to force end	of sector
+   1217	    048E  59				pop cx
+   1218	    048F  B9 0001			mov cx,	1
+   1219	    0492  51				push cx
+   1220
+   1221	    0493  EB 97				jmp ContinueREADKF
+   1222
+   1223	    0495			 FoundMatch:
+   1224					 ;	Recover	record count from stack	and save in memory
+   1225	    0495  59				pop cx
+   1226	    0496  89 0E	00C4r			mov [RecordCount], cx
+   1227
+   1228					 ;	Recover	sector count from stack	and save in memory			 ;EMW
+   1229	    049A  59				pop cx
+   1230	    049B  89 0E	00C2r			mov [SectorCount], cx
+   1231
+   1232					 ;	Save record pointer in memory						 ;EMW
+   1233	    049F  89 16	00CCr			mov [RecordPointer], dx							 ;EMW
+   1234
+   1235					 ;	Put matched record in the returned record string
+   1236	    04A3  8B 7E	08			mov di,	8[bp]
+   1237	    04A6  8B 46	0A			mov ax,	10[bp]
+   1238	    04A9  8E C0				mov es,	ax
+   1239	    04AB  8B 36	0024r			mov si,	[ReadBuffer]
+   1240	    04AF  A1 0026r			mov ax,	2[ReadBuffer]
+   1241	    04B2  03 F2				add si,	dx
+   1242	    04B4  8E D8				mov ds,	ax
+   1243	    04B6  26: 8B 0D			mov cx,	es:[di]
+   1244	    04B9  83 C7	02			add di,	2
+   1245	    04BC  FC				cld
+   1246	    04BD  F3> A4			rep movsb
+   1247
+   1248					 ;	Set return code	= 0 (successful)
+   1249	    04BF  33 C0				xor ax,	ax
+   1250	    04C1  BB 0000			mov bx,	0
+   1251
+   1252	    04C4			 ExitREADKF:
+   1253	    04C4  1F				pop ds
+   1254	    04C5  5D				pop bp
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 23
+KFASMFUN.ASM
+
+
+
+   1255
+   1256	    04C6  CB				retf
+   1257
+   1258	    04C7			 READKF	ENDP
+   1259
+   1260					 ;****************************************************************************** ;EMW
+   1261					 ;****************************************************************************** ;EMW
+   1262					 ;***										 ;EMW
+   1263					 ;***	FUNCTION	:	WRITEKF						 ;EMW
+   1264					 ;***										 ;EMW
+   1265					 ;****************************************************************************** ;EMW
+   1266					 ;***										 ;EMW
+   1267					 ;***	Updates	the most recent	record string returned by READKF.		 ;EMW
+   1268					 ;***										 ;EMW
+   1269					 ;****************************************************************************** ;EMW
+   1270					 ;***										 ;EMW
+   1271					 ;***	BASIC function call :							 ;EMW
+   1272					 ;***										 ;EMW
+   1273					 ;***	Updates	the read buffer	for the	most recent string returned by function	 ;EMW
+   1274					 ;***	READKF,	and marks the file block as requiring a	disk write. Note that	 ;EMW
+   1275					 ;***	the disk write will only be performed when the file block has been	 ;EMW
+   1276					 ;***	fully processed, for efficiency	reasons.				 ;EMW
+   1277					 ;***										 ;EMW
+   1278					 ;***	It is IMPORTANT	that the length	of the RECORD$ parameter is		 ;EMW
+   1279					 ;***	unchanged. In addition,	amending the key field is not allowed.		 ;EMW
+   1280					 ;***										 ;EMW
+   1281					 ;***	RC% = WRITEKF(RECORD$)		 n-byte	return string		ASC	 ;EMW
+   1282					 ;***										 ;EMW
+   1283					 ;***	Return code:							INT 4	 ;EMW
+   1284					 ;***	RC% = 0				write successful			 ;EMW
+   1285					 ;***	RC% = -2			null update string specified		 ;EMW
+   1286					 ;***	RC% < -2			error code				 ;EMW
+   1287					 ;***										 ;EMW
+   1288					 ;***	Record (or part	record)	to update in RECORD$			ASC	 ;EMW
+   1289					 ;***										 ;EMW
+   1290					 ;****************************************************************************** ;EMW
+   1291					 ;****************************************************************************** ;EMW
+   1292															 ;EMW
+   1293	    04C7			 WRITEKF PROC									 ;EMW
+   1294															 ;EMW
+   1295						PUBLIC WRITEKF								 ;EMW
+   1296															 ;EMW
+   1297	    04C7  55				push bp									 ;EMW
+   1298	    04C8  1E				push ds									 ;EMW
+   1299	    04C9  8B EC				mov bp,	sp								 ;EMW
+   1300															 ;EMW
+   1301	    04CB  B8 0000s			mov ax,	DSeg								 ;EMW
+   1302	    04CE  8E D8				mov ds,	ax								 ;EMW
+   1303															 ;EMW
+   1304	    04D0			 GetWriteParams:								 ;EMW
+   1305					 ;	Parameter 1 - Return string						 ;EMW
+   1306	    04D0  8B 46	08			mov ax,	8[bp]								 ;EMW
+   1307	    04D3  8B 5E	0A			mov bx,	10[bp]								 ;EMW
+   1308															 ;EMW
+   1309					 ;	Ensure address of return string	is not NULL				 ;EMW
+   1310	    04D6  3D 0000			cmp ax,	0								 ;EMW
+   1311	    04D9  75 15	90 90			jnz UpdateBuffer							 ;EMW
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 24
+KFASMFUN.ASM
+
+
+
+   1312	    04DD  83 FB	00			cmp bx,	0								 ;EMW
+   1313	    04E0  74 05	90 90			jz  WriteReturnStringNull						 ;EMW
+   1314															 ;EMW
+   1315	    04E4  EB 0A	90			jmp UpdateBuffer							 ;EMW
+   1316															 ;EMW
+   1317	    04E7			 WriteReturnStringNull:								 ;EMW
+   1318					 ;	Set return code	= -2 (null return string)				 ;EMW
+   1319	    04E7  B8 FFFE			mov ax,	0FFFEh								 ;EMW
+   1320	    04EA  BB FFFF			mov bx,	0FFFFh								 ;EMW
+   1321	    04ED  EB 2A	90			jmp ExitWRITEKF								 ;EMW
+   1322															 ;EMW
+   1323	    04F0			 UpdateBuffer:									 ;EMW
+   1324					 ;	Set the	'write required' flag						 ;EMW
+   1325	    04F0  C6 06	00CAr 01		mov BYTE PTR [WriteRequired], 1						 ;EMW
+   1326															 ;EMW
+   1327					 ;	Restore	record pointer from memory					 ;EMW
+   1328	    04F5  8B 16	00CCr			mov dx,	[RecordPointer]							 ;EMW
+   1329															 ;EMW
+   1330					 ;	Put amended record into	the read buffer					 ;EMW
+   1331	    04F9  8B 3E	0024r			mov di,	[ReadBuffer]							 ;EMW
+   1332	    04FD  A1 0026r			mov ax,	2[ReadBuffer]							 ;EMW
+   1333	    0500  8E C0				mov es,	ax								 ;EMW
+   1334	    0502  03 FA				add di,	dx								 ;EMW
+   1335	    0504  8B 76	08			mov si,	8[bp]								 ;EMW
+   1336	    0507  8B 46	0A			mov ax,	10[bp]								 ;EMW
+   1337	    050A  8E D8				mov ds,	ax								 ;EMW
+   1338	    050C  8B 0C				mov cx,	ds:[si]								 ;EMW
+   1339	    050E  83 C6	02			add si,	2								 ;EMW
+   1340	    0511  FC				cld									 ;EMW
+   1341	    0512  F3> A4			rep movsb								 ;EMW
+   1342															 ;EMW
+   1343					 ;	Set return code	= 0 (successful)					 ;EMW
+   1344	    0514  33 C0				xor ax,	ax								 ;EMW
+   1345	    0516  BB 0000			mov bx,	0								 ;EMW
+   1346															 ;EMW
+   1347	    0519			 ExitWRITEKF:									 ;EMW
+   1348	    0519  1F				pop ds									 ;EMW
+   1349	    051A  5D				pop bp									 ;EMW
+   1350															 ;EMW
+   1351	    051B  CB				retf									 ;EMW
+   1352															 ;EMW
+   1353	    051C			 WRITEKF ENDP									 ;EMW
+   1354
+   1355	    051C			 CSeg	ENDS
+   1356
+   1357					 END
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 25
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??date				  Text	 "07/11/16"
+??filename			  Text	 "KFASMFUN"
+??time				  Text	 "15:42:11"
+??version			  Number 0202
+@CodeSize			  Text	 1
+@Cpu				  Text	 0D0FH
+@DataSize			  Text	 1
+@FileName			  Text	 KFASMFUN
+@Model				  Text	 5
+@WordSize			  Text	 2
+@code				  Text	 KFASMFUN_TEXT
+@curseg				  Text	 CSeg
+@data				  Text	 DGROUP
+A_ABSOLUTE			  Number 0001
+A_ATTRPL			  Number 0002
+A_BADTRK			  Number 0002
+A_BBORDER			  Number 0002
+A_BOFOFF			  Number 0000
+A_BSCREEN			  Number 0001
+A_CHAIN				  Number 0020
+A_CHARPL			  Number 0001
+A_CLIP				  Number 0002
+A_CONFLICT			  Number 0010
+A_CONTIG			  Number 0200
+A_DATABUF			  Number 0040
+A_DELETE			  Number 0400
+A_DELIM				  Number 0002
+A_DELINCL			  Number 0010
+A_DELSC				  Number 0008
+A_DEVLOCK			  Number 0040
+A_EDIT				  Number 0020
+A_EOFOFF			  Number 0200
+A_EWLOCK			  Number 0002
+A_EXCLNORM			  Number 0010
+A_EXEC				  Number 0002
+A_EXIT				  Number 0001
+A_EXLOCK			  Number 0001
+A_EXTPL				  Number 0004
+A_FAMLOCK			  Number 0001
+A_FLUSH				  Number 0001
+A_FORCE				  Number 2000
+A_FORK				  Number 0200
+A_FPOFF				  Number 0100
+A_GEMRECT			  Number 0004
+A_HIDDEN			  Number 0001
+A_INCLDIR			  Number 0008
+A_LCKMSK			  Number 0003
+A_LIT				  Number 4000
+A_LOGMNT			  Number 0100
+A_MCTRL				  Number 0001
+A_MOUSE				  Number 0001
+A_NEWFMLY			  Number 0080
+A_NOCACHE			  Number 0800
+A_NODESCT			  Number 0004
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 26
+Symbol Table
+
+
+
+A_NOEXCL			  Number 0080
+A_NONBLOCK			  Number 0040
+A_NOPROC			  Number 0010
+A_OEM				  Number 0800
+A_OFFMSK			  Number 0300
+A_PARMBUF			  Number 0080
+A_PART				  Number 0100
+A_PCLOSE			  Number 0001
+A_PHYSMNT			  Number 0200
+A_PREINIT			  Number 0008
+A_PROLOCK			  Number 0000
+A_READ				  Number 0008
+A_READPHYS_V			  Number 0004
+A_REDUCE			  Number 0080
+A_REG				  Number 0001
+A_REMOVE			  Number 0020
+A_REPLACE			  Number 0001
+A_RETURN			  Number 0002
+A_SECURITY			  Number 1000
+A_SET				  Number 0001
+A_SHARE				  Number 0010
+A_SHFP				  Number 0040
+A_SHRO				  Number 0020
+A_SIZE				  Number 0004
+A_SUBFUNC			  Number 0400
+A_SUBPROC			  Number 0100
+A_SWLOCK			  Number 0003
+A_SYSFILE			  Number 0002
+A_SYSTEM			  Number 0001
+A_TEMP				  Number 0100
+A_TRUNCATE			  Number 0002
+A_UADDR				  Number 8000
+A_UNLKDEV			  Number 0002
+A_UNLOCK			  Number 0000
+A_USECSHN			  Number 0004
+A_USEHEAD			  Number 0008
+A_VERIFY			  Number 0200
+A_VOLUME			  Number 0004
+A_WRITE				  Number 0004
+A_ZFILL				  Number 0080
+AllRecords			  Word	 DSeg:00C8
+AllocMem			  Near	 CSeg:006C
+BLOCK_SIZE_HIGH			  Number 0001
+BLOCK_SIZE_LOW			  Number 0000
+CheckNullKey			  Near	 CSeg:0435
+CheckPattern			  Near	 CSeg:044C
+CloseFile			  Near	 CSeg:024E
+ComparePatternBitmap		  Near	 CSeg:0473
+ComparePatternValue		  Near	 CSeg:0485
+ContinueREADKF			  Near	 CSeg:042C
+DVR_CAMVDI			  Number 007B
+DVR_CLOCK			  Number 007E
+DVR_CON				  Number 0031
+DVR_CVDI			  Number 0038
+DVR_DISK			  Number 0021
+DVR_KB				  Number 0083
+DVR_METAVDI			  Number 0079
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 27
+Symbol Table
+
+
+
+DVR_MOUSE			  Number 0082
+DVR_NETMAN			  Number 007D
+DVR_NULL			  Number 007F
+DVR_OEM				  Number 0090
+DVR_PIPE			  Number 0011
+DVR_PLOTVDI			  Number 007A
+DVR_PORT			  Number 0081
+DVR_PRN				  Number 0071
+DVR_PRTVDI			  Number 0078
+DVR_SCANVDI			  Number 007C
+DVR_SCRVDI			  Number 0038
+DVR_SER				  Number 0072
+DVR_SHMEM			  Number 0012
+DVR_TEXT			  Number 0085
+DVR_TIME			  Number 0001
+Eof				  Near	 CSeg:03D7
+ExitINITKF			  Near	 CSeg:01DC
+ExitREADKF			  Near	 CSeg:04C4
+ExitTERMKF			  Near	 CSeg:0283
+ExitWRITEKF			  Near	 CSeg:0519
+F_ABORT				  Number 001A
+F_ALTER				  Number 0010
+F_BWAIT				  Number 0017
+F_CANCEL			  Number 001B
+F_CLOSE				  Number 0006
+F_COMMAND			  Number 0026
+F_CONTROL			  Number 0027
+F_COPY				  Number 000F
+F_CREATE			  Number 0003
+F_DEFINE			  Number 000B
+F_DELETE			  Number 0004
+F_DEVLOCK			  Number 000C
+F_DISABLE			  Number 0021
+F_ENABLE			  Number 0020
+F_EXCEPTION			  Number 001F
+F_EXIT				  Number 0019
+F_GET				  Number 0000
+F_GIVE				  Number 0016
+F_INSTALL			  Number 000D
+F_KCTRL				  Number 0013
+F_KEYPUT			  Number 0015
+F_LOCK				  Number 000E
+F_LOOKUP			  Number 0002
+F_MALLOC			  Number 0023
+F_MFREE				  Number 0024
+F_OPEN				  Number 0005
+F_ORDER				  Number 0014
+F_OVERLAY			  Number 0025
+F_READ				  Number 0007
+F_RENAME			  Number 000A
+F_RETURN			  Number 001E
+F_RWAIT				  Number 0012
+F_SEEK				  Number 0029
+F_SET				  Number 0001
+F_SPECIAL			  Number 0009
+F_STATUS			  Number 001D
+F_SWIRET			  Number 0022
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 28
+Symbol Table
+
+
+
+F_TIMER				  Number 0018
+F_WAIT				  Number 001C
+F_WRITE				  Number 0008
+F_XLAT				  Number 0011
+FileID				  Word	 DSeg:0020
+FileName			  Byte	 DSeg:006C
+FirstTime			  Word	 DSeg:00C6
+FoundMatch			  Near	 CSeg:0495
+FoundNullKey			  Near	 CSeg:048E
+GetPatternOffset		  Near	 CSeg:02CA
+GetReadParams			  Near	 CSeg:02A5
+GetWriteParams			  Near	 CSeg:04D0
+INITKF				  Far	 CSeg:0000
+IncrementBlock			  Near	 CSeg:036F
+KeyLength			  Word	 DSeg:00B6
+Keyed				  Near	 CSeg:017F
+KeyedFileString			  Byte	 DSeg:00AC
+M_ASYNC				  Number 0001
+M_COMMAND			  Number 0004
+M_FE				  Number 0008
+M_UADDR				  Number 0002
+Mode				  Word	 DSeg:00C0
+NextBlock			  Near	 CSeg:0309
+NextRecord			  Near	 CSeg:0412
+NextSector			  Near	 CSeg:03FF
+NotKeyed			  Near	 CSeg:0151
+OSINT				  Number 00DC
+O_ADDUNIT			  Number 0002
+O_ALLOFF			  Number 000D
+O_ALLON				  Number 000C
+O_APID				  Number 0001
+O_CHKBUF			  Number 0010
+O_DIR				  Number 0001
+O_FILE				  Number 0000
+O_GROWHEAP			  Number 0000
+O_HALT				  Number 000B
+O_LINKUNIT			  Number 0003
+O_LOAD				  Number 0001
+O_LOADDEV			  Number 0001
+O_NEWHEAP			  Number 0001
+O_READATA			  Number 0004
+O_READCODE			  Number 0003
+O_READREG			  Number 0007
+O_REMOVE			  Number 0002
+O_REMUNIT			  Number 0000
+O_RETURN			  Number 0000
+O_START				  Number 0009
+O_TRACE				  Number 000A
+O_TRAPOFF			  Number 000F
+O_TRAPON			  Number 000E
+O_VCON				  Number 0002
+O_WRITECODE			  Number 0005
+O_WRITEDATA			  Number 0006
+O_WRITEREG			  Number 0008
+ParameterBlock			  Word	 DSeg:0004
+PatternLength			  Word	 DSeg:00B8
+PatternOffset			  Word	 DSeg:00BE
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 29
+Symbol Table
+
+
+
+PatternString			  Byte	 DSeg:002C
+READKF				  Far	 CSeg:0286
+ReadBlock			  Near	 CSeg:0376
+ReadBuffer			  Word	 DSeg:0024
+ReadBufsiz			  Word	 DSeg:0028
+ReadOffset			  Word	 DSeg:0000
+ReadReturnStringNull		  Near	 CSeg:03E0
+ReadSuccessful			  Near	 CSeg:03E9
+RecordCount			  Word	 DSeg:00C4
+RecordLength			  Word	 DSeg:00B4
+RecordPointer			  Word	 DSeg:00CC
+RecordsPerSector		  Word	 DSeg:00BA
+STDERR				  Number 0002
+STDIN				  Number 0000
+STDOUT				  Number 0001
+SectorCount			  Word	 DSeg:00C2
+SectorPointer			  Word	 DSeg:00CE
+SectorsPerBlock			  Word	 DSeg:00BC
+StorePatternOffset		  Near	 CSeg:02E1
+TERMKF				  Far	 CSeg:01DF
+T_BOTTOM			  Number 0035
+T_CLOCK				  Alias	 DVR_CLOCK
+T_CMDENV			  Number 0044
+T_CON				  Number 0030
+T_DEV				  Number 0045
+T_DISK				  Alias	 DVR_DISK
+T_ENV				  Number 0001
+T_FILE				  Number 0020
+T_FNUM				  Number 0041
+T_LEFT				  Number 0036
+T_MEM				  Number 0003
+T_MOUSE				  Number 0033
+T_NULL				  Alias	 DVR_NULL
+T_PCON				  Alias	 DVR_CON
+T_PDEF				  Number 0043
+T_PIPE				  Number 0010
+T_PNAME				  Number 0046
+T_PORT				  Alias	 DVR_PORT
+T_PRN				  Alias	 DVR_PRN
+T_PROC				  Number 0000
+T_PRTVDI			  Number 0078
+T_RIGHT				  Number 0037
+T_SDEF				  Number 0042
+T_SER				  Alias	 DVR_SER
+T_SHMEM				  Number 0011
+T_SRTL				  Number 0047
+T_SYS				  Number 0040
+T_TD				  Number 0002
+T_TOP				  Number 0034
+T_VCON				  Number 0032
+T_VIRCON			  Number 0038
+UpdateBuffer			  Near	 CSeg:04F0
+WRITEKF				  Far	 CSeg:04C7
+WriteBlock			  Near	 CSeg:0313
+WriteRequired			  Word	 DSeg:00CA
+WriteReturnStringNull		  Near	 CSeg:04E7
+mpb				  Struct DSeg:00D4 MPB_STR
+Turbo Assembler	 Version 2.02	     07/11/16 15:42:11	    Page 30
+Symbol Table
+
+
+
+rc				  Word	 DSeg:00D0
+
+Structure Name			  Type	Offset
+
+MPB_STR
+ start				  Word	 0000
+ min				  Word	 0004
+ max				  Word	 0008
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CSeg				  16  051C Para	  Public  CODE
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+DSeg				  16  00E0 Para	  Public  DATA
+KFASMFUN_TEXT			  16  0000 Word	  Public  CODE
+

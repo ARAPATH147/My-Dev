@@ -1,0 +1,228 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \***                          JOBOK FILE FUNCTIONS
+   3: 0000: \***    Version A           Steve Windsor               5th Jan 1993
+   4: 0000: \***
+   5: 0000: \***    Version B.          Robert Cowey.                07 OCT 1993.
+   6: 0000: \***    Defined JOBSOK.SET integer for use as a return code.
+   7: 0000: \***
+   8: 0000: \***    Version C.          Stuart Highley              5th May 2000
+   9: 0000: \***    Added flags for Dentistry (ExACT) and Well-being.
+  10: 0000: \***
+  11: 0000: \***    Version D.          Harpal Matharu             17th Jun 2010
+  12: 0000: \***    Added flag for PSD87's run.
+  13: 0000: \***
+  14: 0000: \***    Version E.              Nalini Mathusoothanan 22nd Jun 2011
+  15: 0000: \***    Added new variables for Core 2 Release
+  16: 0000: \***    JOBSOK.IUF.SOURCE$ 1 byte    - IUF processor [Mainframe or SAP ECC]
+  17: 0000: \***    JOBSOK.LAST.PROCESSED.BATCH$ - Serial number of last successfully
+  18: 0000: \***                                   processed batch.
+  19: 0000: \.............................................................................
+  20: 0000: 
+  21: 0000:    INTEGER*2 GLOBAL                  \
+  22: 0000:       CURRENT.REPORT.NUM%
+  23: 0000: 
+  24: 0000:    STRING GLOBAL                     \
+  25: 0000:       CURRENT.CODE$,                 \
+  26: 0000:       FILE.OPERATION$
+  27: 0000: 
+  28: 0000:    %INCLUDE JOBOKDEC.J86                                               ! BRC
+  29: 0000: \*****************************************************************************
+  30: 0000: \*****************************************************************************
+  31: 0000: \***
+  32: 0000: \***               %INCLUDE FOR XXXXXXXXXXX - FIELD DECLARATIONS
+  33: 0000: \***                                          FILE REFERENCE PARAMETERS
+  34: 0000: \***
+  35: 0000: \***                      FILE TYPE    :
+  36: 0000: \***
+  37: 0000: \***                      REFERENCE    : jobokdea.J86
+  38: 0000: \***
+  39: 0000: \***    Version A               Steve Windsor          ZZZZZZZZZZZZZZZZ
+  40: 0000: \***
+  41: 0000: \***    Version B.              Robert Cowey.          07 OCT 1993.
+  42: 0000: \***    No changes to this file.
+  43: 0000: \***
+  44: 0000: \***    Version C.              Mark Walker            ???
+  45: 0000: \***    ???
+  46: 0000: \***
+  47: 0000: \***    Version D.              Stuart Highley         5th May 2000
+  48: 0000: \***    Added variables for Dentistry (ExACT) and Well-being.
+  49: 0000: \***
+  50: 0000: \***    Version E.              Harpal Matharu        17th Jun 2010
+  51: 0000: \***    Added variable for PSD87
+  52: 0000: \***
+  53: 0000: \***    Version F.              Nalini Mathusoothanan 22nd Jun 2011
+  54: 0000: \***    Added new variables for Core 2 Release
+  55: 0000: \***    JOBSOK.IUF.SOURCE$ 1 byte    - IUF processor [Mainframe or SAP ECC]
+  56: 0000: \***    JOBSOK.LAST.PROCESSED.BATCH$ - Serial number of last successfully
+  57: 0000: \***                                   processed batch.
+  58: 0000: \***
+  59: 0000: \*****************************************************************************
+  60: 0000: \*****************************************************************************
+  61: 0000: 
+  62: 0000: REM \
+  63: 0000: 
+  64: 0000:   STRING GLOBAL           \
+  65: 0000:     JOBSOK.FILE.NAME$
+  66: 0000: 
+  67: 0000:   INTEGER*2 GLOBAL        \
+  68: 0000:     JOBSOK.REPORT.NUM%,   \ BBCW
+  69: 0000:     JOBSOK.SESS.NUM%
+  70: 0000: REM \
+  71: 0000: 
+  72: 0000:   STRING GLOBAL           \
+  73: 0000:     JOBSOK.RECORD$,       \ 80 bytes
+  74: 0000:     JOBSOK.PSB21$,        \ 1 byte, BLANK = not run
+  75: 0000:                           \         S     = program started
+  76: 0000:                           \         E     = program ended OK
+  77: 0000:                           \         X     = program ended in error
+  78: 0000:                           \         Y     = program ended OK after a minor error
+  79: 0000:     JOBSOK.PSB22$,        \ 1 byte, BLANK = not run
+  80: 0000:                           \         S     = program started
+  81: 0000:                           \         E     = program ended OK
+  82: 0000:                           \         X     = program ended in error
+  83: 0000:                           \         Y     = program ended OK after a minor error
+  84: 0000:     JOBSOK.PSB23$,        \ 1 byte, BLANK = not run
+  85: 0000:                           \         S     = program started
+  86: 0000:                           \         E     = program ended OK
+  87: 0000:                           \         X     = program ended in error
+  88: 0000:                           \         Y     = program ended OK after a minor error
+  89: 0000:     JOBSOK.PSB24$,        \ 1 byte, BLANK = not run
+  90: 0000:                           \         S     = program started
+  91: 0000:                           \         E     = program ended OK
+  92: 0000:                           \         X     = program ended in error
+  93: 0000:                           \         Y     = program ended OK after a minor error
+  94: 0000:     JOBSOK.PSB25$,        \ 1 byte, BLANK = not run
+  95: 0000:                           \         S     = program started
+  96: 0000:                           \         E     = program ended OK
+  97: 0000:                           \         X     = program ended in error
+  98: 0000:                           \         Y     = program ended OK after a minor error
+  99: 0000:     JOBSOK.DATE$,         \ 4 bytes MMDD  = processing date
+ 100: 0000:     JOBSOK.STATUS$,       \ 1 byte, 0 = everything OK
+ 101: 0000:                           \         1 = controller files missing
+ 102: 0000:                           \         2 = till files missing
+ 103: 0000:                           \         3 = controller and till files missing
+ 104: 0000:     JOBSOK.PSB27$,        \ 1 byte, BLANK = not run                  ! CMW
+ 105: 0000:                           \         S     = program started          ! CMW
+ 106: 0000:                           \         E     = program ended OK         ! CMW
+ 107: 0000:                           \         X     = program ended in error   ! CMW
+ 108: 0000:     JOBSOK.PSB28$,        \ 1 byte, BLANK = not run                  ! CMW
+ 109: 0000:                           \         S     = program started          ! CMW
+ 110: 0000:                           \         E     = program ended OK         ! CMW
+ 111: 0000:                           \         X     = program ended in error   ! CMW
+ 112: 0000:     JOBSOK.DENTIST$,      \ 1  byte, BLANK = not run                 ! DSH
+ 113: 0000:                           \         S     = program started          ! DSH
+ 114: 0000:                           \         E     = program ended OK         ! DSH
+ 115: 0000:                           \         X     = program ended in error   ! DSH
+ 116: 0000:     JOBSOK.WBEING$,       \ 1  byte, BLANK = not run                 ! DSH
+ 117: 0000:                           \         S     = program started          ! DSH
+ 118: 0000:                           \         E     = program ended OK         ! DSH
+ 119: 0000:                           \         X     = program ended in error   ! DSH
+ 120: 0000:     JOBSOK.PSD87$,        \ 1  byte, BLANK = not run                 ! EHSM
+ 121: 0000:                           \         S     = program started          ! EHSM
+ 122: 0000:                           \         E     = program ended OK         ! EHSM
+ 123: 0000:                           \         X     = program ended in error   ! EHSM
+ 124: 0000:     JOBSOK.IUF.SOURCE$,   \ 1  byte, BLANK = No IUF was present.     ! FNM
+ 125: 0000:                           \             This is possible when cutover! FNM
+ 126: 0000:                           \             to SAP ECC and there are no  ! FNM
+ 127: 0000:                           \             item deltas on a night.      ! FNM
+ 128: 0000:                           \         M     = Mainframe                ! FNM
+ 129: 0000:                           \         E     = SAP ECC                  ! FNM
+ 130: 0000:                           \
+ 131: 0000:     JOBSOK.LAST.PROCESSED.BATCH$,                                    \ FNM
+ 132: 0000:                           \ 17 ASC , Successful Batch Serial Number  ! FNM
+ 133: 0000:     JOBSOK.SPACE$         ! 47 bytes                                 ! FNM
+ 134: 0000: 
+ 135: 0000:   INTEGER*2 GLOBAL        \
+ 136: 0000:     JOBSOK.RECL%
+ 137: 0000: 
+ 138: 0000:    FUNCTION JOBSOK.SET PUBLIC
+ 139: 0014: 
+ 140: 0014:     INTEGER*2 JOBSOK.SET                                               ! BRC
+ 141: 0014:     JOBSOK.SET EQ 1                                                    ! BRC
+ 142: 0019: 
+ 143: 0019:     JOBSOK.REPORT.NUM%  = 14
+ 144: 0022:     JOBSOK.RECL%        = 84
+ 145: 002b:     JOBSOK.FILE.NAME$   = "JOBOK"
+ 146: 003a: 
+ 147: 003a:     JOBSOK.SET EQ 0                                                    ! BRC
+ 148: 003f: 
+ 149: 003f:    END FUNCTION
+ 150: 004e: 
+ 151: 004e: \----------------------------------------------------------------------------
+ 152: 004e: 
+ 153: 004e:   FUNCTION READ.JOBSOK PUBLIC
+ 154: 0062: 
+ 155: 0062:    INTEGER*2 READ.JOBSOK
+ 156: 0062: 
+ 157: 0062:    READ.JOBSOK = 1
+ 158: 0067: 
+ 159: 0067:    IF END#JOBSOK.SESS.NUM% THEN READ.JOBSOK.ERROR
+ 160: 007b: 
+ 161: 007b:     READ #JOBSOK.SESS.NUM%,1; JOBSOK.RECORD$
+ 162: 00a6:     JOBSOK.PSB21$   = LEFT$(JOBSOK.RECORD$,1)
+ 163: 00c5:     JOBSOK.PSB22$   = MID$(JOBSOK.RECORD$,2,1)
+ 164: 00e4:     JOBSOK.PSB23$   = MID$(JOBSOK.RECORD$,3,1)
+ 165: 0103:     JOBSOK.PSB24$   = MID$(JOBSOK.RECORD$,4,1)
+ 166: 0122:     JOBSOK.PSB25$   = MID$(JOBSOK.RECORD$,5,1)
+ 167: 0141:     JOBSOK.DATE$    = MID$(JOBSOK.RECORD$,6,4)
+ 168: 0160:     JOBSOK.STATUS$  = MID$(JOBSOK.RECORD$,10,1)
+ 169: 017f:     JOBSOK.PSB27$   = MID$(JOBSOK.RECORD$,11,1)
+ 170: 019e:     JOBSOK.PSB28$   = MID$(JOBSOK.RECORD$,12,1)
+ 171: 01bd:     JOBSOK.DENTIST$ = MID$(JOBSOK.RECORD$,13,1)                      ! CSH
+ 172: 01dc:     JOBSOK.WBEING$  = MID$(JOBSOK.RECORD$,14,1)                      ! CSH
+ 173: 01fb:     JOBSOK.PSD87$   = MID$(JOBSOK.RECORD$,15,1)                      ! DHSM
+ 174: 021a:     JOBSOK.IUF.SOURCE$             = MID$(JOBSOK.RECORD$,16,1)       ! ENM
+ 175: 0239:     JOBSOK.LAST.PROCESSED.BATCH$   = MID$(JOBSOK.RECORD$,17,17)      ! ENM
+ 176: 0258:     JOBSOK.SPACE$   = RIGHT$(JOBSOK.RECORD$,47)                      ! ENM
+ 177: 0275: 
+ 178: 0275:    READ.JOBSOK = 0
+ 179: 027a:    EXIT FUNCTION
+ 180: 027c: 
+ 181: 027c:    READ.JOBSOK.ERROR:
+ 182: 027c: 
+ 183: 027c:    CURRENT.REPORT.NUM% = JOBSOK.REPORT.NUM%
+ 184: 028a:    FILE.OPERATION$ = "R"
+ 185: 0299:    CURRENT.CODE$ = ""
+ 186: 02a8: 
+ 187: 02a8:    EXIT FUNCTION
+ 188: 02aa:   END FUNCTION
+ 189: 02b9: 
+ 190: 02b9: 
+ 191: 02b9:   FUNCTION WRITE.JOBSOK PUBLIC
+ 192: 02cd: 
+ 193: 02cd:    INTEGER*2 WRITE.JOBSOK
+ 194: 02cd: 
+ 195: 02cd:    WRITE.JOBSOK = 1
+ 196: 02d2: 
+ 197: 02d2:     IF END#JOBSOK.SESS.NUM% THEN WRITE.JOBSOK.ERROR
+ 198: 02e6: 
+ 199: 02e6:     JOBSOK.RECORD$ = JOBSOK.PSB21$   +                          \
+ 200: 0399:                      JOBSOK.PSB22$   +                          \
+ 201: 0399:                      JOBSOK.PSB23$   +                          \
+ 202: 0399:                      JOBSOK.PSB24$   +                          \
+ 203: 0399:                      JOBSOK.PSB25$   +                          \
+ 204: 0399:                      JOBSOK.DATE$    +                          \
+ 205: 0399:                      JOBSOK.STATUS$  +                          \
+ 206: 0399:                      JOBSOK.PSB27$   +                          \
+ 207: 0399:                      JOBSOK.PSB28$   +                          \
+ 208: 0399:                      JOBSOK.DENTIST$ +                          \ CSH
+ 209: 0399:                      JOBSOK.WBEING$  +                          \ CSH
+ 210: 0399:                      JOBSOK.PSD87$   +                          \ DHSM
+ 211: 0399:                      JOBSOK.IUF.SOURCE$           +             \ ENM
+ 212: 0399:                      JOBSOK.LAST.PROCESSED.BATCH$ +             \ ENM
+ 213: 0399:                      JOBSOK.SPACE$
+ 214: 0399:     WRITE #JOBSOK.SESS.NUM%,1;JOBSOK.RECORD$
+ 215: 03c4: 
+ 216: 03c4:    WRITE.JOBSOK = 0
+ 217: 03c9:    EXIT FUNCTION
+ 218: 03cb: 
+ 219: 03cb:    WRITE.JOBSOK.ERROR:
+ 220: 03cb: 
+ 221: 03cb:    CURRENT.REPORT.NUM% = JOBSOK.REPORT.NUM%
+ 222: 03d9:    FILE.OPERATION$ = "W"
+ 223: 03e8:    CURRENT.CODE$ = ""
+ 224: 03f7: 
+ 225: 03f7:    EXIT FUNCTION
+ 226: 03f9:   END FUNCTION
+ 227: 0408: 
+ 228: 0408: End of Compilation

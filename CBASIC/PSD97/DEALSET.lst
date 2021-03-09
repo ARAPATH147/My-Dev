@@ -1,0 +1,1373 @@
+    1: 	    \*******************************************************************
+>***********
+    2: 	    \*******************************************************************
+>***********
+    3: 	    \***
+    4: 	    \***
+    5: 	    \***   DealSet                      26/10/2015             Ranjith G
+>opalankutty
+    6: 	    \***
+    7: 	    \***   Original version
+    8: 	    \***
+    9: 	    \***
+   10: 	    \***   Usage
+   11: 	    \***   This utility will help to clear the serial number of DVCHR,DI
+>DIR
+   12: 	    \***   and Dealdir bin files in BCF.BIN. Which will be helpful durin
+>g  
+   13: 	    \***   deal initial load process.
+   14: 	    \***   
+   15: 	    \***   Screen will have below standard options          
+   16: 	    \***       F3 = To return to main menu
+   17: 	    \***       F4 = To confirm the erase
+   18: 	    \***       F1 = Help Key 
+   19: 	    \***       Esc = To escape out of the screen
+   20: 	    \***   
+   21: 	    \***   
+   22: 	    \*******************************************************************
+>***********
+   23: 	    \*******************************************************************
+>***********
+   24: 	    \*******************************************************************
+>***********
+   25: 	    \*******************************************************************
+>***********
+   26: 	    
+   27: 	    \*******************************************************************
+>***********
+   28: 	    \*******************************************************************
+>***********
+   29: 	    \***
+   30: 	    \***    Included code defining function related Global variables
+   31: 	    \***
+   32: 	    \*******************************************************************
+>***********
+   33: 	    
+   34: 	        %INCLUDE BCFDEC.J86
+   35=a	    \*******************************************************************
+>**********
+   36=a	    \*******************************************************************
+>**********
+   37=a	    \***
+   38=a	    \***               %INCLUDE FOR BCF - FIELD DECLARATIONS
+   39=a	    \***                                  FILE REFERENCE PARAMETERS
+   40=a	    \***
+   41=a	    \***                      FILE TYPE    : SEQUENTIAL
+   42=a	    \***
+   43=a	    \***                      REFERENCE    : BCFDEC.J86
+   44=a	    \***
+   45=a	    \***      Version A             Steve Windsor          5th Jan 1993
+   46=a	    \***
+   47=a	    \***      Version B             Michael J. Kelsall    01st Dec 1993
+   48=a	    \***      Addition to file of CCMVT serial number as part of
+   49=a	    \***      RETURNS/AUTOMATIC CREDIT CLAIMING package.
+   50=a	    \***
+   51=a	    \***      Version C           Stuart William McConnachie 23rd Jan 19
+>95
+   52=a	    \***      Addition of TXR serial number as part of the TRANSACTION R
+>ETRIEVAL
+   53=a	    \***      project.
+   54=a	    \***
+   55=a	    \***      Version D           Stuart William McConnachie  7th June 1
+>995
+   56=a	    \***      Converted calls to enable more than 1 record on the BCF.
+   57=a	    \***      The second record is to be used for the No7 customer card 
+>trial.
+   58=a	    \***
+   59=a	    \***      Version E                 Stuart Highley        7th April 
+>1999
+   60=a	    \***      Added new fields for cash accounting.
+   61=a	    \***
+   62=a	    \***      Version F                 Mark Goode            20th May 2
+>000
+   63=a	    \***      Added new fields for Dentistry project.
+   64=a	    \***
+   65=a	    \***      Version G                 Mark Goode            18th July 
+>2000
+   66=a	    \***      Added new fields for Well-Being project.
+   67=a	    \***
+   68=a	    \***      Version I                 Amy Hoggard           13th Oct 2
+>000
+   69=a	    \***      Added new fields for ECO project.
+   70=a	    \***
+   71=a	    \***      Version K                 Brian Greenfield      1st May 20
+>01
+   72=a	    \***      Added new field for Wellbeing Services record 13.
+   73=a	    \***
+   74=a	    \***      Version L                 Amy Hoggard           4th Jan 20
+>02
+   75=a	    \***      Added new field for ETOPUP project.
+   76=a	    \***
+   77=a	    \***      Version M                 Julia Stones          22nd July 
+>2002
+   78=a	    \***      Added new fields for Deals rewrite project record 14.
+   79=a	    \***
+   80=a	    \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003
+>.
+   81=a	    \***    Modifications for All Txn Data To CDAS project.
+   82=a	    \***    Removed redundant variables ...
+   83=a	    \***      BCF.CTSL1.SERIAL.NUM$, BCF.CTSL2,SERIAL.NUM$
+   84=a	    \***    Defined new variable ...
+   85=a	    \***      BCF.MTSLQ.DAYS$, BCF.FILLER67$
+   86=a	    \***
+   87=a	    \***    Revision 4.7           Julia Stones              9th July 20
+>03.
+   88=a	    \***    Modifications for New Lines Report project.
+   89=a	    \***    Defined new variable
+   90=a	    \***    BCF.NEWLINES.WEEKS$
+   91=a	    \***
+   92=a	    \***    Revision 4.8           Julia Stones              3rd October
+> 2003.
+   93=a	    \***    Modifications for New Lines Report project.
+   94=a	    \***    Defined new variable
+   95=a	    \***    BCF.NEWLINES.LINES$
+   96=a	    \***
+   97=a	    \***    Version N              Jamie Thorpe             27th June 20
+>06
+   98=a	    \***    Added BCF.DVCHR.SERIAL.NUM$
+   99=a	    \***
+  100=a	    \***    Revision 4.10          Charles Skadorwa            4th July 
+>2011
+  101=a	    \***    CORE Heritage Stores Release 2 (Outbound) Project.
+  102=a	    \***    New variables defined: BCF.ECC.DATETIMESTAMP$
+  103=a	    \***                           BCF.IUF.DATETIMESTAMP$
+  104=a	    \***
+  105=a	    \***    Revision 4.11          Arun Sudhakaran             10th Apri
+>l 2013
+  106=a	    \***    Added new variables for including Supplier Number lengths
+  107=a	    \***    as part of Automatic Booking In of Chilled Food ASNs project
+  108=a	    \***
+  109=a	    \***    Revision 4.12          Charles Skadorwa            5th Sept 
+>2013
+  110=a	    \***    F261 Gift Card Mall IIN Range Extension Project - Commented 
+>!4.12 CSk
+  111=a	    \***    Defined new variables for GCM Product Group Number and Recor
+>d 22
+  112=a	    \***    lengths.
+  113=a	    \***
+  114=a	    \***    Version O              Mark Walker                  3rd Feb 
+>2014
+  115=a	    \***    F337 Centralised View of Stock
+  116=a	    \***    - Defined variables for record 23 (stock snapshot parameters
+>).
+  117=a	    \***    - Minor formatting changes (uncommented).
+  118=a	    \***
+  119=a	    \***    Revision O             Charles Skadorwa             25th Jun
+>e 2014
+  120=a	    \***    F353 Deal Limits Increase Project.
+  121=a	    \***    Renamed 3 variables in function BCF.RECORD.14.W -
+  122=a	    \***        BCF.DINF.NUM.REC$ becomes BCF.ITMDL.NUM.REC$
+  123=a	    \***        BCF.DINF.KEY.LEN$ becomes BCF.ITMDL.KEY.LEN$
+  124=a	    \***        BCF.ECC.DATETIMESTAMP$ becomes BCF.FILLER.DATETIMESTAMP$
+  125=a	    \*******************************************************************
+>**********
+  126=a	    \*******************************************************************
+>**********
+  127=a	    
+  128=a	        STRING GLOBAL                                                   
+>    \
+  129=a	            BCF.FILE.NAME$
+  130=a	    
+  131=a	        INTEGER*2 GLOBAL                                                
+>    \
+  132=a	            BCF.RECL%,                                                  
+>    \   !OMW
+  133=a	            BCF.REPORT.NUM%,                                            
+>    \
+  134=a	            BCF.SESS.NUM%
+  135=a	    
+  136=a	        STRING GLOBAL                                                   
+>    \
+  137=a	        BCF.RECORD$,          \ 80 bytes
+  138=a	        BCF.IUF.SERIAL.NO$,   \ 5 bytes, IUF serial number
+  139=a	        BCF.OPEN.DATE$,       \ 6 bytes, Last store opening date (YYMMDD
+>)
+  140=a	        BCF.FILLER.DATE$,     \ 3 bytes, filler
+  141=a	        BCF.LABEL.DATE$,      \ 6 bytes, label print date (YYMMDD)
+  142=a	        BCF.SALES.SERIAL.NO$ ,\ 5 bytes, sales serial number
+  143=a	        BCF.STMVB.SERIAL.NO$, \ 5 bytes, current serial number          
+>\
+  144=a	                                  \     of Stock Movement Backup file   
+>    \
+  145=a	        BCF.TOF.DAYS$,        \ 2 bytes, number of days' worth of sales 
+>to \
+  146=a	                              \       be held on the TIF at re-build    
+>   \
+  147=a	            BCF.EPS.BATCH$,       \ 2 bytes, highest batch number to hav
+>e   \
+  148=a	                                  \     been reported upon by PSE31     
+>    \
+  149=a	        BCF.NO.EPF.COPIES$,   \ 2 bytes, no. of copies of EPS payment fi
+>le \
+  150=a	        BCF.CCMVT.SERIAL.NUM$,\ 5 bytes ASC                             
+>   ! BMJK
+  151=a	        BCF.TXR.SERIAL.NUM$,  \ 5 bytes transaction retrieval serial num
+>ber!SWM
+  152=a	        BCF.CUSTD.SERIAL.NUM$,\ 5 bytes customer data file serial number
+>   !SWM
+  153=a	        BCF.PSB58.DATE$,      \ 6 bytes date of last MTSL/CUSTW cut-off 
+>   !SWM
+  154=a	        BCF.CTSL1.SERIAL.NUM$,\ 5 bytes serial number on first MTSLQ (an
+>d  ! 4.6 RC
+  155=a	                              \         thereore CTSL1) batch header    
+>   ! 4.6 RC
+  156=a	        BCF.MTSLQ.DAYS$,      \ 2 byte MTSLQ data retention period (PSB1
+>4) ! 4.6 RC
+  157=a	        BCF.FILLER67$,        \ 8 bytes filler beginning at byte 67     
+>   ! 4.6 RC
+  158=a	            BCF.NTIUF.SERIAL.NO$,                                       
+>    \   !FMG
+  159=a	            BCF.DENTISTRY.PSAUDIT.SERIAL.NO$,                           
+>    \   !FMG
+  160=a	            BCF.WELL.SERIAL.NO$,                                        
+>    \   !GMG
+  161=a	            BCF.WELL.PSAUDIT.SERIAL.NO$,                                
+>    \   !GMG
+  162=a	        BCF.ACSAL.SERIAL.NUM$,\ 5 bytes serial number on ACSAL          
+>   !ESDH
+  163=a	        BCF.DENTISTRY.PRODUCT.GROUP$,                                   
+>   \FMG
+  164=a	        BCF.WELL.PRODUCT.GROUP$,                                        
+>   \GMG
+  165=a	        BCF.FILLER$,         \! 1 byte, filler                          
+>   !BMJK
+  166=a	        BCF.WELL.SERV.PRODUCT.GROUP$,                                   
+>   \KBG
+  167=a	            BCF.ETOPUP.PROD.GRP$,                                       
+>    \   !LAH
+  168=a	            BCF.END.FILLER$,                                            
+>    \   !LAH
+  169=a	        BCF.TBAG.BATCH.NO$,                                             
+>   \IAH
+  170=a	        BCF.TBAG.DAYS.KEPT$,                                            
+>   \IAH
+  171=a	        BCF.NEWLINES.WEEKS$,                                            
+>   \4.7JAS
+  172=a	        BCF.NEWLINES.LINES$,                                            
+>   \4.8JAS
+  173=a	        BCF.TBAG.FILLER$,                                               
+>   \ 79 Bytes filler !IAH 70 Bytes filler 4.7JAS ! 65 Bytes fille 4.8JAS
+  174=a	        BCF.DEALDIR.SERIAL.NUM$, \ 4 bytes serial number                
+>   !MJAS
+  175=a	        BCF.DIDIR.SERIAL.NUM$,   \ 4 bytes serial number                
+>   !MJAS
+  176=a	        BCF.DEAL.NUM.REC$,       \ 6 bytes number of records in deal fil
+>e  !MJAS
+  177=a	        BCF.ITMDL.NUM.REC$,      \ 6 bytes number of records in ITMDL fi
+>le !OCS
+  178=a	        BCF.DEAL.KEY.LEN$,       \ 3 bytes key length of deal file      
+>   !MJAS
+  179=a	        BCF.ITMDL.KEY.LEN$,      \ 3 bytes bytes ITMDL record key length
+>   !OCS
+  180=a	        BCF.DVCHR.SERIAL.NUM$,   \ 4 bytes serial numbr                 
+>   !NJT !4.10CSk
+  181=a	        BCF.FILLER.DATETIMESTAMP$,\17 bytes filler for future use       
+>   !OCS
+  182=a	        BCF.IUF.DATETIMESTAMP$, \ !17 bytes timestamp YYYYMMDDHHMMSSsss 
+>    !4.10CSk
+  183=a	                                \ !   Last successfully processed IUF fr
+>om SAP.
+  184=a	            BCF.ITEM.STATUS$(1),     \1 byte array, item status         
+>    \   !OMW
+  185=a	            BCF.NEGATIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) wheth
+>er  \   !OMW
+  186=a	                                     \   to include items with a negativ
+>e   \   !OMW
+  187=a	                                     \   stock figure in the initial sto
+>ck  \   !OMW
+  188=a	                                     \   snapshot messages.             
+>    \   !OMW
+  189=a	            BCF.POSITIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) wheth
+>er  \   !OMW
+  190=a	                                     \   to include items with a positiv
+>e   \   !OMW
+  191=a	                                     \   stock figure in the initial sto
+>ck  \   !OMW
+  192=a	                                     \   snapshot messages.             
+>    \   !OMW
+  193=a	            BCF.ZERO.STOCK.FLAG$(1)  !1 byte array, Flag (Y/N) whether t
+>o   \   !OMW
+  194=a	                                     \   include items with a zero      
+>    \   !OMW
+  195=a	                                     \   stock figure in the initial sto
+>ck  \   !OMW
+  196=a	                                     !   snapshot messages.             
+>        !OMW
+  197=a	                    
+  198=a	        INTEGER*1                                                       
+>    \
+  199=a	            BCF.NO.CPM.COPIES%
+  200=a	    
+  201=a	        INTEGER*2 GLOBAL                                                
+>    \
+  202=a	        BCF.CC.SERIAL.NO,        \ 1 byte UPD, CC serial number
+  203=a	            BCF.MAX.STATUS.COUNT%,        \ Maximum number of item statu
+>s   \   !OMW
+  204=a	        BCF.REC21.REC.LEN%,      \ Total Supplier number length         
+>   !4.11 AS
+  205=a	        BCF.REC21.SUPPLIER.LEN%, \ Length of the supplier number        
+>   !4.11 AS
+  206=a	            BCF.MAX.STOCK.INIT.MESSAGES%, \ Maximum number of initial   
+>    \   !OMW
+  207=a	                                          \ stock snapshot message to   
+>    \   !OMW
+  208=a	                                          \ send per day.               
+>    \   !OMW
+  209=a	            BCF.MAX.STOCK.INIT.ITEMS%,    \ Maximum number of items to  
+>    \   !OMW
+  210=a	                                          \ include in a single initial 
+>    \   !OMW
+  211=a	                                          \ stock snapshot message.     
+>    \   !OMW
+  212=a	            BCF.NEGATIVE.DAYS%(1),        \ Number of days' movements wi
+>th  \   !OMW
+  213=a	                                          \ a negative stock figure to  
+>    \   !OMW
+  214=a	                                          \ include in the initial stock
+>    \   !OMW
+  215=a	                                          \ snapshot messages.          
+>    \   !OMW
+  216=a	            BCF.POSITIVE.DAYS%(1),        \ Number of days' movements wi
+>th  \   !OMW
+  217=a	                                          \ a positive stock figure to  
+>    \   !OMW
+  218=a	                                          \ include in the initial stock
+>    \   !OMW
+  219=a	                                          \ snapshot messages.          
+>    \   !OMW
+  220=a	            BCF.REC22.REC.LEN%,           \                             
+>    \   !4.12 CSk
+  221=a	            BCF.REC22.PROD.GROUP.LEN%,    \ Length of GCM Product Group 
+>No  \   !4.12 CSk
+  222=a	            BCF.ZERO.DAYS%(1)             \ Number of days' movements wi
+>th  \   !OMW
+  223=a	                                          \ a zero stock figure to inclu
+>de  \   !OMW
+  224=a	                                          \ in the initial stock snapsho
+>t   \   !OMW
+  225=a	                                          ! messages.                   
+>        !OMW
+  226=a	    
+  227=a	    
+  228=a	        INTEGER*4 GLOBAL                                                
+>    \
+  229=a	            BCF.REC.NO%
+  230=a	    
+  231: 	        %INCLUDE BEMFDEC.J86
+  232=a	    \*******************************************************************
+>***********
+  233=a	    \***
+  234=a	    \***      %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+  235=a	    \***                                             - FILE REFERENCE PA
+>RAMETERS
+  236=a	    \***
+  237=a	    \***                         FILE TYPE : Direct
+  238=a	    \***
+  239=a	    \***                         REFERENCE : BEMFDEC
+  240=a	    \***
+  241=a	    \***   Version A               Mark Walker                  1st Nove
+>mber 1993
+  242=a	    \***
+  243=a	    \*******************************************************************
+>***********
+  244=a	    
+  245=a	           STRING GLOBAL                   BEMF.MESSAGE$,          
+>\
+  246=a	                                           BEMF.FILE.NAME$
+  247=a	    
+  248=a	           INTEGER*2 GLOBAL                BEMF.RECL%,             
+>\
+  249=a	                                           BEMF.REPORT.NUM%,       
+>\
+  250=a	                                           BEMF.SESS.NUM%
+  251=a	    
+  252=a	           INTEGER*4 GLOBAL                BEMF.REC.NO%
+  253: 	        %INCLUDE PSBF01G.J86    !   APPLICATION.LOG
+  254=a	    REM \
+  255=a	    \*******************************************************************
+>************
+  256=a	    \*******************************************************************
+>************
+  257=a	    \***
+  258=a	    \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.
+>LOG
+  259=a	    \***
+  260=a	    \***                FUNCTION NUMBER    : PSBF01
+  261=a	    \***
+  262=a	    \***                REFERENCE          : PSBF01G.J86
+  263=a	    \***
+  264=a	    \***                DATE OF LAST AMENDMENT  - 27/2/86
+  265=a	    \***
+  266=a	    \***
+  267=a	    \*******************************************************************
+>************
+  268=a	    
+  269=a	          INTEGER GLOBAL  F01.RETURN.CODE%
+  270=a	    
+  271=a	    
+  272: 	        %INCLUDE PSBF20G.J86    !   ALLOCATE.DEALLOCATE.SESS.NUM
+  273=a	    REM\
+  274=a	    \*******************************************************************
+>************
+  275=a	    \*******************************************************************
+>************
+  276=a	    \***
+  277=a	    \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY F
+>UNCTION
+  278=a	    \***
+  279=a	    \***                       REFERENCE     : PSBF20G.J86
+  280=a	    \*** 
+  281=a	    \***     Version A              Bruce Scrive                   5th M
+>ay 1988   
+  282=a	    \*** 
+  283=a	    \***     Version B              Robert Cowey                   7th M
+>ay 1991
+  284=a	    \***     Global variable F20.INTEGER.FILE.NO% changed from one byte 
+>integer
+  285=a	    \***     to two byte integer.
+  286=a	    \***
+  287=a	    \***     Version D              Andrew Wedgeworth             1st Ju
+>ly 1992
+  288=a	    \***     F20.RETURN.CODE% removed as it is no longer required.
+  289=a	    \***
+  290=a	    \*******************************************************************
+>************
+  291=a	    \*******************************************************************
+>************
+  292=a	    
+  293=a	          STRING    GLOBAL F20.FILE.NAME$,                              
+>   \
+  294=a	                           F20.STRING.FILE.NO$,                         
+>   \
+  295=a	                           F20.TABLE.DIMENSIONED.FLAG$,                 
+>   \
+  296=a	                           SESS.NUM.TABLE$(1)
+  297=a	    
+  298=a	          INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+  299=a	    
+  300=a	          ! 1 line deleted from here                                    
+>   ! DAW 
+  301=a	    
+  302: 	    
+  303: 	    \*******************************************************************
+>***********
+  304: 	    \***
+  305: 	    \***    Global Variable definitions
+  306: 	    \***
+  307: 	    \*******************************************************************
+>***********
+  308: 	    
+  309: 	         STRING GLOBAL                                                  
+>    \
+  310: 	             BATCH.SCREEN.FLAG$,                                        
+>    \
+  311: 	             CURRENT.CODE$,                                             
+>    \
+  312: 	             CURRENT.CODE.LOGGED$,                                      
+>    \
+  313: 	             FILE.OPERATION$,                                           
+>    \
+  314: 	             FUNCTION.FLAG$,                                            
+>    \
+  315: 	             MODULE$,                                                   
+>    \
+  316: 	             MODULE.NUMBER$,                                            
+>    \
+  317: 	             PROGRAM$,                                                  
+>    \
+  318: 	             PASSED.STRING$,                                            
+>    \
+  319: 	             VAR.STRING.1$,                                             
+>    \
+  320: 	             VAR.STRING.2$                                              
+>    !
+  321: 	    
+  322: 	         INTEGER*1 GLOBAL                                               
+>    \
+  323: 	             ERROR.COUNT%,                                              
+>    \
+  324: 	             FALSE,                                                     
+>    \
+  325: 	             TRUE                                                       
+>    !
+  326: 	    
+  327: 	         INTEGER*2 GLOBAL                                               
+>    \
+  328: 	             CURRENT.REPORT.NUM%,                                       
+>    \
+  329: 	             EVENT.NO%,                                                 
+>    \
+  330: 	             MESSAGE.NO%,                                               
+>    \
+  331: 	             PASSED.INTEGER%                                            
+>    !
+  332: 	    
+  333: 	    \*******************************************************************
+>***********
+  334: 	    \***
+  335: 	    \***   VARIABLE DECLARATIONS
+  336: 	    \***
+  337: 	    \*******************************************************************
+>***********
+  338: 	    
+  339: 	    
+  340: 	    \*******************************************************************
+>***********
+  341: 	    \***
+  342: 	    \***    FUNCTION DECLARATIONS
+  343: 	    \***
+  344: 	    \*******************************************************************
+>***********
+  345: 	    
+  346: 	         %INCLUDE BASROUT.J86   ! OSShell function
+  347=a	    \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+  348=a	    \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR343
+>52
+  349=a	    \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR343
+>52
+  350=a	    \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR343
+>52
+  351=a	    \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASO
+>NAR
+  352=a	    \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASO
+>NAR
+  353=a	    ! BASROUT.J86 - this file is to be included in any BASIC code which 
+>utilizes
+  354=a	    !   the BASROUT.OBJ routines.  These routines were written
+  355=a	    !  using Metaware C and are intended to provide functions which
+  356=a	    !         are either not available in 4680 CBASIC or which can be mo
+>re
+  357=a	    !               efficiently handled by the C language.  Their usage 
+>is
+  358=a	    !  offered on an "AT YOUR OWN RISK" basis.
+  359=a	    !
+  360=a	    !               The insert/extract routines usefulness may not be im
+>mediately
+  361=a	    !               apparent.  Their intention is that they be used in c
+>onjunction
+  362=a	    !               with a read/write form command.  They can more effic
+>iently
+  363=a	    !               parse a string into many different variables than ca
+>n the
+  364=a	    !               read form statement.  So instead of a long list of d
+>ata var's
+  365=a	    !               it may be more efficient to just read/write one long
+> string
+  366=a	    !               and then use the insert/extract routines to parse ou
+>t the
+  367=a	    !   data.
+  368=a	    
+  369=a	    ! ******************* SUB PROCESS FUNCTIONS ************************
+>*********
+  370=a	    
+  371=a	    function osshell(cmd.line$) external   ! routine to start
+  372=a	           ! another program.
+  373=a	               integer*4    osshell    ! Upon completion of
+  374=a	               string       cmd.line$   ! program, control is
+  375=a	           ! returned to calling
+  376=a	    end function      ! program.
+  377=a	    !
+  378=a	    ! NOTES:  Program must be a 286 type file.  This does not exclude
+  379=a	    !         the capability to execute a batch file however.  Simply pa
+>ss the
+  380=a	    !         following:
+  381=a	    !              c:\adx_spgm\command.286 batfile
+  382=a	    !         where batfile is the name of the batch file to be executed
+>.
+  383=a	    !
+  384=a	    ! IMPORTANT: When using osshell to execute a batch file as described
+> above,
+  385=a	    !            the final command in the batch file must be "exit".  If
+> not,
+  386=a	    !       control is never given back to the calling program.
+  387=a	    
+  388=a	    ! ************************ MEMORY RELATED FUNCTIONS ****************
+>********
+  389=a	    
+  390=a	    function memfree(choice) external   ! routine to que the
+  391=a	           ! status of the
+  392=a	     integer*4 memfree    ! machine's memory:
+  393=a	     integer*2 choice    ! Options:
+  394=a	           !    1 - free
+  395=a	    end function      !    2 - total
+  396=a	           !    3 - system
+  397=a	    
+  398=a	    ! ********************** TIMEDATE RELATED FUNCTIONS ****************
+>********
+  399=a	    
+  400=a	    function timedate(choice) external   ! routine to que the
+  401=a	           ! OS's timedate table
+  402=a	     integer*4 timedate   ! Choices:
+  403=a	     integer*2 choice    !    1 - millisec's
+  404=a	           !        since midnight
+  405=a	    end function      !    2 - minutes from
+  406=a	           !  UCT (timezone)
+  407=a	           !    3 - day of week
+  408=a	           !   0-Sunday
+  409=a	           !  6-Saturday
+  410=a	    
+  411=a	    function settime(msecs) external   ! routine to set the
+  412=a	           ! time on the controller
+  413=a	     integer*4  settime    ! msecs is the desired
+  414=a	     integer*4 msecs    ! number of milliseconds
+  415=a	           ! since midnight
+  416=a	    end function      ! Returns negative on
+  417=a	           ! error
+  418=a	    ! NOTE:  This routine sets the time only on the controller.  The ter
+>minals'
+  419=a	    ! time will not be updated until 1 AM or unless a terminal is STC'd.
+  420=a	    ! At 1 AM the controller broadcasts the new time to all terminals.
+  421=a	    ! Insure this is taken into consideration when using this routine.
+  422=a	    
+  423=a	    !******************** DISK FILE RELATED FUNCTIONS ******************
+>*******
+  424=a	    
+  425=a	    function truncate(name,length) external   ! routine to truncate
+  426=a	           ! the specified file
+  427=a	     integer*4 truncate   ! to a given length.
+  428=a	     string  name
+  429=a	     integer*4 length
+  430=a	    
+  431=a	    end function
+  432=a	    
+  433=a	    !******************** STRING VALUE RELATED FUNCTIONS ***************
+>*******
+  434=a	    
+  435=a	    function isalpha(bstrn) external   ! routine to identify
+  436=a	           ! if the specified
+  437=a	     integer*1 isalpha    ! string contains all
+  438=a	     string  bstrn    ! alphabetic char's
+  439=a	           ! Returns:
+  440=a	    end function      !     0 - all alpha
+  441=a	           !     X - byte of 1st
+  442=a	           !         non-alpha
+  443=a	           !   char
+  444=a	    
+  445=a	    function isdigit(bstrn) external   ! routine to identify
+  446=a	           ! if the specified
+  447=a	     integer*1 isdigit    ! string contains all
+  448=a	     string  bstrn    ! numeric char's
+  449=a	           ! Returns:
+  450=a	    end function      !     0 - all numeric
+  451=a	           !     X - byte of 1st
+  452=a	           !         non-numeric
+  453=a	           !   char
+  454=a	    
+  455=a	    function islower(bstrn) external   ! routine to identify
+  456=a	           ! if the specified
+  457=a	     integer*1 islower    ! string contains all
+  458=a	     string  bstrn    ! lower case char's
+  459=a	           ! Returns:
+  460=a	    end function      !     0 - all lowercase
+  461=a	           !     X - byte of 1st
+  462=a	           !         non-lowercase
+  463=a	           !   char
+  464=a	    
+  465=a	    function isupper(bstrn) external   ! routine to identify
+  466=a	           ! if the specified
+  467=a	     integer*1 isupper    ! string contains all
+  468=a	     string  bstrn    ! upper case char's
+  469=a	           ! Returns:
+  470=a	    end function      !     0 - all uppercase
+  471=a	           !     X - byte of 1st
+  472=a	           !         non-uppercase
+  473=a	           !   char
+  474=a	    
+  475=a	    function toalpha(bstrn) external   ! routine to convert
+  476=a	           ! non-alpha or non-num
+  477=a	       integer*2 toalpha    ! char's to spaces
+  478=a	     string  bstrn    ! Returns:
+  479=a	    end function      !   x - no. of char's
+  480=a	           !       changed
+  481=a	    
+  482=a	    ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS ************
+>*********
+  483=a	    
+  484=a	    function idlecount(choice) external   ! routine to either
+  485=a	           ! set to zero or queue
+  486=a	     integer*4 idlecount   ! the value of the
+  487=a	     integer*1 choice    ! processor's idlecount
+  488=a	           ! Choice:
+  489=a	    end function      !     0 - set to zero
+  490=a	    !       !     1 - get value
+  491=a	    ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+  492=a	    ! TO WORK - This level is not available unless  !     X - idlecount
+  493=a	    ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error cod
+>e
+  494=a	    ! is highly unrecommended.
+  495=a	    
+  496=a	    function logical(actname,logname,choice) external ! routine to set a
+  497=a	           ! a logical name.
+  498=a	     integer*4 logical    ! parms are self
+  499=a	            string  logname    ! explanatory except
+  500=a	     string  actname    ! for choice:
+  501=a	     integer*1 choice    !   0 - set process
+  502=a	           !   1 - set system
+  503=a	    end function      !   2 - get process
+  504=a	           !   3 - get system
+  505=a	    
+  506=a	    ! NOTE:  Only the setting of a system level of logical name requires
+  507=a	    ! user/group zero level of authorization.  Any application may query
+> any
+  508=a	    ! logical name.  Setting of a system logical name is only applicable
+> until
+  509=a	    ! the system is IPL'd.  A process logical name is only active when t
+>hat
+  510=a	    ! process is active.
+  511=a	    
+  512=a	    !******************** STRING PARSING FUNCTIONS *********************
+>********
+  513=a	    
+  514=a	    function inserts(whole,part,offset) external  ! routine to insert a
+  515=a	           ! string (part) into
+  516=a	     integer*2 INSERTS    ! another string (whole)
+  517=a	     string  whole    ! starting at specified
+  518=a	     string  part    ! character (offset)
+  519=a	     integer*2 offset
+  520=a	    
+  521=a	    end function
+  522=a	    
+  523=a	    function cinsert4(integer4,bstring,offset) external   ! routine to i
+>nsert
+  524=a	           ! a 4-byte integer into
+  525=a	     integer*1 cinsert4   ! a string starting at
+  526=a	     integer*4 integer4   ! byte specified by
+  527=a	     string  bstring    ! offset (1-based)
+  528=a	     integer*2 offset    ! Returns:
+  529=a	           !     0 - Success
+  530=a	    end function      !    -1 - String overrun
+  531=a	    
+  532=a	    function cinsert2(integer2,bstring,offset) external  ! routine to in
+>sert
+  533=a	           ! a 2-byte integer into
+  534=a	     integer*1 cinsert2   ! a string starting at
+  535=a	     integer*2 integer2   ! byte specified by
+  536=a	     string  bstring    ! offset (1-based)
+  537=a	     integer*2 offset    ! Returns:
+  538=a	           !     0 - Success
+  539=a	    end function      !    -1 - String overrun
+  540=a	    
+  541=a	    function cinsert1(bstring,integer1,offset) external  ! routine to in
+>sert
+  542=a	           ! a 1-byte integer into
+  543=a	     integer*1 cinsert1   ! a string starting at
+  544=a	     integer*1 integer1   ! byte specified by
+  545=a	     string  bstring    ! offset (1-based)
+  546=a	     integer*2 offset    ! Returns:
+  547=a	           !     0 - Success
+  548=a	    end function      !    -1 - String overrun
+  549=a	    
+  550=a	    function extracts(whole,part,offset) external  ! routine to extract 
+>a
+  551=a	           ! string (part) from
+  552=a	     integer*2 EXTRACTS   ! another string (whole)
+  553=a	     string  whole    ! starting at specified
+  554=a	     string  part    ! character (offset)
+  555=a	     integer*2 offset
+  556=a	    
+  557=a	    end function
+  558=a	    
+  559=a	    function cextract4(bstring,offset) external  ! routine to extract
+  560=a	           ! a 4-byte integer from
+  561=a	     integer*4 cextract4   ! a string starting at
+  562=a	                           ! byte specified by
+  563=a	     string  bstring    ! offset (1-based)
+  564=a	     integer*2 offset    ! Returns:
+  565=a	           !     X - 4 byte integer
+  566=a	    end function      !    -1 - String overrun
+  567=a	    
+  568=a	    function cextract2(bstring,offset) external  ! routine to extract
+  569=a	           ! a 2-byte integer from
+  570=a	     integer*2 cextract2   ! a string starting at
+  571=a	                           ! byte specified by
+  572=a	     string  bstring    ! offset (1-based)
+  573=a	     integer*2 offset    ! Returns:
+  574=a	           !     X - 2 byte integer
+  575=a	    end function      !    -1 - String overrun
+  576=a	    
+  577=a	    function cextract1(bstring,offset) external  ! routine to extract
+  578=a	           ! a 1-byte integer from
+  579=a	     integer*1 cextract1   ! a string starting at
+  580=a	                           ! byte specified by
+  581=a	     string  bstring    ! offset (1-based)
+  582=a	     integer*2 offset    ! Returns:
+  583=a	           !     X - 1 byte integer
+  584=a	    end function      !    -1 - String overrun
+  585=a	    
+  586=a	    
+  587=a	    function srchdir (file.name$,dtbl.buffer$) external ! routine to ret
+>urn
+  588=a	           ! file names and sizes
+  589=a	           ! Return values:
+  590=a	           !    -1  no matches
+  591=a	           !        found on first
+  592=a	           !        call
+  593=a	           !    0   no matches
+  594=a	           !        found on sub-
+  595=a	           !        sequent calls
+  596=a	           !    Pos Success
+  597=a	           !    Neg OS Rtn Code
+  598=a	    ! Usage Note:  If searching for all occurences of a particular file 
+>name,
+  599=a	    ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue 
+>a call
+  600=a	    ! to srchdir.  If any matches are found, a positive value will be re
+>turned.
+  601=a	    ! To see if any more matches exist, just issue another call to srchd
+>ir without
+  602=a	    ! resetting the values of dtbl.buffer$.  If any are found, a positiv
+>e value
+  603=a	    ! will be returned.  This can be repeated until a Zero is returned. 
+> All data
+  604=a	    ! describing file will be returned in the dtbl.buffer$ after each ca
+>ll.  Format
+  605=a	    ! of this data is defined below.
+  606=a	    
+  607=a	     integer*4 srchdir
+  608=a	    
+  609=a	     string  file.name$   ! file name to start
+  610=a	           ! search (18 bytes max)
+  611=a	           ! Wild cards and logical
+  612=a	           ! names supported.
+  613=a	    
+  614=a	     string  dtbl.buffer$   ! must be initialized
+  615=a	           ! to 48 bytes.  Contains
+  616=a	           ! all of directory info
+  617=a	           ! Initialize to nulls
+  618=a	           ! each time a new file
+  619=a	           ! name is used.
+  620=a	    
+  621=a	    ! NOTE:  Format of dtbl.buffer$ string is as follows:
+  622=a	    !
+  623=a	    ! Offs  Type                    Description Notes
+  624=a	    !  0 integer*4  key  use extract4 to access
+  625=a	    !  4  string (18 bytes) file name
+  626=a	    ! 22 integer*2  attributes use extract2 to access
+  627=a	    !      0x01 - Read Only
+  628=a	    !      0x02 - Hidden
+  629=a	    !      0x04 - System
+  630=a	    !      0x08 - Volume Label
+  631=a	    !      0x10 - Subdirectory
+  632=a	    !      0x20 - Archive (Files)
+  633=a	    !      0x40 - Security enabled
+  634=a	    !      0x80 - Reserved
+  635=a	    !      0x0000 - Local
+  636=a	    !      0x4000 - Mirrored/Update
+  637=a	    !      0xC000 - Mirrored/Close
+  638=a	    !
+  639=a	    !      0x6000 - Compound/Update
+  640=a	    !      0xE000 - Compound/Close
+  641=a	    ! 24 integer*2  record size use extract2 to access
+  642=a	    ! 26 integer*1  User ID of Owner
+  643=a	    ! 27 integer*1  Group ID of Owner
+  644=a	    ! 28 integer*2  File Security
+  645=a	    ! 30 string (6 bytes) Reserved
+  646=a	    ! 36 integer*4  File Size use extract4 to access
+  647=a	    ! 40 integer*2  Year  use extract2 to access
+  648=a	    ! 42 integer*1  Month
+  649=a	    ! 43 integer*1  Day
+  650=a	    ! 44 integer*1  Hour
+  651=a	    ! 45 integer*1  Minute
+  652=a	    ! 46 integer*1  Second
+  653=a	    ! 47 integer*1  Reserved
+  654=a	    
+  655=a	    end function
+  656=a	    
+  657=a	    function srchproc (proc.name$,ptbl.buffer$) external ! routine to re
+>turn
+  658=a	           ! process names and
+  659=a	           ! status.  Handy to
+  660=a	           ! determine if a
+  661=a	           ! program is currently
+  662=a	           ! running.
+  663=a	           ! Return values:
+  664=a	           !    -1  no matches
+  665=a	           !        found on first
+  666=a	           !        call
+  667=a	           !    0   no matches
+  668=a	           !        found on sub-
+  669=a	           !        sequent calls
+  670=a	           !    Pos Success
+  671=a	           !    Neg Failure
+  672=a	           !        OS Rtn Code
+  673=a	           ! 80000001h - Insuff
+  674=a	            !        ptbl buffer
+  675=a	           !        Length
+  676=a	    ! Usage Note:  If searching for all occurences of a particular proce
+>ss name,
+  677=a	    ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue 
+>a call
+  678=a	    ! to srchproc.  If any matches are found, a positive value will be r
+>eturned.
+  679=a	    ! To see if any more matches exist, just issue another call to srchp
+>roc without
+  680=a	    ! resetting the values of ptbl.buffer$.  If any are found, a positiv
+>e value
+  681=a	    ! will be returned.  This can be repeated until a Zero is returned. 
+> All data
+  682=a	    ! describing file will be returned in the ptbl.buffer$ after each ca
+>ll.  Format
+  683=a	    ! of this data is defined as follows:
+  684=a	    !
+  685=a	    !       --------------------------------------------------------
+  686=a	    !   0   |                         PID                          |
+  687=a	    !       --------------------------------------------------------
+  688=a	    !   4   |           FID             |   CID        |   VCID    |
+  689=a	    !       --------------------------------------------------------
+  690=a	    !   8   |                         NAME                         |
+  691=a	    !       --------------------------------------------------------
+  692=a	    !  12   |                         NAME cont'd                  |
+  693=a	    !       --------------------------------------------------------
+  694=a	    !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+  695=a	    !       --------------------------------------------------------
+  696=a	    !  20   |                         MAXMEM                       |
+  697=a	    !       --------------------------------------------------------
+  698=a	    !  24   |       FLAGS               |   USER        |  GROUP   |
+  699=a	    !       --------------------------------------------------------
+  700=a	    !  28   |                         PARENT                       |
+  701=a	    !       --------------------------------------------------------
+  702=a	    !  32   |                         EVENTS                       |
+  703=a	    !       --------------------------------------------------------
+  704=a	    !  36   |                         CODE                         |
+  705=a	    !       --------------------------------------------------------
+  706=a	    !  40   |                         CSIZE                        |
+  707=a	    !       --------------------------------------------------------
+  708=a	    !  44   |                         DATA                         |
+  709=a	    !       --------------------------------------------------------
+  710=a	    !  48   |                         DSIZE                        |
+  711=a	    !       --------------------------------------------------------
+  712=a	    !  52   |                         HEAP                         |
+  713=a	    !       --------------------------------------------------------
+  714=a	    !  56   |                         HSIZE                        |
+  715=a	    !       --------------------------------------------------------
+  716=a	    !
+  717=a	    !       PID   Process ID
+  718=a	    !       FID  Process's Family ID
+  719=a	    !       CID   Physical Console Device Number
+  720=a	    !       VCID  Process's Virtual Console Number
+  721=a	    !       NAME  Process Name (Application Running)
+  722=a	    ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+  723=a	    ! PRIOR    Priority
+  724=a	    !       MAXMEM  Maximum Memory Allowed
+  725=a	    !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+  726=a	    !   Bit 1 (1-Locked in Memory, 0-Swappable)
+  727=a	    !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+  728=a	    !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+  729=a	    ! USER  User Number
+  730=a	    ! GROUP  Group Number
+  731=a	    !       PARENT   Parent Process ID
+  732=a	    !       EVENTS   Bit Map of events that have completed but not retri
+>eved
+  733=a	    !       CODE  Start of code area in user space
+  734=a	    ! CSIZE  Size in bytes of code area
+  735=a	    !       DATA  Start of data area in user space
+  736=a	    ! DSIZE  Size in bytes of data area
+  737=a	    !       HEAP  Start of heap area in user space
+  738=a	    ! HSIZE  Size in bytes of heap area
+  739=a	    !
+  740=a	     integer*4 srchproc
+  741=a	    
+  742=a	     string  proc.name$   ! process name to start
+  743=a	           ! search (10 bytes max)
+  744=a	           ! Wild cards and logical
+  745=a	           ! names supported.
+  746=a	    
+  747=a	     string  ptbl.buffer$   ! must be initialized
+  748=a	           ! to 60 bytes.  Contains
+  749=a	           ! all of process info
+  750=a	           ! Initialize to nulls
+  751=a	           ! each time a new
+  752=a	           ! process name is used.
+  753=a	    
+  754=a	    end function
+  755=a	    
+  756=a	    function cconstat(timeout) external       ! function similar
+  757=a	                                                  ! to BASIC constat%
+  758=a	     integer*2 cconstat   ! waits for either a
+  759=a	     integer*4 timeout    ! key being hit or
+  760=a	           ! the timer expiring
+  761=a	           ! before returning
+  762=a	           ! returns:
+  763=a	           !   -1 error
+  764=a	           !    0 timer expired
+  765=a	           !    x scan code of
+  766=a	           !      key hit
+  767=a	    end function
+  768=a	    
+  769=a	    function disksize(disk.name$) external   ! function to find
+  770=a	           ! the total size of
+  771=a	     integer*4 disksize   ! the specified disk
+  772=a	     string  disk.name$   ! name (e.g. "h0:")
+  773=a	           ! if return value is
+  774=a	           ! negative, error
+  775=a	    end function      ! was received
+  776=a	    
+  777=a	    
+  778: 	         %INCLUDE BCFEXT.J86
+  779=a	    \*******************************************************************
+>**********
+  780=a	    \*******************************************************************
+>**********
+  781=a	    \***
+  782=a	    \***         FUNCTION DEFINITIONS FOR BOOTS CONTROL FILE
+  783=a	    \***
+  784=a	    \***                    REFERENCE : BCFEXTA.J86
+  785=a	    \***
+  786=a	    \***    Version A           Steve Windsor          5th Jan 1993
+  787=a	    \***
+  788=a	    \***    Version B           Michael J. Kelsall    14th Sep 1993
+  789=a	    \***    Code incremented to maintain consistency with other included
+> code
+  790=a	    \***    for RETURNS/AUTOMATIC CREDIT CLAIMING system.
+  791=a	    \***
+  792=a	    \***    Version C           Stuart William McConnachie 23rd Jan 1995
+  793=a	    \***    Addition of TXR serial number as part of the TRANSACTION RET
+>RIEVAL
+  794=a	    \***    project.
+  795=a	    \***
+  796=a	    \***    Version D           Stuart William McConnachie  7th June 199
+>5
+  797=a	    \***    Converted calls to enable more than 1 record on the BCF.
+  798=a	    \***    The second record is to be used for the No7 customer card tr
+>ial.
+  799=a	    \***
+  800=a	    \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003
+>.
+  801=a	    \***    Modifications for All Txn Data To CDAS project.
+  802=a	    \***    No changes to this file.
+  803=a	    \***
+  804=a	    \***    Revision 4.7            Julia Stones              9th July 2
+>003
+  805=a	    \***    Modifications for New Lines Report project.
+  806=a	    \***    No changes to this file.
+  807=a	    \***
+  808=a	    \*******************************************************************
+>**********
+  809=a	    \*******************************************************************
+>**********
+  810=a	    
+  811=a	       FUNCTION BCF.SET EXTERNAL
+  812=a	       END FUNCTION
+  813=a	    
+  814=a	      FUNCTION READ.BCF EXTERNAL
+  815=a	       INTEGER*2 READ.BCF
+  816=a	      END FUNCTION
+  817=a	    
+  818=a	      FUNCTION READ.BCF.LOCK EXTERNAL
+  819=a	       INTEGER*2 READ.BCF.LOCK
+  820=a	      END FUNCTION
+  821=a	    
+  822=a	      FUNCTION WRITE.BCF EXTERNAL
+  823=a	       INTEGER*2 WRITE.BCF
+  824=a	      END FUNCTION
+  825=a	    
+  826=a	      FUNCTION WRITE.BCF.UNLOCK EXTERNAL
+  827=a	       INTEGER*2 WRITE.BCF.UNLOCK
+  828=a	      END FUNCTION
+  829=a	    
+  830=a	      FUNCTION WRITE.HOLD.BCF.UNLOCK EXTERNAL
+  831=a	       INTEGER*2 WRITE.HOLD.BCF.UNLOCK
+  832=a	      END FUNCTION
+  833=a	    
+  834: 	    
+  835: 	    \*******************************************************************
+>***********
+  836: 	    \***
+  837: 	    \***    Included code defining external Boots functions
+  838: 	    \***
+  839: 	    \*******************************************************************
+>***********
+  840: 	    
+  841: 	         %INCLUDE PSBF01E.J86   ! APPLICATION.LOG
+  842=a	    REM \
+  843=a	    \*******************************************************************
+>************
+  844=a	    \*******************************************************************
+>************
+  845=a	    \***
+  846=a	    \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.L
+>OG
+  847=a	    \***
+  848=a	    \***                      FUNCTION NUMBER   : PSBF01
+  849=a	    \***
+  850=a	    \***                    INCLUDE REFERENCE : PSBF01E.J86
+  851=a	    \*** 
+  852=a	    \***      Version B           Andrew Wedgeworth          1st July 19
+>92
+  853=a	    \***      Three parameters which passed to the function have been re
+>moved.
+  854=a	    \***      APPLICATION.LOG has been added as a variable name (this ho
+>lds the
+  855=a	    \***      return code).
+  856=a	    \***
+  857=a	    \*******************************************************************
+>************
+  858=a	    
+  859=a	    
+  860=a	       FUNCTION APPLICATION.LOG (MESSAGE.NO%,                           
+>          \
+  861=a	                                 VAR.STRING.1$,                         
+>          \
+  862=a	                                 VAR.STRING.2$,                         
+>          \
+  863=a	                                 EVENT.NO%)  EXTERNAL
+  864=a	    
+  865=a	          INTEGER*1 EVENT.NO%
+  866=a	    
+  867=a	          INTEGER*2 APPLICATION.LOG,                                    
+>   \ GAW
+  868=a	                    MESSAGE.NO%
+  869=a	    
+  870=a	          STRING VAR.STRING.1$,                                         
+>   \
+  871=a	                 VAR.STRING.2$
+  872=a	    
+  873=a	       END FUNCTION
+  874=a	    
+  875=a	    \*******************************************************************
+>************
+  876: 	         %INCLUDE PSBF20E.J86   ! ALLOCATE.DEALLOCATE.SESS.NUM
+  877=a	    REM\
+  878=a	    \*******************************************************************
+>************
+  879=a	    \*******************************************************************
+>************
+  880=a	    \***
+  881=a	    \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+  882=a	    \***
+  883=a	    \***                  REFERENCE     : PSBF20E.J86
+  884=a	    \***
+  885=a	    \***     VERSION C            Janet Smith                13th May 19
+>92
+  886=a	    \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+  887=a	    \***     128 files.
+  888=a	    \***
+  889=a	    \***     VERSION D.           Andrew Wedgeworth          1st July 19
+>92
+  890=a	    \***     Removal of redundant parameters and addition of SESS.NUM.UT
+>ILITY
+  891=a	    \***     as a variable.  This new variable contains the function's r
+>eturn
+  892=a	    \***     code.
+  893=a	    \***
+  894=a	    \*******************************************************************
+>************
+  895=a	    \*******************************************************************
+>************
+  896=a	    
+  897=a	       FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                       
+>   \
+  898=a	                                  PASSED.INTEGER%,                      
+>   \
+  899=a	                                  PASSED.STRING$)                       
+>   \
+  900=a	       EXTERNAL
+  901=a	    
+  902=a	       STRING    FUNCTION.FLAG$,                                        
+>   \
+  903=a	                 PASSED.STRING$
+  904=a	       ! 3 variables removed from here                                  
+>   ! CAW
+  905=a	    
+  906=a	    
+  907=a	       INTEGER*2 SESS.NUM.UTILITY,                                      
+>   \ CAW
+  908=a	                 PASSED.INTEGER%                                        
+>  ! CJAS
+  909=a	    
+  910=a	       END FUNCTION
+  911=a	    
+  912: 	    
+  913: 	    \*******************************************************************
+>***********
+  914: 	    \***
+  915: 	    \***    MAIN PROGRAM
+  916: 	    \***
+  917: 	    \*******************************************************************
+>***********
+  918: 	     
+  919: 	      MAIN.PROGRAM:
+  920: 	    
+  921: 	          ON ERROR GOTO ERROR.DETECTED
+  922: 	          GOSUB INITIALISATION
+  923: 	          GOSUB MAIN.PROCESSING
+  924: 	          
+  925: 	    
+  926: 	      STOP
+  927: 	    
+  928: 	    \*******************************************************************
+>***********
+  929: 	    \***
+  930: 	    \***    MAIN PROGRAM
+  931: 	    \***
+  932: 	    \*******************************************************************
+>***********
+  933: 	    
+  934: 	      INITIALISATION:
+  935: 	    
+  936: 	          CALL BCF.SET                        
+  937: 	    
+  938: 	          TRUE = 1
+  939: 	          FALSE = 0
+  940: 	    
+  941: 	          
+  942: 	    
+  943: 	         
+  944: 	    
+  945: 	          IF END #BCF.SESS.NUM% THEN FILE.ERROR
+  946: 	          OPEN BCF.FILE.NAME$ RECL BCF.RECL% AS BCF.SESS.NUM% 
+  947: 	          BCF.OPEN = TRUE           
+*** error		 ^8
+  948: 	    
+  949: 	     RETURN
+  950: 	    
+  951: 	     
+  952: 	    \*******************************************************************
+>***********
+  953: 	    \***
+  954: 	    \***    ALLOCATE.SESSION.NUMBERS:
+  955: 	    \***
+  956: 	    \***    Use the session number utility to allocate file numbers for 
+>the
+  957: 	    \***    files used by the program.
+  958: 	    \***
+  959: 	    \*******************************************************************
+>***********
+  960: 	    
+  961: 	    ALLOCATE.SESSION.NUMBERS:
+  962: 	    
+  963: 	          FUNCTION.FLAG$ EQ "O"
+  964: 	    
+  965: 	          PASSED.INTEGER% EQ BCF.REPORT.NUM%
+  966: 	          PASSED.STRING$ EQ BCF.FILE.NAME$
+  967: 	          GOSUB CALL.F20.SESS.NUM.UTILITY
+  968: 	          BCF.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+  969: 	             
+  970: 	    RETURN 
+  971: 	     
+  972: 	    
+  973: 	    \*******************************************************************
+>***********
+  974: 	    \***
+  975: 	    \***    CALL.F20.SESS.NUM.UTILITY:
+  976: 	    \***
+  977: 	    \*******************************************************************
+>***********
+  978: 	    
+  979: 	         CALL.F20.SESS.NUM.UTILITY: 
+  980: 	            
+  981: 	             FILE.OPERATION$ = FUNCTION.FLAG$
+  982: 	             CURRENT.REPORT.NUM% = PASSED.INTEGER%
+  983: 	             RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,   
+>    \
+*** error	       ^8
+  984: 	                                     PASSED.STRING$)
+  985: 	             IF RC% <> 0 THEN GOTO FILE.ERROR
+*** error		  ^8
+  986: 	    
+  987: 	         RETURN
+  988: 	    
+  989: 	            
+  990: 	    \*******************************************************************
+>***********
+  991: 	    \***
+  992: 	    \***    MAIN PROGRAM
+  993: 	    \***
+  994: 	    \*******************************************************************
+>***********
+  995: 	    
+  996: 	    MAIN.PROCESSING:
+  997: 	    
+  998: 	      BCF.REC.NO% = 14 
+  999: 	      RC% = READ.BCF
+*** error	^8
+ 1000: 	      PRINT "DAI DUBAKOOR " ; BCF.RECORD$
+ 1001: 	      IF RC% <> 0 THEN BEGIN
+*** error	   ^8
+ 1002: 	        GOTO FILE.ERROR
+ 1003: 	      ENDIF
+ 1004: 	      
+ 1005: 	    \*******************************************************************
+>***********
+ 1006: 	    \***                                                                
+>           
+ 1007: 	    \***   ERROR ROUTINE  :  FILE.ERROR                                 
+>           
+ 1008: 	    \***                                                                
+>           
+ 1009: 	    \***   Call APPLICATION.LOG to log an event 106 with                
+>           
+ 1010: 	    \***   flag, current report number and current key                  
+>           
+ 1011: 	    \***                                                                
+>           
+ 1012: 	    \***                                                                
+>           
+ 1013: 	    \*******************************************************************
+>***********
+ 1014: 	    
+ 1015: 	         FILE.ERROR:
+ 1016: 	            
+ 1017: 	             VAR.STRING.1$ = FILE.OPERATION$                     +      
+>    \
+ 1018: 	                    CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +      
+>    \
+ 1019: 	                    CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +      
+>    \
+ 1020: 	                    CURRENT.CODE$
+ 1021: 	             VAR.STRING.2$ = "DealSet"
+ 1022: 	             MESSAGE.NO%   = 0
+ 1023: 	             EVENT.NO%     = 106
+ 1024: 	    
+ 1025: 	             RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,           
+>    \
+*** error	       ^8
+ 1026: 	                          VAR.STRING.2$,EVENT.NO%)
+ 1027: 	    
+ 1028: 	             GOTO STOP.PROGRAM  
+ 1029: 	    \*******************************************************************
+>***********
+ 1030: 	    \***
+ 1031: 	    \***   SUBROUTINE : ERROR.DETECTED
+ 1032: 	    \***
+ 1033: 	    \*******************************************************************
+>***********
+ 1034: 	    
+ 1035: 	      ERROR.DETECTED:           
+ 1036: 	    
+ 1037: 	          WRITE #ERR.SESS.NUM%; "An Error Occurred "
+*** error			     ^8
+ 1038: 	          WRITE #ERR.SESS.NUM%; "Fatal Error:" + ERR
+*** error			     ^8
+ 1039: 	          WRITE #ERR.SESS.NUM%; "Session Number: " + STR$(ERRF%)
+*** error			     ^8
+ 1040: 	          WRITE #ERR.SESS.NUM%; "Line Number:" + STR$(ERRL)     
+*** error			     ^8
+ 1041: 	          
+ 1042: 	          GOSUB FILE.ERROR
+ 1043: 	    
+ 1044: 	    \*******************************************************************
+>***********
+ 1045: 	    \***
+ 1046: 	    \***   SUBROUTINE : STOP.PROGRAM
+ 1047: 	    \***
+ 1048: 	    \*******************************************************************
+>***********
+ 1049: 	    
+ 1050: 	         STOP.PROGRAM:
+ 1051: 	    
+ 1052: 	         END
+ 1053: 	    
+ 1054: 	    \*******************************************************************
+>***********
+ 1055: 	    \*******************************************************************
+>***********
+ 1056: 	    \***
+ 1057: 	    \***    End of program 
+ 1058: 	    \***
+ 1059: 	    \*******************************************************************
+>***********
+ 1060: 	    \*******************************************************************
+>***********
+ 1061: 	     
+End of Compilation

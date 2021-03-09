@@ -1,0 +1,171 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***              FLASHPACK / PARENT FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***                   REFERENCE    : FPFFUN.BAS
+   7: 0000: \***
+   8: 0000: \***         VERSION A : LES COOK       21ST AUGUST 1992
+   9: 0000: \***
+  10: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  11: 0000: \***    Corrected setting of FILE.OPERATION$ within WRITE function.
+  12: 0000: \***
+  13: 0000: \***    VERSION C.              CLIVE NORRIS.                       17 JAN 1994.
+  14: 0000: \***    Altered dimension of FPF.MULT.FACTOR$ to match that of FPF.CODE$.
+  15: 0000: \***
+  16: 0000: \*******************************************************************************
+  17: 0000: \*******************************************************************************
+  18: 0000: 
+  19: 0000: 
+  20: 0000:    INTEGER*2 GLOBAL                     \
+  21: 0000:       CURRENT.REPORT.NUM%  
+  22: 0000:    
+  23: 0000:    STRING GLOBAL                       \
+  24: 0000:       CURRENT.CODE$,                   \
+  25: 0000:       FILE.OPERATION$
+  26: 0000:    
+  27: 0000:    %INCLUDE FPFDEC.J86                                                ! BRC
+  28: 0000:  REM \
+  29: 0000: \******************************************************************************
+  30: 0000: \******************************************************************************
+  31: 0000: \***
+  32: 0000: \***         %INCLUDE FOR FLASHPACK / PARENT FILE FIELD DECLARATIONS
+  33: 0000: \***
+  34: 0000: \***               FILE TYPE    : Keyed
+  35: 0000: \***
+  36: 0000: \***               REFERENCE    : FPFDEC.J86
+  37: 0000: \***
+  38: 0000: \***         VERSION A : LES COOK  - 21/8/92
+  39: 0000: \***
+  40: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  41: 0000: \***    No changes to this file.
+  42: 0000: \***
+  43: 0000: \***    VERSION C.              CLIVE NORRIS.                       17 JAN 1994.
+  44: 0000: \***    No changes to this file. Version updated to keep in line 
+  45: 0000: \***    with changes in FPFFUNC.BAS.
+  46: 0000: \***
+  47: 0000: \*******************************************************************************
+  48: 0000: \*******************************************************************************
+  49: 0000: 
+  50: 0000:   STRING GLOBAL                  \
+  51: 0000:     FPF.FILE.NAME$,              \
+  52: 0000:     FPF.PARENT.CODE$,            \ 4 byte UPD with a check digit
+  53: 0000:     FPF.CODE$(1),                \ 4 bytes upd first flashpack code of 10                 ! Boots code with a check digit 
+  54: 0000:                                  \ (99999999 if no code) 
+  55: 0000:     FPF.MULT.FACTOR$(1)          \ 2 bytes UPD multiplication factor for
+  56: 0000:                   		 ! first flashpack code.
+  57: 0000: 
+  58: 0000:   INTEGER*2 GLOBAL        \
+  59: 0000:     FPF.RECL%,            \
+  60: 0000:     FPF.REPORT.NUM%,      \
+  61: 0000:     FPF.SESS.NUM%,        \
+  62: 0000:     MAX.FPF.CODES%
+  63: 0000: 
+  64: 0000:    
+  65: 0000:    
+  66: 0000:   FUNCTION FPF.SET PUBLIC
+  67: 0014: \*************************    
+  68: 0014: 
+  69: 0014:     FPF.REPORT.NUM% = 53                                    
+  70: 001d:     FPF.RECL%       = 64                                    
+  71: 0026:     FPF.FILE.NAME$  = "FPF"
+  72: 0035:     MAX.FPF.CODES%  = 10				    
+  73: 003e:     DIM FPF.CODE$(MAX.FPF.CODES%+1)                         
+  74: 006c:     DIM FPF.MULT.FACTOR$(MAX.FPF.CODES%+1)                             ! CDCN
+  75: 009a: 
+  76: 009a:  END FUNCTION
+  77: 00a6:  
+  78: 00a6:  \----------------------------------------------------------------------------
+  79: 00a6:  
+  80: 00a6: 
+  81: 00a6:   FUNCTION READ.FPF PUBLIC
+  82: 00ba: \**************************
+  83: 00ba: 
+  84: 00ba:     INTEGER*1 READ.FPF
+  85: 00ba:     
+  86: 00ba:     READ.FPF = 1
+  87: 00be:     
+  88: 00be:     IF END #FPF.SESS.NUM% THEN READ.FPF.ERROR
+  89: 00d2:     READ FORM "T5,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2";\
+  90: 02c5:             #FPF.SESS.NUM%  					  \
+  91: 02c5:          KEY FPF.PARENT.CODE$;                                    \
+  92: 02c5:              FPF.CODE$(1),                                        \
+  93: 02c5:              FPF.MULT.FACTOR$(1),                                 \
+  94: 02c5:              FPF.CODE$(2),                                        \
+  95: 02c5:              FPF.MULT.FACTOR$(2),                                 \
+  96: 02c5:              FPF.CODE$(3),                                        \
+  97: 02c5:              FPF.MULT.FACTOR$(3),                                 \
+  98: 02c5:              FPF.CODE$(4),                                        \
+  99: 02c5:              FPF.MULT.FACTOR$(4),                                 \
+ 100: 02c5:              FPF.CODE$(5),                                        \
+ 101: 02c5:              FPF.MULT.FACTOR$(5),                                 \
+ 102: 02c5:              FPF.CODE$(6),                                        \
+ 103: 02c5:              FPF.MULT.FACTOR$(6),                                 \
+ 104: 02c5:              FPF.CODE$(7),                                        \
+ 105: 02c5:              FPF.MULT.FACTOR$(7),                                 \
+ 106: 02c5:              FPF.CODE$(8),                                        \
+ 107: 02c5:              FPF.MULT.FACTOR$(8),                                 \
+ 108: 02c5:              FPF.CODE$(9),                                        \
+ 109: 02c5:              FPF.MULT.FACTOR$(9),                                 \
+ 110: 02c5:              FPF.CODE$(10),                                       \
+ 111: 02c5:              FPF.MULT.FACTOR$(10)
+ 112: 02c5:     READ.FPF = 0
+ 113: 02c9:     EXIT FUNCTION
+ 114: 02cb:     
+ 115: 02cb:     READ.FPF.ERROR:
+ 116: 02cb:     
+ 117: 02cb:        CURRENT.REPORT.NUM% = FPF.REPORT.NUM%
+ 118: 02d9:        FILE.OPERATION$ = "R"
+ 119: 02e8:        CURRENT.CODE$ = FPF.PARENT.CODE$
+ 120: 02fe:        
+ 121: 02fe:        EXIT FUNCTION   
+ 122: 0300:   
+ 123: 0300:   END FUNCTION
+ 124: 030f:  \----------------------------------------------------------------------------
+ 125: 030f:  
+ 126: 030f: 
+ 127: 030f:   FUNCTION WRITE.FPF PUBLIC
+ 128: 0323: \***************************
+ 129: 0323: 
+ 130: 0323:     INTEGER*1 WRITE.FPF
+ 131: 0323:     
+ 132: 0323:     WRITE.FPF = 1
+ 133: 0327:     
+ 134: 0327:     IF END #FPF.SESS.NUM% THEN WRITE.FPF.ERROR
+ 135: 033b:     WRITE FORM "2C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2,C4,C2";\
+ 136: 058d:             #FPF.SESS.NUM%; 					  \
+ 137: 058d:              FPF.PARENT.CODE$,                                    \
+ 138: 058d:              FPF.CODE$(1),                                        \
+ 139: 058d:              FPF.MULT.FACTOR$(1),                                 \
+ 140: 058d:              FPF.CODE$(2),                                        \
+ 141: 058d:              FPF.MULT.FACTOR$(2),                                 \
+ 142: 058d:              FPF.CODE$(3),                                        \
+ 143: 058d:              FPF.MULT.FACTOR$(3),                                 \
+ 144: 058d:              FPF.CODE$(4),                                        \
+ 145: 058d:              FPF.MULT.FACTOR$(4),                                 \
+ 146: 058d:              FPF.CODE$(5),                                        \
+ 147: 058d:              FPF.MULT.FACTOR$(5),                                 \
+ 148: 058d:              FPF.CODE$(6),                                        \
+ 149: 058d:              FPF.MULT.FACTOR$(6),                                 \
+ 150: 058d:              FPF.CODE$(7),                                        \
+ 151: 058d:              FPF.MULT.FACTOR$(7),                                 \
+ 152: 058d:              FPF.CODE$(8),                                        \
+ 153: 058d:              FPF.MULT.FACTOR$(8),                                 \
+ 154: 058d:              FPF.CODE$(9),                                        \
+ 155: 058d:              FPF.MULT.FACTOR$(9),                                 \
+ 156: 058d:              FPF.CODE$(10),                                       \
+ 157: 058d:              FPF.MULT.FACTOR$(10)
+ 158: 058d:     WRITE.FPF = 0
+ 159: 0591:     EXIT FUNCTION
+ 160: 0593:     
+ 161: 0593:     WRITE.FPF.ERROR:
+ 162: 0593:     
+ 163: 0593:        CURRENT.REPORT.NUM% = FPF.REPORT.NUM%
+ 164: 05a1:        FILE.OPERATION$ = "W"                                           ! BRC
+ 165: 05b0:        CURRENT.CODE$ = FPF.PARENT.CODE$
+ 166: 05c6:        
+ 167: 05c6:        EXIT FUNCTION   
+ 168: 05c8:   
+ 169: 05c8:   END FUNCTION
+ 170: 05d7: 
+ 171: 05d7: End of Compilation

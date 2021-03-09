@@ -1,0 +1,367 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***********************************************************************
+   3: 0000: \***
+   4: 0000: \***    DESCRIPTION: Stock File
+   5: 0000: \***                 Public File Function Definitions
+   6: 0000: \***
+   7: 0000: \***    FILE TYPE : Keyed
+   8: 0000: \***
+   9: 0000: \***********************************************************************
+  10: 0000: \***
+  11: 0000: \***    Version A.          Les Cook                     21st Aug 1992
+  12: 0000: \***    Initial version.
+  13: 0000: \***
+  14: 0000: \***    Version B.          Robert Cowey                 21st Oct 1993
+  15: 0000: \***    Corrected setting of FILE.OPERATION$ within WRITE functions.
+  16: 0000: \***
+  17: 0000: \***    Version C.          Nik Sen                      14th Dec 1994
+  18: 0000: \***    WRITE.STOCK.HOLD added.
+  19: 0000: \***
+  20: 0000: \***    Version D.          Mark Walker                  24th Jan 2014
+  21: 0000: \***    F337 Centralised View of Stock
+  22: 0000: \***    - Added sequence ID and item status to all reads and writes.
+  23: 0000: \***    - Removed hardcoded filler value.
+  24: 0000: \***    - Minor formatting changes (uncommented).
+  25: 0000: \***
+  26: 0000: \***    Version E.          Mark Walker                  15th Mar 2014
+  27: 0000: \***    F337 Centralised View of Stock
+  28: 0000: \***    Added next sequence ID field.
+  29: 0000: \***
+  30: 0000: \***    Version F.          Mark Walker                   7th May 2014
+  31: 0000: \***    F337 Centralised View of Stock
+  32: 0000: \***    Added new 'stock flags' field for future use.
+  33: 0000: \***
+  34: 0000: \***********************************************************************
+  35: 0000: \***********************************************************************
+  36: 0000: 
+  37: 0000:     INTEGER*2 GLOBAL                                                    \
+  38: 0000:        CURRENT.REPORT.NUM%
+  39: 0000: 
+  40: 0000:     STRING GLOBAL                                                       \
+  41: 0000:        CURRENT.CODE$,                                                   \
+  42: 0000:        FILE.OPERATION$
+  43: 0000: 
+  44: 0000: %INCLUDE STOCKDEC.J86                                                       !BRC
+  45: 0000: \***********************************************************************
+  46: 0000: \***********************************************************************
+  47: 0000: \***
+  48: 0000: \***    DESCRIPTION: Stock File
+  49: 0000: \***                 Field Definitions         
+  50: 0000: \***
+  51: 0000: \***    FILE TYPE : Keyed
+  52: 0000: \***
+  53: 0000: \***********************************************************************
+  54: 0000: \***
+  55: 0000: \***    Version B.              Robert Cowey             21st Oct 1993
+  56: 0000: \***    No changes to this file.
+  57: 0000: \***
+  58: 0000: \***    Version C.              Mark Walker              24th Jan 2014
+  59: 0000: \***    F337 Centralised View of Stock
+  60: 0000: \***    - Added sequence ID and item status fields.
+  61: 0000: \***    - Minor formatting changes (uncommented).
+  62: 0000: \***
+  63: 0000: \***    Version D.              Mark Walker              15th Mar 2014
+  64: 0000: \***    F337 Centralised View of Stock
+  65: 0000: \***    Added next sequence ID field.
+  66: 0000: \***
+  67: 0000: \***    Version E.              Mark Walker               7th May 2014
+  68: 0000: \***    F337 Centralised View of Stock
+  69: 0000: \***    Added new 'stock flags' field for future use.
+  70: 0000: \***
+  71: 0000: \***********************************************************************
+  72: 0000: \***********************************************************************
+  73: 0000: 
+  74: 0000: \***********************************************************************
+  75: 0000: \***********************************************************************
+  76: 0000: \***
+  77: 0000: \***    File Record Layout
+  78: 0000: \***
+  79: 0000: \***    STOCK.BOOTS.CODE$            4 UPD  Item Code (Key)
+  80: 0000: \***    STOCK.STOCK.FIG%             2 INT  Stock Figure
+  81: 0000: \***    STOCK.LAST.COUNT%            2 INT  Last Count Quantity
+  82: 0000: \***    STOCK.DATE.LAST.COUNT$       3 UPD  Date of Last Count
+  83: 0000: \***    STOCK.DATE.LAST.MOVE$        3 UPD  Date of Last Movement
+  84: 0000: \***    STOCK.LAST.REC%              2 INT  Last Receipt Quantity
+  85: 0000: \***    STOCK.DATE.LAST.REC$         3 UPD  Date of Last Receipt
+  86: 0000: \***    STOCK.DATE.LAST.GAP$         3 UPD  Date of Last Gap
+  87: 0000: \***    STOCK.SID%                   4 INT  Sequence ID                     !CMW
+  88: 0000: \***    STOCK.STATUS.1$              1 ASC  Item Status                     !CMW
+  89: 0000: \***    STOCK.FLAGS%                 1 INT  Stock flags                     !EMW
+  90: 0000: \***    STOCK.FILLER$                2 UPD  Filler                          !EMW
+  91: 0000: \***
+  92: 0000: \***********************************************************************
+  93: 0000: \***********************************************************************
+  94: 0000: 
+  95: 0000:     INTEGER*1 GLOBAL                                                    \
+  96: 0000:         STOCK.FLAGS%,                                                   \   !EMW
+  97: 0000:         STOCK.RECL%
+  98: 0000: 
+  99: 0000:     INTEGER*2 GLOBAL                                                    \
+ 100: 0000:         STOCK.LAST.COUNT%,                                              \
+ 101: 0000:         STOCK.LAST.REC%,                                                \
+ 102: 0000:         STOCK.REPORT.NUM%,                                              \
+ 103: 0000:         STOCK.SESS.NUM%,                                                \
+ 104: 0000:         STOCK.STOCK.FIG%
+ 105: 0000: 
+ 106: 0000:     INTEGER*4 GLOBAL                                                    \   !CMW
+ 107: 0000:         STOCK.NEXT.SID%,                                                \   !DMW
+ 108: 0000:         STOCK.SID%                                                          !CMW
+ 109: 0000: 
+ 110: 0000:     STRING GLOBAL                                                       \
+ 111: 0000:         STOCK.BOOTS.CODE$,                                              \
+ 112: 0000:         STOCK.DATE.LAST.COUNT$,                                         \
+ 113: 0000:         STOCK.DATE.LAST.GAP$,                                           \
+ 114: 0000:         STOCK.DATE.LAST.MOVE$,                                          \
+ 115: 0000:         STOCK.DATE.LAST.REC$,                                           \
+ 116: 0000:         STOCK.FILE.NAME$,                                               \
+ 117: 0000:         STOCK.FILLER$,                                                  \
+ 118: 0000:         STOCK.STATUS.1$                                                     !CMW
+ 119: 0000: 
+ 120: 0000: 
+ 121: 0000: FUNCTION STOCK.SET PUBLIC
+ 122: 0014: 
+ 123: 0014:     STOCK.REPORT.NUM% = 108
+ 124: 001d:     STOCK.RECL%       = 30
+ 125: 0025:     STOCK.FILE.NAME$  = "STOCK"
+ 126: 0034: 
+ 127: 0034: END FUNCTION
+ 128: 0040: 
+ 129: 0040: FUNCTION READ.STOCK PUBLIC
+ 130: 0054: 
+ 131: 0054:     INTEGER*2   READ.STOCK
+ 132: 0054:     STRING      FORMAT.STRING$                                              !DMW
+ 133: 0054: 
+ 134: 0054:     READ.STOCK = 1
+ 135: 0059: 
+ 136: 0059:     STOCK.NEXT.SID% = 0                                                     !EMW
+ 137: 0068: 
+ 138: 0068:     FORMAT.STRING$ = "T5,2I2,2C3,I2,2C3,I4,C1,I1,C2"                        !FMW
+ 139: 0075: 
+ 140: 0075:     IF END #STOCK.SESS.NUM% THEN READ.STOCK.ERROR
+ 141: 0089:     READ FORM FORMAT.STRING$; #STOCK.SESS.NUM%                          \   !DMW
+ 142: 012d:         KEY STOCK.BOOTS.CODE$;      \ Item Code                         \
+ 143: 012d:             STOCK.STOCK.FIG%,       \ Stock Figure                      \
+ 144: 012d:             STOCK.LAST.COUNT%,      \ Last Count Quantity               \
+ 145: 012d:             STOCK.DATE.LAST.COUNT$, \ Date of Last Count                \
+ 146: 012d:             STOCK.DATE.LAST.MOVE$,  \ Date of Last Movement             \
+ 147: 012d:             STOCK.LAST.REC%,        \ Last Receipt Quantity             \
+ 148: 012d:             STOCK.DATE.LAST.REC$,   \ Date of Last Receipt              \
+ 149: 012d:             STOCK.DATE.LAST.GAP$,   \ Date of Last Gap                  \
+ 150: 012d:             STOCK.SID%,             \ Sequence ID                       \   !DMW
+ 151: 012d:             STOCK.STATUS.1$,        \ Item Status                       \   !DMW
+ 152: 012d:             STOCK.FLAGS%,           \ Stock flags                       \   !FMW
+ 153: 012d:             STOCK.FILLER$           ! Filler
+ 154: 012d:     
+ 155: 012d:     READ.STOCK = 0
+ 156: 0132:     
+ 157: 0132:     ! Get the next sequence ID                                              !EMW
+ 158: 0132:     STOCK.NEXT.SID% = STOCK.SID% + 1                                        !EMW
+ 159: 0147:                                                                             !EMW
+ 160: 0147:     ! IF the sequence ID has wrapped                                        !EMW
+ 161: 0147:     IF STOCK.NEXT.SID% < 0 THEN BEGIN                                       !EMW
+ 162: 015c:         ! Re-initialise sequence ID                                         !EMW
+ 163: 015c:         STOCK.NEXT.SID% = 0                                                 !EMW
+ 164: 016b:     ENDIF                                                                   !EMW
+ 165: 016b:     
+ 166: 016b:     EXIT FUNCTION
+ 167: 016d: 
+ 168: 016d: READ.STOCK.ERROR:
+ 169: 016d: 
+ 170: 016d:     FILE.OPERATION$     = "R"
+ 171: 017c:     CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 172: 018a:     CURRENT.CODE$       = STOCK.BOOTS.CODE$
+ 173: 01a0: 
+ 174: 01a0: END FUNCTION
+ 175: 01af: 
+ 176: 01af: FUNCTION WRITE.STOCK PUBLIC
+ 177: 01c3: 
+ 178: 01c3:     INTEGER*2   WRITE.STOCK
+ 179: 01c3:     STRING      FORMAT.STRING$                                              !DMW
+ 180: 01c3: 
+ 181: 01c3:     WRITE.STOCK = 1
+ 182: 01c8: 
+ 183: 01c8:     FORMAT.STRING$ = "C4,2I2,2C3,I2,2C3,I4,C1,I1,C2"                        !DMW
+ 184: 01d5:     
+ 185: 01d5:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.ERROR
+ 186: 01e9:     WRITE FORM FORMAT.STRING$; #STOCK.SESS.NUM%;                        \   !DMW
+ 187: 02b1:         STOCK.BOOTS.CODE$,      \ Item Code                             \
+ 188: 02b1:         STOCK.STOCK.FIG%,       \ Stock Figure                          \
+ 189: 02b1:         STOCK.LAST.COUNT%,      \ Last Count Quantity                   \
+ 190: 02b1:         STOCK.DATE.LAST.COUNT$, \ Date of Last Count                    \
+ 191: 02b1:         STOCK.DATE.LAST.MOVE$,  \ Date of Last Movement                 \
+ 192: 02b1:         STOCK.LAST.REC%,        \ Last Receipt Quantity                 \
+ 193: 02b1:         STOCK.DATE.LAST.REC$,   \ Date of Last Receipt                  \
+ 194: 02b1:         STOCK.DATE.LAST.GAP$,   \ Date of Last Gap                      \
+ 195: 02b1:         STOCK.SID%,             \ Sequence ID                           \   !DMW
+ 196: 02b1:         STOCK.STATUS.1$,        \ Item Status                           \   !DMW
+ 197: 02b1:         STOCK.FLAGS%,           \ Stock flags                           \   !FMW
+ 198: 02b1:         STOCK.FILLER$           ! Filler                                    !DMW
+ 199: 02b1:    
+ 200: 02b1:     WRITE.STOCK = 0
+ 201: 02b6:    
+ 202: 02b6:     EXIT FUNCTION
+ 203: 02b8: 
+ 204: 02b8: WRITE.STOCK.ERROR:
+ 205: 02b8: 
+ 206: 02b8:     FILE.OPERATION$     = "W"                                               !BRC
+ 207: 02c7:     CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 208: 02d5:     CURRENT.CODE$       = STOCK.BOOTS.CODE$
+ 209: 02eb: 
+ 210: 02eb: END FUNCTION
+ 211: 02fa: 
+ 212: 02fa: FUNCTION WRITE.STOCK.HOLD PUBLIC
+ 213: 030e: 
+ 214: 030e:     INTEGER*2 WRITE.STOCK.HOLD
+ 215: 030e:     STRING      FORMAT.STRING$                                              !DMW
+ 216: 030e: 
+ 217: 030e:     WRITE.STOCK.HOLD = 1
+ 218: 0313:     
+ 219: 0313:     FORMAT.STRING$ = "C4,2I2,2C3,I2,2C3,I4,C1,I1,C2"                        !FMW
+ 220: 0320: 
+ 221: 0320:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.HOLD.ERROR
+ 222: 0334:     WRITE FORM FORMAT.STRING$; HOLD #STOCK.SESS.NUM%;                   \   !DMW
+ 223: 03fc:         STOCK.BOOTS.CODE$,      \ Item Code                             \
+ 224: 03fc:         STOCK.STOCK.FIG%,       \ Stock Figure                          \
+ 225: 03fc:         STOCK.LAST.COUNT%,      \ Last Count Quantity                   \
+ 226: 03fc:         STOCK.DATE.LAST.COUNT$, \ Date of Last Count                    \
+ 227: 03fc:         STOCK.DATE.LAST.MOVE$,  \ Date of Last Movement                 \
+ 228: 03fc:         STOCK.LAST.REC%,        \ Last Receipt Quantity                 \
+ 229: 03fc:         STOCK.DATE.LAST.REC$,   \ Date of Last Receipt                  \
+ 230: 03fc:         STOCK.DATE.LAST.GAP$,   \ Date of Last Gap                      \
+ 231: 03fc:         STOCK.SID%,             \ Sequence ID                           \   !DMW
+ 232: 03fc:         STOCK.STATUS.1$,        \ Item Status                           \   !DMW
+ 233: 03fc:         STOCK.FLAGS%,           \ Stock flags                           \   !FMW
+ 234: 03fc:         STOCK.FILLER$           ! Filler                                    !DMW
+ 235: 03fc:    
+ 236: 03fc:     WRITE.STOCK.HOLD = 0
+ 237: 0401:     
+ 238: 0401:     EXIT FUNCTION
+ 239: 0403: 
+ 240: 0403: WRITE.STOCK.HOLD.ERROR:
+ 241: 0403: 
+ 242: 0403:     FILE.OPERATION$     = "W"                                               !BRC
+ 243: 0412:     CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 244: 0420:     CURRENT.CODE$       = STOCK.BOOTS.CODE$
+ 245: 0436: 
+ 246: 0436: END FUNCTION
+ 247: 0445: 
+ 248: 0445: FUNCTION READ.STOCK.LOCK PUBLIC
+ 249: 0459: 
+ 250: 0459:     INTEGER*2   READ.STOCK.LOCK
+ 251: 0459:     STRING      FORMAT.STRING$                                              !DMW
+ 252: 0459: 
+ 253: 0459:     READ.STOCK.LOCK = 1
+ 254: 045e: 
+ 255: 045e:     STOCK.NEXT.SID% = 0                                                     !EMW
+ 256: 046d:     
+ 257: 046d:     FORMAT.STRING$ = "T5,2I2,2C3,I2,2C3,I4,C1,I1,C2"                        !FMW
+ 258: 047a: 
+ 259: 047a:     IF END #STOCK.SESS.NUM% THEN READ.STOCK.LOCK.ERROR
+ 260: 048e:     READ FORM FORMAT.STRING$; #STOCK.SESS.NUM% AUTOLOCK                 \   !DMW
+ 261: 0532:         KEY STOCK.BOOTS.CODE$;      \ Item Code                         \
+ 262: 0532:             STOCK.STOCK.FIG%,       \ Stock Figure                      \
+ 263: 0532:             STOCK.LAST.COUNT%,      \ Last Count Quantity               \
+ 264: 0532:             STOCK.DATE.LAST.COUNT$, \ Date of Last Count                \
+ 265: 0532:             STOCK.DATE.LAST.MOVE$,  \ Date of Last Movement             \
+ 266: 0532:             STOCK.LAST.REC%,        \ Last Receipt Quantity             \
+ 267: 0532:             STOCK.DATE.LAST.REC$,   \ Date of Last Receipt              \
+ 268: 0532:             STOCK.DATE.LAST.GAP$,   \ Date of Last Gap                  \
+ 269: 0532:             STOCK.SID%,             \ Sequence ID                       \   !DMW
+ 270: 0532:             STOCK.STATUS.1$,        \ Item Status                       \   !DMW
+ 271: 0532:             STOCK.FLAGS%,           \ Stock flags                       \   !FMW
+ 272: 0532:             STOCK.FILLER$           ! Filler
+ 273: 0532:             
+ 274: 0532:     READ.STOCK.LOCK = 0
+ 275: 0537:     
+ 276: 0537:     ! Get the next sequence ID                                              !EMW
+ 277: 0537:     STOCK.NEXT.SID% = STOCK.SID% + 1                                        !EMW
+ 278: 054c:                                                                             !EMW
+ 279: 054c:     ! IF the sequence ID has wrapped                                        !EMW
+ 280: 054c:     IF STOCK.NEXT.SID% < 0 THEN BEGIN                                       !EMW
+ 281: 0561:         ! Re-initialise sequence ID                                         !EMW
+ 282: 0561:         STOCK.NEXT.SID% = 0                                                 !EMW
+ 283: 0570:     ENDIF                                                                   !EMW
+ 284: 0570:     
+ 285: 0570:     EXIT FUNCTION
+ 286: 0572: 
+ 287: 0572: READ.STOCK.LOCK.ERROR:
+ 288: 0572: 
+ 289: 0572:     FILE.OPERATION$     = "R"
+ 290: 0581:     CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 291: 058f:     CURRENT.CODE$       = STOCK.BOOTS.CODE$
+ 292: 05a5: 
+ 293: 05a5: END FUNCTION
+ 294: 05b4: 
+ 295: 05b4: FUNCTION WRITE.STOCK.UNLOCK PUBLIC
+ 296: 05c8: 
+ 297: 05c8:     INTEGER*2   WRITE.STOCK.UNLOCK
+ 298: 05c8:     STRING      FORMAT.STRING$                                              !DMW
+ 299: 05c8:     
+ 300: 05c8:     WRITE.STOCK.UNLOCK = 1
+ 301: 05cd:     
+ 302: 05cd:     FORMAT.STRING$ = "C4,2I2,2C3,I2,2C3,I4,C1,I1,C2"                        !FMW
+ 303: 05da: 
+ 304: 05da:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.UNLOCK.ERROR
+ 305: 05ee:     WRITE FORM FORMAT.STRING$; #STOCK.SESS.NUM% AUTOUNLOCK ;            \   !DMW
+ 306: 06b6:         STOCK.BOOTS.CODE$,      \ Item Code                             \
+ 307: 06b6:         STOCK.STOCK.FIG%,       \ Stock Figure                          \
+ 308: 06b6:         STOCK.LAST.COUNT%,      \ Last Count Quantity                   \
+ 309: 06b6:         STOCK.DATE.LAST.COUNT$, \ Date of Last Count                    \
+ 310: 06b6:         STOCK.DATE.LAST.MOVE$,  \ Date of Last Movement                 \
+ 311: 06b6:         STOCK.LAST.REC%,        \ Last Receipt Quantity                 \
+ 312: 06b6:         STOCK.DATE.LAST.REC$,   \ Date of Last Receipt                  \
+ 313: 06b6:         STOCK.DATE.LAST.GAP$,   \ Date of Last Gap                      \
+ 314: 06b6:         STOCK.SID%,             \ Sequence ID                           \   !DMW
+ 315: 06b6:         STOCK.STATUS.1$,        \ Item Status                           \   !DMW
+ 316: 06b6:         STOCK.FLAGS%,           \ Stock flags                           \   !FMW
+ 317: 06b6:         STOCK.FILLER$           ! Filler                                    !DMW
+ 318: 06b6:                 
+ 319: 06b6:     WRITE.STOCK.UNLOCK = 0
+ 320: 06bb:     
+ 321: 06bb:     EXIT FUNCTION
+ 322: 06bd: 
+ 323: 06bd: WRITE.STOCK.UNLOCK.ERROR:
+ 324: 06bd: 
+ 325: 06bd:     FILE.OPERATION$     = "W"                                               !BRC
+ 326: 06cc:     CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 327: 06da:     CURRENT.CODE$       = STOCK.BOOTS.CODE$
+ 328: 06f0: 
+ 329: 06f0: END FUNCTION
+ 330: 06ff: 
+ 331: 06ff: FUNCTION WRITE.STOCK.UNLOCK.HOLD PUBLIC
+ 332: 0713: 
+ 333: 0713:     INTEGER*2   WRITE.STOCK.UNLOCK.HOLD
+ 334: 0713:     STRING      FORMAT.STRING$                                              !DMW
+ 335: 0713: 
+ 336: 0713:     WRITE.STOCK.UNLOCK.HOLD = 1
+ 337: 0718:     
+ 338: 0718:     FORMAT.STRING$ = "C4,2I2,2C3,I2,2C3,I4,C1,I1,C2"                        !FMW
+ 339: 0725: 
+ 340: 0725:     IF END #STOCK.SESS.NUM% THEN WRITE.STOCK.UNLOCK.HOLD.ERROR
+ 341: 0739:     WRITE FORM FORMAT.STRING$; HOLD #STOCK.SESS.NUM% AUTOUNLOCK ;       \   !DMW
+ 342: 0801:         STOCK.BOOTS.CODE$,      \ Item Code                             \
+ 343: 0801:         STOCK.STOCK.FIG%,       \ Stock Figure                          \
+ 344: 0801:         STOCK.LAST.COUNT%,      \ Last Count Quantity                   \
+ 345: 0801:         STOCK.DATE.LAST.COUNT$, \ Date of Last Count                    \
+ 346: 0801:         STOCK.DATE.LAST.MOVE$,  \ Date of Last Movement                 \
+ 347: 0801:         STOCK.LAST.REC%,        \ Last Receipt Quantity                 \
+ 348: 0801:         STOCK.DATE.LAST.REC$,   \ Date of Last Receipt                  \
+ 349: 0801:         STOCK.DATE.LAST.GAP$,   \ Date of Last Gap                      \
+ 350: 0801:         STOCK.SID%,             \ Sequence ID                           \   !DMW
+ 351: 0801:         STOCK.STATUS.1$,        \ Item Status                           \   !DMW
+ 352: 0801:         STOCK.FLAGS%,           \ Stock flags                           \   !FMW
+ 353: 0801:         STOCK.FILLER$           ! Filler                                    !DMW
+ 354: 0801:                 
+ 355: 0801:     WRITE.STOCK.UNLOCK.HOLD = 0
+ 356: 0806:     
+ 357: 0806:     EXIT FUNCTION
+ 358: 0808: 
+ 359: 0808: WRITE.STOCK.UNLOCK.HOLD.ERROR:
+ 360: 0808: 
+ 361: 0808:     FILE.OPERATION$     = "W"                                               !BRC
+ 362: 0817:     CURRENT.REPORT.NUM% = STOCK.REPORT.NUM%
+ 363: 0825:     CURRENT.CODE$       = STOCK.BOOTS.CODE$
+ 364: 083b: 
+ 365: 083b: END FUNCTION
+ 366: 084a: 
+ 367: 084a: End of Compilation

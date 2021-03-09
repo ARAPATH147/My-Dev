@@ -1,0 +1,873 @@
+   1: 0000: !******************************************************************************
+   2: 0000: !******************************************************************************
+   3: 0000: !***
+   4: 0000: !***            PROGRAM         :       PSBF43.BAS
+   5: 0000: !***
+   6: 0000: !***            DESCRIPTION     :       Process Merge Files
+   7: 0000: !***
+   8: 0000: !***            AUTHOR          :       Julia Stones
+   9: 0000: !***            DATE WRITTEN    :       June 2005
+  10: 0000: !***
+  11: 0000: !***        This function will merge two files and is used by PSB30 and PSB34.
+  12: 0000: !***        Pass in the keyed file to be read sequentially by PSBF30
+  13: 0000: !***        Pass in the keyed file to be key read
+  14: 0000: !***        Pass in the ADD or SUBTRACT parameter.
+  15: 0000: !***        The function then calls PROCESS.KEYED.RECORD (PSBF30)
+  16: 0000: !***        Using PSBF30 this function will process one file sequentially
+  17: 0000: !***        and then open the other file keyed.
+  18: 0000: !***        Where the record does not exist on the keyed file then a new
+  19: 0000: !***        a new record will be added.
+  20: 0000: !***        Where the record exists on the keyed file then certain fields
+  21: 0000: !***        will be updated.
+  22: 0000: !***        The first file passed will be the file to opened for sequential
+  23: 0000: !***        processing, the second file passed will be opened keyed for update
+  24: 0000: !***        The third parameter will either be a plus or minus sign (+ or -)
+  25: 0000: !***
+  26: 0000: !******************************************************************************
+  27: 0000: !***
+  28: 0000: !***    Version B           Mark Walker                 12th Feb 2014
+  29: 0000: !***    F337 Centralised View of Stock
+  30: 0000: !***    - Added references to the new sequence ID field.
+  31: 0000: !***    - Added separate includes for BIMSTC, CIMSTC and BIMSTC files.
+  32: 0000: !***
+  33: 0000: !******************************************************************************
+  34: 0000: 
+  35: 0000: %INCLUDE PSBF43G.J86
+  36: 0000: !******************************************************************************
+  37: 0000: !******************************************************************************
+  38: 0000: !***
+  39: 0000: !***            PROGRAM         :       PSBF43G.J86
+  40: 0000: !***
+  41: 0000: !***            DESCRIPTION     :       Merge Files
+  42: 0000: !***
+  43: 0000: !***            AUTHOR          :       Julia Stones
+  44: 0000: !***            DATE WRITTEN    :       June 2005
+  45: 0000: !***
+  46: 0000: !***        This function will merge two files and is used by PSB30 and PSB34.
+  47: 0000: !***        Pass in the keyed file to be read sequentially by PSBF30
+  48: 0000: !***        Pass in the keyed file to be key read
+  49: 0000: !***        Pass in the ADD or SUBTRACT parameter.
+  50: 0000: !***        The function then calls PROCESS.KEYED.RECORD (PSBF30)
+  51: 0000: !***        Using PSBF30 this function will process one file sequentially
+  52: 0000: !***        and then open the other file keyed.
+  53: 0000: !***        Where the record does not exist on the keyed file then a new
+  54: 0000: !***        a new record will be added.
+  55: 0000: !***        Where the record exists on the keyed file then certain fields
+  56: 0000: !***        will be updated.
+  57: 0000: !***        The first file passed will be the file to opened for sequential
+  58: 0000: !***        processing, the second file passed will be opened keyed for update
+  59: 0000: !***        The third parameter will either be a plus or minus sign (+ or -)
+  60: 0000: !***
+  61: 0000: !******************************************************************************
+  62: 0000: !******************************************************************************
+  63: 0000: 
+  64: 0000: 
+  65: 0000: !******************************************************************************
+  66: 0000: 
+  67: 0000: STRING PROGRAM.NAME$
+  68: 0000: STRING SIGNED.FLAG$
+  69: 0000: 
+  70: 0000: INTEGER*1 ERROR.FLAG
+  71: 0000: INTEGER*2 RC%
+  72: 0000: 
+  73: 0000: %INCLUDE IMSTCDEC.J86   ! IMSTC FUNCTIONS                                       !BMW
+  74: 0000: \***********************************************************************
+  75: 0000: \***********************************************************************
+  76: 0000: \***
+  77: 0000: \***    DESCRIPTION: Item Movement & Stock File
+  78: 0000: \***                 Field Definitions         
+  79: 0000: \***
+  80: 0000: \***    FILE TYPE : Keyed
+  81: 0000: \***
+  82: 0000: \***********************************************************************
+  83: 0000: \***
+  84: 0000: \***    Version A.          Les Cook                     21st Aug 1992
+  85: 0000: \***    Initial version.
+  86: 0000: \***
+  87: 0000: \***    VERSION 1.1         Julia Stones                 13th Jun 2005
+  88: 0000: \***    Added new external functions for
+  89: 0000: \***        MIMSTC - merged IMSTC
+  90: 0000: \***        CIMSTC - Copy of IMSTC
+  91: 0000: \***        BIMSTC - Backup of IMSTC
+  92: 0000: \***
+  93: 0000: \***    Version C.          Mark Walker                  23rd Jan 2014
+  94: 0000: \***    F337 Centralised View of Stock
+  95: 0000: \***    - Added sequence ID field definition.
+  96: 0000: \***    - Moved BIMST, CIMST and MIMST field definitions to separate
+  97: 0000: \***      modules.
+  98: 0000: \***    - Moved TIMST record length to TIMSTDEC.J86.
+  99: 0000: \***    - Minor formatting changes (uncommented).
+ 100: 0000: \***
+ 101: 0000: \***    Version D.          Mark Walker                  30th Apr 2014
+ 102: 0000: \***    F337 Centralised View of Stock
+ 103: 0000: \***    QC599: Introduced item level TSL restart pointer to allow
+ 104: 0000: \***           Sales Support restart/recovery to continue processing
+ 105: 0000: \***           correctly from the next unprocessed item.
+ 106: 0000: \***
+ 107: 0000: \***********************************************************************
+ 108: 0000: \***********************************************************************
+ 109: 0000: 
+ 110: 0000: \***********************************************************************
+ 111: 0000: \***********************************************************************
+ 112: 0000: \***
+ 113: 0000: \***    File Record Layout
+ 114: 0000: \***
+ 115: 0000: \***    IMSTC.BAR.CODE$             11 UPD  Barcode (Key)
+ 116: 0000: \***    IMSTC.RESTART%               4 INT  IMSTC Restart pointer
+ 117: 0000: \***    IMSTC.NUMITEMS%              4 INT  Number of items sold
+ 118: 0000: \***    IMSTC.AMTSALE%               4 INT  Amount of items sold
+ 119: 0000: \***    IMSTC.TSL.RESTART%           4 INT  TSL Restart pointer             !DMW
+ 120: 0000: \***    IMSTC.STKMQ.RESTART%         4 INT  STKMQ Restart pointer
+ 121: 0000: \***    IMSTC.STATUS.FLAG$           1 ASC  Status flags
+ 122: 0000: \***    IMSTC.STOCK.FIGURE%          2 INT  Stock Figure
+ 123: 0000: \***    IMSTC.REASON.ITEM.REMOVED$   1 ASC  Deletion Reason
+ 124: 0000: \***    IMSTC.SID%                   4 INT  Sequence ID
+ 125: 0000: \***    IMSTC.FILLER$                1 UPD  Filler
+ 126: 0000: \***
+ 127: 0000: \***********************************************************************
+ 128: 0000: \***********************************************************************
+ 129: 0000: 
+ 130: 0000:     INTEGER*2 GLOBAL                                                    \
+ 131: 0000:         IMSTC.SESS.NUM%,                                                \
+ 132: 0000:         IMSTC.RECL%,                                                    \
+ 133: 0000:         IMSTC.REPORT.NUM%,                                              \
+ 134: 0000:         IMSTC.STOCK.FIGURE%
+ 135: 0000: 
+ 136: 0000:     INTEGER*4 GLOBAL                                                    \
+ 137: 0000:         IMSTC.AMTSALE%,                                                 \
+ 138: 0000:         IMSTC.NEXT.SID%,                                                \   !CMW
+ 139: 0000:         IMSTC.NUMITEMS%,                                                \
+ 140: 0000:         IMSTC.RESERVED%,                                                \
+ 141: 0000:         IMSTC.RESTART%,                                                 \
+ 142: 0000:         IMSTC.SID%,                                                     \   !CMW
+ 143: 0000:         IMSTC.STKMQ.RESTART%,                                           \
+ 144: 0000:         IMSTC.TSL.RESTART%                                                  !DMW
+ 145: 0000: 
+ 146: 0000:     STRING GLOBAL                                                       \
+ 147: 0000:         IMSTC.BAR.CODE$,                                                \
+ 148: 0000:         IMSTC.FILE.NAME$,                                               \
+ 149: 0000:         IMSTC.FILLER$,                                                  \
+ 150: 0000:         IMSTC.HOLD.PENDING$,                                            \
+ 151: 0000:         IMSTC.REASON.ITEM.REMOVED$,                                     \
+ 152: 0000:         IMSTC.STATUS.FLAG$
+ 153: 0000: 
+ 154: 0000: %INCLUDE CIMSTDEC.J86   ! CIMSTC FUNCTIONS                                      !BMW
+ 155: 0000: \***********************************************************************
+ 156: 0000: \***********************************************************************
+ 157: 0000: \***
+ 158: 0000: \***    DESCRIPTION: Item Movement & Stock File (Copy)
+ 159: 0000: \***                 Field Definitions         
+ 160: 0000: \***
+ 161: 0000: \***    FILE TYPE : Keyed
+ 162: 0000: \***
+ 163: 0000: \***********************************************************************
+ 164: 0000: \***
+ 165: 0000: \***    Version A.          Mark Walker                  23rd Jan 2014
+ 166: 0000: \***    Initial version (moved from IMSTCDEC.J86)
+ 167: 0000: \***
+ 168: 0000: \***********************************************************************
+ 169: 0000: \***********************************************************************
+ 170: 0000: 
+ 171: 0000: \***********************************************************************
+ 172: 0000: \***********************************************************************
+ 173: 0000: \***
+ 174: 0000: \***    File Record Layout
+ 175: 0000: \***
+ 176: 0000: \***    CIMSTC.BAR.CODE$            11 UPD  Barcode (Key)
+ 177: 0000: \***    CIMSTC.RESTART%              4 INT  IMSTC Restart pointer
+ 178: 0000: \***    CIMSTC.NUMITEMS%             4 INT  Number of items sold
+ 179: 0000: \***    CIMSTC.AMTSALE%              4 INT  Amount of items sold
+ 180: 0000: \***    CIMSTC.RESERVED%             4 INT  RESERVED by IBM
+ 181: 0000: \***    CIMSTC.STKMQ.RESTART%        4 INT  STKMQ Restart pointer
+ 182: 0000: \***    CIMSTC.STATUS.FLAG$          1 ASC  Status flags
+ 183: 0000: \***    CIMSTC.STOCK.FIGURE%         2 INT  Stock Figure
+ 184: 0000: \***    CIMSTC.REASON.ITEM.REMOVED$  1 ASC  Deletion Reason
+ 185: 0000: \***    CIMSTC.SID%                  4 INT  Sequence ID
+ 186: 0000: \***    CIMSTC.FILLER$               1 UPD  Filler
+ 187: 0000: \***
+ 188: 0000: \***********************************************************************
+ 189: 0000: \***********************************************************************
+ 190: 0000: 
+ 191: 0000:     INTEGER*2 GLOBAL                                                    \
+ 192: 0000:         CIMSTC.SESS.NUM%,                                               \
+ 193: 0000:         CIMSTC.RECL%,                                                   \
+ 194: 0000:         CIMSTC.REPORT.NUM%,                                             \
+ 195: 0000:         CIMSTC.STOCK.FIGURE%
+ 196: 0000: 
+ 197: 0000:     INTEGER*4 GLOBAL                                                    \
+ 198: 0000:         CIMSTC.AMTSALE%,                                                \
+ 199: 0000:         CIMSTC.NUMITEMS%,                                               \
+ 200: 0000:         CIMSTC.RESERVED%,                                               \
+ 201: 0000:         CIMSTC.RESTART%,                                                \
+ 202: 0000:         CIMSTC.SID%,                                                    \
+ 203: 0000:         CIMSTC.STKMQ.RESTART%
+ 204: 0000: 
+ 205: 0000:     STRING GLOBAL                                                       \
+ 206: 0000:         CIMSTC.BAR.CODE$,                                               \
+ 207: 0000:         CIMSTC.FILE.NAME$,                                              \
+ 208: 0000:         CIMSTC.FILLER$,                                                 \
+ 209: 0000:         CIMSTC.REASON.ITEM.REMOVED$,                                    \
+ 210: 0000:         CIMSTC.STATUS.FLAG$
+ 211: 0000: 
+ 212: 0000: %INCLUDE MIMSTDEC.J86   ! MIMSTC FUNCTIONS                                      !BMW
+ 213: 0000: \***********************************************************************
+ 214: 0000: \***********************************************************************
+ 215: 0000: \***
+ 216: 0000: \***    DESCRIPTION: Item Movement & Stock File (Merged)
+ 217: 0000: \***                 Field Definitions         
+ 218: 0000: \***
+ 219: 0000: \***    FILE TYPE : Keyed
+ 220: 0000: \***
+ 221: 0000: \***********************************************************************
+ 222: 0000: \***
+ 223: 0000: \***    Version A.          Mark Walker                  23rd Jan 2014
+ 224: 0000: \***    Initial version (moved from IMSTCDEC.J86)
+ 225: 0000: \***
+ 226: 0000: \***********************************************************************
+ 227: 0000: \***********************************************************************
+ 228: 0000: 
+ 229: 0000: \***********************************************************************
+ 230: 0000: \***********************************************************************
+ 231: 0000: \***
+ 232: 0000: \***    File Record Layout
+ 233: 0000: \***
+ 234: 0000: \***    MIMSTC.BAR.CODE$            11 UPD  Barcode (Key)
+ 235: 0000: \***    MIMSTC.RESTART%              4 INT  IMSTC Restart pointer
+ 236: 0000: \***    MIMSTC.NUMITEMS%             4 INT  Number of items sold
+ 237: 0000: \***    MIMSTC.AMTSALE%              4 INT  Amount of items sold
+ 238: 0000: \***    MIMSTC.RESERVED%             4 INT  RESERVED by IBM
+ 239: 0000: \***    MIMSTC.STKMQ.RESTART%        4 INT  STKMQ Restart pointer
+ 240: 0000: \***    MIMSTC.STATUS.FLAG$          1 ASC  Status flags
+ 241: 0000: \***    MIMSTC.STOCK.FIGURE%         2 INT  Stock Figure
+ 242: 0000: \***    MIMSTC.REASON.ITEM.REMOVED$  1 ASC  Deletion Reason
+ 243: 0000: \***    MIMSTC.SID%                  4 INT  Sequence ID
+ 244: 0000: \***    MIMSTC.FILLER$               1 UPD  Filler
+ 245: 0000: \***
+ 246: 0000: \***********************************************************************
+ 247: 0000: \***********************************************************************
+ 248: 0000: 
+ 249: 0000:     INTEGER*2 GLOBAL                                                    \
+ 250: 0000:         MIMSTC.SESS.NUM%,                                               \
+ 251: 0000:         MIMSTC.RECL%,                                                   \
+ 252: 0000:         MIMSTC.REPORT.NUM%,                                             \
+ 253: 0000:         MIMSTC.STOCK.FIGURE%
+ 254: 0000: 
+ 255: 0000:     INTEGER*4 GLOBAL                                                    \
+ 256: 0000:         MIMSTC.AMTSALE%,                                                \
+ 257: 0000:         MIMSTC.NUMITEMS%,                                               \
+ 258: 0000:         MIMSTC.RESERVED%,                                               \
+ 259: 0000:         MIMSTC.RESTART%,                                                \
+ 260: 0000:         MIMSTC.SID%,                                                    \
+ 261: 0000:         MIMSTC.STKMQ.RESTART%
+ 262: 0000: 
+ 263: 0000:     STRING GLOBAL                                                       \
+ 264: 0000:         MIMSTC.BAR.CODE$,                                               \
+ 265: 0000:         MIMSTC.FILE.NAME$,                                              \
+ 266: 0000:         MIMSTC.FILLER$,                                                 \
+ 267: 0000:         MIMSTC.REASON.ITEM.REMOVED$,                                    \
+ 268: 0000:         MIMSTC.STATUS.FLAG$
+ 269: 0000: 
+ 270: 0000: 
+ 271: 0000: !******************************************************************************
+ 272: 0000: 
+ 273: 0000: %INCLUDE IMSTCEXT.J86   ! IMSTC EXTERNALS                                       !BMW
+ 274: 0000: \***********************************************************************
+ 275: 0000: \***********************************************************************
+ 276: 0000: \***
+ 277: 0000: \***    DESCRIPTION: Item Movement & Stock File
+ 278: 0000: \***                 External File Function Definitions
+ 279: 0000: \***
+ 280: 0000: \***    FILE TYPE : Keyed
+ 281: 0000: \***
+ 282: 0000: \***********************************************************************
+ 283: 0000: \***
+ 284: 0000: \***    Version A.          Les Cook                     21st Aug 1992
+ 285: 0000: \***    Initial version.
+ 286: 0000: \***
+ 287: 0000: \***    VERSION 1.1         Julia Stones                 13th Jun 2005
+ 288: 0000: \***    Added new external functions for
+ 289: 0000: \***        MIMSTC - merged IMSTC
+ 290: 0000: \***        CIMSTC - Copy of IMSTC
+ 291: 0000: \***        BIMSTC - Backup of IMSTC
+ 292: 0000: \***
+ 293: 0000: \***    Version C.          Mark Walker                  23rd Jan 2014
+ 294: 0000: \***    F337 Centralised View of Stock
+ 295: 0000: \***    - Moved BIMST, CIMST and MIMST external function definitions
+ 296: 0000: \***      to separate modules.
+ 297: 0000: \***    - Minor formatting changes (uncommented).
+ 298: 0000: \***
+ 299: 0000: \***********************************************************************
+ 300: 0000: \***********************************************************************
+ 301: 0000: 
+ 302: 0000: FUNCTION IMSTC.SET EXTERNAL
+ 303: 0000: END FUNCTION
+ 304: 0000: 
+ 305: 0000: FUNCTION READ.IMSTC EXTERNAL
+ 306: 0000:     INTEGER*2 READ.IMSTC
+ 307: 0000: END FUNCTION
+ 308: 0000: 
+ 309: 0000: FUNCTION READ.IMSTC.LOCK EXTERNAL
+ 310: 0000:     INTEGER*2 READ.IMSTC.LOCK
+ 311: 0000: END FUNCTION
+ 312: 0000: 
+ 313: 0000: FUNCTION WRITE.IMSTC EXTERNAL
+ 314: 0000:    INTEGER*2 WRITE.IMSTC
+ 315: 0000: END FUNCTION
+ 316: 0000: 
+ 317: 0000: FUNCTION WRITE.IMSTC.UNLOCK.HOLD EXTERNAL
+ 318: 0000:     INTEGER*2 WRITE.IMSTC.UNLOCK.HOLD
+ 319: 0000: END FUNCTION
+ 320: 0000: 
+ 321: 0000: FUNCTION WRITE.IMSTC.UNLOCK EXTERNAL
+ 322: 0000:    INTEGER*2 WRITE.IMSTC.UNLOCK
+ 323: 0000: END FUNCTION
+ 324: 0000: 
+ 325: 0000: FUNCTION WRITE.IMSTC.HOLD EXTERNAL
+ 326: 0000:    INTEGER*2 WRITE.IMSTC.HOLD
+ 327: 0000: END FUNCTION
+ 328: 0000: 
+ 329: 0000: %INCLUDE CIMSTEXT.J86   ! CIMSTC EXTERNALS                                      !BMW
+ 330: 0000: \***********************************************************************
+ 331: 0000: \***********************************************************************
+ 332: 0000: \***
+ 333: 0000: \***    DESCRIPTION: Item Movement & Stock File (Copy)
+ 334: 0000: \***                 External File Function Definitions
+ 335: 0000: \***
+ 336: 0000: \***    FILE TYPE : Keyed
+ 337: 0000: \***
+ 338: 0000: \***********************************************************************
+ 339: 0000: \***
+ 340: 0000: \***    Version A.          Mark Walker                  23rd Jan 2014
+ 341: 0000: \***    Initial version (moved from IMSTCEXT.J86)
+ 342: 0000: \***
+ 343: 0000: \***********************************************************************
+ 344: 0000: \***********************************************************************
+ 345: 0000: 
+ 346: 0000: FUNCTION CIMSTC.SET EXTERNAL
+ 347: 0000: END FUNCTION
+ 348: 0000: 
+ 349: 0000: FUNCTION READ.CIMSTC EXTERNAL
+ 350: 0000:     INTEGER*2 READ.CIMSTC
+ 351: 0000: END FUNCTION
+ 352: 0000: 
+ 353: 0000: FUNCTION WRITE.CIMSTC EXTERNAL
+ 354: 0000:    INTEGER*2 WRITE.CIMSTC
+ 355: 0000: END FUNCTION
+ 356: 0000: %INCLUDE MIMSTEXT.J86   ! MIMSTC EXTERNALS                                      !BMW
+ 357: 0000: \***********************************************************************
+ 358: 0000: \***********************************************************************
+ 359: 0000: \***
+ 360: 0000: \***    DESCRIPTION: Item Movement & Stock File (Merged)
+ 361: 0000: \***                 External File Function Definitions
+ 362: 0000: \***
+ 363: 0000: \***    FILE TYPE : Keyed
+ 364: 0000: \***
+ 365: 0000: \***********************************************************************
+ 366: 0000: \***
+ 367: 0000: \***    Version A.          Mark Walker                  23rd Jan 2014
+ 368: 0000: \***    Initial version (moved from IMSTCEXT.J86)
+ 369: 0000: \***
+ 370: 0000: \***********************************************************************
+ 371: 0000: \***********************************************************************
+ 372: 0000: 
+ 373: 0000: FUNCTION MIMSTC.SET EXTERNAL
+ 374: 0000: END FUNCTION
+ 375: 0000: 
+ 376: 0000: FUNCTION READ.MIMSTC EXTERNAL
+ 377: 0000:     INTEGER*2 READ.MIMSTC
+ 378: 0000: END FUNCTION
+ 379: 0000: 
+ 380: 0000: FUNCTION WRITE.MIMSTC EXTERNAL
+ 381: 0000:    INTEGER*2 WRITE.MIMSTC
+ 382: 0000: END FUNCTION
+ 383: 0000: 
+ 384: 0000: FUNCTION WRITE.MIMSTC.HOLD EXTERNAL
+ 385: 0000:    INTEGER*2 WRITE.MIMSTC.HOLD
+ 386: 0000: END FUNCTION
+ 387: 0000: 
+ 388: 0000: !******************************************************************************
+ 389: 0000: 
+ 390: 0000: %INCLUDE PSBF30E.J86    !PROCESS KEYED FILE EXTERNALS
+ 391: 0000: \*****************************************************************************
+ 392: 0000: \*****************************************************************************
+ 393: 0000: \***
+ 394: 0000: \***                 EXTERNAL FUNCTION DEFINITION PSBF30
+ 395: 0000: \***
+ 396: 0000: \*****************************************************************************
+ 397: 0000: \*****************************************************************************
+ 398: 0000: 
+ 399: 0000: \*****************************************************************************
+ 400: 0000: \*****************************************************************************
+ 401: 0000: \***
+ 402: 0000: \***   Version 96A              Mark Walker                31st May 1995
+ 403: 0000: \***   Original version.
+ 404: 0000: \***
+ 405: 0000: \***   Version B                Andrew Wedgeworth          17th March 1997
+ 406: 0000: \***   Added READONLY$ variable.  This parameter may be used to specify 
+ 407: 0000: \***   whether the file is to be opened with the READONLY option.
+ 408: 0000: \***
+ 409: 0000: \*****************************************************************************
+ 410: 0000: \*****************************************************************************
+ 411: 0000:  
+ 412: 0000:        FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \ 
+ 413: 0000:                                    REPORT.NUM%,                        \  
+ 414: 0000:                                    READONLY$) EXTERNAL
+ 415: 0000: 
+ 416: 0000:        STRING FILE.NAME$,READONLY$
+ 417: 0000:        INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+ 418: 0000: 
+ 419: 0000:        END FUNCTION
+ 420: 0000: 
+ 421: 0000: %INCLUDE PSGASMRT.J86   !GETN2 AND GETN4 EXTERNALS
+ 422: 0000: !**********************************************************************!
+ 423: 0000: !* MODULE:  PSGASMRT.J86            Assembler sub routine definitions *!
+ 424: 0000: !*                                                                    *!
+ 425: 0000: !* PRODUCT: IBM 4690 EPS/GSA Ver 6 Rel 1                          AHM *!
+ 426: 0000: !*                                                            01Sep89 *!
+ 427: 0000: !*                                                                    *!
+ 428: 0000: !* THIS MODULE IS "RESTRICTED MATERIALS OF IBM".                      *!
+ 429: 0000: !* 5799-TYG (C) COPYRIGHT IBM CORP. 1989, 2007.                       *!
+ 430: 0000: !* LICENSED MATERIALS - PROPERTY OF IBM.                              *!
+ 431: 0000: !* SEE COPYRIGHT INSTRUCTIONS, G120-2083.                             *!
+ 432: 0000: !*                                                                    *!
+ 433: 0000: !* DESCRIPTION: These definitions should be included by any module    *!
+ 434: 0000: !*              which wishes to use the performance enhanced          *!
+ 435: 0000: !*              assembler routines.                                   *!
+ 436: 0000: !*                                                                    *!
+ 437: 0000: !* CALLED BY  :                                                       *!
+ 438: 0000: !*                                                                    *!
+ 439: 0000: !* CHANGE HISTORY :                                                   *!
+ 440: 0000: !*                                                                    *!
+ 441: 0000: !* ------------------------------------------------------------------ *!
+ 442: 0000: !*  The above changes were migrated from EPS/GSA Version 1, 5786-EKL. *!
+ 443: 0000: !* ------------------------------------------------------------------ *!
+ 444: 0000: !*                                                                    *!
+ 445: 0000: !**********************************************************************!
+ 446: 0000: 
+ 447: 0000: !*********************************************************************
+ 448: 0000: !
+ 449: 0000: ! SUBSTR
+ 450: 0000: !
+ 451: 0000: ! This routine performs a merge of two strings. String P3$, offset P4
+ 452: 0000: ! is merged into string P1$ offset P2 for a length of P5 bytes
+ 453: 0000: !
+ 454: 0000: ! CAUTION: P1$ must be long enough to totally contain P3$
+ 455: 0000: !
+ 456: 0000: !*********************************************************************
+ 457: 0000: 
+ 458: 0000:  FUNCTION SUBSTR(p1$,p2,p3$,p4,p5) EXTERNAL
+ 459: 0000:  STRING p1$,p3$
+ 460: 0000:  INTEGER*2 p2,p4,p5
+ 461: 0000:  END FUNCTION
+ 462: 0000: 
+ 463: 0000: !*********************************************************************
+ 464: 0000: !
+ 465: 0000: ! GETN2/GETN4
+ 466: 0000: !
+ 467: 0000: ! These routines extract a two/four byte integer from a string.
+ 468: 0000: ! P2 is the offset within the string
+ 469: 0000: !
+ 470: 0000: !*********************************************************************
+ 471: 0000: 
+ 472: 0000:  FUNCTION GETN2(p1$,p2) EXTERNAL
+ 473: 0000:  INTEGER*2 GETN2
+ 474: 0000:  STRING p1$
+ 475: 0000:  INTEGER*2 p2
+ 476: 0000:  END FUNCTION
+ 477: 0000: 
+ 478: 0000:  FUNCTION GETN4(p1$,p2) EXTERNAL
+ 479: 0000:  INTEGER*4 GETN4
+ 480: 0000:  STRING p1$
+ 481: 0000:  INTEGER*2 p2
+ 482: 0000:  END FUNCTION
+ 483: 0000: 
+ 484: 0000: !*********************************************************************
+ 485: 0000: !
+ 486: 0000: ! PUTN2/PUTN4
+ 487: 0000: !
+ 488: 0000: ! These routines insert a two/four byte integer into a string.
+ 489: 0000: ! P2 is the offset within the string and P3 is the source integer
+ 490: 0000: !
+ 491: 0000: !*********************************************************************
+ 492: 0000: 
+ 493: 0000:  FUNCTION PUTN2(p1$,p2,p3) EXTERNAL
+ 494: 0000:  STRING p1$
+ 495: 0000:  INTEGER*2 p2,p3
+ 496: 0000:  END FUNCTION
+ 497: 0000: 
+ 498: 0000:  FUNCTION PUTN4(p1$,p2,p3) EXTERNAL
+ 499: 0000:  STRING p1$
+ 500: 0000:  INTEGER*2 p2
+ 501: 0000:  INTEGER*4 p3
+ 502: 0000:  END FUNCTION
+ 503: 0000: 
+ 504: 0000: !*********************************************************************
+ 505: 0000: !
+ 506: 0000: ! PACKBIN2/4
+ 507: 0000: !
+ 508: 0000: ! These routines take a packed decimal string and convert to integer
+ 509: 0000: ! (The equivalent of CBASIC INT%(VAL(UNPACK$())) )
+ 510: 0000: ! P1 is the source string, P2 the string offset and P3 the length
+ 511: 0000: !
+ 512: 0000: !*********************************************************************
+ 513: 0000: 
+ 514: 0000:  FUNCTION PACKBIN2(p1$,p2,p3) EXTERNAL
+ 515: 0000:  INTEGER*2 PACKBIN2
+ 516: 0000:  STRING p1$
+ 517: 0000:  INTEGER*2 p2,p3
+ 518: 0000:  END FUNCTION
+ 519: 0000: 
+ 520: 0000:  FUNCTION PACKBIN4(p1$,p2,p3) EXTERNAL
+ 521: 0000:  INTEGER*4 PACKBIN4
+ 522: 0000:  STRING p1$
+ 523: 0000:  INTEGER*2 p2,p3
+ 524: 0000:  END FUNCTION
+ 525: 0000: 
+ 526: 0000: !******************************************************************************
+ 527: 0000: 
+ 528: 0000: \******************************************************************************
+ 529: 0000: \***                                                                          *
+ 530: 0000: \***   FUNCTION : PROCESS.KEYED.RECORD$                                       *
+ 531: 0000: \***                                                                          *
+ 532: 0000: \******************************************************************************
+ 533: 0000: \***                                                                          *
+ 534: 0000: \***  Processes each record on the keyed file passed into the PSBF30 seq file *
+ 535: 0000: \***  processing function.  The file being processed will be either the       *
+ 536: 0000: \***  IMSTC, MIMSTC or CIMSTC file                                            *
+ 537: 0000: \***  The record passed into this function will be stored in temporary        *
+ 538: 0000: \***  variables.                                                              *
+ 539: 0000: \***  Each record will then be checked in the MERGE FILE subroutine to see if *
+ 540: 0000: \***  the record needs to be added or merged to the file being processed in   *
+ 541: 0000: \***  keyed file mode.                                                        *
+ 542: 0000: \***                                                                          *
+ 543: 0000: \******************************************************************************
+ 544: 0000: 
+ 545: 0000: FUNCTION PROCESS.KEYED.RECORD$(RECORD$) PUBLIC
+ 546: 0019: 
+ 547: 0019:     STRING                                                              \
+ 548: 0019:         RECORD$,                                                        \
+ 549: 0019:         PROCESS.KEYED.RECORD$,                                          \
+ 550: 0019:         SEQ.BAR.CODE$,                                                  \
+ 551: 0019:         SEQ.STATUS.FLAG$,                                               \
+ 552: 0019:         SEQ.REASON.ITEM.REMOVED$,                                       \
+ 553: 0019:         SEQ.FILLER$
+ 554: 0019: 
+ 555: 0019:     INTEGER*4                                                           \
+ 556: 0019:         SEQ.RESTART%,                                                   \
+ 557: 0019:         SEQ.NUMITEMS%,                                                  \
+ 558: 0019:         SEQ.AMTSALE%,                                                   \
+ 559: 0019:         SEQ.RESERVED%,                                                  \
+ 560: 0019:         SEQ.STKMQ.RESTART%,                                             \
+ 561: 0019:         SEQ.SID%                                                            !BMW
+ 562: 0019: 
+ 563: 0019:     INTEGER*2                                                           \
+ 564: 0019:         SEQ.STOCK.FIGURE%
+ 565: 0019: 
+ 566: 0019:     SEQ.BAR.CODE$            = LEFT$(RECORD$,11)
+ 567: 0031:     SEQ.RESTART%             = GETN4(RECORD$,11)
+ 568: 004e:     SEQ.NUMITEMS%            = GETN4(RECORD$,15)
+ 569: 006b:     SEQ.AMTSALE%             = GETN4(RECORD$,19)
+ 570: 0088:     SEQ.RESERVED%            = GETN4(RECORD$,23)
+ 571: 00a5:     SEQ.STKMQ.RESTART%       = GETN4(RECORD$,27)
+ 572: 00c2:     SEQ.STATUS.FLAG$         = MID$(RECORD$,32,1)
+ 573: 00da:     SEQ.STOCK.FIGURE%        = GETN2(RECORD$,32)
+ 574: 00ed:     SEQ.REASON.ITEM.REMOVED$ = MID$(RECORD$,35,1)
+ 575: 0105:     SEQ.SID%                 = GETN4(RECORD$,35)                            !BMW
+ 576: 0122: !!!!SEQ.FILLER$              = RIGHT$(RECORD$,5)                            !BMW
+ 577: 0122:     SEQ.FILLER$              = RIGHT$(RECORD$,1)                            !BMW
+ 578: 0138: 
+ 579: 0138:     GOSUB MERGE.RECORD
+ 580: 0142: 
+ 581: 0142:     PROCESS.KEYED.RECORD$ = RECORD$
+ 582: 0152: 
+ 583: 0152: EXIT FUNCTION
+ 584: 0155: 
+ 585: 0155: \*********************************************************************
+ 586: 0155: \***
+ 587: 0155: \***   MERGE.RECORD
+ 588: 0155: \***
+ 589: 0155: \***   The program (PSB30 or PSB34) that called this function will have
+ 590: 0155: \***   have opened the files to be processed as keyed before calling this
+ 591: 0155: \***   function.  PSBF30 will have opened the keyed file to be processed
+ 592: 0155: \***   sequentially as part of it's processing.
+ 593: 0155: \***
+ 594: 0155: \***   MERGE.RECORD - Checks if the record being processed exists on the
+ 595: 0155: \***   file being processed as a keyed file.
+ 596: 0155: \***   If the program calling this function is PSB34 then the MIMSTC
+ 597: 0155: \***   will have been opened as keyed by PSB34, PSBF30 will be processing
+ 598: 0155: \***   the keyed file CIMSTC sequentially.
+ 599: 0155: \***   If the CIMSTC record does not exist on the MIMSTC then the record
+ 600: 0155: \***   is added.  If the record was found then the two records are merged
+ 601: 0155: \***   onto the MIMSTC.
+ 602: 0155: \***   If the program calling this function is PSB30 and the + sign is
+ 603: 0155: \***   passed, then the IMSTC will have been opened as keyed by PSB30,
+ 604: 0155: \***   PSBF30 will be processing the keyed file MIMSTC sequentially.
+ 605: 0155: \***   If the MIMSTC record does not exist on the IMSTC then the record
+ 606: 0155: \***   is added.  If the record was found then the two records are merged
+ 607: 0155: \***   onto the IMSTC.
+ 608: 0155: \***   If the program calling this function is PSB30 and the - sign is
+ 609: 0155: \***   passed, then the CIMSTC is opened keyed, the MIMSTC is created
+ 610: 0155: \***   and opened keyed by PSB30, PSBF30 will be processing the keyed
+ 611: 0155: \***   file IMSTC sequentially.
+ 612: 0155: \***   If the IMSTC record does not exist on the CIMSTC then the IMSTC
+ 613: 0155: \***   record is written to the MIMSTC.  If the record was found then
+ 614: 0155: \***   the CIMSTC and IMSTC records are merged and written out to the
+ 615: 0155: \***   MIMSTC.
+ 616: 0155: \***
+ 617: 0155: \***
+ 618: 0155: \*********************************************************************
+ 619: 0155: 
+ 620: 0155: MERGE.RECORD:
+ 621: 0155: 
+ 622: 0155:     IF PROGRAM.NAME$ = "PSB34"  THEN BEGIN
+ 623: 0168:        MIMSTC.BAR.CODE$ = SEQ.BAR.CODE$
+ 624: 017b:        RC% = READ.MIMSTC
+ 625: 0183:        IF RC% NE 0 THEN BEGIN
+ 626: 0188:           GOSUB ADD.RECORD.TO.MIMSTC
+ 627: 0194:        ENDIF ELSE BEGIN
+ 628: 0194:           GOSUB MERGE.RECORD.TO.MIMSTC
+ 629: 019e:        ENDIF
+ 630: 01a1:     ENDIF ELSE BEGIN
+ 631: 01a1:        IF PROGRAM.NAME$ = "PSB30" THEN BEGIN
+ 632: 01b7:           IF SIGNED.FLAG$ = "+" THEN BEGIN
+ 633: 01ca:              IMSTC.BAR.CODE$ = SEQ.BAR.CODE$
+ 634: 01dd:              RC% = READ.IMSTC
+ 635: 01e5:              IF RC% NE 0 THEN BEGIN
+ 636: 01ea:                 GOSUB ADD.RECORD.TO.IMSTC
+ 637: 01f6:              ENDIF ELSE BEGIN
+ 638: 01f6:                 GOSUB MERGE.RECORD.TO.IMSTC
+ 639: 0200:              ENDIF
+ 640: 0202:           ENDIF ELSE BEGIN
+ 641: 0202:              CIMSTC.BAR.CODE$ = SEQ.BAR.CODE$
+ 642: 0215:              MIMSTC.BAR.CODE$ = SEQ.BAR.CODE$
+ 643: 0228:              RC% = READ.CIMSTC
+ 644: 0230:              IF RC% NE 0 THEN BEGIN
+ 645: 0235:                 GOSUB ADD.RECORD.TO.MIMSTC
+ 646: 0241:              ENDIF ELSE BEGIN
+ 647: 0241:                 GOSUB MERGE.RECORD.TO.MIMSTC
+ 648: 024b:              ENDIF
+ 649: 024b:           ENDIF
+ 650: 024b:        ENDIF
+ 651: 024b:     ENDIF
+ 652: 024b: 
+ 653: 024b: RETURN
+ 654: 0253: 
+ 655: 0253: \*******************************************************************
+ 656: 0253: \***
+ 657: 0253: \***  ADD.RECORD.TO MIMSTC:
+ 658: 0253: \***
+ 659: 0253: \***  This processing will write a record to the MIMSTC
+ 660: 0253: \***
+ 661: 0253: \*******************************************************************
+ 662: 0253: 
+ 663: 0253: ADD.RECORD.TO.MIMSTC:
+ 664: 0253: 
+ 665: 0253:    MIMSTC.RESTART%             = SEQ.RESTART%
+ 666: 0262:    MIMSTC.NUMITEMS%            = SEQ.NUMITEMS%
+ 667: 0271:    MIMSTC.AMTSALE%             = SEQ.AMTSALE%
+ 668: 0280:    MIMSTC.RESERVED%            = SEQ.RESERVED%
+ 669: 028f:    MIMSTC.STKMQ.RESTART%       = SEQ.STKMQ.RESTART%
+ 670: 029e:    MIMSTC.STATUS.FLAG$         = SEQ.STATUS.FLAG$
+ 671: 02b1:    MIMSTC.STOCK.FIGURE%        = SEQ.STOCK.FIGURE%
+ 672: 02bb:    MIMSTC.REASON.ITEM.REMOVED$ = SEQ.REASON.ITEM.REMOVED$
+ 673: 02ce:    MIMSTC.SID%                 = SEQ.SID%                                   !BMW
+ 674: 02dd:    MIMSTC.FILLER$              = SEQ.FILLER$
+ 675: 02f0: 
+ 676: 02f0:    RC% = WRITE.MIMSTC
+ 677: 02f8: 
+ 678: 02f8:    IF RC% NE 0 THEN BEGIN
+ 679: 02fd:       ERROR.FLAG = 2
+ 680: 0302:       GOTO PSBF43.ERROR
+ 681: 0305:    ENDIF
+ 682: 0305: 
+ 683: 0305: RETURN
+ 684: 030d: 
+ 685: 030d: \*******************************************************************
+ 686: 030d: \***
+ 687: 030d: \***  ADD.RECORD.TO IMSTC:
+ 688: 030d: \***
+ 689: 030d: \***  This processing will write a record to the IMSTC
+ 690: 030d: \***
+ 691: 030d: \*******************************************************************
+ 692: 030d: 
+ 693: 030d: 
+ 694: 030d: ADD.RECORD.TO.IMSTC:
+ 695: 030d: 
+ 696: 030d:    IMSTC.RESTART%             = SEQ.RESTART%
+ 697: 031c:    IMSTC.NUMITEMS%            = SEQ.NUMITEMS%
+ 698: 032b:    IMSTC.AMTSALE%             = SEQ.AMTSALE%
+ 699: 033a:    IMSTC.RESERVED%            = SEQ.RESERVED%
+ 700: 0349:    IMSTC.STKMQ.RESTART%       = SEQ.STKMQ.RESTART%
+ 701: 0358:    IMSTC.STATUS.FLAG$         = SEQ.STATUS.FLAG$
+ 702: 036b:    IMSTC.STOCK.FIGURE%        = SEQ.STOCK.FIGURE%
+ 703: 0375:    IMSTC.REASON.ITEM.REMOVED$ = SEQ.REASON.ITEM.REMOVED$
+ 704: 0388:    IMSTC.SID%                 = SEQ.SID%                                    !BMW
+ 705: 0397:    IMSTC.FILLER$              = SEQ.FILLER$
+ 706: 03aa: 
+ 707: 03aa:    RC% = WRITE.IMSTC
+ 708: 03b2: 
+ 709: 03b2: RETURN
+ 710: 03ba: 
+ 711: 03ba: \*******************************************************************
+ 712: 03ba: \***
+ 713: 03ba: \***  MERGE.RECORD.TO MIMSTC:
+ 714: 03ba: \***
+ 715: 03ba: \***  The MIMSTC record will be updated as follows.
+ 716: 03ba: \***
+ 717: 03ba: \***  If the program calling this function was PSB34 then the number
+ 718: 03ba: \***  of items and amount of sales from the file being processed
+ 719: 03ba: \***  sequentially will be added to the values from the file being
+ 720: 03ba: \***  processed as keyed.  The stock figure, reason item removed,
+ 721: 03ba: \***  and the status flag will be set to the value from the file
+ 722: 03ba: \***  being processed sequentially. All the other fields will be
+ 723: 03ba: \***  set to the value from the file being processed as keyed.
+ 724: 03ba: \***
+ 725: 03ba: \***  If the program calling this function is PSB30 then the number
+ 726: 03ba: \***  of items and amount of sales from file being processed as
+ 727: 03ba: \***  keyed will be taken away from the file being processed
+ 728: 03ba: \***  sequentially.  All the other fields will be set to the value
+ 729: 03ba: \***  from the file being processed sequentially.
+ 730: 03ba: \***
+ 731: 03ba: \*******************************************************************
+ 732: 03ba: 
+ 733: 03ba: 
+ 734: 03ba: MERGE.RECORD.TO.MIMSTC:
+ 735: 03ba: 
+ 736: 03ba:    IF PROGRAM.NAME$ = "PSB34" THEN BEGIN
+ 737: 03d0:       MIMSTC.NUMITEMS%     = (SEQ.NUMITEMS% + MIMSTC.NUMITEMS%)
+ 738: 03e5:       MIMSTC.AMTSALE%      = (SEQ.AMTSALE% + MIMSTC.AMTSALE%)
+ 739: 03fa:       MIMSTC.STOCK.FIGURE% = SEQ.STOCK.FIGURE%
+ 740: 0404:       MIMSTC.SID%          = SEQ.SID%                                       !BMW
+ 741: 0413: 
+ 742: 0413:       IF MIMSTC.REASON.ITEM.REMOVED$ NE SEQ.REASON.ITEM.REMOVED$ THEN BEGIN
+ 743: 042d:          IF SEQ.REASON.ITEM.REMOVED$ NE " " THEN BEGIN
+ 744: 0440:             MIMSTC.REASON.ITEM.REMOVED$ = SEQ.REASON.ITEM.REMOVED$
+ 745: 0453:          ENDIF
+ 746: 0453:       ENDIF
+ 747: 0453: 
+ 748: 0453:       IF MIMSTC.STATUS.FLAG$ NE SEQ.STATUS.FLAG$ THEN BEGIN
+ 749: 046d:          IF SEQ.STATUS.FLAG$ = CHR$(192) THEN BEGIN
+ 750: 0487:             MIMSTC.STATUS.FLAG$ = SEQ.STATUS.FLAG$
+ 751: 049a:          ENDIF
+ 752: 049a:       ENDIF
+ 753: 049a: 
+ 754: 049a:       RC% = WRITE.MIMSTC
+ 755: 04a5: 
+ 756: 04a5:    ENDIF ELSE BEGIN
+ 757: 04a5:       MIMSTC.BAR.CODE$            = SEQ.BAR.CODE$
+ 758: 04b8:       MIMSTC.RESTART%             = SEQ.RESTART%
+ 759: 04c7:       MIMSTC.NUMITEMS%            = (SEQ.NUMITEMS% - CIMSTC.NUMITEMS%)
+ 760: 04dc:       MIMSTC.AMTSALE%             = (SEQ.AMTSALE% - CIMSTC.AMTSALE%)
+ 761: 04f1:       MIMSTC.RESERVED%            = SEQ.RESERVED%
+ 762: 0500:       MIMSTC.STKMQ.RESTART%       = SEQ.STKMQ.RESTART%
+ 763: 050f:       MIMSTC.STATUS.FLAG$         = SEQ.STATUS.FLAG$
+ 764: 0522:       MIMSTC.STOCK.FIGURE%        = SEQ.STOCK.FIGURE%
+ 765: 052c:       MIMSTC.REASON.ITEM.REMOVED$ = SEQ.REASON.ITEM.REMOVED$
+ 766: 053f:       MIMSTC.SID%                 = SEQ.SID%                                !BMW
+ 767: 054e:       MIMSTC.FILLER$              = SEQ.FILLER$
+ 768: 0561: 
+ 769: 0561:       RC% = WRITE.MIMSTC
+ 770: 0569: 
+ 771: 0569:    ENDIF
+ 772: 0569: 
+ 773: 0569: RETURN
+ 774: 0571: 
+ 775: 0571: \*******************************************************************
+ 776: 0571: \***
+ 777: 0571: \***  MERG.RECORD.TO IMSTC:
+ 778: 0571: \***
+ 779: 0571: \***  The IMSTC record will be updated as follows.
+ 780: 0571: \***
+ 781: 0571: \***  The number of items and amount of sales from the file being
+ 782: 0571: \***  processed sequentially will be added to the values from the
+ 783: 0571: \***  file being processed as keyed.  The reason item removed,
+ 784: 0571: \***  and the status flag will be set to the value from the file
+ 785: 0571: \***  being processed sequentially. All the other fields will be
+ 786: 0571: \***  set to the value from the file being processed as keyed.
+ 787: 0571: \***
+ 788: 0571: \*******************************************************************
+ 789: 0571: 
+ 790: 0571: 
+ 791: 0571: MERGE.RECORD.TO.IMSTC:
+ 792: 0571: 
+ 793: 0571:       IMSTC.NUMITEMS%     = (SEQ.NUMITEMS% + IMSTC.NUMITEMS%)
+ 794: 0586:       IMSTC.AMTSALE%      = (SEQ.AMTSALE% + IMSTC.AMTSALE%)
+ 795: 059b: 
+ 796: 059b:       IF IMSTC.REASON.ITEM.REMOVED$ NE SEQ.REASON.ITEM.REMOVED$ THEN BEGIN
+ 797: 05b5:          IF SEQ.REASON.ITEM.REMOVED$ NE " " THEN BEGIN
+ 798: 05c8:             IMSTC.REASON.ITEM.REMOVED$ = SEQ.REASON.ITEM.REMOVED$
+ 799: 05db:          ENDIF
+ 800: 05db:       ENDIF
+ 801: 05db: 
+ 802: 05db:       IF IMSTC.STATUS.FLAG$ NE SEQ.STATUS.FLAG$ THEN BEGIN
+ 803: 05f5:          IF SEQ.STATUS.FLAG$ = CHR$(192) THEN BEGIN
+ 804: 060f:             IMSTC.STATUS.FLAG$ = SEQ.STATUS.FLAG$
+ 805: 0622:          ENDIF
+ 806: 0622:       ENDIF
+ 807: 0622: 
+ 808: 0622:       RC% = WRITE.IMSTC
+ 809: 062a: 
+ 810: 062a: RETURN
+ 811: 0632: 
+ 812: 0632: PSBF43.ERROR:
+ 813: 0632: 
+ 814: 0632: END FUNCTION
+ 815: 0648: 
+ 816: 0648: \**********************************************************************
+ 817: 0648: \***
+ 818: 0648: \***  PROCESS.MERGE.FILES
+ 819: 0648: \***
+ 820: 0648: \***  The calling program will pass the program name (PSB30 or PSB34)
+ 821: 0648: \***  and a sign flag (+ or -)
+ 822: 0648: \***  The function will then pass the relevant keyed file to the
+ 823: 0648: \***  PROCESS.KEYED.FILE function (PSBF30)so that it can be processed
+ 824: 0648: \***  sequentially.
+ 825: 0648: \***
+ 826: 0648: \**********************************************************************
+ 827: 0648: 
+ 828: 0648: FUNCTION PROCESS.MERGE.FILES(PROG.NAME$, SIGN.FLAG$) PUBLIC
+ 829: 0666: 
+ 830: 0666:     STRING PROG.NAME$
+ 831: 0666:     STRING SIGN.FLAG$
+ 832: 0666: 
+ 833: 0666:     INTEGER*2 RC%
+ 834: 0666: 
+ 835: 0666:     INTEGER*1 PROCESS.MERGE.FILES
+ 836: 0666: 
+ 837: 0666:     ERROR.FLAG = 0
+ 838: 066b: 
+ 839: 066b:     PROGRAM.NAME$ = PROG.NAME$
+ 840: 067a:     SIGNED.FLAG$ = SIGN.FLAG$
+ 841: 0689: 
+ 842: 0689:     IF PROG.NAME$ = "PSB34" THEN BEGIN
+ 843: 069a:        RC% = PROCESS.KEYED.FILE(CIMSTC.FILE.NAME$,             \ Sequential process of keyed CIMSTC file
+ 844: 06bb:                                 CIMSTC.REPORT.NUM%,            \
+ 845: 06bb:                                 "N")
+ 846: 06bb:     ENDIF
+ 847: 06bb: 
+ 848: 06bb:     IF PROG.NAME$ = "PSB30" THEN BEGIN
+ 849: 06cc:        IF SIGN.FLAG$ = "-" THEN BEGIN
+ 850: 06dd:           RC% = PROCESS.KEYED.FILE(IMSTC.FILE.NAME$,           \ Sequential process of keyed IMSTC file
+ 851: 0700:                                    IMSTC.REPORT.NUM%,          \
+ 852: 0700:                                    "N")
+ 853: 0700:        ENDIF ELSE BEGIN
+ 854: 0700:           RC% = PROCESS.KEYED.FILE(MIMSTC.FILE.NAME$,          \ Sequential process of keyed MIMSTC file
+ 855: 0721:                                    MIMSTC.REPORT.NUM%,         \
+ 856: 0721:                                    "N")
+ 857: 0721:        ENDIF
+ 858: 0721:     ENDIF
+ 859: 0721: 
+ 860: 0721:     IF RC% <> 0 THEN BEGIN                          ! Log Non-zero return code from ext func
+ 861: 0728:        IF RC% <> 2 THEN BEGIN
+ 862: 072f:           ERROR.FLAG = 1
+ 863: 0736:        ENDIF ELSE BEGIN
+ 864: 0736:           ERROR.FLAG = 2
+ 865: 073b:        ENDIF
+ 866: 073b:     ENDIF
+ 867: 073b: 
+ 868: 073b:    PROCESS.MERGE.FILES = ERROR.FLAG
+ 869: 0741: 
+ 870: 0741: END FUNCTION
+ 871: 075a: 
+ 872: 075a: 
+ 873: 075a: End of Compilation

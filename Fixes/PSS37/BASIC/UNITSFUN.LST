@@ -1,0 +1,165 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***         UNITS FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***         REFERENCE    : UNITSFUN.BAS
+   7: 0000: \***
+   8: 0000: \***
+   9: 0000: \******************************************************************************
+  10: 0000: \******************************************************************************
+  11: 0000: 
+  12: 0000:   INTEGER*2 GLOBAL                      \
+  13: 0000:      CURRENT.REPORT.NUM%
+  14: 0000:      
+  15: 0000:   STRING GLOBAL                         \
+  16: 0000:      CURRENT.CODE$,                     \
+  17: 0000:      FILE.OPERATION$
+  18: 0000:      
+  19: 0000:   %INCLUDE UNITSDEC.J86
+  20: 0000: \******************************************************************************
+  21: 0000: \******************************************************************************
+  22: 0000: \***
+  23: 0000: \***         %INCLUDE FOR UNITS - FILE REFERENCE PAREMETERS
+  24: 0000: \***                              FIELD DECLARATIONS
+  25: 0000: \***
+  26: 0000: \***               REFERENCE    : UNITSDEC.J86
+  27: 0000: \***
+  28: 0000: \***
+  29: 0000: \******************************************************************************
+  30: 0000: \******************************************************************************
+  31: 0000: 
+  32: 0000:   STRING GLOBAL           \
+  33: 0000:     UNITS.UNIT$,          \ 1  byte UPD (key)
+  34: 0000:     UNITS.UNIT.NAME$,     \ 27 bytes ASCII
+  35: 0000:     UNITS.BC.LETTER$,     \ 1  byte  ASCII
+  36: 0000:     UNITS.FILLER$,        \ 6  bytes ASCII (spaces).
+  37: 0000:     UNITS.FILE.NAME$
+  38: 0000: 
+  39: 0000:   INTEGER*2 GLOBAL        \
+  40: 0000:     UNITS.REPORT.NUM%,    \ 
+  41: 0000:     UNITS.RECL%,          \ 
+  42: 0000:     UNITS.SESS.NUM%
+  43: 0000: 
+  44: 0000: 
+  45: 0000:   FUNCTION UNITS.SET PUBLIC
+  46: 0014: \***************************
+  47: 0014: 
+  48: 0014:     UNITS.REPORT.NUM% = 185                         
+  49: 001d:     UNITS.RECL%      = 32
+  50: 0026:     UNITS.FILE.NAME$ = "UNITS"
+  51: 0035:     
+  52: 0035:   END FUNCTION
+  53: 0041: \-----------------------------------------------------------------------------    
+  54: 0041: 
+  55: 0041:   FUNCTION READ.UNITS PUBLIC
+  56: 0055: \****************************  
+  57: 0055: 
+  58: 0055:     INTEGER*2 READ.UNITS
+  59: 0055:     
+  60: 0055:     READ.UNITS = 1
+  61: 005a: 
+  62: 005a:     IF END #UNITS.SESS.NUM% THEN READ.ERROR   
+  63: 006e:     READ FORM "T2,C30,C1";                                         \ 
+  64: 00ab:          #UNITS.SESS.NUM%                                          \
+  65: 00ab:          KEY UNITS.UNIT$;                                          \
+  66: 00ab:              UNITS.UNIT.NAME$,                                     \
+  67: 00ab:              UNITS.BC.LETTER$
+  68: 00ab:     READ.UNITS = 0
+  69: 00b0:     EXIT FUNCTION
+  70: 00b2:     
+  71: 00b2:     READ.ERROR:
+  72: 00b2:     
+  73: 00b2:        CURRENT.CODE$ = UNITS.UNIT$
+  74: 00c8:        FILE.OPERATION$ = "R"
+  75: 00d7:        CURRENT.REPORT.NUM% = UNITS.REPORT.NUM%
+  76: 00e5:        
+  77: 00e5:        EXIT FUNCTION
+  78: 00e7: 
+  79: 00e7:   END FUNCTION
+  80: 00f6: \-----------------------------------------------------------------------------
+  81: 00f6: 
+  82: 00f6:   FUNCTION READ.UNITS.LOCK PUBLIC
+  83: 010a: \*********************************  
+  84: 010a: 
+  85: 010a:     INTEGER*2 READ.UNITS.LOCK
+  86: 010a:     
+  87: 010a:     READ.UNITS.LOCK = 1
+  88: 010f:     
+  89: 010f:     IF END #UNITS.SESS.NUM% THEN READ.LOCK.ERROR
+  90: 0123:     READ FORM "T2,C30,C1";                                         \ 
+  91: 0160:          #UNITS.SESS.NUM% AUTOLOCK                                 \
+  92: 0160:          KEY UNITS.UNIT$;                                          \
+  93: 0160:              UNITS.UNIT.NAME$,                                     \
+  94: 0160:              UNITS.BC.LETTER$
+  95: 0160:     READ.UNITS.LOCK = 0
+  96: 0165:     EXIT FUNCTION
+  97: 0167:     
+  98: 0167:     READ.LOCK.ERROR:
+  99: 0167:     
+ 100: 0167:        CURRENT.CODE$ = UNITS.UNIT$
+ 101: 017d:        FILE.OPERATION$ = "R"
+ 102: 018c:        CURRENT.REPORT.NUM% = UNITS.REPORT.NUM%
+ 103: 019a:        
+ 104: 019a:        EXIT FUNCTION
+ 105: 019c: 
+ 106: 019c:   END FUNCTION
+ 107: 01ab: \-----------------------------------------------------------------------------
+ 108: 01ab:   
+ 109: 01ab: 
+ 110: 01ab:   FUNCTION WRITE.UNITS PUBLIC
+ 111: 01bf: \*****************************
+ 112: 01bf: 
+ 113: 01bf:     INTEGER*2 WRITE.UNITS
+ 114: 01bf:     
+ 115: 01bf:     WRITE.UNITS = 1
+ 116: 01c4:         
+ 117: 01c4:     IF END #UNITS.SESS.NUM% THEN WRITE.ERROR
+ 118: 01d8:     WRITE FORM "C1,C30,C1";                                        \ 
+ 119: 021a:          #UNITS.SESS.NUM%;                                         \
+ 120: 021a:              UNITS.UNIT$,                                          \
+ 121: 021a:              UNITS.UNIT.NAME$,                                     \
+ 122: 021a:              UNITS.BC.LETTER$
+ 123: 021a:     WRITE.UNITS = 0
+ 124: 021f:     EXIT FUNCTION
+ 125: 0221:     
+ 126: 0221:     WRITE.ERROR:
+ 127: 0221:     
+ 128: 0221:        CURRENT.CODE$ = UNITS.UNIT$
+ 129: 0237:        FILE.OPERATION$ = "O"
+ 130: 0246:        CURRENT.REPORT.NUM% = UNITS.REPORT.NUM%
+ 131: 0254:        
+ 132: 0254:        EXIT FUNCTION     
+ 133: 0256: 
+ 134: 0256:   END FUNCTION
+ 135: 0265: \-----------------------------------------------------------------------------
+ 136: 0265:   
+ 137: 0265: 
+ 138: 0265:   FUNCTION WRITE.UNITS.UNLOCK PUBLIC
+ 139: 0279: \************************************
+ 140: 0279: 
+ 141: 0279:     INTEGER*2 WRITE.UNITS.UNLOCK
+ 142: 0279:     
+ 143: 0279:     WRITE.UNITS.UNLOCK = 1
+ 144: 027e:     
+ 145: 027e:     IF END #UNITS.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 146: 0292:     WRITE FORM "C1,C30,C1";                                        \ 
+ 147: 02d4:          #UNITS.SESS.NUM% AUTOUNLOCK;                              \
+ 148: 02d4:              UNITS.UNIT$,                                          \
+ 149: 02d4:              UNITS.UNIT.NAME$,                                     \
+ 150: 02d4:              UNITS.BC.LETTER$
+ 151: 02d4:     WRITE.UNITS.UNLOCK = 0
+ 152: 02d9:     EXIT FUNCTION
+ 153: 02db:     
+ 154: 02db:     WRITE.UNLOCK.ERROR:
+ 155: 02db:     
+ 156: 02db:        CURRENT.CODE$ = UNITS.UNIT$
+ 157: 02f1:        FILE.OPERATION$ = "O"
+ 158: 0300:        CURRENT.REPORT.NUM% = UNITS.REPORT.NUM%
+ 159: 030e:        
+ 160: 030e:        EXIT FUNCTION
+ 161: 0310: 
+ 162: 0310:   END FUNCTION
+ 163: 031f: 
+ 164: 031f: 
+ 165: 031f: End of Compilation

@@ -1,0 +1,139 @@
+
+\*********************************************************************************
+\***
+\***    %INCLUDE FOR TERMINAL ITEM FILE - VARIABLE DECLARATIONS
+\***
+\***            FILE TYPE : Keyed
+\***          
+\***            REFERENCE : TIFDEC.J86
+\***
+\***    Version A             Steve Windsor          06.05.93
+\*** 
+\***    Version B             Steve Perkins          21.09.93
+\***    Deals project: fields names updated to reflect new
+\***    IRF layout for deals project.
+\***
+\***    Version C              Dave West             08.09.98
+\***    Added declarations for GSA v2
+\***
+\***    Version D      Stuart William McConnachie    11.02.2000
+\***    Changed TIF.INDICAT2$ to TIF.INDICAT2%
+\***    Changed TIF.DEAL.NUM$ to TIF.DEAL.NUM%
+\***
+\***    REVISION 1.5.                ROBERT COWEY.                05 AUG 2002.
+\***    Major changes for 2002 Deals Rewrite project.
+\***    Incorporated up to date record layout to assist development work 
+\***    (placed in the TIFDEC.J86 to make it visible from ...LST files).
+\***    Defined TIF.IRF.DATA$ as a global variable for use with new functions
+\***    CONCAT.TIF.IRF.DATA$ and SPLIT.TIF.IRF.DATA$.
+\***
+\***    REVISION 1.6.                ROBERT COWEY.                23 JAN 2003.
+\***    Corrected comments only.
+\***
+\***.............................................................................
+
+
+\*********************************************************************************
+\***
+\***    TIF RECORD LAYOUT - REVISION 1.5 - CORRECT FOR 2002 DEALS RE-WRITE PROJECT
+\***
+\***    Within Boots stores the TMCF.DESCTYPE% = 4
+\***    This defines the TIF.FORMAT% = 7 (TIF.RECL% = 18) layout that follows
+\***    Other TIF.FORMAT% layouts are not used by Boots
+\***
+\***     1  6  UPD  BAR.CODE$   Without check digit - File KEY
+\***       11  UPD  Modified    Padded with leading zeros to an 11 byte UPD
+\***     7  1  INT  INDICAT6%   Bit flags - Identical to IRF.INDICAT1%
+\***                    X"01" - Asprin
+\***                    X"02" - Paracetamol
+\***                    X"04" - TPLU inclusion flag
+\***                              "04" on till
+\***                              "00" not on till
+\***                    X"08" - Stock number required
+\***                    X"10" - Pharmacy item
+\***                    X"20" - Age restricted video
+\***                    X"40" - Insurance
+\***                    X"80" - Ibuprofen
+\***     8  2  INT  DEAL.DATA%(0)   See IRFDEC.J86 for further detail
+\***                    Sub-structure not used by TIF file functions
+\***                    X'3F' - Deal number 0 to 9999
+\***                    X'C0' - List ID     X'00' X
+\***                                        X'01' A
+\***                                        X'10' B
+\***                                        X'11' C                       ! 1.6 RC
+\***    10  2  INT  DEAL.DATA%(1)   See DEAL.DATA(0) for structure
+\***    12  3  UPD  SALEPRIC$   Current price in pence
+\***                            Zero price indicates Enforced Price Entry
+\***                            X'FFFFFF' indicates 1p giveaway item not priced
+\***                            (flag set on TIF.INDICAT0% by TIF READ function)
+\***        5  UPD  Modified    Padded with leading zeros to a 5 byte UPD
+\***    15  1  INT  INDICAT5%   Guarantee duration
+\***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+\***                    X'80' - Highest bit indicates months if set (years if not)
+\***                    X'40' - Item movement kept (not related to guarentee data)
+\***                            (flag set on TIF.INDICAT0% by TIF READ function)
+\***    16  2  INT  DEAL.DATA%(2)   See DEAL.DATA(0) for structure
+\***    18  1  INT  INDICAT3%   Bit flags - Identical to IRF.INDICAT3%
+\***                    X"01" - Discount exempt (item exempt from discount)
+\***                    X"02" - Boots brand item
+\***                    X"04" - Item redeemable for loyalty
+\***                    X"08" - Loyalty exempt (item exempt from loyalty)
+\***                    X"10" - Wellbeing Services item
+\***                    X"20" - Local Price active
+\***                    X"40" - Stock system item
+\***                    X"80" - CSR item
+\***
+\***    Record length 18
+\***
+\***    TIF VARIABLES - HELD EXTERNALLY FROM RECORD ITSELF
+\***
+\***     -  1  INT  INDICAT0%   Bit flags
+\***                    X"02" - Item not priced (giveaway)  Held in SALEPRIC
+\***                    X"80" - Item Movement kept          Held in INDICAT5%
+\***
+\***..............................................................................
+                                            
+    
+    STRING GLOBAL         \
+        TIF.BAR.CODE$,    \
+        TIF.BOOTS.CODE$,  \
+        TIF.DEAL.SAVING$, \ ! No longer used                              ! 1.5 RC
+        TIF.FILE.NAME$,   \
+        TIF.FILLER$,      \ ! No longer used                              ! 1.5 RC
+        TIF.IRF.DATA$,    \ ! Used to hold copy of IRF record string
+        TIF.ITEMNAME$,    \ ! No longer used                              ! 1.5 RC
+        TIF.MPGROUP$,     \ ! No longer used                              ! 1.5 RC
+        TIF.RECORD$,      \                                               ! 1.5 RC
+        TIF.SALEQUAN$,    \ ! No longer used                              ! 1.5 RC
+        TIF.SALEPRIC$
+
+        
+    INTEGER*1 GLOBAL   \
+        TIF.INDICAT0%, \
+        TIF.INDICAT1%, \
+        TIF.INDICAT2%, \ ! No longer used                                 ! 1.5 RC
+        TIF.INDICAT3%, \
+        TIF.INDICAT4%, \ ! No longer used                                 ! 1.5 RC
+        TIF.INDICAT5%, \ ! No longer used                                 ! 1.5 RC
+        TIF.INDICAT6%, \
+        TIF.FORMAT%    ! Boots format (TIF.FORMAT% = 7) only is used      ! 1.5 RC
+
+    
+    INTEGER*2 GLOBAL     \
+        TIF.DEAL.NUM%,   \ ! No longer used                               ! 1.5 RC
+        TIF.RECL%,       \ ! Actual RECL used in OPEN, READ, WRITE statements
+        TIF.RECL1%,      \ ! No longer used                               ! 1.5 RC
+        TIF.RECL2%,      \ ! No longer used                               ! 1.5 RC
+        TIF.RECL3%,      \ ! No longer used                               ! 1.5 RC
+        TIF.RECL4%,      \ ! No longer used                               ! 1.5 RC
+        TIF.RECL5%,      \ ! No longer used                               ! 1.5 RC
+        TIF.RECL6%,      \ ! No longer used                               ! 1.5 RC
+        TIF.RECL7%,      \ ! Record length for TIF.FORMAT% = 7
+        TIF.REPORT.NUM%, \
+        TIF.SESS.NUM%
+
+
+    INTEGER*2 GLOBAL \                                                    ! 1.5 RC
+        TIF.DEAL.DATA%(1)                                                 ! 1.5 RC
+
+

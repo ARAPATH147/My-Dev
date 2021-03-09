@@ -1,0 +1,156 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***                                                                          *
+   4: 0000: \***         %INCLUDE FOR OPERATOR AUTHORISATION AUDIT FILE FUNCTIONS         *
+   5: 0000: \***                                                                          *
+   6: 0000: \***                       REFERENCE : OPAUDFUN                               *
+   7: 0000: \***                                                                          *
+   8: 0000: \***                       FILE TYPE : Direct                                 *
+   9: 0000: \***                                                                          *
+  10: 0000: \***                                                                          *
+  11: 0000: \***    VERSION A.              Mark Walker                   22nd March 1994 *
+  12: 0000: \***    Original version.                                                     *
+  13: 0000: \***                                                                          *
+  14: 0000: \******************************************************************************
+  15: 0000: \******************************************************************************
+  16: 0000: 
+  17: 0000:         %INCLUDE OPAUDDEC.J86       \ BAC Changed version letter
+  18: 0000: \*******************************************************************************
+  19: 0000: \*******************************************************************************
+  20: 0000: \***
+  21: 0000: \***   %INCLUDE FOR OPERATOR AUTHORISATION AUDIT FILE VARIABLE DECLARATIONS
+  22: 0000: \***
+  23: 0000: \***                     REFERENCE : OPAUDDEC
+  24: 0000: \***
+  25: 0000: \***                     FILE TYPE : Direct
+  26: 0000: \***
+  27: 0000: \***    VERSION A.               Mark Walker                  22nd March 1994
+  28: 0000: \***    Original version.
+  29: 0000: \***
+  30: 0000: \*******************************************************************************
+  31: 0000: \*******************************************************************************
+  32: 0000: 
+  33: 0000:         STRING GLOBAL                   OPAUD.RECORD$,                  \
+  34: 0000:                                         OPAUD.FILE.NAME$,		\
+  35: 0000:                                         OPAUD.DATE$,			\
+  36: 0000: 					OPAUD.TIME$,			\
+  37: 0000: 					OPAUD.CURRENT.ID$,		\
+  38: 0000: 					OPAUD.CHANGED.ID$,		\
+  39: 0000: 					OPAUD.OPTION$,			\
+  40: 0000: 					OPAUD.DETAILS.1$,		\
+  41: 0000: 					OPAUD.DETAILS.2$,		\
+  42: 0000: 					OPAUD.FILLER$,			\
+  43: 0000: 					OPAUD.CRLF$,			\
+  44: 0000: 					OPAUD.LAST.REC.UPDATED$,	\
+  45: 0000: 					OPAUD.FILE.SIZE$
+  46: 0000: 
+  47: 0000:         INTEGER*2 GLOBAL                OPAUD.RECL%,                    \
+  48: 0000:                                         OPAUD.REPORT.NUM%,              \
+  49: 0000:                                         OPAUD.SESS.NUM%,                \
+  50: 0000:                                         OPAUD.REC.NUM%
+  51: 0000: 
+  52: 0000:         STRING GLOBAL                   CURRENT.CODE$,                 \
+  53: 0000:                                         FILE.OPERATION$
+  54: 0000: 
+  55: 0000:         INTEGER*2 GLOBAL                CURRENT.REPORT.NUM%
+  56: 0000: 
+  57: 0000:         FUNCTION OPAUD.SET PUBLIC
+  58: 0014: 
+  59: 0014:         INTEGER*2 OPAUD.SET
+  60: 0014: 
+  61: 0014:         OPAUD.SET = 1
+  62: 0019: 
+  63: 0019:         OPAUD.FILE.NAME$  = "OPAUD"
+  64: 0028:         OPAUD.REPORT.NUM% = 387
+  65: 0031:         OPAUD.RECL%       = 80
+  66: 003a: 
+  67: 003a:         OPAUD.SET = 0
+  68: 003f: 
+  69: 003f:         END FUNCTION
+  70: 004e: 
+  71: 004e:         FUNCTION READ.OPAUD PUBLIC
+  72: 0062: 
+  73: 0062:         INTEGER*2 READ.OPAUD
+  74: 0062: 
+  75: 0062:         READ.OPAUD = 1
+  76: 0067: 
+  77: 0067:         IF END # OPAUD.SESS.NUM% THEN READ.ERROR
+  78: 007b:         READ FORM "C80"; # OPAUD.SESS.NUM%,                            \
+  79: 00ac:              OPAUD.REC.NUM%;                                           \
+  80: 00ac:              OPAUD.RECORD$
+  81: 00ac: 
+  82: 00ac:         IF OPAUD.REC.NUM% = 1 THEN                                     \
+  83: 00b6:         BEGIN
+  84: 00b6:            OPAUD.LAST.REC.UPDATED$ = MID$(OPAUD.RECORD$,1,4)
+  85: 00d5:            OPAUD.FILE.SIZE$        = MID$(OPAUD.RECORD$,5,4)
+  86: 00f4:            OPAUD.FILLER$           = MID$(OPAUD.RECORD$,9,70)
+  87: 0113:            OPAUD.CRLF$             = MID$(OPAUD.RECORD$,79,2)
+  88: 0135:         ENDIF                                                          \
+  89: 0135:         ELSE                                                           \
+  90: 0135:         BEGIN
+  91: 0135:            OPAUD.CURRENT.ID$ = MID$(OPAUD.RECORD$,1,3)
+  92: 0154:            OPAUD.OPTION$     = MID$(OPAUD.RECORD$,4,1)
+  93: 0173:            OPAUD.DATE$       = MID$(OPAUD.RECORD$,5,6)
+  94: 0192:            OPAUD.TIME$       = MID$(OPAUD.RECORD$,11,4)
+  95: 01b1:            OPAUD.CHANGED.ID$ = MID$(OPAUD.RECORD$,15,3)
+  96: 01d0:            OPAUD.DETAILS.1$  = MID$(OPAUD.RECORD$,18,27)
+  97: 01ef:            OPAUD.DETAILS.2$  = MID$(OPAUD.RECORD$,45,27)
+  98: 020e:            OPAUD.FILLER$     = MID$(OPAUD.RECORD$,72,7)
+  99: 022d:            OPAUD.CRLF$       = MID$(OPAUD.RECORD$,79,2)
+ 100: 024c:         ENDIF   
+ 101: 024c:         
+ 102: 024c:         READ.OPAUD = 0
+ 103: 0251: 
+ 104: 0251:         EXIT FUNCTION
+ 105: 0253: 
+ 106: 0253:         READ.ERROR:
+ 107: 0253: 
+ 108: 0253:         FILE.OPERATION$     = "R"
+ 109: 0262:         CURRENT.REPORT.NUM% = OPAUD.REPORT.NUM%
+ 110: 0270:         CURRENT.CODE$       = STR$(OPAUD.REC.NUM%)
+ 111: 028a: 
+ 112: 028a:         END FUNCTION 
+ 113: 0299: 
+ 114: 0299:         FUNCTION WRITE.OPAUD PUBLIC
+ 115: 02ad: 
+ 116: 02ad:         INTEGER*2 WRITE.OPAUD
+ 117: 02ad: 
+ 118: 02ad:         WRITE.OPAUD = 1
+ 119: 02b2: 
+ 120: 02b2:         IF OPAUD.REC.NUM% = 1 THEN                                     \
+ 121: 02bc:         BEGIN
+ 122: 02bc:            OPAUD.RECORD$ = OPAUD.LAST.REC.UPDATED$ +                   \
+ 123: 02f8:                            OPAUD.FILE.SIZE$ +                          \
+ 124: 02f8:                            OPAUD.FILLER$ +                             \
+ 125: 02f8:                            OPAUD.CRLF$
+ 126: 02f8:         ENDIF                                                          \
+ 127: 02f8:         ELSE                                                           \
+ 128: 02f8:         BEGIN   
+ 129: 02f8:            OPAUD.RECORD$ = OPAUD.CURRENT.ID$ +                         \
+ 130: 0369:                            OPAUD.OPTION$ +                             \
+ 131: 0369:                            OPAUD.DATE$ +                               \
+ 132: 0369:                            OPAUD.TIME$ +                               \
+ 133: 0369:                            OPAUD.CHANGED.ID$ +                         \
+ 134: 0369:                            OPAUD.DETAILS.1$ +                          \
+ 135: 0369:                            OPAUD.DETAILS.2$ +                          \
+ 136: 0369:                            OPAUD.FILLER$ +                             \
+ 137: 0369:                            OPAUD.CRLF$
+ 138: 0369:         ENDIF
+ 139: 0369: 
+ 140: 0369:         IF END # OPAUD.SESS.NUM% THEN WRITE.ERROR
+ 141: 037d:         WRITE FORM "C80"; # OPAUD.SESS.NUM%,                           \
+ 142: 03ae:              OPAUD.REC.NUM%;                                           \
+ 143: 03ae:              OPAUD.RECORD$
+ 144: 03ae: 
+ 145: 03ae:         WRITE.OPAUD = 0
+ 146: 03b3: 
+ 147: 03b3:         EXIT FUNCTION
+ 148: 03b5: 
+ 149: 03b5:         WRITE.ERROR:
+ 150: 03b5: 
+ 151: 03b5:         FILE.OPERATION$     = "W"
+ 152: 03c4:         CURRENT.REPORT.NUM% = OPAUD.REPORT.NUM%
+ 153: 03d2:         CURRENT.CODE$       = STR$(OPAUD.REC.NUM%)
+ 154: 03ec: 
+ 155: 03ec:         END FUNCTION 
+ 156: 03fb: End of Compilation

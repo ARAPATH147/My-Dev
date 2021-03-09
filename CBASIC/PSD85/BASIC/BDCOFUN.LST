@@ -1,0 +1,279 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           FILE FUNCTIONS Boots.com Orders File (BDCO)
+   5: 0000: \***
+   6: 0000: \***           REFERENCE:   BDCOFUN.BAS
+   7: 0000: \***
+   8: 0000: \***
+   9: 0000: \***           VERSION B         Dave Constable        7th March 2016
+  10: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  11: 0000: \***           Initial version for User Story PMLA-17 & PMLA-58 to allow 
+  12: 0000: \***           Location access for Parcels by controller and till for 
+  13: 0000: \***           Boots.com/ie order parcels.
+  14: 0000: \***
+  15: 0000: \***
+  16: 0000: \*******************************************************************************
+  17: 0000: \*******************************************************************************
+  18: 0000: 
+  19: 0000: INTEGER*2 GLOBAL                       \
+  20: 0000:           CURRENT.REPORT.NUM%
+  21: 0000: 
+  22: 0000: STRING    GLOBAL                       \
+  23: 0000:           CURRENT.CODE$,               \
+  24: 0000:           FILE.OPERATION$
+  25: 0000: 
+  26: 0000: INTEGER*2 cnt%
+  27: 0000: 
+  28: 0000: !STRING    BDCO.KEY$,                                                   !BDC
+  29: 0000: STRING    BDCO.CARTONS$                                                 !BDC
+  30: 0000: 
+  31: 0000: 
+  32: 0000: %INCLUDE BDCODEC.J86
+  33: 0000: \******************************************************************************
+  34: 0000: \******************************************************************************
+  35: 0000: \***
+  36: 0000: \***           FILE DECLARATIONS Boots.com Orders File (BDCO)
+  37: 0000: \***
+  38: 0000: \***           REFERENCE:   BDCODEC.J86
+  39: 0000: \***
+  40: 0000: \***           VERSION A         Neil Bennett          19th May 2010
+  41: 0000: \***
+  42: 0000: \***           VERSION B         Dave Constable        7th March 2016
+  43: 0000: \***           PRJ1361- Order & Collect Parcel Management
+  44: 0000: \***           Initial version for User Story PMLA-17 & PMLA-58 to allow 
+  45: 0000: \***           Location access for Parcels by controller and till for 
+  46: 0000: \***           Boots.com/ie order parcels.
+  47: 0000: 
+  48: 0000: \***    
+  49: 0000: \*******************************************************************************
+  50: 0000: \*******************************************************************************
+  51: 0000: 
+  52: 0000: STRING GLOBAL                          \
+  53: 0000:        BDCO.FILE.NAME$,                \
+  54: 0000:        BDCO.KEY$,                      \                                !BDC
+  55: 0000:        BDCO.SUPPLIER$,                 \  3 bytes UPD Supplier Number
+  56: 0000:        BDCO.ORDER$,                    \  5 bytes UPD Boots.com order number
+  57: 0000:        BDCO.CARTON$(1),                \  4 bytes UPD consignment number (1-55)
+  58: 0000:        BDCO.FILLER$                    ! 26 bytes filler
+  59: 0000: 
+  60: 0000: INTEGER*2 GLOBAL                       \
+  61: 0000:        BDCO.NUM.CARTONS%               !  2 bytes count of cartons in rcd max 55
+  62: 0000: 
+  63: 0000: INTEGER*2 GLOBAL                       \
+  64: 0000:        BDCO.KEYL%,                     \
+  65: 0000:        BDCO.RECL%,                     \
+  66: 0000:        BDCO.SESS.NUM%,                 \
+  67: 0000:        BDCO.REPORT.NUM%                !
+  68: 0000: 
+  69: 0000: 
+  70: 0000: 
+  71: 0000: \-----------------------------------------------------------------------------
+  72: 0000: 
+  73: 0000: FUNCTION SPLIT.CARTONS
+  74: 0014: \*********************
+  75: 0014: 
+  76: 0014:    BDCO.NUM.CARTONS% = 0
+  77: 001d:    FOR cnt% = 1 TO 55
+  78: 0025:       BDCO.CARTON$(cnt%) = MID$(BDCO.CARTONS$, ((cnt%-1)*4) +1, 4)
+  79: 0056:       IF BDCO.CARTON$(cnt%) <> PACK$("00000000") THEN                  \
+  80: 0082:          BDCO.NUM.CARTONS% = BDCO.NUM.CARTONS% +1
+  81: 0089:    NEXT cnt%
+  82: 0097:    BDCO.CARTONS$ = ""
+  83: 00a4: 
+  84: 00a4: END FUNCTION
+  85: 00b0: 
+  86: 00b0: \-----------------------------------------------------------------------------
+  87: 00b0: 
+  88: 00b0: FUNCTION JOIN.CARTONS
+  89: 00c4: \********************
+  90: 00c4: 
+  91: 00c4:    BDCO.CARTONS$ = ""
+  92: 00d1:    FOR cnt% = 1 TO 55
+  93: 00d9:       IF BDCO.CARTON$(cnt%) = "" THEN                                  \
+  94: 00fd:          BDCO.CARTON$(cnt%) = PACK$("00000000")
+  95: 011f:       BDCO.CARTONS$ = BDCO.CARTONS$ + BDCO.CARTON$(cnt%)
+  96: 014c:    NEXT cnt%
+  97: 015d: 
+  98: 015d: END FUNCTION
+  99: 0169: 
+ 100: 0169: \-----------------------------------------------------------------------------
+ 101: 0169: 
+ 102: 0169: FUNCTION BDCO.SET PUBLIC
+ 103: 017d: \****************************
+ 104: 017d: 
+ 105: 017d:     BDCO.REPORT.NUM% = 804
+ 106: 0186:     BDCO.KEYL%       =   8
+ 107: 018f:     BDCO.RECL%       = 254
+ 108: 0198:     BDCO.FILE.NAME$  = "BDCO"
+ 109: 01a7: 
+ 110: 01a7:     DIM BDCO.CARTON$(55)
+ 111: 01ce: 
+ 112: 01ce: END FUNCTION
+ 113: 01da: 
+ 114: 01da: \-----------------------------------------------------------------------------
+ 115: 01da: 
+ 116: 01da: FUNCTION READ.BDCO PUBLIC
+ 117: 01ee: \****************************
+ 118: 01ee: 
+ 119: 01ee:     INTEGER*2 READ.BDCO
+ 120: 01ee: 
+ 121: 01ee:     READ.BDCO = 1
+ 122: 01f3: 
+ 123: 01f3:     BDCO.KEY$ = BDCO.SUPPLIER$ + BDCO.ORDER$
+ 124: 0217: 
+ 125: 0217:     IF END #BDCO.SESS.NUM% THEN READ.BDCO.ERROR
+ 126: 022b:     READ FORM "T9,C220,C26";                                               \
+ 127: 0266:        #BDCO.SESS.NUM%                 \
+ 128: 0266:        KEY BDCO.KEY$;                  \  8 bytes UPD Supp + Order
+ 129: 0266:        BDCO.CARTONS$,                  \220 bytes UPD Boots.com Consignment#s
+ 130: 0266:        BDCO.FILLER$                    ! 26 bytes filler
+ 131: 0266: 
+ 132: 0266:     CALL SPLIT.CARTONS
+ 133: 0278: 
+ 134: 0278:     READ.BDCO = 0
+ 135: 027d:     EXIT FUNCTION
+ 136: 027f: 
+ 137: 027f: READ.BDCO.ERROR:
+ 138: 027f: 
+ 139: 027f: 
+ 140: 027f:        FILE.OPERATION$ = "R"
+ 141: 028e:        CURRENT.REPORT.NUM% = BDCO.REPORT.NUM%
+ 142: 029c: 
+ 143: 029c:        ! Ensure no previous values set after error
+ 144: 029c:        FOR cnt% = 1 TO 55
+ 145: 02a4:           BDCO.CARTON$(cnt%) = PACK$("00000000")
+ 146: 02c6:        NEXT cnt%
+ 147: 02d4: 
+ 148: 02d4:        EXIT FUNCTION
+ 149: 02d6: 
+ 150: 02d6: END FUNCTION
+ 151: 02e5: 
+ 152: 02e5: \-----------------------------------------------------------------------------
+ 153: 02e5: 
+ 154: 02e5: FUNCTION WRITE.BDCO PUBLIC
+ 155: 02f9: \****************************
+ 156: 02f9: 
+ 157: 02f9:     INTEGER*2 WRITE.BDCO
+ 158: 02f9: 
+ 159: 02f9:     WRITE.BDCO = 1
+ 160: 02fe: 
+ 161: 02fe:     BDCO.KEY$ = BDCO.SUPPLIER$ + BDCO.ORDER$
+ 162: 0322: 
+ 163: 0322:     CALL JOIN.CARTONS
+ 164: 0334: 
+ 165: 0334:     IF END #BDCO.SESS.NUM% THEN WRITE.BDCO.ERROR
+ 166: 0348:     WRITE FORM "C8,C220,C26";                                              \
+ 167: 0387:        #BDCO.SESS.NUM%;                \
+ 168: 0387:        BDCO.KEY$,                      \  8 bytes UPD Supp + Order
+ 169: 0387:        BDCO.CARTONS$,                  \220 bytes UPD Boots.com consignment#s
+ 170: 0387:        BDCO.FILLER$                    ! 26 bytes filler
+ 171: 0387: 
+ 172: 0387:     WRITE.BDCO = 0
+ 173: 038c:     EXIT FUNCTION
+ 174: 038e: 
+ 175: 038e: WRITE.BDCO.ERROR:
+ 176: 038e: 
+ 177: 038e: 
+ 178: 038e:        FILE.OPERATION$ = "W"
+ 179: 039d:        CURRENT.REPORT.NUM% = BDCO.REPORT.NUM%
+ 180: 03ab: 
+ 181: 03ab:        EXIT FUNCTION
+ 182: 03ad: 
+ 183: 03ad: END FUNCTION
+ 184: 03bc: 
+ 185: 03bc: \-----------------------------------------------------------------------------
+ 186: 03bc: 
+ 187: 03bc: FUNCTION READ.BDCO.LOCK PUBLIC
+ 188: 03d0: \*****************************
+ 189: 03d0: 
+ 190: 03d0:     INTEGER*2 READ.BDCO.LOCK
+ 191: 03d0: 
+ 192: 03d0:     READ.BDCO.LOCK = 1
+ 193: 03d5: 
+ 194: 03d5:     BDCO.KEY$ = BDCO.SUPPLIER$ + BDCO.ORDER$
+ 195: 03f9: 
+ 196: 03f9:     IF END #BDCO.SESS.NUM% THEN READ.BDCO.LOCK.ERROR
+ 197: 040d:     READ FORM "T9,C220,C26";                                               \
+ 198: 0448:        #BDCO.SESS.NUM% AUTOLOCK        \
+ 199: 0448:        KEY BDCO.KEY$;                  \  8 bytes UPD Supp + Order
+ 200: 0448:        BDCO.CARTONS$,                  \220 bytes UPD Boots.com Consignment#s
+ 201: 0448:        BDCO.FILLER$                    ! 26 bytes filler
+ 202: 0448: 
+ 203: 0448:     CALL SPLIT.CARTONS
+ 204: 045a: 
+ 205: 045a:     READ.BDCO.LOCK = 0
+ 206: 045f:     EXIT FUNCTION
+ 207: 0461: 
+ 208: 0461: READ.BDCO.LOCK.ERROR:
+ 209: 0461: 
+ 210: 0461: 
+ 211: 0461:        FILE.OPERATION$ = "R"
+ 212: 0470:        CURRENT.REPORT.NUM% = BDCO.REPORT.NUM%
+ 213: 047e: 
+ 214: 047e:        ! Ensure no previous values set after error
+ 215: 047e:        FOR cnt% = 1 TO 55
+ 216: 0486:           BDCO.CARTON$(cnt%) = PACK$("00000000")
+ 217: 04a8:        NEXT cnt%
+ 218: 04b6: 
+ 219: 04b6:        EXIT FUNCTION
+ 220: 04b8: 
+ 221: 04b8: END FUNCTION
+ 222: 04c7: 
+ 223: 04c7: \-----------------------------------------------------------------------------
+ 224: 04c7: 
+ 225: 04c7: FUNCTION WRITE.BDCO.UNLOCK PUBLIC
+ 226: 04db: \********************************
+ 227: 04db: 
+ 228: 04db:     INTEGER*2 WRITE.BDCO.UNLOCK
+ 229: 04db: 
+ 230: 04db:     WRITE.BDCO.UNLOCK = 1
+ 231: 04e0: 
+ 232: 04e0:     BDCO.KEY$ = BDCO.SUPPLIER$ + BDCO.ORDER$
+ 233: 0504: 
+ 234: 0504:     CALL JOIN.CARTONS
+ 235: 0516: 
+ 236: 0516:     IF END #BDCO.SESS.NUM% THEN WRITE.BDCO.UNLOCK.ERROR
+ 237: 052a:     WRITE FORM "C8,C220,C26";                                              \
+ 238: 0569:        #BDCO.SESS.NUM% AUTOUNLOCK;     \
+ 239: 0569:        BDCO.KEY$,                      \  8 bytes UPD Supp + Order
+ 240: 0569:        BDCO.CARTONS$,                  \220 bytes UPD Boots.com consignment#s
+ 241: 0569:        BDCO.FILLER$                    ! 26 bytes filler
+ 242: 0569: 
+ 243: 0569: 
+ 244: 0569:     WRITE.BDCO.UNLOCK = 0
+ 245: 056e:     EXIT FUNCTION
+ 246: 0570: 
+ 247: 0570: WRITE.BDCO.UNLOCK.ERROR:
+ 248: 0570: 
+ 249: 0570: 
+ 250: 0570:        FILE.OPERATION$ = "W"
+ 251: 057f:        CURRENT.REPORT.NUM% = BDCO.REPORT.NUM%
+ 252: 058d: 
+ 253: 058d:        EXIT FUNCTION
+ 254: 058f: 
+ 255: 058f: END FUNCTION
+ 256: 059e: 
+ 257: 059e: \-----------------------------------------------------------------------------
+ 258: 059e: 
+ 259: 059e: FUNCTION DELETE.BDCO PUBLIC
+ 260: 05b2: \**************************
+ 261: 05b2: 
+ 262: 05b2:     INTEGER*2 DELETE.BDCO
+ 263: 05b2: 
+ 264: 05b2:     DELETE.BDCO = 1
+ 265: 05b7:     BDCO.KEY$ = BDCO.SUPPLIER$ + BDCO.ORDER$
+ 266: 05db:     IF END # BDCO.SESS.NUM% THEN DELETE.ERROR
+ 267: 05ef:     DELREC BDCO.SESS.NUM%; BDCO.KEY$
+ 268: 0606:     DELETE.BDCO = 0
+ 269: 060b:     EXIT FUNCTION
+ 270: 060d: 
+ 271: 060d: DELETE.ERROR:
+ 272: 060d: 
+ 273: 060d:     FILE.OPERATION$     = "D"
+ 274: 061c:     CURRENT.REPORT.NUM% = BDCO.REPORT.NUM%
+ 275: 062a:     CURRENT.CODE$       = BDCO.KEY$
+ 276: 0640: 
+ 277: 0640: END FUNCTION
+ 278: 064f: 
+ 279: 064f: End of Compilation

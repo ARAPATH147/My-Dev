@@ -1,0 +1,1046 @@
+: ******************************
+: *** DEFINE PACKAGE OPTIONS ***
+: ******************************
+:
+Rem Install Levels
+DEFINE PNAME=17D
+rem Package version now passed through from the GO
+rem DEFINE PNAMEV=12B1
+Rem Backout Levels
+DEFINE BPACK=17C
+DEFINE BPACKV=17C9
+:
+DEFINE PJOBS=YES
+DEFINE RUNASM=YES
+:
+DEFINE SETLEVEL=NO
+IF %RUNASM%==YES {
+  DEFINE SETLEVEL=YES
+}
+DEFINE BACKRUN=NO
+IF %2. == BACKOUT. DEFINE BACKRUN=YES
+:
+Rem *****************************************************
+Rem Set these up for the PCF's being used
+Rem *****************************************************
+DEFINE ASMOK=3A 3B 3C
+DEFINE ASMKILL=2A 2B 2C
+DEFINE ASMCHK=-SA -SB -SC
+IF NOT %BACKRUN%==YES {
+  DEFINE PNAMEV=%2
+  rem TINFO Run post package check
+  DEFINE TPKGCHK=%3
+
+  DEFINE CECONV1=NO
+  DEFINE CECONV2=NO
+  DEFINE CECONV3=NO
+  DEFINE CECONV4=NO
+  DEFINE CECONV5=NO
+  DEFINE CECONV6=NO
+  DEFINE CECONV7=NO
+  DEFINE CECONV8=NO
+  DEFINE CECONV9=NO
+  DEFINE CECONV10=NO
+
+  DEFINE CFCONV1=NO
+}
+ELSE {
+  DEFINE PNAMEV=%3
+
+  DEFINE CECONV1=YES
+  DEFINE CECONV2=YES
+  DEFINE CECONV3=YES
+  DEFINE CECONV4=YES
+  DEFINE CECONV5=YES
+  DEFINE CECONV6=YES
+  DEFINE CECONV7=YES
+  DEFINE CECONV8=YES
+  DEFINE CECONV9=YES
+  DEFINE CECONV10=YES
+
+  DEFINE CFCONV1=NO
+}
+:
+DEFINE TIMER=10
+:
+BATCH C:\ADX_UMNT\THISNODE.BAT
+Rem Get the real nodes for Master and Alternate
+DEFINE MASTCONT=%ADXLXAAN:%
+DEFINE ALTCONT=%ADXLXABN:%
+:
+IF EXIST ADXLXAAN::C:\%PNAME%.OK DEL ADXLXAAN::C:\%PNAME%.OK
+IF EXIST ADXLXAAN::C:\%PNAME%BK.OK DEL ADXLXAAN::C:\%PNAME%BK.OK
+IF EXIST ADXLXAAN::C:\%PNAME%DE.OK DEL ADXLXAAN::C:\%PNAME%DE.OK
+IF EXIST ADXLXAAN::C:\%PNAME%CE.OK DEL ADXLXAAN::C:\%PNAME%CE.OK
+IF EXIST ADXLXAAN::C:\%PNAME%CF.OK DEL ADXLXAAN::C:\%PNAME%CF.OK
+:
+IF EXIST ADXLXAAN::C:\A_BOUT DEL ADXLXAAN::C:\A_BOUT
+IF EXIST ADXLXAAN::C:\B_BOUT DEL ADXLXAAN::C:\B_BOUT
+IF EXIST ADXLXAAN::C:\ACKABOUT DEL ADXLXAAN::C:\ACKABOUT
+IF EXIST ADXLXAAN::C:\ACKBBOUT DEL ADXLXAAN::C:\ACKBBOUT
+
+DEFINE OUTLOG=ADXLXAAN::C:\%PNAME%OUT
+DEFINE ERRLOG=ADXLXAAN::C:\%PNAME%ERR
+DEFINE OKFILE=ADXLXAAN::C:\%PNAME%.OK
+DEFINE FAILLOG=ADXLXAAN::C:\%PNAME%FAIL
+DEFINE CUMNT:=ADXLXAAN::C:\ADX_UMNT\
+DEFINE CIMNT:=ADXLXAAN::C:\ADX_IMNT\
+DEFINE CSMNT:=ADXLXAAN::C:\ADX_SMNT\
+DEFINE CUPGM:=ADXLXAAN::C:\ADX_UPGM\
+DEFINE CIPGM:=ADXLXAAN::C:\ADX_IPGM\
+DEFINE CSPGM:=ADXLXAAN::C:\ADX_SPGM\
+DEFINE CUDT1:=ADXLXAAN::C:\ADX_UDT1\
+DEFINE CIDT1:=ADXLXAAN::C:\ADX_IDT1\
+DEFINE CSDT1:=ADXLXAAN::C:\ADX_SDT1\
+DEFINE DUDT1:=ADXLXACN::D:\ADX_UDT1\
+DEFINE ROOTMNT:=C:\ROOTMNT\
+DEFINE BACKASM=YES
+DEFINE SYNCNUM=0
+IF %RUNASM%==NO DEFINE BACKASM=NO
+IF %BACKRUN%==YES DEFINE BACKASM=NO
+:
+IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+  IF %1. == MASTER. {
+Rem    DEFINE %OKFILE%=ADXLXAAN::C:\%PNAME%CEOK.DAT
+    rem DEFINE OUTLOG=ADXLXAAN::C:\%PNAME%OUT
+    rem DEFINE ERRLOG=ADXLXAAN::C:\%PNAME%ERR
+
+  }
+  ELSE {
+Rem    DEFINE %OKFILE%=ADXLXAAN::C:\%PNAME%CFOK.DAT
+    DEFINE OUTLOG=ADXLXABN::C:\%PNAME%OUT
+    DEFINE ERRLOG=ADXLXABN::C:\%PNAME%ERR
+  }
+}
+:
+IF %BACKRUN%==YES {
+  DEFINE OUTLOG=ADXLXAAN::C:\%PNAME%BKOUT
+  DEFINE ERRLOG=ADXLXAAN::C:\%PNAME%BKERR
+  DEFINE FAILLOG=ADXLXAAN::C:\%PNAME%BKFL
+  DEFINE OKFILE=ADXLXAAN::C:\%PNAME%BK.OK
+}
+:
+ECHO --------------------------------------------------------------------------- >>OUTLOG
+ECHO . >>OUTLOG
+ECHO . >>OUTLOG
+IF %1. == MASTER. {
+  ECHO IPL Batch Started (Master). (T)>>OUTLOG
+  Rem Hold processing on CF until PKGJOBS has run
+  ECHO Creating CF hold file >> OUTLOG
+  ECHO > ADXLXAAN::C:\CHKSTAT.HLD
+}
+ELSE {
+  ECHO IPL Batch Started (Alternate). (T)>>OUTLOG
+}
+IF %BACKRUN%==YES {
+  ECHO %PNAME% Backout run requested >>OUTLOG
+}
+ELSE {
+  ECHO %PNAME% Install run requested >>OUTLOG
+}
+ADX_UPGM:DT.286 >> OUTLOG
+:
+COPY C:\ADX_SDT1\ADXILI0F.PAB C:\ADX_SDT1\ADXILI0F.DAT >*ERRLOG >>OUTLOG
+CUPGM:CHKSIZE ERRLOG = 0
+IF ERRORLEVEL 1 GOTO COPYERR
+IF ERRORLEVEL 255 GOTO COPYERR
+ECHO ORIGINAL ADXILI0F.DAT BACK IN >>OUTLOG
+:
+IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+  DEFINE SYNCNUM=1
+  ECHO Waiting for DDA (SYNC1) >>OUTLOG
+  IF %1. == ALTERNATE. GOTO SYNC1CF
+    ECHO SYNC1 SYNCING TO ALTERNATE (%ALTCONT%)>>OUTLOG
+    SYNC M PI:MASTER %ALTCONT%:PI:SERVER 2 450 >>OUTLOG
+    IF ERRORLEVEL 3  GOTO SYNCFAIL
+    IF ERRORLEVEL 2  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 0  ECHO DDA Active >>OUTLOG
+    GOTO SYNC1OK
+
+:SYNC1CF
+    ECHO SYNC1 SYNCING TO MASTER (%MASTCONT%)>>OUTLOG
+    SYNC S PI:SERVER %MASTCONT%:PI:MASTER 2 450 >>OUTLOG
+    IF ERRORLEVEL 3  GOTO SYNCFAIL
+    IF ERRORLEVEL 2  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 0  ECHO DDA Active >>OUTLOG
+
+:SYNC1OK
+}
+:
+: *******************************
+: ** BEGIN PROGRAM EXECUTIONS ***
+: *******************************
+:
+DEFINE KILLPKG=NO
+IF %1. == MASTER. {
+  REM Jobs for Master controller here
+  IF %BACKRUN%==NO {
+    IF %RUNASM%==YES {
+      ECHO Checking if ASM was successful >> OUTLOG
+      ADX_UPGM:CHKASM -2 %ASMCHK% >> OUTLOG
+
+      IF ERRORLEVEL 50 GOTO CASMU
+      IF ERRORLEVEL 30 GOTO CASM30
+      IF ERRORLEVEL 25 GOTO CASM25
+      IF ERRORLEVEL 10 GOTO CASM10
+      IF ERRORLEVEL 1 GOTO CASMU
+      ECHO ASM Successful countinuing with package. >> OUTLOG
+      GOTO CONT1
+
+     :CASM30
+      ECHO ADXLXAAN::C:\CHKASM.DAT not found >> OUTLOG
+      GOTO ASMFAIL
+     :CASM25
+      ECHO ASM FAILED >> OUTLOG
+      GOTO ASMFAIL
+     :CASM10
+      ECHO PCF not found >> OUTLOG
+      GOTO ASMFAIL
+     :CASMU
+      ECHO Error occurred in CHKASM >> OUTLOG
+     :ASMFAIL
+      ECHO ASM has failed nothing to do >> ADXLXAAN::C:\ASMFAIL.%PNAME%
+      ECHO ASM has failed nothing to do >> OUTLOG
+
+      ECHO APPENDING ASM STATUS FILE >> OUTLOG
+      TYPE CSHSF >>OUTLOG
+      TYPE CSHSF >>FAILLOG
+      
+      Rem release CF
+      DEL ADXLXAAN::C:\CHKSTAT.HLD
+      DEFINE BACKASM = NO
+      DEFINE KILLPKG=YES
+      GOTO KGO
+     :CONT1
+    }
+
+    IF %PJOBS%==YES {
+      ECHO Executing program IPL Package Jobs >>OUTLOG
+      ADX_UPGM:PKGJOBS -O%PNAME% -R%OUTLOG% -T3 >>OUTLOG
+      IF ERRORLEVEL 50 GOTO T50
+      IF ERRORLEVEL 45 GOTO T45
+      IF ERRORLEVEL 20 GOTO T20
+      IF ERRORLEVEL 10 GOTO T10
+      IF ERRORLEVEL 9 GOTO T9
+      :
+      GOTO CONT
+     :T50
+      ECHO PKGJOBS FAILED >>OUTLOG
+      GOTO KGO
+     :T45
+      ECHO PACKAGE NAME NOT PASSED TO PKGJOBS >>OUTLOG
+      GOTO KGO
+     :T20
+      ECHO PKGJOBS FAILED WITH INVALID XML FILE >>OUTLOG
+      GOTO KGO
+     :T10
+      ECHO FILE OPERATION IN PKGJOBS FAILED, BACKED OUT >>OUTLOG
+      DEFINE KILLPKG=YES
+      GOTO KGO
+     :T9
+      ECHO FILE OPERATION IN PKGJOBS FAILED, BACK OUT ALSO FAILED >>OUTLOG
+      DEFINE KILLPKG=YES
+      GOTO KGO
+      :
+      :CONT
+    }
+  }
+  Rem Release CF
+  IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+    ECHO Releasing CF >> OUTLOG
+    DEL ADXLXAAN::C:\CHKSTAT.HLD >>OUTLOG >>*OUTLOG
+  }
+  :
+  IF %BACKRUN%==YES GOTO CEBACKOT
+  Rem ----------------------- Master/Server conversions --------------------------
+  Rem On failure goto CEBACKOT
+  Rem AA Conversion 1
+   ECHO Executing program ADXLXAAN::C:\ADX_UPGM\UPDTBCF.286>> OUTLOG
+   ADXLXAAN::C:\ADX_UPGM\UPDTBCF.286>> OUTLOG
+   ECHO CHECK FOR EXISTANCE OF OK FILE ADXLXAAN::C:\UPDTBCF.OK>> OUTLOG
+   IF NOT EXIST ADXLXAAN::C:\UPDTBCF.OK {
+     ECHO ADXLXAAN::C:\UPDTBCF.OK NOT FOUND GOING TO BACKOUT >> OUTLOG
+     GOTO CEBACKOT
+   }
+   ELSE {
+     ECHO ADXLXAAN::C:\UPDTBCF.OK FOUND OK >> OUTLOG
+   }
+  DEFINE CECONV1=YES
+  :
+  Rem AA Conversion 2
+   ECHO Executing program ADXLXAAN::C:\ADX_UPGM\CNVSOPTS.286>> OUTLOG
+   ADXLXAAN::C:\ADX_UPGM\CNVSOPTS.286>> OUTLOG
+   ECHO CHECK FOR EXISTANCE OF OK FILE ADXLXAAN::C:\CNVSOPTS.OK>> OUTLOG
+   IF NOT EXIST ADXLXAAN::C:\CNVSOPTS.OK {
+     ECHO ADXLXAAN::C:\CNVSOPTS.OK NOT FOUND GOING TO BACKOUT >> OUTLOG
+     GOTO CEBACKOT
+   }
+   ELSE {
+     ECHO ADXLXAAN::C:\CNVSOPTS.OK FOUND OK >> OUTLOG
+   }
+  DEFINE CECONV2=NO
+  :
+  Rem AA Conversion 3
+    ECHO Distributing CCLAM.BIN >>OUTLOG
+    ADXCSU0L 3 2 ADXLXACN::D:\ADX_UDT1\CCLAM.BIN 
+
+    ECHO Distributing CCITF.BIN >>OUTLOG
+    ADXCSU0L 3 2 ADXLXACN::D:\ADX_UDT1\CCITF.BIN 
+  DEFINE CECONV3=NO
+  :
+  Rem AA Conversion 4
+   ECHO Executing program ADXLXAAN::C:\ADX_UPGM\HHTCONV.286 >> OUTLOG
+   ADXLXAAN::C:\ADX_UPGM\HHTCONV.286 >> OUTLOG
+  DEFINE CECONV4=NO
+  :
+  Rem AA Conversion 5
+   ECHO Executing program ADXLXAAN::C:\ADX_UPGM\CNVSDYNA.286>> OUTLOG
+   ADXLXAAN::C:\ADX_UPGM\CNVSDYNA.286>> OUTLOG
+   ECHO CHECK FOR EXISTANCE OF OK FILE ADXLXAAN::C:\CNVSDYNA.OK>> OUTLOG
+   IF NOT EXIST ADXLXAAN::C:\CNVSDYNA.OK {
+     GOTO CEBACKOT
+   }
+   ELSE {
+     ECHO ADXLXAAN::C:\CNVSDYNA.OK FOUND OK >> OUTLOG
+   }  
+  DEFINE CECONV5=NO
+  :
+  Rem AA Conversion 6
+
+  DEFINE CECONV6=NO
+  :
+  Rem AA Conversion 7
+
+  DEFINE CECONV7=NO
+  :
+  Rem AA Conversion 8
+
+  DEFINE CECONV8=NO
+  :
+  Rem AA Conversion 9
+
+  DEFINE CECONV9=NO
+  :
+  Rem AA Conversion 10
+
+  DEFINE CECONV10=NO
+  :
+}
+:
+rem IF EXIST ADXLXAAN::C:\CHKSTAT.SIN GOTO DOSERVER
+rem IF EXIST ADXLXAAN::C:\CHKSTAT.MC1 GOTO DOSERVER
+rem IF %1. == SERVER. GOTO DOSERVER
+rem GOTO NOTSERV
+:
+:DOSERVER
+IF %1. == ALTERNATE. {
+  REM Jobs for Alternate controller here
+  ECHO ALTERNATE >>OUTLOG
+
+  IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+    :CFHOLD
+    DEFINE DOLOOP=NO
+    IF EXIST ADXLXAAN::C:\CHKSTAT.HLD {
+      ECHO Hold down file present, having a rest >>OUTLOG
+      ADX_UPGM:WAIT %TIMER%
+      DEFINE DOLOOP=YES
+    }
+    IF %DOLOOP%==YES GOTO CFHOLD
+  }
+
+  IF %BACKRUN%==YES GOTO CFBACKOT
+  Rem Check to see if ASM failure has been flagged
+  IF %RUNASM%==YES {
+    IF EXIST ADXLXAAN::C:\ASMFAIL.%PNAME% ECHO CE Indicates ASM has failed aborting >> OUTLOG
+    IF EXIST ADXLXAAN::C:\ASMFAIL.%PNAME% GOTO KGO
+  }
+  :
+  Rem ---------------------- Alternate conversions ---------------------------
+  Rem On failure goto CFBACKOT
+  Rem CF Conversion 1
+
+  DEFINE CFCONV1=NO
+  :
+  IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+    ECHO Having a rest >>OUTLOG
+    ADX_UPGM:WAIT %TIMER%
+  }
+}
+:
+Rem All controllers will reach this point if conversions are successful
+IF %1. == MASTER. {
+  ECHO This controller (Master) has completed ok >>OUTLOG
+rem  ECHO %PNAME% COMPLETED SUCCESSFULLY > OKFILE
+rem  ADXCSU0L 3 5 %OKFILE% >>OUTLOG >>*OUTLOG
+}
+ELSE {
+  ECHO This controller (Alternate) has completed ok >>OUTLOG
+}
+
+ECHO %PNAME% %THISNODE% COMPLETED SUCCESSFULLY > NODEOK
+IF NOT EXIST ADXLXAAN::C:\CHKSTAT.TWN GOTO NOTTWIN
+ADXCSU0L 3 5 %NODEOK% >>OUTLOG >>*OUTLOG
+
+IF %1. == ALTERNATE. GOTO DOSERV
+
+:WAIT4CF
+IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+  IF EXIST ADXLXAAN::C:\CHKSTAT.HLD {
+    ECHO Releasing CF (WAIT4CF)>> OUTLOG
+    DEL ADXLXAAN::C:\CHKSTAT.HLD >>OUTLOG >>*OUTLOG
+  }
+}
+ADX_UPGM:PKGTIMER -T10 -RSTART -M120 >>OUTLOG
+:WAIT4CF1
+DEFINE NEXTSTEP=X
+ECHO Checking for %PARTNODE% ok >> OUTLOG
+
+IF EXIST ADXLXAAN::C:\%PNAME%%PARTNODE%.OK {
+  ECHO %PARTNODE% Has completed >> OUTLOG
+  DEFINE NEXTSTEP=SYNC2
+}
+ECHO checking for %PARTNODE% backout >> OUTLOG
+IF EXIST ADXLXAAN::C:\B_BOUT {
+  ECHO %PARTNODE% Has backed out >> OUTLOG
+  DEFINE NEXTSTEP=CEBACKOT
+}
+IF NOT %NEXTSTEP% == X GOTO SKIP1
+ADX_UPGM:WAIT %TIMER%
+
+ADX_UPGM:PKGTIMER -T10 -RSTATUS
+IF ERRORLEVEL 4 GOTO TIMEERR2
+IF ERRORLEVEL 2 GOTO CFTIME2
+IF ERRORLEVEL 1 GOTO CFTIME1
+:TIMEERR2
+  ECHO PKGTIMER unknown ERRORLEVEL >>OUTLOG
+  GOTO FIN
+  
+:CFTIME1
+  ECHO Unable to check CF status after 2 hours, aborting >>OUTLOG
+  GOTO FIN  
+:CFTIME2
+  Rem Keep on waiting
+  ECHO Waiting ... >>OUTLOG
+
+GOTO WAIT4CF1
+:SKIP1
+IF %NEXTSTEP% == CEBACKOT GOTO CEBACKOT
+GOTO NOTTWIN
+
+:DOSERV
+:WAIT4CE
+ADX_UPGM:PKGTIMER -T11 -RSTART -M120 >>OUTLOG
+
+:WAIT4CE1
+DEFINE NEXTSTEP=X
+ECHO Checking for %PARTNODE% ok >> OUTLOG
+IF EXIST ADXLXAAN::C:\%PNAME%%PARTNODE%.OK {
+  ECHO %PARTNODE% Has completed >> OUTLOG
+  DEFINE NEXTSTEP=SYNC2
+}
+ECHO Checking for %PARTNODE% backout >> OUTLOG
+IF EXIST ADXLXAAN::C:\A_BOUT {
+  ECHO %PARTNODE% Has backed out >> OUTLOG
+  DEFINE NEXTSTEP=CFBACKOT
+}
+IF NOT %NEXTSTEP% == X GOTO SKIP2
+ADX_UPGM:WAIT %TIMER%
+
+ADX_UPGM:PKGTIMER -T11 -RSTATUS
+IF ERRORLEVEL 4 GOTO TIMEERR1
+IF ERRORLEVEL 2 GOTO CETIME2
+IF ERRORLEVEL 1 GOTO CETIME1
+:TIMEERR1
+  ECHO PKGTIMER unknown ERRORLEVEL >>OUTLOG
+  GOTO FIN
+  
+:CETIME1
+  ECHO Unable to check CE status after 2 hours, aborting >>OUTLOG
+  GOTO FIN  
+:CETIME2
+  Rem Keep on waiting
+  ECHO Waiting ... >>OUTLOG
+
+GOTO WAIT4CE1
+:SKIP2
+IF %NEXTSTEP% == CFBACKOT GOTO CFBACKOT
+
+:NOTTWIN
+
+IF %1. == MASTER. {
+  ECHO CHECKING FOR SCO UPDATE PACKAGE >> OUTLOG
+  DEFINE SCOTYPE=NO
+  IF EXIST ADXLXAAN::C:\ADX_UMNT\%PNAME%SCO_R.BAT {
+    DEFINE SCOTYPE=SCO_R
+  }
+  ELSE {
+    IF EXIST ADXLXAAN::C:\ADX_UMNT\%PNAME%SCOV4.BAT {
+      DEFINE SCOTYPE=SCOV4
+    }
+    ELSE {
+      IF EXIST ADXLXAAN::C:\ADX_UMNT\%PNAME%SCOV5.BAT {
+        DEFINE SCOTYPE=SCOV5
+      }
+    }
+  }
+
+  IF NOT %SCOTYPE%==NO {
+    ECHO ADXLXAAN::C:\ADX_UMNT\%PNAME%%SCOTYPE%.BAT EXISTS. RUNNING SCO UPDATE (T)>> OUTLOG
+    CUPGM:DT.286 >> OUTLOG
+    BATCH ADXLXAAN::C:\ADX_UMNT\%PNAME%%SCOTYPE%.BAT
+    IF EXIST %OK% {
+      ADX_UPGM:BAGLEVY.286 RUN FORCE >> OUTLOG
+      ECHO %OK% EXISTS. SCO UPGRADE HAS COMPLETED SUCCESSFULLY >> OUTLOG
+    }
+    ELSE {
+      ECHO %OK% DOES NOT EXIST. >> OUTLOG
+      ECHO %PNAME% SCO UPDATE HAS NOT COMPLETED SUCCESSFULLY >> OUTLOG
+      IF EXIST OKFILE ERASE OKFILE
+      IF EXIST NODEOK ERASE NODEOK
+    }
+    ECHO SCO Update Completed. (T)>>OUTLOG
+    CUPGM:DT.286 >> OUTLOG
+  }
+  ELSE {
+    ECHO NO SCO UPGRADE FOUND >> OUTLOG
+  }
+}
+
+IF NOT EXIST ADXLXAAN::C:\CHKSTAT.TWN GOTO NOTTWIN2
+
+:SYNC2
+ECHO Waiting for DDA (SYNC2) >>OUTLOG
+DEFINE SYNCNUM=2
+IF %1. == ALTERNATE. GOTO SYNC2CF
+  ECHO SYNC2 SYNCING TO ALTERNATE (%ALTCONT%)>>OUTLOG
+  SYNC M PI:MASTER %ALTCONT%:PI:SERVER 2 300 >>OUTLOG
+  IF ERRORLEVEL 3  GOTO SYNCFAIL
+  IF ERRORLEVEL 2  GOTO SYNCFAIL
+  IF ERRORLEVEL 1  GOTO SYNCFAIL
+  IF ERRORLEVEL 1  GOTO SYNCFAIL
+  IF ERRORLEVEL 0  ECHO DDA Active >>OUTLOG
+  GOTO SYNC2OK
+
+:SYNC2CF
+  ECHO SYNC2 SYNCING TO MASTER (%MASTCONT%)>>OUTLOG
+  SYNC S PI:SERVER %MASTCONT%:PI:MASTER 2 300 >>OUTLOG
+  IF ERRORLEVEL 3  GOTO SYNCFAIL
+  IF ERRORLEVEL 2  GOTO SYNCFAIL
+  IF ERRORLEVEL 1  GOTO SYNCFAIL
+  IF ERRORLEVEL 1  GOTO SYNCFAIL
+  IF ERRORLEVEL 0  ECHO DDA Active >>OUTLOG
+
+:SYNC2OK
+:NOTTWIN2
+:
+GOTO END
+:
+REM Backout Starts Here
+Rem --------------------------- Master backout ----------------------------
+:CEBACKOT
+IF %1. == MASTER. {
+  IF EXIST C:\ADX_UBUL\TILLINFO.%PNAME% {
+    ECHO Restoring TILLINFO.BIN >> OUTLOG
+    COPY C:\ADX_UBUL\TILLINFO.%PNAME% D:\ADX_UDT1\TILINFO.BIN >>*OUTLOG >> OUTLOG
+  }
+  ECHO Backing out PKGJOBS >> OUTLOG
+  ADX_UPGM:PKGJOBS -O%PNAME% -R%OUTLOG% -T9 -B >>OUTLOG
+  IF ERRORLEVEL 10 GOTO PCONT
+  IF ERRORLEVEL 1 GOTO PERROR
+  GOTO PCONT
+  :PERROR
+    ECHO Error occurred during backout of PKGJOBS >> OUTLOG
+    ECHO Error occurred during backout of PKGJOBS >> ERRLOG
+    GOTO PCONT2
+  :PCONT
+  ECHO PKGJOBS Backed out >> OUTLOG
+  :PCONT2
+  IF %BACKRUN%==YES {
+    ECHO **************************** >>OUTLOG
+    ECHO ** COPY OF PKGJOBS OUTPUT ** >>OUTLOG
+    ECHO **************************** >>OUTLOG
+
+    IF EXIST C:\PKGJOBS.ERR TYPE C:\PKGJOBS.ERR >>OUTLOG
+    IF EXIST C:\PKGJOBS.OK TYPE C:\PKGJOBS.OK >>OUTLOG
+
+    ECHO ******************************** >>OUTLOG
+    ECHO ** END COPY OF PKGJOBS OUTPUT ** >>OUTLOG
+    ECHO ******************************** >>OUTLOG
+  }
+}
+:
+IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+  IF EXIST ADXLXAAN::C:\CHKSTAT.HLD {
+    ECHO Releasing CF >> OUTLOG
+    DEL ADXLXAAN::C:\CHKSTAT.HLD >>OUTLOG >>*OUTLOG
+  }
+}
+:
+Rem backout converion 10
+ IF %CECONV10%==YES {
+
+   ECHO AA Conversion 10 backed out >>OUTLOG
+ }
+:
+Rem backout converion 9
+ IF %CECONV9%==YES {
+
+   ECHO AA Conversion 9 backed out >>OUTLOG
+ }
+:
+Rem backout converion 8
+ IF %CECONV8%==YES {
+
+   ECHO AA Conversion 8 backed out >>OUTLOG
+ }
+:
+Rem backout converion 7
+ IF %CECONV7%==YES {
+
+   ECHO AA Conversion 7 backed out >>OUTLOG
+ }
+:
+Rem backout converion 6
+ IF %CECONV6%==YES {
+
+   ECHO AA Conversion 6 backed out >>OUTLOG
+ }
+:
+Rem backout converion 5
+ IF %CECONV5%==YES {
+
+   ECHO AA Conversion 5 backed out >>OUTLOG
+ }
+:
+Rem backout converion 4
+ IF %CECONV4%==YES {
+
+   ECHO Conversion 4 backed out >>OUTLOG
+ }
+:
+Rem backout converion 3
+ IF %CECONV3%==YES {
+
+   ECHO Conversion 3 backed out >>OUTLOG
+ }
+:
+Rem backout converion 2
+ IF %CECONV2%==YES {
+
+   ECHO Conversion 2 backed out >>OUTLOG
+ }
+:
+Rem backout converion 1
+ IF %CECONV1%==YES {
+
+   ECHO Conversion 1 backed out >>OUTLOG
+ }
+:
+Rem Skip over file server conversions if CE on a twin
+rem IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+rem  IF %1. == MASTER. GOTO KPKGJOBS
+rem }
+:
+Rem --------------------------- CF Backout --------------------------------
+:CFBACKOT
+IF %1. == ALTERNATE. {
+  Rem backout converion 1
+  IF %CFCONV1%==YES {
+    Rem Backout not required
+
+    ECHO CF Conversion 1 backed out >>OUTLOG
+  }
+}
+:
+:KPKGJOBS
+:
+:KGO
+Rem Release CF
+IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+  IF EXIST ADXLXAAN::C:\CHKSTAT.HLD {
+    ECHO Releasing CF >> OUTLOG
+    DEL ADXLXAAN::C:\CHKSTAT.HLD >>OUTLOG >>*OUTLOG
+  }
+}
+
+REM Put anything here that was in the GO and needs to be backed out
+REM
+Rem --------------------------- GO Back out -----------------------------
+ECHO GO Backed out >> OUTLOG
+IF %1. == MASTER. {
+  Rem Master. GO backout
+  IF %KILLPKG%==YES {
+    ECHO Running PKGJOBS to backout GO >>OUTLOG
+    
+    ADX_UPGM:PKGJOBS -O%PNAME% -R%OUTLOG% -B >>OUTLOG
+  }
+}
+ELSE {
+  Rem Alternate. GO backout
+  Rem Only need to backout if is not a forced backout run
+
+}
+:
+:KASM
+IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+Rem --------------------------- CE Backed out -----------------------------
+  IF %1. == MASTER. {
+    ECHO CE has just backed out acknowledge CF backout >>OUTLOG
+    ECHO CE ack CF backout > ADXLXAAN::C:\ACKBBOUT
+    DEFINE CFBAD=NO
+    rem what if we where ok and other cont had backed out. Don't want to backout again
+    IF NOT EXIST ADXLXAAN::C:\%PNAME%CE.OK {
+      ECHO CE has backed out >>OUTLOG
+      ECHO CE has backed out > ADXLXAAN::C:\A_BOUT
+      ADX_UPGM:PKGTIMER -T12 -RSTART -M30 >>OUTLOG
+      :CHKAACK
+      Rem Waiting for A to acknowledge backout
+      DEFINE DOLOOP=NO
+      IF NOT EXIST ADXLXAAN::C:\ACKABOUT {
+        ECHO Waiting for CF to backout >> OUTLOG
+        ADX_UPGM:WAIT %TIMER%
+        DEFINE DOLOOP=YES
+        
+        ADX_UPGM:PKGTIMER -T12 -RSTATUS
+        IF ERRORLEVEL 4 GOTO TIMEERR3
+        IF ERRORLEVEL 2 GOTO CFTIME4
+        IF ERRORLEVEL 1 GOTO CFTIME3
+        :TIMEERR3
+          ECHO PKGTIMER unknown ERRORLEVEL >>OUTLOG
+          ECHO CF state unknown >>OUTLOG
+          ECHO Will come back up and if needed cancel ASM >>OUTLOG
+          DEFINE DOLOOP=NO
+          GOTO CFBKCHK
+        :CFTIME3
+          ECHO Unable to check CF status after 30 minutes >>OUTLOG
+          ECHO Will come back up and if needed cancel ASM >>OUTLOG
+          DEFINE DOLOOP=NO
+          DEFINE CFBAD=YES
+          IF EXIST ADXLXAAN::C:\%PNAME%CF.OK del ADXLXAAN::C:\%PNAME%CF.OK
+          GOTO CFBKCHK
+        :CFTIME4
+          ADX_UPGM:DT.286 >>OUTLOG
+        :CFBKCHK
+      }
+      IF %DOLOOP% == YES GOTO CHKAACK
+    }
+    ELSE {
+      ECHO CE was ok. Now it has backed out >> OUTLOG
+      DEL OKFILE
+    }
+  }
+  ELSE {
+  Rem --------------------------- CF Backed out -----------------------------
+    ECHO CF has just backed out. Acknowledge CE backout >>OUTLOG
+    ECHO CF ack CE backout > ADXLXAAN::C:\ACKABOUT
+
+    rem what if we where ok and other cont had backed out. Don't want to backout again
+    IF NOT EXIST ADXLXAAN::C:\%PNAME%CF.OK {
+      ECHO CF has backed out >>OUTLOG
+      ECHO CF has backed out > ADXLXAAN::C:\B_BOUT
+      ADX_UPGM:PKGTIMER -T14 -RSTART -M30 >>OUTLOG
+      :CHKBACK
+      Rem Waiting for B to acknowledge backout
+      DEFINE DOLOOP=NO
+      IF NOT EXIST ADXLXAAN::C:\ACKBBOUT {
+        ECHO Waiting for CE to backout >>OUTLOG
+        ADX_UPGM:WAIT %TIMER%
+        DEFINE DOLOOP=YES
+
+        ADX_UPGM:PKGTIMER -T14 -RSTATUS
+        IF ERRORLEVEL 4 GOTO TIMEERR4
+        IF ERRORLEVEL 2 GOTO CETIME4
+        IF ERRORLEVEL 1 GOTO CETIME3
+        :TIMEERR4
+          ECHO PKGTIMER unknown ERRORLEVEL >>OUTLOG
+          ECHO CE state unknown. Will load back up >>OUTLOG
+          DEFINE DOLOOP=NO
+          GOTO CFBKCHK
+        :CETIME3
+          ECHO Unable to check CE status after 30 minutes >>OUTLOG
+          ECHO Will load back up >>OUTLOG
+          DEFINE DOLOOP=NO
+          GOTO CEBKCHK
+        :CETIME4
+          ADX_UPGM:DT.286 >>OUTLOG
+        :CEBKCHK       
+      }
+      IF %DOLOOP% == YES GOTO CHKBACK
+    }
+    ELSE {
+      ECHO CF was ok. Now it has backed out >> OUTLOG
+      DEL OKFILE
+    }
+  }
+}
+
+:SKIP3
+DEFINE -N BACKASM >>OUTLOG
+IF EXIST NODEOK ERASE NODEOK
+IF %BACKASM%==NO {
+  ECHO %PNAME% Completed Backout >> OUTLOG
+  ECHO %PNAME% Completed Backout >> ERRLOG
+  GOTO SYNC3
+}
+ELSE {
+  IF %RUNASM%==YES {
+    REM Check for non standard node
+    IF NOT EXIST ADXLXAAN::C:\CHKSTAT.DE {
+      IF NOT EXIST ADXLXAAN::C:\CHKSTAT.CE {
+        IF NOT EXIST ADXLXAAN::C:\CHKSTAT.CF {
+          ECHO Package has failed. >> OUTLOG
+          ECHO NON standard node id. Unable to cancel ASM >> OUTLOG
+          GOTO FIN
+        }
+      }
+    }
+
+    IF %1. == MASTER. {
+      REM Backup background task definitions
+      ECHO Preparing to cancel ASM >> OUTLOG
+
+      ECHO Backing up background task definitions >> OUTLOG
+      FOR %A IN (CE CF DE) DO IF NOT EXIST ADXLXAAN::C:\ADX_UBUL\ADXDK%AF.DAT COPY ADXLXAAN::C:\ADX_SPGM\ADXDK%AF.DAT ADXLXAAN::C:\ADX_UBUL\*.ASM >> OUTLOG >>* OUTLOG
+
+rem   ECHO Backing up BGIPLMST.BIN >> OUTLOG
+rem   COPY ADXLXACN::D:\ADX_UDT1\BGIPLMST.BIN ADXLXAAN::C:\ADX_UBUL\*.ASM >> OUTLOG >>* OUTLOG
+
+      ECHO Backing up BGIPL.BIN >> OUTLOG
+      COPY ADXLXACN::D:\ADX_UDT1\BGIPL.BIN ADXLXAAN::C:\ADX_UBUL\*.ASM >> OUTLOG >>* OUTLOG
+
+      ECHO Copy in temporary background task definitions >> OUTLOG
+      FOR %A IN (CE CF DE) DO COPY ADXLXAAN::C:\ADX_SPGM\ADXDK%AF.PKG ADXLXAAN::C:\ADX_SPGM\*.DAT >> OUTLOG >>* OUTLOG
+
+      ECHO Copy in BGIPL >> OUTLOG
+rem   COPY ADXLXACN::D:\ADX_UDT1\BGIPL.PKG ADXLXACN::D:\ADX_UDT1\BGIPLMST.BIN >> OUTLOG >>* OUTLOG
+      COPY ADXLXACN::D:\ADX_UDT1\BGIPL.PKG ADXLXACN::D:\ADX_UDT1\BGIPL.BIN >> OUTLOG >>* OUTLOG
+      rem Make file local so it will only run on the file server
+      ADXCSU0L 3 1 ADXLXACN::D:\ADX_UDT1\BGIPL.BIN >> OUTLOG >>* OUTLOG
+
+      ECHO Create ASM Parameters >> OUTLOG
+      ECHO CANCEL > ADXLXAAN::C:\ADX_UMNT\PKGASM.DAT
+      IF EXIST ADXLXAAN::C:\CHKSTAT.MC1 {
+        ECHO N BY %ASMKILL% >> ADXLXAAN::C:\ADX_UMNT\PKGASM.DAT
+      }
+      ELSE {
+        IF %CFBAD%==YES {
+          rem Use BY in case CF has gone down
+          rem CE should then be able to cancel ASM
+          ECHO N BY %ASMKILL% >> ADXLXAAN::C:\ADX_UMNT\PKGASM.DAT
+        }
+        ELSE      
+          ECHO N %ASMKILL% >> ADXLXAAN::C:\ADX_UMNT\PKGASM.DAT
+        }
+      }
+      ECHO Cancel ASM setup >> OUTLOG
+    }
+  }
+}
+:SYNC3
+IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+  DEFINE SYNCNUM=3
+  ECHO Waiting for DDA (SYNC3) >>OUTLOG
+  IF %1. == ALTERNATE. GOTO SYNC3CF
+    ECHO SYNC3 SYNCING TO ALTERNATE (%ALTCONT%)>>OUTLOG
+    SYNC M PI:MASTER %ALTCONT%:PI:SERVER 2 250 >>OUTLOG
+    IF ERRORLEVEL 3  GOTO SYNCFAIL
+    IF ERRORLEVEL 2  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 0  ECHO DDA Active >>OUTLOG
+    GOTO SYNC3OK
+
+:SYNC3CF
+    ECHO SYNC3 SYNCING TO MASTER (%MASTCONT%)>>OUTLOG
+    SYNC S PI:SERVER %MASTCONT%:PI:MASTER 2 250 >>OUTLOG
+    IF ERRORLEVEL 3  GOTO SYNCFAIL
+    IF ERRORLEVEL 2  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 1  GOTO SYNCFAIL
+    IF ERRORLEVEL 0  ECHO DDA Active >>OUTLOG
+
+:SYNC3OK
+}
+IF %BACKRUN%==YES GOTO ALLDONE
+GOTO FIN
+
+:COPYERRB
+ECHO PROBLEM COPYING FILE >> ERRLOG
+ECHO PROBLEM COPYING FILE >> OUTLOG
+GoTo CEBACKOT
+:DISTERRB
+ECHO PROBLEM DISTRIBUTING FILE >> ERRLOG
+ECHO PROBLEM DISTRIBUTING FILE >> OUTLOG
+GoTo CEBACKOT
+
+:COPYERR
+ECHO PROBLEM COPYING FILE >> ERRLOG
+ECHO PROBLEM COPYING FILE >> OUTLOG
+GoTo FAIL
+:DISTERR
+ECHO PROBLEM DISTRIBUTING FILE >> ERRLOG
+ECHO PROBLEM DISTRIBUTING FILE >> OUTLOG
+GoTo FAIL
+:SYNCFAIL
+ECHO ** %PNAME% FAILED DURING CONTROLER SYNC %SYNCNUM% *** >> ERRLOG
+ECHO ** %PNAME% FAILED DURING CONTROLER SYNC %SYNCNUM% *** >> OUTLOG
+IF %1.==MASTER. {
+  IF %SYNCNUM%==2 {
+    IF %SETLEVEL%==YES {
+      ECHO Software levels have not been set >>OUTLOG
+    }
+    IF EXIST OKFILE {
+      ERASE OKFILE
+      ECHO Package has completed on CE but unable to SYNC with CF >>OUTLOG
+    }  
+  }
+}
+GoTo FIN
+:FAIL
+ECHO ** %PNAME% FAILED IN IPL *** >> ERRLOG
+ECHO ** %PNAME% FAILED IN IPL *** >> OUTLOG
+GoTo FIN
+:
+:END
+rem IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+rem  IF %1. == MASTER. {
+rem    GOTO SKIPL
+rem   }
+rem }
+:
+:ALLDONE
+IF %1. == MASTER. {
+  ECHO Doing UPLIST >>OUTLOG
+  IF %BACKRUN%==NO  BATCH CUPGM:UPLIST.BAT %PNAMEV%
+  IF %BACKRUN%==YES BATCH CUPGM:UPLIST.BAT BACKOUT%PNAMEV%
+}
+IF %SETLEVEL%==YES {
+  IF %1. == MASTER. {
+    IF %BACKRUN%==YES ECHO %BPACK% >ADXLXACN::C:\LEVEL.BIN
+    IF %BACKRUN%==NO  ECHO %PNAME% >ADXLXACN::C:\LEVEL.BIN
+    CUPGM:CSLEVEL.286
+    :SKIPL
+  }
+
+  IF %1. == MASTER. {
+    ECHO Doing SETVER >>OUTLOG
+    IF %BACKRUN%==YES CUPGM:SETVER %BPACKV%
+    IF %BACKRUN%==NO  CUPGM:SETVER %PNAMEV%
+  }
+}
+:
+IF %BACKRUN%==YES GOTO SKIPPRIN
+:
+rem IF EXIST ADXLXAAN::C:\CHKSTAT.TWN {
+rem   IF %1. == MASTER. {
+rem     GOTO SKIPPRIN
+rem   }
+rem }
+
+IF %1. == MASTER. {
+  IF %RUNASM%==YES {
+    ECHO ******************************************************** > ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****  MESSAGE FROM THE NOTTINGHAM SUPPORT OFFICE  ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****      THE %PNAME% UPGRADE HAS SUCCESSFULLY        ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****           COMPLETED IN YOUR STORE            ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****     NOW PLEASE RELOAD ALL PPCs AND PODs      ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+  }
+  ELSE {
+    ECHO ******************************************************** > ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****  MESSAGE FROM THE NOTTINGHAM SUPPORT OFFICE  ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****  THE EPOS FILE MAINTENANCE HAS SUCCESSFULLY  ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****           COMPLETED IN YOUR STORE            ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO *****                                              ***** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+    ECHO ******************************************************** >> ADXLXAAN::C:\PACKAGE.PRN
+  }
+  ECHO  >> ADXLXAAN::C:\PACKAGE.PRN
+  PRINT ADXLXAAN::C:\PACKAGE.PRN -D=ADXLXACN::PRN1
+}
+:
+:SKIPPRIN
+IF %BACKRUN%==YES {
+  ECHO %PNAME% BACKOUT COMPLETED > OKFILE
+  ADXCSU0L 3 5 %OKFILE% >>OUTLOG >>*OUTLOG
+  ECHO %PNAME% BACKOUT COMPLETED (T)>> OUTLOG
+  ECHO %PNAME% %THISNODE% BACKOUT COMPLETED > NODEBKOK
+  ADXCSU0L 3 5 %NODEBKOK% >>OUTLOG >>*OUTLOG
+  ECHO %PNAME% %THISNODE% BACKOUT COMPLETED >> OUTLOG
+  CUPGM:DT.286 >> OUTLOG
+}
+ELSE {
+  ECHO %PNAME% COMPLETED SUCCESSFULLY (T)>> OUTLOG
+  CUPGM:DT.286 >> OUTLOG
+  ECHO %PNAME% COMPLETED SUCCESSFULLY > OKFILE
+  ADXCSU0L 3 5 %OKFILE% >>OUTLOG >>*OUTLOG
+  ECHO %PNAME% %THISNODE% COMPLETED SUCCESSFULLY > NODEOK
+  ADXCSU0L 3 5 %NODEOK% >>OUTLOG >>*OUTLOG
+  ECHO %PNAME% %THISNODE% COMPLETED SUCCESSFULLY >> OUTLOG
+  IF EXIST ERRLOG ERASE ERRLOG
+  CUPGM:DT.286 >> OUTLOG
+  
+  IF %1. == MASTER. {
+    IF %RUNASM%==YES {
+      IF NOT EXIST CUMNT:TEST%PNAME%.DAT {
+        ECHO Setting up accept of ASM >> OUTLOG
+rem     COPY ADXLXACN::D:\ADX_UDT1\BGIPLMST.BIN+ADXLXACN::D:\ADX_UDT1\BGIPL.PKG ADXLXACN::D:\ADX_UDT1\BGIPLMST.BIN -B >> OUTLOG >>* OUTLOG
+        COPY ADXLXACN::D:\ADX_UDT1\BGIPL.BIN+ADXLXACN::D:\ADX_UDT1\BGIPL.PKG ADXLXACN::D:\ADX_UDT1\BGIPL.BIN -B >> OUTLOG >>* OUTLOG
+        rem Make file local so it will only run on the file server
+        ADXCSU0L 3 1 ADXLXACN::D:\ADX_UDT1\BGIPL.BIN >> OUTLOG >>* OUTLOG
+        ECHO ACCEPT > ADXLXAAN::C:\ADX_UMNT\PKGASM.DAT
+        IF EXIST ADXLXAAN::C:\CHKSTAT.MC1 {
+          ECHO N BY %ASMOK% >> ADXLXAAN::C:\ADX_UMNT\PKGASM.DAT
+        }
+        ELSE {
+          ECHO N %ASMOK% >> ADXLXAAN::C:\ADX_UMNT\PKGASM.DAT
+        }
+      }
+      ELSE {
+        ECHO Leaving ASM in test mode >> OUTLOG
+      }
+    }
+    rem TINFO
+    IF %TPKGCHK%==Y {
+      rem Set up post package check
+      ECHO Setting up post package check >>OUTLOG
+rem   COPY ADXLXACN::D:\ADX_UDT1\BGIPLMST.BIN+ADXLXACN::D:\ADX_UDT1\BGIPL.CHK ADXLXACN::D:\ADX_UDT1\BGIPLMST.BIN -B >> OUTLOG >>* OUTLOG
+      COPY ADXLXACN::D:\ADX_UDT1\BGIPL.BIN+ADXLXACN::D:\ADX_UDT1\BGIPL.CHK ADXLXACN::D:\ADX_UDT1\BGIPL.BIN -B >> OUTLOG >>* OUTLOG
+      rem Make file local so it will only run on the file server
+      ADXCSU0L 3 1 ADXLXACN::D:\ADX_UDT1\BGIPL.BIN >> OUTLOG >>* OUTLOG
+
+      IF EXIST ADX_UMNT:%PNAME%CHECK.BAT {
+        ECHO ADX_UMNT:%PNAME%CHECK.BAT > ADX_UPGM:PKGCHECK.DAT      
+      }
+      ELSE {
+        ECHO ADX_UPGM:PKGCHECK.BAT > ADX_UPGM:PKGCHECK.DAT
+      }
+      IF EXIST C:\TINFO.DWN ERASE C:\TINFO.DWN
+      IF EXIST C:\TINFO.PKG ERASE C:\TINFO.PKG
+      IF EXIST C:\TINFO.RLD ERASE C:\TINFO.RLD      
+      IF EXIST C:\TINFO.ADD ERASE C:\TINFO.ADD      
+      IF EXIST C:\TINFO.SYS ERASE C:\TINFO.SYS      
+    }
+    rem TINFO
+  }
+}
+:FIN
+CUPGM:DT.286 >> OUTLOG
+

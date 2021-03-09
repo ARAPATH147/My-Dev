@@ -1,0 +1,1826 @@
+   1: 0002: \******************************************************************************
+   2: 0002: \******************************************************************************
+   3: 0002: \***
+   4: 0002: \***
+   5: 0002: \***   PSD96                 26/10/2015                 Ranjith Gopalankutty
+   6: 0002: \***
+   7: 0002: \***   Original version
+   8: 0002: \***
+   9: 0002: \***
+  10: 0002: \***   Usage
+  11: 0002: \***   This utility will help to clear the serial number of DVCHR,DIDIR
+  12: 0002: \***   and DEALDIR bin files in BCF.BIN. Which will be used during deal 
+  13: 0002: \***   initial load process.
+  14: 0002: \***   
+  15: 0002: \***   Screen will have below standard options          
+  16: 0002: \***       F3  = To return to main menu       
+  17: 0002: \***       F1  = Help Key 
+  18: 0002: \***       ESC = To escape out of the screen
+  19: 0002: \***   
+  20: 0002: \***   
+  21: 0002: \******************************************************************************
+  22: 0002: \******************************************************************************
+  23: 0002: \***
+  24: 0002: \***    Included code defining function related Global variables
+  25: 0002: \***
+  26: 0002: \******************************************************************************
+  27: 0002: \******************************************************************************
+  28: 0002: 
+  29: 0002:     %INCLUDE BCFDEC.J86     !   BCF file function
+  30: 0002: \*****************************************************************************
+  31: 0002: \*****************************************************************************
+  32: 0002: \***
+  33: 0002: \***               %INCLUDE FOR BCF - FIELD DECLARATIONS
+  34: 0002: \***                                  FILE REFERENCE PARAMETERS
+  35: 0002: \***
+  36: 0002: \***                      FILE TYPE    : SEQUENTIAL
+  37: 0002: \***
+  38: 0002: \***                      REFERENCE    : BCFDEC.J86
+  39: 0002: \***
+  40: 0002: \***      Version A             Steve Windsor          5th Jan 1993
+  41: 0002: \***
+  42: 0002: \***      Version B             Michael J. Kelsall    01st Dec 1993
+  43: 0002: \***      Addition to file of CCMVT serial number as part of
+  44: 0002: \***      RETURNS/AUTOMATIC CREDIT CLAIMING package.
+  45: 0002: \***
+  46: 0002: \***      Version C           Stuart William McConnachie 23rd Jan 1995
+  47: 0002: \***      Addition of TXR serial number as part of the TRANSACTION RETRIEVAL
+  48: 0002: \***      project.
+  49: 0002: \***
+  50: 0002: \***      Version D           Stuart William McConnachie  7th June 1995
+  51: 0002: \***      Converted calls to enable more than 1 record on the BCF.
+  52: 0002: \***      The second record is to be used for the No7 customer card trial.
+  53: 0002: \***
+  54: 0002: \***      Version E                 Stuart Highley        7th April 1999
+  55: 0002: \***      Added new fields for cash accounting.
+  56: 0002: \***
+  57: 0002: \***      Version F                 Mark Goode            20th May 2000
+  58: 0002: \***      Added new fields for Dentistry project.
+  59: 0002: \***
+  60: 0002: \***      Version G                 Mark Goode            18th July 2000
+  61: 0002: \***      Added new fields for Well-Being project.
+  62: 0002: \***
+  63: 0002: \***      Version I                 Amy Hoggard           13th Oct 2000
+  64: 0002: \***      Added new fields for ECO project.
+  65: 0002: \***
+  66: 0002: \***      Version K                 Brian Greenfield      1st May 2001
+  67: 0002: \***      Added new field for Wellbeing Services record 13.
+  68: 0002: \***
+  69: 0002: \***      Version L                 Amy Hoggard           4th Jan 2002
+  70: 0002: \***      Added new field for ETOPUP project.
+  71: 0002: \***
+  72: 0002: \***      Version M                 Julia Stones          22nd July 2002
+  73: 0002: \***      Added new fields for Deals rewrite project record 14.
+  74: 0002: \***
+  75: 0002: \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003.
+  76: 0002: \***    Modifications for All Txn Data To CDAS project.
+  77: 0002: \***    Removed redundant variables ...
+  78: 0002: \***      BCF.CTSL1.SERIAL.NUM$, BCF.CTSL2,SERIAL.NUM$
+  79: 0002: \***    Defined new variable ...
+  80: 0002: \***      BCF.MTSLQ.DAYS$, BCF.FILLER67$
+  81: 0002: \***
+  82: 0002: \***    Revision 4.7           Julia Stones              9th July 2003.
+  83: 0002: \***    Modifications for New Lines Report project.
+  84: 0002: \***    Defined new variable
+  85: 0002: \***    BCF.NEWLINES.WEEKS$
+  86: 0002: \***
+  87: 0002: \***    Revision 4.8           Julia Stones              3rd October 2003.
+  88: 0002: \***    Modifications for New Lines Report project.
+  89: 0002: \***    Defined new variable
+  90: 0002: \***    BCF.NEWLINES.LINES$
+  91: 0002: \***
+  92: 0002: \***    Version N              Jamie Thorpe             27th June 2006
+  93: 0002: \***    Added BCF.DVCHR.SERIAL.NUM$
+  94: 0002: \***
+  95: 0002: \***    Revision 4.10          Charles Skadorwa            4th July 2011
+  96: 0002: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+  97: 0002: \***    New variables defined: BCF.ECC.DATETIMESTAMP$
+  98: 0002: \***                           BCF.IUF.DATETIMESTAMP$
+  99: 0002: \***
+ 100: 0002: \***    Revision 4.11          Arun Sudhakaran             10th April 2013
+ 101: 0002: \***    Added new variables for including Supplier Number lengths
+ 102: 0002: \***    as part of Automatic Booking In of Chilled Food ASNs project
+ 103: 0002: \***
+ 104: 0002: \***    Revision 4.12          Charles Skadorwa            5th Sept 2013
+ 105: 0002: \***    F261 Gift Card Mall IIN Range Extension Project - Commented !4.12 CSk
+ 106: 0002: \***    Defined new variables for GCM Product Group Number and Record 22
+ 107: 0002: \***    lengths.
+ 108: 0002: \***
+ 109: 0002: \***    Version O              Mark Walker                  3rd Feb 2014
+ 110: 0002: \***    F337 Centralised View of Stock
+ 111: 0002: \***    - Defined variables for record 23 (stock snapshot parameters).
+ 112: 0002: \***    - Minor formatting changes (uncommented).
+ 113: 0002: \***
+ 114: 0002: \***    Revision O             Charles Skadorwa             25th June 2014
+ 115: 0002: \***    F353 Deal Limits Increase Project.
+ 116: 0002: \***    Renamed 3 variables in function BCF.RECORD.14.W -
+ 117: 0002: \***        BCF.DINF.NUM.REC$ becomes BCF.ITMDL.NUM.REC$
+ 118: 0002: \***        BCF.DINF.KEY.LEN$ becomes BCF.ITMDL.KEY.LEN$
+ 119: 0002: \***        BCF.ECC.DATETIMESTAMP$ becomes BCF.FILLER.DATETIMESTAMP$
+ 120: 0002: \*****************************************************************************
+ 121: 0002: \*****************************************************************************
+ 122: 0002: 
+ 123: 0002:     STRING GLOBAL                                                       \
+ 124: 0002:         BCF.FILE.NAME$
+ 125: 0002: 
+ 126: 0002:     INTEGER*2 GLOBAL                                                    \
+ 127: 0002:         BCF.RECL%,                                                      \   !OMW
+ 128: 0002:         BCF.REPORT.NUM%,                                                \
+ 129: 0002:         BCF.SESS.NUM%
+ 130: 0002: 
+ 131: 0002:     STRING GLOBAL                                                       \
+ 132: 0002:     BCF.RECORD$,          \ 80 bytes
+ 133: 0002:     BCF.IUF.SERIAL.NO$,   \ 5 bytes, IUF serial number
+ 134: 0002:     BCF.OPEN.DATE$,       \ 6 bytes, Last store opening date (YYMMDD)
+ 135: 0002:     BCF.FILLER.DATE$,     \ 3 bytes, filler
+ 136: 0002:     BCF.LABEL.DATE$,      \ 6 bytes, label print date (YYMMDD)
+ 137: 0002:     BCF.SALES.SERIAL.NO$ ,\ 5 bytes, sales serial number
+ 138: 0002:     BCF.STMVB.SERIAL.NO$, \ 5 bytes, current serial number          \
+ 139: 0002:                               \     of Stock Movement Backup file       \
+ 140: 0002:     BCF.TOF.DAYS$,        \ 2 bytes, number of days' worth of sales to \
+ 141: 0002:                           \       be held on the TIF at re-build       \
+ 142: 0002:         BCF.EPS.BATCH$,       \ 2 bytes, highest batch number to have   \
+ 143: 0002:                               \     been reported upon by PSE31         \
+ 144: 0002:     BCF.NO.EPF.COPIES$,   \ 2 bytes, no. of copies of EPS payment file \
+ 145: 0002:     BCF.CCMVT.SERIAL.NUM$,\ 5 bytes ASC                                ! BMJK
+ 146: 0002:     BCF.TXR.SERIAL.NUM$,  \ 5 bytes transaction retrieval serial number!SWM
+ 147: 0002:     BCF.CUSTD.SERIAL.NUM$,\ 5 bytes customer data file serial number   !SWM
+ 148: 0002:     BCF.PSB58.DATE$,      \ 6 bytes date of last MTSL/CUSTW cut-off    !SWM
+ 149: 0002:     BCF.CTSL1.SERIAL.NUM$,\ 5 bytes serial number on first MTSLQ (and  ! 4.6 RC
+ 150: 0002:                           \         thereore CTSL1) batch header       ! 4.6 RC
+ 151: 0002:     BCF.MTSLQ.DAYS$,      \ 2 byte MTSLQ data retention period (PSB14) ! 4.6 RC
+ 152: 0002:     BCF.FILLER67$,        \ 8 bytes filler beginning at byte 67        ! 4.6 RC
+ 153: 0002:         BCF.NTIUF.SERIAL.NO$,                                           \   !FMG
+ 154: 0002:         BCF.DENTISTRY.PSAUDIT.SERIAL.NO$,                               \   !FMG
+ 155: 0002:         BCF.WELL.SERIAL.NO$,                                            \   !GMG
+ 156: 0002:         BCF.WELL.PSAUDIT.SERIAL.NO$,                                    \   !GMG
+ 157: 0002:     BCF.ACSAL.SERIAL.NUM$,\ 5 bytes serial number on ACSAL             !ESDH
+ 158: 0002:     BCF.DENTISTRY.PRODUCT.GROUP$,                                      \FMG
+ 159: 0002:     BCF.WELL.PRODUCT.GROUP$,                                           \GMG
+ 160: 0002:     BCF.FILLER$,         \! 1 byte, filler                             !BMJK
+ 161: 0002:     BCF.WELL.SERV.PRODUCT.GROUP$,                                      \KBG
+ 162: 0002:         BCF.ETOPUP.PROD.GRP$,                                           \   !LAH
+ 163: 0002:         BCF.END.FILLER$,                                                \   !LAH
+ 164: 0002:     BCF.TBAG.BATCH.NO$,                                                \IAH
+ 165: 0002:     BCF.TBAG.DAYS.KEPT$,                                               \IAH
+ 166: 0002:     BCF.NEWLINES.WEEKS$,                                               \4.7JAS
+ 167: 0002:     BCF.NEWLINES.LINES$,                                               \4.8JAS
+ 168: 0002:     BCF.TBAG.FILLER$,                                                  \ 79 Bytes filler !IAH 70 Bytes filler 4.7JAS ! 65 Bytes fille 4.8JAS
+ 169: 0002:     BCF.DEALDIR.SERIAL.NUM$, \ 4 bytes serial number                   !MJAS
+ 170: 0002:     BCF.DIDIR.SERIAL.NUM$,   \ 4 bytes serial number                   !MJAS
+ 171: 0002:     BCF.DEAL.NUM.REC$,       \ 6 bytes number of records in deal file  !MJAS
+ 172: 0002:     BCF.ITMDL.NUM.REC$,      \ 6 bytes number of records in ITMDL file !OCS
+ 173: 0002:     BCF.DEAL.KEY.LEN$,       \ 3 bytes key length of deal file         !MJAS
+ 174: 0002:     BCF.ITMDL.KEY.LEN$,      \ 3 bytes bytes ITMDL record key length   !OCS
+ 175: 0002:     BCF.DVCHR.SERIAL.NUM$,   \ 4 bytes serial numbr                    !NJT !4.10CSk
+ 176: 0002:     BCF.FILLER.DATETIMESTAMP$,\17 bytes filler for future use          !OCS
+ 177: 0002:     BCF.IUF.DATETIMESTAMP$, \ !17 bytes timestamp YYYYMMDDHHMMSSsss     !4.10CSk
+ 178: 0002:                             \ !   Last successfully processed IUF from SAP.
+ 179: 0002:         BCF.ITEM.STATUS$(1),     \1 byte array, item status             \   !OMW
+ 180: 0002:         BCF.NEGATIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+ 181: 0002:                                  \   to include items with a negative   \   !OMW
+ 182: 0002:                                  \   stock figure in the initial stock  \   !OMW
+ 183: 0002:                                  \   snapshot messages.                 \   !OMW
+ 184: 0002:         BCF.POSITIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+ 185: 0002:                                  \   to include items with a positive   \   !OMW
+ 186: 0002:                                  \   stock figure in the initial stock  \   !OMW
+ 187: 0002:                                  \   snapshot messages.                 \   !OMW
+ 188: 0002:         BCF.ZERO.STOCK.FLAG$(1)  !1 byte array, Flag (Y/N) whether to   \   !OMW
+ 189: 0002:                                  \   include items with a zero          \   !OMW
+ 190: 0002:                                  \   stock figure in the initial stock  \   !OMW
+ 191: 0002:                                  !   snapshot messages.                     !OMW
+ 192: 0002:                 
+ 193: 0002:     INTEGER*1                                                           \
+ 194: 0002:         BCF.NO.CPM.COPIES%
+ 195: 0002: 
+ 196: 0002:     INTEGER*2 GLOBAL                                                    \
+ 197: 0002:     BCF.CC.SERIAL.NO,        \ 1 byte UPD, CC serial number
+ 198: 0002:         BCF.MAX.STATUS.COUNT%,        \ Maximum number of item status   \   !OMW
+ 199: 0002:     BCF.REC21.REC.LEN%,      \ Total Supplier number length            !4.11 AS
+ 200: 0002:     BCF.REC21.SUPPLIER.LEN%, \ Length of the supplier number           !4.11 AS
+ 201: 0002:         BCF.MAX.STOCK.INIT.MESSAGES%, \ Maximum number of initial       \   !OMW
+ 202: 0002:                                       \ stock snapshot message to       \   !OMW
+ 203: 0002:                                       \ send per day.                   \   !OMW
+ 204: 0002:         BCF.MAX.STOCK.INIT.ITEMS%,    \ Maximum number of items to      \   !OMW
+ 205: 0002:                                       \ include in a single initial     \   !OMW
+ 206: 0002:                                       \ stock snapshot message.         \   !OMW
+ 207: 0002:         BCF.NEGATIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+ 208: 0002:                                       \ a negative stock figure to      \   !OMW
+ 209: 0002:                                       \ include in the initial stock    \   !OMW
+ 210: 0002:                                       \ snapshot messages.              \   !OMW
+ 211: 0002:         BCF.POSITIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+ 212: 0002:                                       \ a positive stock figure to      \   !OMW
+ 213: 0002:                                       \ include in the initial stock    \   !OMW
+ 214: 0002:                                       \ snapshot messages.              \   !OMW
+ 215: 0002:         BCF.REC22.REC.LEN%,           \                                 \   !4.12 CSk
+ 216: 0002:         BCF.REC22.PROD.GROUP.LEN%,    \ Length of GCM Product Group No  \   !4.12 CSk
+ 217: 0002:         BCF.ZERO.DAYS%(1)             \ Number of days' movements with  \   !OMW
+ 218: 0002:                                       \ a zero stock figure to include  \   !OMW
+ 219: 0002:                                       \ in the initial stock snapshot   \   !OMW
+ 220: 0002:                                       ! messages.                           !OMW
+ 221: 0002: 
+ 222: 0002: 
+ 223: 0002:     INTEGER*4 GLOBAL                                                    \
+ 224: 0002:         BCF.REC.NO%
+ 225: 0002: 
+ 226: 0002:     %INCLUDE BEMFDEC.J86    !   BEMF file function
+ 227: 0002: \******************************************************************************
+ 228: 0002: \***
+ 229: 0002: \***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+ 230: 0002: \***                                             - FILE REFERENCE PARAMETERS
+ 231: 0002: \***
+ 232: 0002: \***                         FILE TYPE : Direct
+ 233: 0002: \***
+ 234: 0002: \***                         REFERENCE : BEMFDEC
+ 235: 0002: \***
+ 236: 0002: \***	Version A               Mark Walker                  1st November 1993
+ 237: 0002: \***
+ 238: 0002: \******************************************************************************
+ 239: 0002: 
+ 240: 0002: 	STRING GLOBAL			BEMF.MESSAGE$,			\
+ 241: 0002: 					BEMF.FILE.NAME$
+ 242: 0002: 
+ 243: 0002: 	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+ 244: 0002: 					BEMF.REPORT.NUM%,		\
+ 245: 0002: 					BEMF.SESS.NUM%
+ 246: 0002: 
+ 247: 0002: 	INTEGER*4 GLOBAL		BEMF.REC.NO%
+ 248: 0002:     %INCLUDE PSBF01G.J86    !   APPLICATION.LOG
+ 249: 0002: REM \
+ 250: 0002: \*******************************************************************************
+ 251: 0002: \*******************************************************************************
+ 252: 0002: \***
+ 253: 0002: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+ 254: 0002: \***
+ 255: 0002: \***                FUNCTION NUMBER    : PSBF01
+ 256: 0002: \***
+ 257: 0002: \***                REFERENCE          : PSBF01G.J86
+ 258: 0002: \***
+ 259: 0002: \***                DATE OF LAST AMENDMENT  - 27/2/86
+ 260: 0002: \***
+ 261: 0002: \***
+ 262: 0002: \*******************************************************************************
+ 263: 0002: 
+ 264: 0002:       INTEGER GLOBAL  F01.RETURN.CODE%
+ 265: 0002: 
+ 266: 0002: 
+ 267: 0002:     %INCLUDE PSBF20G.J86    !   ALLOCATE.DEALLOCATE.SESS.NUM	
+ 268: 0002: REM\
+ 269: 0002: \*******************************************************************************
+ 270: 0002: \*******************************************************************************
+ 271: 0002: \***
+ 272: 0002: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 273: 0002: \***
+ 274: 0002: \***                       REFERENCE     : PSBF20G.J86
+ 275: 0002: \*** 
+ 276: 0002: \***     Version A              Bruce Scrive                   5th May 1988   
+ 277: 0002: \*** 
+ 278: 0002: \***     Version B              Robert Cowey                   7th May 1991
+ 279: 0002: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 280: 0002: \***     to two byte integer.
+ 281: 0002: \***
+ 282: 0002: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 283: 0002: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 284: 0002: \***
+ 285: 0002: \*******************************************************************************
+ 286: 0002: \*******************************************************************************
+ 287: 0002: 
+ 288: 0002:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 289: 0002:                        F20.STRING.FILE.NO$,                            \
+ 290: 0002:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 291: 0002:                        SESS.NUM.TABLE$(1)
+ 292: 0002: 
+ 293: 0002:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 294: 0002: 
+ 295: 0002:       ! 1 line deleted from here                                       ! DAW 
+ 296: 0002: 
+ 297: 0002:     %INCLUDE PSBF39G.J86    !   Display Manager
+ 298: 0002: !******************************************************************************
+ 299: 0002: !******************************************************************************
+ 300: 0002: !***
+ 301: 0002: !***            PROGRAM         :       PSBF39G.J86
+ 302: 0002: !***
+ 303: 0002: !***            DESCRIPTION     :       DISPLAY MANAGER INTERFACE
+ 304: 0002: !***
+ 305: 0002: !***            AUTHOR          :       Stuart William McConnachie
+ 306: 0002: !***            DATE WRITTEN    :       September 2000
+ 307: 0002: !***
+ 308: 0002: !***        Provides a much needed and easier to use interface to
+ 309: 0002: !***        IBM Display Manager.
+ 310: 0002: !***
+ 311: 0002: !***        Saves the user having to set up, highlight, tab between and
+ 312: 0002: !***        validate fields.  Also handles the help screens and conversion
+ 313: 0002: !***        of date fields to external/internal format.
+ 314: 0002: !***
+ 315: 0002: !******************************************************************************
+ 316: 0002: !******************************************************************************
+ 317: 0002:     
+ 318: 0002:     STRING GLOBAL       MESSAGE$(1)
+ 319: 0002:     STRING GLOBAL       VALID$(1)
+ 320: 0002:     STRING GLOBAL       VISIBLE$(1)
+ 321: 0002:     STRING GLOBAL       FIELD$(1)
+ 322: 0002:     STRING GLOBAL       TITLE$
+ 323: 0002: 
+ 324: 0002:     INTEGER*2 GLOBAL    DM.SCREEN%
+ 325: 0002:     INTEGER*2 GLOBAL    DM.FIELD%
+ 326: 0002:     
+ 327: 0002:     INTEGER*2 GLOBAL    HOME.KEY%
+ 328: 0002:     INTEGER*2 GLOBAL    END.KEY%
+ 329: 0002:     INTEGER*2 GLOBAL    PGUP.KEY%
+ 330: 0002:     INTEGER*2 GLOBAL    PGDN.KEY%
+ 331: 0002:     INTEGER*2 GLOBAL    TAB.KEY%
+ 332: 0002:     INTEGER*2 GLOBAL    BTAB.KEY%
+ 333: 0002:     INTEGER*2 GLOBAL    UP.KEY%
+ 334: 0002:     INTEGER*2 GLOBAL    DOWN.KEY%
+ 335: 0002:     INTEGER*2 GLOBAL    ESC.KEY%
+ 336: 0002:     INTEGER*2 GLOBAL    ENTER.KEY%
+ 337: 0002:     INTEGER*2 GLOBAL    INS.KEY%
+ 338: 0002:     INTEGER*2 GLOBAL    PREV.KEY%
+ 339: 0002:     INTEGER*2 GLOBAL    NEXT.KEY%
+ 340: 0002:         
+ 341: 0002:     INTEGER*2 GLOBAL    F1.KEY%
+ 342: 0002:     INTEGER*2 GLOBAL    F2.KEY%
+ 343: 0002:     INTEGER*2 GLOBAL    F3.KEY%
+ 344: 0002:     INTEGER*2 GLOBAL    F4.KEY%
+ 345: 0002:     INTEGER*2 GLOBAL    F5.KEY%
+ 346: 0002:     INTEGER*2 GLOBAL    F6.KEY%
+ 347: 0002:     INTEGER*2 GLOBAL    F7.KEY%
+ 348: 0002:     INTEGER*2 GLOBAL    F8.KEY%
+ 349: 0002:     INTEGER*2 GLOBAL    F9.KEY%
+ 350: 0002:     INTEGER*2 GLOBAL    F10.KEY%
+ 351: 0002:                 
+ 352: 0002: !******************************************************************************
+ 353: 0002: 
+ 354: 0002:     %INCLUDE PSBUSEG.J86    !   Chain Function
+ 355: 0002: \/*********************************************************************/ PSBUSEG
+ 356: 0002: \/*                                                                   */ PSBUSEG
+ 357: 0002: \/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+ 358: 0002: \/* ----------------------------------------------------------------- */ PSBUSEG
+ 359: 0002: \/*                                                                   */ PSBUSEG
+ 360: 0002: \/*********************************************************************/ PSBUSEG
+ 361: 0002:                                                                        ! PSBUSEG
+ 362: 0002:         STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+ 363: 0002:                        PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+ 364: 0002:                        PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+ 365: 0002:                        PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+ 366: 0002:                        PSBCHN.U1,       \ User parameter               ! PSBUSEG
+ 367: 0002:                        PSBCHN.U2,       \ User parameter               ! PSBUSEG
+ 368: 0002:                        PSBCHN.U3        ! User parameter               ! PSBUSEG
+ 369: 0002:                                                                        ! PSBUSEG
+ 370: 0002: 
+ 371: 0002: \******************************************************************************
+ 372: 0002: \******************************************************************************
+ 373: 0002: \***
+ 374: 0002: \***    Global Variable definitions
+ 375: 0002: \***
+ 376: 0002: \******************************************************************************
+ 377: 0002: \******************************************************************************
+ 378: 0002: 
+ 379: 0002:     STRING GLOBAL                                                       \
+ 380: 0002:         BATCH.SCREEN.FLAG$,                                             \ Screen flags
+ 381: 0002:         CHAIN.TO.PROG$,                                                 \ Chain to programs
+ 382: 0002:         CURRENT.CODE$,                                                  \ Current code
+ 383: 0002:         CURRENT.CODE.LOGGED$,                                           \
+ 384: 0002:         FILE.NO$,                                                       \
+ 385: 0002:         FILE.OPERATION$,                                                \ File operations indicator
+ 386: 0002:         FUNCTION.FLAG$,                                                 \
+ 387: 0002:         MODULE$,                                                        \
+ 388: 0002:         MODULE.NUMBER$,                                                 \ Module number
+ 389: 0002:         PASSED.STRING$,                                                 \
+ 390: 0002:         PROGRAM$,                                                       \
+ 391: 0002:         VAR.STRING.1$,                                                  \
+ 392: 0002:         VAR.STRING.2$                                                   !
+ 393: 0002: 
+ 394: 0002:      INTEGER*1 GLOBAL                                                   \
+ 395: 0002:          ERROR.COUNT%,                                                  \
+ 396: 0002:          FALSE,                                                         \
+ 397: 0002:          TRUE                                                           !
+ 398: 0002: 
+ 399: 0002:      INTEGER*2 GLOBAL                                                   \
+ 400: 0002:          CURRENT.REPORT.NUM%,                                           \
+ 401: 0002:          EVENT.NO%,                                                     \
+ 402: 0002:          MESSAGE.NO%,                                                   \
+ 403: 0002:          PASSED.INTEGER%                                                !
+ 404: 0002: 
+ 405: 0002:     INTEGER*4 GLOBAL                                                    \
+ 406: 0002:          RET.KEY%                                                       \
+ 407: 0002: 
+ 408: 0002: \******************************************************************************
+ 409: 0002: \******************************************************************************
+ 410: 0002: \***
+ 411: 0002: \***   VARIABLE DECLARATIONS
+ 412: 0002: \***
+ 413: 0002: \******************************************************************************
+ 414: 0002: \******************************************************************************
+ 415: 0002: 
+ 416: 0002:     STRING                                                              \
+ 417: 0002:         BCF.OPEN.FLAG$,                                                 \
+ 418: 0002:         CURRENT.DATE$,                                                  \
+ 419: 0002:         OPERATOR.NUMBER$                                                !
+ 420: 0002: 
+ 421: 0002: 
+ 422: 0002:     INTEGER*1                                                           \
+ 423: 0002:         EXIT.NOW,                                                       \
+ 424: 0002:         RESET
+ 425: 0002: 
+ 426: 0002:     INTEGER*4                                                           \
+ 427: 0002:         RC%                                                             !
+ 428: 0002: 
+ 429: 0002: \******************************************************************************
+ 430: 0002: \******************************************************************************
+ 431: 0002: \***
+ 432: 0002: \***    FUNCTION DECLARATIONS
+ 433: 0002: \***
+ 434: 0002: \******************************************************************************
+ 435: 0002: \******************************************************************************
+ 436: 0002: 
+ 437: 0002:      %INCLUDE BASROUT.J86   ! OSShell function
+ 438: 0002: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+ 439: 0002: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+ 440: 0002: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+ 441: 0002: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+ 442: 0002: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+ 443: 0002: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+ 444: 0002: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+ 445: 0002: !   the BASROUT.OBJ routines.  These routines were written
+ 446: 0002: !  using Metaware C and are intended to provide functions which
+ 447: 0002: !         are either not available in 4680 CBASIC or which can be more
+ 448: 0002: !               efficiently handled by the C language.  Their usage is
+ 449: 0002: !  offered on an "AT YOUR OWN RISK" basis.
+ 450: 0002: !
+ 451: 0002: !               The insert/extract routines usefulness may not be immediately
+ 452: 0002: !               apparent.  Their intention is that they be used in conjunction
+ 453: 0002: !               with a read/write form command.  They can more efficiently
+ 454: 0002: !               parse a string into many different variables than can the
+ 455: 0002: !               read form statement.  So instead of a long list of data var's
+ 456: 0002: !               it may be more efficient to just read/write one long string
+ 457: 0002: !               and then use the insert/extract routines to parse out the
+ 458: 0002: !   data.
+ 459: 0002: 
+ 460: 0002: ! ******************* SUB PROCESS FUNCTIONS *********************************
+ 461: 0002: 
+ 462: 0002: function osshell(cmd.line$) external   ! routine to start
+ 463: 0002:        ! another program.
+ 464: 0002:            integer*4    osshell    ! Upon completion of
+ 465: 0002:            string       cmd.line$   ! program, control is
+ 466: 0002:        ! returned to calling
+ 467: 0002: end function      ! program.
+ 468: 0002: !
+ 469: 0002: ! NOTES:  Program must be a 286 type file.  This does not exclude
+ 470: 0002: !         the capability to execute a batch file however.  Simply pass the
+ 471: 0002: !         following:
+ 472: 0002: !              c:\adx_spgm\command.286 batfile
+ 473: 0002: !         where batfile is the name of the batch file to be executed.
+ 474: 0002: !
+ 475: 0002: ! IMPORTANT: When using osshell to execute a batch file as described above,
+ 476: 0002: !            the final command in the batch file must be "exit".  If not,
+ 477: 0002: !       control is never given back to the calling program.
+ 478: 0002: 
+ 479: 0002: ! ************************ MEMORY RELATED FUNCTIONS ************************
+ 480: 0002: 
+ 481: 0002: function memfree(choice) external   ! routine to que the
+ 482: 0002:        ! status of the
+ 483: 0002:  integer*4 memfree    ! machine's memory:
+ 484: 0002:  integer*2 choice    ! Options:
+ 485: 0002:        !    1 - free
+ 486: 0002: end function      !    2 - total
+ 487: 0002:        !    3 - system
+ 488: 0002: 
+ 489: 0002: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+ 490: 0002: 
+ 491: 0002: function timedate(choice) external   ! routine to que the
+ 492: 0002:        ! OS's timedate table
+ 493: 0002:  integer*4 timedate   ! Choices:
+ 494: 0002:  integer*2 choice    !    1 - millisec's
+ 495: 0002:        !        since midnight
+ 496: 0002: end function      !    2 - minutes from
+ 497: 0002:        !  UCT (timezone)
+ 498: 0002:        !    3 - day of week
+ 499: 0002:        !   0-Sunday
+ 500: 0002:        !  6-Saturday
+ 501: 0002: 
+ 502: 0002: function settime(msecs) external   ! routine to set the
+ 503: 0002:        ! time on the controller
+ 504: 0002:  integer*4  settime    ! msecs is the desired
+ 505: 0002:  integer*4 msecs    ! number of milliseconds
+ 506: 0002:        ! since midnight
+ 507: 0002: end function      ! Returns negative on
+ 508: 0002:        ! error
+ 509: 0002: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+ 510: 0002: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+ 511: 0002: ! At 1 AM the controller broadcasts the new time to all terminals.
+ 512: 0002: ! Insure this is taken into consideration when using this routine.
+ 513: 0002: 
+ 514: 0002: !******************** DISK FILE RELATED FUNCTIONS *************************
+ 515: 0002: 
+ 516: 0002: function truncate(name,length) external   ! routine to truncate
+ 517: 0002:        ! the specified file
+ 518: 0002:  integer*4 truncate   ! to a given length.
+ 519: 0002:  string  name
+ 520: 0002:  integer*4 length
+ 521: 0002: 
+ 522: 0002: end function
+ 523: 0002: 
+ 524: 0002: !******************** STRING VALUE RELATED FUNCTIONS **********************
+ 525: 0002: 
+ 526: 0002: function isalpha(bstrn) external   ! routine to identify
+ 527: 0002:        ! if the specified
+ 528: 0002:  integer*1 isalpha    ! string contains all
+ 529: 0002:  string  bstrn    ! alphabetic char's
+ 530: 0002:        ! Returns:
+ 531: 0002: end function      !     0 - all alpha
+ 532: 0002:        !     X - byte of 1st
+ 533: 0002:        !         non-alpha
+ 534: 0002:        !   char
+ 535: 0002: 
+ 536: 0002: function isdigit(bstrn) external   ! routine to identify
+ 537: 0002:        ! if the specified
+ 538: 0002:  integer*1 isdigit    ! string contains all
+ 539: 0002:  string  bstrn    ! numeric char's
+ 540: 0002:        ! Returns:
+ 541: 0002: end function      !     0 - all numeric
+ 542: 0002:        !     X - byte of 1st
+ 543: 0002:        !         non-numeric
+ 544: 0002:        !   char
+ 545: 0002: 
+ 546: 0002: function islower(bstrn) external   ! routine to identify
+ 547: 0002:        ! if the specified
+ 548: 0002:  integer*1 islower    ! string contains all
+ 549: 0002:  string  bstrn    ! lower case char's
+ 550: 0002:        ! Returns:
+ 551: 0002: end function      !     0 - all lowercase
+ 552: 0002:        !     X - byte of 1st
+ 553: 0002:        !         non-lowercase
+ 554: 0002:        !   char
+ 555: 0002: 
+ 556: 0002: function isupper(bstrn) external   ! routine to identify
+ 557: 0002:        ! if the specified
+ 558: 0002:  integer*1 isupper    ! string contains all
+ 559: 0002:  string  bstrn    ! upper case char's
+ 560: 0002:        ! Returns:
+ 561: 0002: end function      !     0 - all uppercase
+ 562: 0002:        !     X - byte of 1st
+ 563: 0002:        !         non-uppercase
+ 564: 0002:        !   char
+ 565: 0002: 
+ 566: 0002: function toalpha(bstrn) external   ! routine to convert
+ 567: 0002:        ! non-alpha or non-num
+ 568: 0002:    integer*2 toalpha    ! char's to spaces
+ 569: 0002:  string  bstrn    ! Returns:
+ 570: 0002: end function      !   x - no. of char's
+ 571: 0002:        !       changed
+ 572: 0002: 
+ 573: 0002: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+ 574: 0002: 
+ 575: 0002: function idlecount(choice) external   ! routine to either
+ 576: 0002:        ! set to zero or queue
+ 577: 0002:  integer*4 idlecount   ! the value of the
+ 578: 0002:  integer*1 choice    ! processor's idlecount
+ 579: 0002:        ! Choice:
+ 580: 0002: end function      !     0 - set to zero
+ 581: 0002: !       !     1 - get value
+ 582: 0002: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+ 583: 0002: ! TO WORK - This level is not available unless  !     X - idlecount
+ 584: 0002: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+ 585: 0002: ! is highly unrecommended.
+ 586: 0002: 
+ 587: 0002: function logical(actname,logname,choice) external ! routine to set a
+ 588: 0002:        ! a logical name.
+ 589: 0002:  integer*4 logical    ! parms are self
+ 590: 0002:         string  logname    ! explanatory except
+ 591: 0002:  string  actname    ! for choice:
+ 592: 0002:  integer*1 choice    !   0 - set process
+ 593: 0002:        !   1 - set system
+ 594: 0002: end function      !   2 - get process
+ 595: 0002:        !   3 - get system
+ 596: 0002: 
+ 597: 0002: ! NOTE:  Only the setting of a system level of logical name requires
+ 598: 0002: ! user/group zero level of authorization.  Any application may query any
+ 599: 0002: ! logical name.  Setting of a system logical name is only applicable until
+ 600: 0002: ! the system is IPL'd.  A process logical name is only active when that
+ 601: 0002: ! process is active.
+ 602: 0002: 
+ 603: 0002: !******************** STRING PARSING FUNCTIONS *****************************
+ 604: 0002: 
+ 605: 0002: function inserts(whole,part,offset) external  ! routine to insert a
+ 606: 0002:        ! string (part) into
+ 607: 0002:  integer*2 INSERTS    ! another string (whole)
+ 608: 0002:  string  whole    ! starting at specified
+ 609: 0002:  string  part    ! character (offset)
+ 610: 0002:  integer*2 offset
+ 611: 0002: 
+ 612: 0002: end function
+ 613: 0002: 
+ 614: 0002: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+ 615: 0002:        ! a 4-byte integer into
+ 616: 0002:  integer*1 cinsert4   ! a string starting at
+ 617: 0002:  integer*4 integer4   ! byte specified by
+ 618: 0002:  string  bstring    ! offset (1-based)
+ 619: 0002:  integer*2 offset    ! Returns:
+ 620: 0002:        !     0 - Success
+ 621: 0002: end function      !    -1 - String overrun
+ 622: 0002: 
+ 623: 0002: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+ 624: 0002:        ! a 2-byte integer into
+ 625: 0002:  integer*1 cinsert2   ! a string starting at
+ 626: 0002:  integer*2 integer2   ! byte specified by
+ 627: 0002:  string  bstring    ! offset (1-based)
+ 628: 0002:  integer*2 offset    ! Returns:
+ 629: 0002:        !     0 - Success
+ 630: 0002: end function      !    -1 - String overrun
+ 631: 0002: 
+ 632: 0002: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+ 633: 0002:        ! a 1-byte integer into
+ 634: 0002:  integer*1 cinsert1   ! a string starting at
+ 635: 0002:  integer*1 integer1   ! byte specified by
+ 636: 0002:  string  bstring    ! offset (1-based)
+ 637: 0002:  integer*2 offset    ! Returns:
+ 638: 0002:        !     0 - Success
+ 639: 0002: end function      !    -1 - String overrun
+ 640: 0002: 
+ 641: 0002: function extracts(whole,part,offset) external  ! routine to extract a
+ 642: 0002:        ! string (part) from
+ 643: 0002:  integer*2 EXTRACTS   ! another string (whole)
+ 644: 0002:  string  whole    ! starting at specified
+ 645: 0002:  string  part    ! character (offset)
+ 646: 0002:  integer*2 offset
+ 647: 0002: 
+ 648: 0002: end function
+ 649: 0002: 
+ 650: 0002: function cextract4(bstring,offset) external  ! routine to extract
+ 651: 0002:        ! a 4-byte integer from
+ 652: 0002:  integer*4 cextract4   ! a string starting at
+ 653: 0002:                        ! byte specified by
+ 654: 0002:  string  bstring    ! offset (1-based)
+ 655: 0002:  integer*2 offset    ! Returns:
+ 656: 0002:        !     X - 4 byte integer
+ 657: 0002: end function      !    -1 - String overrun
+ 658: 0002: 
+ 659: 0002: function cextract2(bstring,offset) external  ! routine to extract
+ 660: 0002:        ! a 2-byte integer from
+ 661: 0002:  integer*2 cextract2   ! a string starting at
+ 662: 0002:                        ! byte specified by
+ 663: 0002:  string  bstring    ! offset (1-based)
+ 664: 0002:  integer*2 offset    ! Returns:
+ 665: 0002:        !     X - 2 byte integer
+ 666: 0002: end function      !    -1 - String overrun
+ 667: 0002: 
+ 668: 0002: function cextract1(bstring,offset) external  ! routine to extract
+ 669: 0002:        ! a 1-byte integer from
+ 670: 0002:  integer*1 cextract1   ! a string starting at
+ 671: 0002:                        ! byte specified by
+ 672: 0002:  string  bstring    ! offset (1-based)
+ 673: 0002:  integer*2 offset    ! Returns:
+ 674: 0002:        !     X - 1 byte integer
+ 675: 0002: end function      !    -1 - String overrun
+ 676: 0002: 
+ 677: 0002: 
+ 678: 0002: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+ 679: 0002:        ! file names and sizes
+ 680: 0002:        ! Return values:
+ 681: 0002:        !    -1  no matches
+ 682: 0002:        !        found on first
+ 683: 0002:        !        call
+ 684: 0002:        !    0   no matches
+ 685: 0002:        !        found on sub-
+ 686: 0002:        !        sequent calls
+ 687: 0002:        !    Pos Success
+ 688: 0002:        !    Neg OS Rtn Code
+ 689: 0002: ! Usage Note:  If searching for all occurences of a particular file name,
+ 690: 0002: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+ 691: 0002: ! to srchdir.  If any matches are found, a positive value will be returned.
+ 692: 0002: ! To see if any more matches exist, just issue another call to srchdir without
+ 693: 0002: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+ 694: 0002: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 695: 0002: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+ 696: 0002: ! of this data is defined below.
+ 697: 0002: 
+ 698: 0002:  integer*4 srchdir
+ 699: 0002: 
+ 700: 0002:  string  file.name$   ! file name to start
+ 701: 0002:        ! search (18 bytes max)
+ 702: 0002:        ! Wild cards and logical
+ 703: 0002:        ! names supported.
+ 704: 0002: 
+ 705: 0002:  string  dtbl.buffer$   ! must be initialized
+ 706: 0002:        ! to 48 bytes.  Contains
+ 707: 0002:        ! all of directory info
+ 708: 0002:        ! Initialize to nulls
+ 709: 0002:        ! each time a new file
+ 710: 0002:        ! name is used.
+ 711: 0002: 
+ 712: 0002: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+ 713: 0002: !
+ 714: 0002: ! Offs  Type                    Description Notes
+ 715: 0002: !  0 integer*4  key  use extract4 to access
+ 716: 0002: !  4  string (18 bytes) file name
+ 717: 0002: ! 22 integer*2  attributes use extract2 to access
+ 718: 0002: !      0x01 - Read Only
+ 719: 0002: !      0x02 - Hidden
+ 720: 0002: !      0x04 - System
+ 721: 0002: !      0x08 - Volume Label
+ 722: 0002: !      0x10 - Subdirectory
+ 723: 0002: !      0x20 - Archive (Files)
+ 724: 0002: !      0x40 - Security enabled
+ 725: 0002: !      0x80 - Reserved
+ 726: 0002: !      0x0000 - Local
+ 727: 0002: !      0x4000 - Mirrored/Update
+ 728: 0002: !      0xC000 - Mirrored/Close
+ 729: 0002: !
+ 730: 0002: !      0x6000 - Compound/Update
+ 731: 0002: !      0xE000 - Compound/Close
+ 732: 0002: ! 24 integer*2  record size use extract2 to access
+ 733: 0002: ! 26 integer*1  User ID of Owner
+ 734: 0002: ! 27 integer*1  Group ID of Owner
+ 735: 0002: ! 28 integer*2  File Security
+ 736: 0002: ! 30 string (6 bytes) Reserved
+ 737: 0002: ! 36 integer*4  File Size use extract4 to access
+ 738: 0002: ! 40 integer*2  Year  use extract2 to access
+ 739: 0002: ! 42 integer*1  Month
+ 740: 0002: ! 43 integer*1  Day
+ 741: 0002: ! 44 integer*1  Hour
+ 742: 0002: ! 45 integer*1  Minute
+ 743: 0002: ! 46 integer*1  Second
+ 744: 0002: ! 47 integer*1  Reserved
+ 745: 0002: 
+ 746: 0002: end function
+ 747: 0002: 
+ 748: 0002: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+ 749: 0002:        ! process names and
+ 750: 0002:        ! status.  Handy to
+ 751: 0002:        ! determine if a
+ 752: 0002:        ! program is currently
+ 753: 0002:        ! running.
+ 754: 0002:        ! Return values:
+ 755: 0002:        !    -1  no matches
+ 756: 0002:        !        found on first
+ 757: 0002:        !        call
+ 758: 0002:        !    0   no matches
+ 759: 0002:        !        found on sub-
+ 760: 0002:        !        sequent calls
+ 761: 0002:        !    Pos Success
+ 762: 0002:        !    Neg Failure
+ 763: 0002:        !        OS Rtn Code
+ 764: 0002:        ! 80000001h - Insuff
+ 765: 0002:         !        ptbl buffer
+ 766: 0002:        !        Length
+ 767: 0002: ! Usage Note:  If searching for all occurences of a particular process name,
+ 768: 0002: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+ 769: 0002: ! to srchproc.  If any matches are found, a positive value will be returned.
+ 770: 0002: ! To see if any more matches exist, just issue another call to srchproc without
+ 771: 0002: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+ 772: 0002: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 773: 0002: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+ 774: 0002: ! of this data is defined as follows:
+ 775: 0002: !
+ 776: 0002: !       --------------------------------------------------------
+ 777: 0002: !   0   |                         PID                          |
+ 778: 0002: !       --------------------------------------------------------
+ 779: 0002: !   4   |           FID             |   CID        |   VCID    |
+ 780: 0002: !       --------------------------------------------------------
+ 781: 0002: !   8   |                         NAME                         |
+ 782: 0002: !       --------------------------------------------------------
+ 783: 0002: !  12   |                         NAME cont'd                  |
+ 784: 0002: !       --------------------------------------------------------
+ 785: 0002: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+ 786: 0002: !       --------------------------------------------------------
+ 787: 0002: !  20   |                         MAXMEM                       |
+ 788: 0002: !       --------------------------------------------------------
+ 789: 0002: !  24   |       FLAGS               |   USER        |  GROUP   |
+ 790: 0002: !       --------------------------------------------------------
+ 791: 0002: !  28   |                         PARENT                       |
+ 792: 0002: !       --------------------------------------------------------
+ 793: 0002: !  32   |                         EVENTS                       |
+ 794: 0002: !       --------------------------------------------------------
+ 795: 0002: !  36   |                         CODE                         |
+ 796: 0002: !       --------------------------------------------------------
+ 797: 0002: !  40   |                         CSIZE                        |
+ 798: 0002: !       --------------------------------------------------------
+ 799: 0002: !  44   |                         DATA                         |
+ 800: 0002: !       --------------------------------------------------------
+ 801: 0002: !  48   |                         DSIZE                        |
+ 802: 0002: !       --------------------------------------------------------
+ 803: 0002: !  52   |                         HEAP                         |
+ 804: 0002: !       --------------------------------------------------------
+ 805: 0002: !  56   |                         HSIZE                        |
+ 806: 0002: !       --------------------------------------------------------
+ 807: 0002: !
+ 808: 0002: !       PID   Process ID
+ 809: 0002: !       FID  Process's Family ID
+ 810: 0002: !       CID   Physical Console Device Number
+ 811: 0002: !       VCID  Process's Virtual Console Number
+ 812: 0002: !       NAME  Process Name (Application Running)
+ 813: 0002: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+ 814: 0002: ! PRIOR    Priority
+ 815: 0002: !       MAXMEM  Maximum Memory Allowed
+ 816: 0002: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+ 817: 0002: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+ 818: 0002: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+ 819: 0002: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+ 820: 0002: ! USER  User Number
+ 821: 0002: ! GROUP  Group Number
+ 822: 0002: !       PARENT   Parent Process ID
+ 823: 0002: !       EVENTS   Bit Map of events that have completed but not retrieved
+ 824: 0002: !       CODE  Start of code area in user space
+ 825: 0002: ! CSIZE  Size in bytes of code area
+ 826: 0002: !       DATA  Start of data area in user space
+ 827: 0002: ! DSIZE  Size in bytes of data area
+ 828: 0002: !       HEAP  Start of heap area in user space
+ 829: 0002: ! HSIZE  Size in bytes of heap area
+ 830: 0002: !
+ 831: 0002:  integer*4 srchproc
+ 832: 0002: 
+ 833: 0002:  string  proc.name$   ! process name to start
+ 834: 0002:        ! search (10 bytes max)
+ 835: 0002:        ! Wild cards and logical
+ 836: 0002:        ! names supported.
+ 837: 0002: 
+ 838: 0002:  string  ptbl.buffer$   ! must be initialized
+ 839: 0002:        ! to 60 bytes.  Contains
+ 840: 0002:        ! all of process info
+ 841: 0002:        ! Initialize to nulls
+ 842: 0002:        ! each time a new
+ 843: 0002:        ! process name is used.
+ 844: 0002: 
+ 845: 0002: end function
+ 846: 0002: 
+ 847: 0002: function cconstat(timeout) external       ! function similar
+ 848: 0002:                                               ! to BASIC constat%
+ 849: 0002:  integer*2 cconstat   ! waits for either a
+ 850: 0002:  integer*4 timeout    ! key being hit or
+ 851: 0002:        ! the timer expiring
+ 852: 0002:        ! before returning
+ 853: 0002:        ! returns:
+ 854: 0002:        !   -1 error
+ 855: 0002:        !    0 timer expired
+ 856: 0002:        !    x scan code of
+ 857: 0002:        !      key hit
+ 858: 0002: end function
+ 859: 0002: 
+ 860: 0002: function disksize(disk.name$) external   ! function to find
+ 861: 0002:        ! the total size of
+ 862: 0002:  integer*4 disksize   ! the specified disk
+ 863: 0002:  string  disk.name$   ! name (e.g. "h0:")
+ 864: 0002:        ! if return value is
+ 865: 0002:        ! negative, error
+ 866: 0002: end function      ! was received
+ 867: 0002: 
+ 868: 0002: 
+ 869: 0002:      %INCLUDE BCFEXT.J86    ! BCF File function
+ 870: 0002: \*****************************************************************************
+ 871: 0002: \*****************************************************************************
+ 872: 0002: \***
+ 873: 0002: \***         FUNCTION DEFINITIONS FOR BOOTS CONTROL FILE
+ 874: 0002: \***
+ 875: 0002: \***                    REFERENCE : BCFEXTA.J86
+ 876: 0002: \***
+ 877: 0002: \***    Version A           Steve Windsor          5th Jan 1993
+ 878: 0002: \***
+ 879: 0002: \***    Version B           Michael J. Kelsall    14th Sep 1993
+ 880: 0002: \***    Code incremented to maintain consistency with other included code
+ 881: 0002: \***    for RETURNS/AUTOMATIC CREDIT CLAIMING system.
+ 882: 0002: \***
+ 883: 0002: \***    Version C           Stuart William McConnachie 23rd Jan 1995
+ 884: 0002: \***    Addition of TXR serial number as part of the TRANSACTION RETRIEVAL
+ 885: 0002: \***    project.
+ 886: 0002: \***
+ 887: 0002: \***    Version D           Stuart William McConnachie  7th June 1995
+ 888: 0002: \***    Converted calls to enable more than 1 record on the BCF.
+ 889: 0002: \***    The second record is to be used for the No7 customer card trial.
+ 890: 0002: \***
+ 891: 0002: \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003.
+ 892: 0002: \***    Modifications for All Txn Data To CDAS project.
+ 893: 0002: \***    No changes to this file.
+ 894: 0002: \***
+ 895: 0002: \***    Revision 4.7            Julia Stones              9th July 2003
+ 896: 0002: \***    Modifications for New Lines Report project.
+ 897: 0002: \***    No changes to this file.
+ 898: 0002: \***
+ 899: 0002: \*****************************************************************************
+ 900: 0002: \*****************************************************************************
+ 901: 0002: 
+ 902: 0002:    FUNCTION BCF.SET EXTERNAL
+ 903: 0002:    END FUNCTION
+ 904: 0002: 
+ 905: 0002:   FUNCTION READ.BCF EXTERNAL
+ 906: 0002:    INTEGER*2 READ.BCF
+ 907: 0002:   END FUNCTION
+ 908: 0002: 
+ 909: 0002:   FUNCTION READ.BCF.LOCK EXTERNAL
+ 910: 0002:    INTEGER*2 READ.BCF.LOCK
+ 911: 0002:   END FUNCTION
+ 912: 0002: 
+ 913: 0002:   FUNCTION WRITE.BCF EXTERNAL
+ 914: 0002:    INTEGER*2 WRITE.BCF
+ 915: 0002:   END FUNCTION
+ 916: 0002: 
+ 917: 0002:   FUNCTION WRITE.BCF.UNLOCK EXTERNAL
+ 918: 0002:    INTEGER*2 WRITE.BCF.UNLOCK
+ 919: 0002:   END FUNCTION
+ 920: 0002: 
+ 921: 0002:   FUNCTION WRITE.HOLD.BCF.UNLOCK EXTERNAL
+ 922: 0002:    INTEGER*2 WRITE.HOLD.BCF.UNLOCK
+ 923: 0002:   END FUNCTION
+ 924: 0002: 
+ 925: 0002: 
+ 926: 0002: \******************************************************************************
+ 927: 0002: \******************************************************************************
+ 928: 0002: \***
+ 929: 0002: \***    Included code defining external Boots functions
+ 930: 0002: \***
+ 931: 0002: \******************************************************************************
+ 932: 0002: \******************************************************************************
+ 933: 0002: 
+ 934: 0002:      %INCLUDE PSBF01E.J86   ! APPLICATION.LOG
+ 935: 0002: REM \
+ 936: 0002: \*******************************************************************************
+ 937: 0002: \*******************************************************************************
+ 938: 0002: \***
+ 939: 0002: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 940: 0002: \***
+ 941: 0002: \***                      FUNCTION NUMBER   : PSBF01
+ 942: 0002: \***
+ 943: 0002: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 944: 0002: \*** 
+ 945: 0002: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 946: 0002: \***      Three parameters which passed to the function have been removed.
+ 947: 0002: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 948: 0002: \***      return code).
+ 949: 0002: \***
+ 950: 0002: \*******************************************************************************
+ 951: 0002: 
+ 952: 0002: 
+ 953: 0002:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 954: 0002:                              VAR.STRING.1$,                                   \
+ 955: 0002:                              VAR.STRING.2$,                                   \
+ 956: 0002:                              EVENT.NO%)  EXTERNAL
+ 957: 0002: 
+ 958: 0002:       INTEGER*1 EVENT.NO%
+ 959: 0002: 
+ 960: 0002:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 961: 0002:                 MESSAGE.NO%
+ 962: 0002: 
+ 963: 0002:       STRING VAR.STRING.1$,                                            \
+ 964: 0002:              VAR.STRING.2$
+ 965: 0002: 
+ 966: 0002:    END FUNCTION
+ 967: 0002: 
+ 968: 0002: \*******************************************************************************
+ 969: 0002:      %INCLUDE PSBF20E.J86   ! ALLOCATE.DEALLOCATE.SESS.NUM
+ 970: 0002: REM\
+ 971: 0002: \*******************************************************************************
+ 972: 0002: \*******************************************************************************
+ 973: 0002: \***
+ 974: 0002: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 975: 0002: \***
+ 976: 0002: \***                  REFERENCE     : PSBF20E.J86
+ 977: 0002: \***
+ 978: 0002: \***     VERSION C            Janet Smith                13th May 1992
+ 979: 0002: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 980: 0002: \***     128 files.
+ 981: 0002: \***
+ 982: 0002: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 983: 0002: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 984: 0002: \***     as a variable.  This new variable contains the function's return
+ 985: 0002: \***     code.
+ 986: 0002: \***
+ 987: 0002: \*******************************************************************************
+ 988: 0002: \*******************************************************************************
+ 989: 0002: 
+ 990: 0002:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 991: 0002:                               PASSED.INTEGER%,                         \
+ 992: 0002:                               PASSED.STRING$)                          \
+ 993: 0002:    EXTERNAL
+ 994: 0002: 
+ 995: 0002:    STRING    FUNCTION.FLAG$,                                           \
+ 996: 0002:              PASSED.STRING$
+ 997: 0002:    ! 3 variables removed from here                                     ! CAW
+ 998: 0002: 
+ 999: 0002: 
+1000: 0002:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+1001: 0002:              PASSED.INTEGER%				               ! CJAS
+1002: 0002: 
+1003: 0002:    END FUNCTION
+1004: 0002: 
+1005: 0002:      %INCLUDE PSBF24E.J86   ! Error detected
+1006: 0002: REM \
+1007: 0002: \*******************************************************************************
+1008: 0002: \*******************************************************************************
+1009: 0002: \***
+1010: 0002: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+1011: 0002: \***
+1012: 0002: \***                      REFERENCE     : PSBF24E.J86
+1013: 0002: \***
+1014: 0002: \***    Version A                 Janet Smith                  13th May 1992
+1015: 0002: \***
+1016: 0002: \*******************************************************************************
+1017: 0002: \*******************************************************************************
+1018: 0002: 
+1019: 0002:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+1020: 0002: 				    ERRFILE%,              \
+1021: 0002: 				    ERRL%,                 \
+1022: 0002: 				    ERR$)        EXTERNAL
+1023: 0002: 				    
+1024: 0002:           STRING    ERR$
+1025: 0002: 
+1026: 0002:           INTEGER*2 ERRFILE%,              \
+1027: 0002: 	            ERRL%,                 \
+1028: 0002: 		    STANDARD.ERROR.DETECTED
+1029: 0002: 		    
+1030: 0002:           INTEGER*4 ERRN%
+1031: 0002: 	  		    
+1032: 0002:    END FUNCTION
+1033: 0002: 
+1034: 0002: 
+1035: 0002:      %INCLUDE PSBF39E.J86   ! Display Manager
+1036: 0002: !******************************************************************************
+1037: 0002: !******************************************************************************
+1038: 0002: !***
+1039: 0002: !***            PROGRAM         :       PSBF39E.J86
+1040: 0002: !***
+1041: 0002: !***            DESCRIPTION     :       DISPLAY MANAGER INTERFACE
+1042: 0002: !***
+1043: 0002: !***            AUTHOR          :       Stuart William McConnachie
+1044: 0002: !***            DATE WRITTEN    :       September 2000
+1045: 0002: !***
+1046: 0002: !***        Provides a much needed and easier to use interface to
+1047: 0002: !***        IBM Display Manager.
+1048: 0002: !***
+1049: 0002: !***        Saves the user having to set up, highlight, tab between and
+1050: 0002: !***        validate fields.  Also handles the help screens and conversion
+1051: 0002: !***        of date fields to external/internal format.
+1052: 0002: !***
+1053: 0002: !******************************************************************************
+1054: 0002: !******************************************************************************
+1055: 0002: 
+1056: 0002: !******************************************************************************
+1057: 0002: !   Initialises the display manager functions.
+1058: 0002: !   You should call this from your program initialisation for screen programs.
+1059: 0002: !   Note that the name of the display manager file is determined from the
+1060: 0002: !   global variable MODULE.NUMBER$.  For example PSB1200 uses PSBD12.dat
+1061: 0002: !   where the PSB and 12 have been derived from MODULE.NUMBER$.
+1062: 0002: 
+1063: 0002:     FUNCTION DM.INIT EXTERNAL
+1064: 0002:         INTEGER*1   DM.INIT
+1065: 0002:     END FUNCTION
+1066: 0002: 
+1067: 0002: !******************************************************************************
+1068: 0002: !   Quits the display manager program and frees resources.
+1069: 0002: !   You should call this from your program termination.
+1070: 0002: 
+1071: 0002:     FUNCTION DM.QUIT EXTERNAL
+1072: 0002:         INTEGER*1   DM.QUIT
+1073: 0002:     END FUNCTION
+1074: 0002: 
+1075: 0002: !******************************************************************************
+1076: 0002: !   Initialises a particular screen from the current display manager file
+1077: 0002: !   for display.  You supply the screen number, optional title message and
+1078: 0002: !   the first and last help screens associated with the display.
+1079: 0002: !   Once you have SHOWN a screen, you can use the remaining functions in
+1080: 0002: !   this library to set field values, and actually retrieve input from the
+1081: 0002: !   screen.  Note that showing a screen just displays it on the screen,
+1082: 0002: !   you need to call PROCESS.SCREEN to actually get any user input.
+1083: 0002: 
+1084: 0002:     FUNCTION DM.SHOW.SCREEN (SCREEN%, TITLE$, FIRST.HELP%, LAST.HELP%) EXTERNAL
+1085: 0002:         INTEGER*1   DM.SHOW.SCREEN
+1086: 0002:         INTEGER*2   SCREEN%
+1087: 0002:         STRING      TITLE$
+1088: 0002:         INTEGER*2   FIRST.HELP%
+1089: 0002:         INTEGER*2   LAST.HELP%
+1090: 0002:     END FUNCTION
+1091: 0002: 
+1092: 0002: !******************************************************************************
+1093: 0002: !   Sets a function key message to visible.  Optionally sets the text on that
+1094: 0002: !   key to the message string passed, if it is not null.
+1095: 0002: !   Note you must have shown a screen first, and that the function key fields
+1096: 0002: !   need to be defined in your display file with field IDs 241-250.
+1097: 0002: 
+1098: 0002:     FUNCTION DM.SHOW.FN.KEY (KEY.NUM%, MESSAGE$) EXTERNAL
+1099: 0002:         INTEGER*1   DM.SHOW.FN.KEY
+1100: 0002:         INTEGER*2   KEY.NUM%
+1101: 0002:         STRING      MESSAGE$
+1102: 0002:     END FUNCTION
+1103: 0002: 
+1104: 0002: !******************************************************************************
+1105: 0002: !   Sets a function key message to invisible.
+1106: 0002: !   Note you must have shown a screen first, and that the function key fields
+1107: 0002: !   need to be defined in your display file with field IDs 241-250.
+1108: 0002: 
+1109: 0002:     FUNCTION DM.HIDE.FN.KEY (KEY.NUM%) EXTERNAL
+1110: 0002:         INTEGER*1   DM.HIDE.FN.KEY
+1111: 0002:         INTEGER*2   KEY.NUM%
+1112: 0002:     END FUNCTION
+1113: 0002: 
+1114: 0002: !******************************************************************************
+1115: 0002: !   LEGACY: Do not use in new programs, use DM.FN.VISIBLE instead which takes
+1116: 0002: !   an infix notation expression, as opposed to reverse polish
+1117: 0002: !   This definition has been commented out accordingly.  If you are
+1118: 0002: !   recompiling an application, change to useing the new function.
+1119: 0002: !
+1120: 0002: !   FUNCTION DM.FN.KEY.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+1121: 0002: !       INTEGER*1   DM.FN.KEY.VISIBILITY
+1122: 0002: !       INTEGER*2   KEY.NUM%
+1123: 0002: !       STRING      EXPR$
+1124: 0002: !   END FUNCTION
+1125: 0002: 
+1126: 0002: !******************************************************************************
+1127: 0002: !   Sets a runtine expression to determine if a function key is visible.
+1128: 0002: !   This is the new version of the above which takes an infix notation EXPR$.
+1129: 0002: !   Note you must have shown a screen first, and that the function key fields
+1130: 0002: !   need to be defined in your display file with field IDs 241-250.
+1131: 0002: 
+1132: 0002:     FUNCTION DM.FN.VISIBLE (KEY.NUM%, EXPR$) EXTERNAL
+1133: 0002:         INTEGER*1   DM.FN.VISIBILITY
+1134: 0002:         INTEGER*2   KEY.NUM%
+1135: 0002:         STRING      EXPR$
+1136: 0002:     END FUNCTION
+1137: 0002: 
+1138: 0002: !******************************************************************************
+1139: 0002: !   Specifies that a given field contains a date.
+1140: 0002: !   This means that the date will be displayed on screen in the system date
+1141: 0002: !   format (e.g. DD/MM/YY or MM/DD/YY, but will be returned and set by your
+1142: 0002: !   application in YYMMDD format.
+1143: 0002: !   It does NOT mean that the field will be validated as a date, you must do
+1144: 0002: !   that explicitly using the VALID$ string.
+1145: 0002: 
+1146: 0002:     FUNCTION DM.DATE.FIELD (FIELD%) EXTERNAL
+1147: 0002:         INTEGER*1   DM.DATE.FIELD
+1148: 0002:         INTEGER*2   FIELD%
+1149: 0002:     END FUNCTION
+1150: 0002: 
+1151: 0002: !******************************************************************************
+1152: 0002: !   Specifies that a given field will contain a time.
+1153: 0002: !   This means that the time will be displayed on screen using the system time
+1154: 0002: !   format.  e.g. HH:MM
+1155: 0002: 
+1156: 0002:     FUNCTION DM.TIME.FIELD (FIELD%) EXTERNAL                                !CSWM
+1157: 0002:         INTEGER*1   DM.TIME.FIELD                                           !CSWM
+1158: 0002:         INTEGER*2   FIELD%                                                  !CSWM
+1159: 0002:     END FUNCTION                                                            !CSWM
+1160: 0002: 
+1161: 0002: !******************************************************************************
+1162: 0002: !   Specifies that a given input field will be read only.
+1163: 0002: !   This allows you to select an item from a list by highlighting it.
+1164: 0002: 
+1165: 0002:     FUNCTION DM.RO.FIELD (FIELD%) EXTERNAL                                  !ESWM
+1166: 0002:         INTEGER*1   DM.RO.FIELD                                             !ESWM
+1167: 0002:         INTEGER*2   FIELD%                                                  !ESWM
+1168: 0002:     END FUNCTION                                                            !ESWM
+1169: 0002: 
+1170: 0002: !******************************************************************************
+1171: 0002: !   Specifies that a given input field will be read write.
+1172: 0002: !   Undoes the effect of DM.RO.FIELD.
+1173: 0002: 
+1174: 0002:     FUNCTION DM.RW.FIELD (FIELD%) EXTERNAL                                  !ESWM
+1175: 0002:         INTEGER*1   DM.RW.FIELD                                             !ESWM
+1176: 0002:         INTEGER*2   FIELD%                                                  !ESWM
+1177: 0002:     END FUNCTION                                                            !ESWM
+1178: 0002: 
+1179: 0002: !******************************************************************************
+1180: 0002: !   LEGACY: Do not use in new programs, use DM.STATUS instead which takes
+1181: 0002: !   an infix notation expression, as opposed to reverse polish.
+1182: 0002: !   This definition has been commented out accordingly.  If you are
+1183: 0002: !   recompiling an application, change to useing the new function.
+1184: 0002: !
+1185: 0002: !   FUNCTION DM.DISPLAY.MESSAGE (MESSAGE$) EXTERNAL                         !DSWM
+1186: 0002: !       INTEGER*1   DM.DISPLAY.MESSAGE                                      !DSWM
+1187: 0002: !       STRING      MESSAGE$                                                !DSWM
+1188: 0002: !   END FUNCTION                                                            !DSWM
+1189: 0002: 
+1190: 0002: !******************************************************************************
+1191: 0002: !   Displays a message in the status line of the display.  Does not wait for
+1192: 0002: !   input.  Use this function for display messages such as B251 Processing...
+1193: 0002: !   You must have field 1 defined in your display manager file.
+1194: 0002: !   This is the new version of the above which takes an infix notation MESSAGE$.
+1195: 0002: 
+1196: 0002:     FUNCTION DM.STATUS (MESSAGE$) EXTERNAL                                  !DSWM
+1197: 0002:         INTEGER*1   DM.STATUS                                               !DSWM
+1198: 0002:         STRING      MESSAGE$                                                !DSWM
+1199: 0002:     END FUNCTION                                                            !DSWM
+1200: 0002: 
+1201: 0002: !******************************************************************************
+1202: 0002: !   Waits for input in the invisible input field of the display.  Additionally
+1203: 0002: !   displays a message prompting the user on the status line.
+1204: 0002: !   You must have fields 1 and 240 defined in your display manager file.
+1205: 0002: !   The message supplied should be in Reverse Polish form.
+1206: 0002: !   The function returns the key value that ended the input.
+1207: 0002: 
+1208: 0002:     FUNCTION DM.INVISIBLE.INPUT (MESSAGE$) EXTERNAL
+1209: 0002:         STRING      MESSAGE$
+1210: 0002:         INTEGER*2   DM.INVISIBLE.INPUT
+1211: 0002:     END FUNCTION
+1212: 0002: 
+1213: 0002: !******************************************************************************
+1214: 0002: !   Gets the contents of the invisible field from the display.  This will
+1215: 0002: !   allow you to get the Y or N answer that the user typed, for example.
+1216: 0002: 
+1217: 0002:     FUNCTION DM.INVISIBLE.FIELD EXTERNAL
+1218: 0002:         STRING      DM.INVISIBLE.FIELD
+1219: 0002:     END FUNCTION
+1220: 0002: 
+1221: 0002: !******************************************************************************
+1222: 0002: !   Returns or sets the current field used for input on the current display.
+1223: 0002: !   If NEW.FIELD% is zero, the function simply returns the current field.
+1224: 0002: !   If NEW.FIELD% is non zero, the function sets the current field.
+1225: 0002: 
+1226: 0002:     FUNCTION DM.CURRENT.FIELD (NEW.FIELD%) EXTERNAL
+1227: 0002:         INTEGER*2   DM.CURRENT.FIELD
+1228: 0002:         INTEGER*2   NEW.FIELD%
+1229: 0002:     END FUNCTION
+1230: 0002: 
+1231: 0002: !******************************************************************************
+1232: 0002: !   Sets a key number as being a validation key.  When this key is used the
+1233: 0002: !   function will handle the key in the same way as the ENTER key.  i.e. all
+1234: 0002: !   the visible fields on in input form are check for validity, and the key
+1235: 0002: !   press is only returned to the user if the form entries are valid.
+1236: 0002: !   Use this function to add the PGUP.KEY% and PGDN.KEY% keys, for example.
+1237: 0002: 
+1238: 0002:     FUNCTION DM.VALIDATE.KEY (KEY%) EXTERNAL                                !BSWM
+1239: 0002:         INTEGER*1   DM.VALIDATE.KEY                                         !BSWM
+1240: 0002:         INTEGER*2   KEY%                                                    !BSWM
+1241: 0002:     END FUNCTION                                                            !BSWM
+1242: 0002: 
+1243: 0002: !******************************************************************************
+1244: 0002: !   Returns or sets the flag which says if the screen contents have been
+1245: 0002: !   changed or not.  Use this function when you have multiple pages to a
+1246: 0002: !   form, but want the user to be prompted to save any changes on exit.
+1247: 0002: !   When called with FLAG% set 0 or -1, the function updates the current
+1248: 0002: !   displays setting.  When called with any other value, the function simply
+1249: 0002: !   returns the current setting and does not update it.
+1250: 0002: 
+1251: 0002:     FUNCTION DM.CHANGED.FLAG (FLAG%) EXTERNAL                               !BSWM
+1252: 0002:         INTEGER*1   FLAG%                                                   !BSWM
+1253: 0002:         INTEGER*1   DM.CHANGED.FLAG                                         !BSWM
+1254: 0002:     END FUNCTION                                                            !BSWM
+1255: 0002: 
+1256: 0002: !******************************************************************************
+1257: 0002: !   Sets the field tab order.  The tab order can be either:
+1258: 0002: !   0 - The TAB order is defined by the fields position on the display,
+1259: 0002: !       left to right then top to bottom of the display.
+1260: 0002: !   1 - The TAB order is defined by the number order of the fields.  This is
+1261: 0002: !       a new option which allows greater control over the field TAB order.
+1262: 0002: !   -1  Returns the current setting without changing it.
+1263: 0002: !   The default tab order is 0.  Once set, the TAB order is a global setting
+1264: 0002: !   for the current and all future screens.
+1265: 0002: 
+1266: 0002:     FUNCTION DM.TAB.ORDER (ORDER%) EXTERNAL                                 !DSWM
+1267: 0002:         INTEGER*1   ORDER%                                                  !DSWM
+1268: 0002:         INTEGER*1   DM.TAB.ORDER                                            !DSWM
+1269: 0002:     END FUNCTION                                                            !DSWM
+1270: 0002: 
+1271: 0002: !******************************************************************************
+1272: 0002: !   This function actually processes user input on the currently shown form.
+1273: 0002: !   The function returns when any unrecognised key terminates input in a
+1274: 0002: !   field.  The keys which will do this are determined by the properties of
+1275: 0002: !   the Display Manager fields on your form.  The function internally handles
+1276: 0002: !   most of the form navigation keys (e.g. Tab, Back Tab, Home End) the
+1277: 0002: !   rest are up to the user application.
+1278: 0002: 
+1279: 0002:     FUNCTION DM.PROCESS.SCREEN (FIRST.FIELD%, LAST.FIELD%, CONFIRM) EXTERNAL
+1280: 0002:         INTEGER*2   DM.PROCESS.SCREEN
+1281: 0002:         INTEGER*2   FIRST.FIELD%
+1282: 0002:         INTEGER*2   LAST.FIELD%
+1283: 0002:         INTEGER*1   CONFIRM
+1284: 0002:     END FUNCTION
+1285: 0002: 
+1286: 0002: !******************************************************************************
+1287: 0002: !   Associates a field on the current display with a given compile time
+1288: 0002: !   variable.  This allows the varibale to be used in your program code
+1289: 0002: !   AND be updated by the display manager fields in PROCESS.SCREEN.
+1290: 0002: !
+1291: 0002: !   NOTE: PLEASE BE VERY CAREFUL WITH THE THIRD PARAMETER TO THIS SUB
+1292: 0002: !   Always use an absolute variable for VARIABLE$:
+1293: 0002: !       CALL DM.NAME (2, "MY.VAR$", MY.VAR$)
+1294: 0002: !   NEVER use a calcualted value. These forms are all ILLEGAL:
+1295: 0002: !       CALL DM.NAME (2, "MY.VAR$", "1234")
+1296: 0002: !       CALL DM.NAME (2, "MY.VAR$", STR$(MY.VAR%))
+1297: 0002: !   Also, if you MUST pass in an array element, for example:
+1298: 0002: !       CALL DM.NAME (2, "MY.VAR$", ARRAY.ELEMENT$(I%))
+1299: 0002: !   then you must make sure you do not reDIM the array until you have finished
+1300: 0002: !   displaying and processing the screen.
+1301: 0002: 
+1302: 0002:     SUB DM.NAME (FIELD%, NAME$, VARIABLE$) EXTERNAL                         !DSWM
+1303: 0002:         INTEGER*2 FIELD%                                                    !DSWM
+1304: 0002:         STRING NAME$                                                        !DSWM
+1305: 0002:         STRING VARIABLE$                                                    !DSWM
+1306: 0002:     END SUB                                                                 !DSWM
+1307: 0002: 
+1308: 0002: !******************************************************************************
+1309: 0002: !   Returns the index of a field on the current screen, given its name.
+1310: 0002: 
+1311: 0002:     FUNCTION DM.INDEX (FIELD$) EXTERNAL                                     !DSWM
+1312: 0002:         STRING FIELD$                                                       !DSWM
+1313: 0002:         INTEGER*2 DM.INDEX                                                  !DSWM
+1314: 0002:     END FUNCTION                                                            !DSWM
+1315: 0002: 
+1316: 0002: !******************************************************************************
+1317: 0002: !   Sets the validation expression for a field on the display.  Exactly the
+1318: 0002: !   same as setting the global VALID$ array yourself, except it is done
+1319: 0002: !   via the fields name as assoicated via DM.NAME.FIELD and the expression
+1320: 0002: !   is in standard infix notation.
+1321: 0002: 
+1322: 0002:     FUNCTION DM.VALID (FIELD$, VALID$) EXTERNAL                             !DSWM
+1323: 0002:         STRING FIELD$                                                       !DSWM
+1324: 0002:         STRING VALID$                                                       !DSWM
+1325: 0002:         INTEGER*2 DM.VALID                                                  !DSWM
+1326: 0002:     END FUNCTION                                                            !DSWM
+1327: 0002: 
+1328: 0002: !******************************************************************************
+1329: 0002: !   Sets the message expression for a field on the display.  Exactly the
+1330: 0002: !   same as setting the global MESSAGE$ array yourself, except it is done
+1331: 0002: !   via the fields name as assoicated via DM.NAME.FIELD and the expression
+1332: 0002: !   is in standard infix notation.
+1333: 0002: 
+1334: 0002:     FUNCTION DM.MESSAGE (FIELD$, MESSAGE$) EXTERNAL                         !DSWM
+1335: 0002:         STRING FIELD$                                                       !DSWM
+1336: 0002:         STRING MESSAGE$                                                     !DSWM
+1337: 0002:         INTEGER*2 DM.MESSAGE                                                !DSWM
+1338: 0002:     END FUNCTION                                                            !DSWM
+1339: 0002: 
+1340: 0002: !******************************************************************************
+1341: 0002: !   Sets the field attributes for a field on the display. Exactly the
+1342: 0002: !   same as using the SETF command yourself except that it is done by
+1343: 0002: !   using the fields name as associated via the DM.NAME.FIELD.
+1344: 0002: 
+1345: 0002: SUB DM.FLD.ATT (FIELD$, VALUE$) EXTERNAL                                    !FNWB
+1346: 0002:     STRING      FIELD$                                                      !FNWB
+1347: 0002:     STRING      VALUE$                                                      !FNWB
+1348: 0002: END SUB                                                                     !FNWB
+1349: 0002: 
+1350: 0002: !******************************************************************************
+1351: 0002: !   Sets an input field to act as an output only field on the display. This
+1352: 0002: !   allows setting input fields that contain headings etc. to be skipped by
+1353: 0002: !   the cursor movement keys.
+1354: 0002: 
+1355: 0002: FUNCTION DM.OO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+1356: 0002:     INTEGER*2   DM.OO.FIELD                                                 !FNWB
+1357: 0002:     STRING      FIELD$                                                      !FNWB
+1358: 0002: END FUNCTION                                                                !FNWB
+1359: 0002: 
+1360: 0002: !******************************************************************************
+1361: 0002: !   Sets an input field back to an i/o field
+1362: 0002: 
+1363: 0002: FUNCTION DM.IO.FIELD (FIELD$) EXTERNAL                                      !FNWB
+1364: 0002:     INTEGER*2   DM.IO.FIELD                                                 !FNWB
+1365: 0002:     STRING      FIELD$                                                      !FNWB
+1366: 0002: END FUNCTION                                                                !FNWB
+1367: 0002: 
+1368: 0002: !******************************************************************************
+1369: 0002: !   Sets the visibility expression for a field on the display.  Exactly the
+1370: 0002: !   same as setting the global VISIBLE$ array yourself, except it is done
+1371: 0002: !   via the fields name as assoicated via DM.NAME.FIELD and the expression
+1372: 0002: !   is in standard infix notation.
+1373: 0002: 
+1374: 0002:     FUNCTION DM.VISIBLE (FIELD$, VISIBLE$) EXTERNAL                         !DSWM
+1375: 0002:         STRING FIELD$                                                       !DSWM
+1376: 0002:         STRING VISIBLE$                                                     !DSWM
+1377: 0002:         INTEGER*2 DM.VISIBLE                                                !DSWM
+1378: 0002:     END FUNCTION                                                            !DSWM
+1379: 0002: 
+1380: 0002: !******************************************************************************
+1381: 0002: !   Sets an error message in field 1 of the display and moves the input
+1382: 0002: !   focus to the offending line of the display.  Should be called from user
+1383: 0002: !   validation code.  Equivalent of the following separate calls:
+1384: 0002: !       CALL DM.CURRENT.FIELD%(DM.INDEX(FIELD$))
+1385: 0002: !       FIELD$(1) = POLISH$(MESSAGE$)
+1386: 0002: !   Can also be called with a null field name, in which case the cursor
+1387: 0002: !   remains in the current input field, but the error is displayed.
+1388: 0002: 
+1389: 0002:     FUNCTION DM.FOCUS (FIELD$, MESSAGE$) EXTERNAL                           !DSWM
+1390: 0002:         STRING FIELD$                                                       !DSWM
+1391: 0002:         STRING MESSAGE$                                                     !DSWM
+1392: 0002:         INTEGER*2 DM.FOCUS                                                  !DSWM
+1393: 0002:     END FUNCTION                                                            !DSWM
+1394: 0002: 
+1395: 0002: !******************************************************************************
+1396: 0002: 
+1397: 0002: 
+1398: 0002: \******************************************************************************
+1399: 0002: \******************************************************************************
+1400: 0002: \***
+1401: 0002: \***    MAIN PROGRAM
+1402: 0002: \***
+1403: 0002: \******************************************************************************
+1404: 0002: \******************************************************************************
+1405: 0002: 
+1406: 0002:   MAIN.PROGRAM:
+1407: 0024: 
+1408: 0024:       ON ERROR GOTO ERROR.DETECTED
+1409: 0039:       %INCLUDE PSBUSEE.J86            ! Chaining Parameters
+1410: 0039: \/*********************************************************************/ PSBUSEE
+1411: 0039: \/*                                                                   */ PSBUSEE
+1412: 0039: \/*      PSBUSEE.J86  -  USE in PSB Application Program               */ PSBUSEE
+1413: 0039: \/*      ----------------------------------------------               */ PSBUSEE
+1414: 0039: \/*                                                                   */ PSBUSEE
+1415: 0039: \/*********************************************************************/ PSBUSEE
+1416: 0039:                                                                        ! PSBUSEE
+1417: 0039:         USE  PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON , PSBCHN.U1 ,      \ PSBUSEE
+1418: 008d:              PSBCHN.U2 , PSBCHN.U3                                     ! PSBUSEE
+1419: 008d:                                                                        ! PSBUSEE
+1420: 008d: 
+1421: 008d:       GOSUB INITIALISATION
+1422: 009f:       GOSUB MAIN.SCREEN
+1423: 00b1:       GOSUB TERMINATION
+1424: 00c3:       
+1425: 00c3:   STOP
+1426: 00d0: 
+1427: 00d0: \******************************************************************************
+1428: 00d0: \******************************************************************************
+1429: 00d0: \***
+1430: 00d0: \***    MAIN PROGRAM
+1431: 00d0: \***
+1432: 00d0: \******************************************************************************
+1433: 00d0: \******************************************************************************
+1434: 00d0: 
+1435: 00d0:   INITIALISATION:
+1436: 00e0: 
+1437: 00e0:     CALL BCF.SET 
+1438: 00fb:     BCF.OPEN.FLAG$ = "N"
+1439: 0110: 
+1440: 0110:     TRUE = -1
+1441: 0120:     FALSE = 0  
+1442: 0130:     BATCH.SCREEN.FLAG$ = "S"        ! Screen
+1443: 0147:     CHAIN.TO.PROG$     = "PSB50"    ! PSB50 for chain
+1444: 015e:     MODULE.NUMBER$     = "PSD96"    ! Current Module
+1445: 0175:     RESET = FALSE
+1446: 0187: 
+1447: 0187:     CURRENT.DATE$ = DATE$ 
+1448: 019d: 
+1449: 019d:     EXIT.NOW = FALSE
+1450: 01af:     GOSUB ALLOCATE.SESSION.NUMBERS
+1451: 01c1: 
+1452: 01c1:     CALL DM.INIT                    ! Display Manager Initialis
+1453: 01ce: 
+1454: 01ce:  RETURN
+1455: 01de: 
+1456: 01de: \******************************************************************************
+1457: 01de: \******************************************************************************
+1458: 01de: \***
+1459: 01de: \***    ALLOCATE.SESSION.NUMBERS:
+1460: 01de: \***
+1461: 01de: \***    Use the session number utility to allocate file numbers for the
+1462: 01de: \***    files used by the program.
+1463: 01de: \***
+1464: 01de: \******************************************************************************
+1465: 01de: \******************************************************************************
+1466: 01de: 
+1467: 01de: ALLOCATE.SESSION.NUMBERS:
+1468: 01ee: 
+1469: 01ee:       FUNCTION.FLAG$ EQ "O"
+1470: 0205: 
+1471: 0205:       PASSED.INTEGER% EQ BCF.REPORT.NUM%
+1472: 021b:       PASSED.STRING$ EQ BCF.FILE.NAME$
+1473: 0239:       GOSUB CALL.F20.SESS.NUM.UTILITY
+1474: 024b:       BCF.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+1475: 0261: 
+1476: 0261: RETURN
+1477: 0271:  
+1478: 0271: \******************************************************************************
+1479: 0271: \******************************************************************************
+1480: 0271: \***
+1481: 0271: \***    CALL.F20.SESS.NUM.UTILITY:
+1482: 0271: \***
+1483: 0271: \******************************************************************************
+1484: 0271: \******************************************************************************
+1485: 0271: 
+1486: 0271:   CALL.F20.SESS.NUM.UTILITY: 
+1487: 0281:         
+1488: 0281:       FILE.OPERATION$ = FUNCTION.FLAG$
+1489: 029f:       CURRENT.REPORT.NUM% = PASSED.INTEGER%
+1490: 02b5:       RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+1491: 02ee:                                  PASSED.STRING$)
+1492: 02ee:       IF RC% <> 0 THEN GOTO FILE.ERROR
+1493: 030c: 
+1494: 030c:   RETURN
+1495: 031c: 
+1496: 031c: \******************************************************************************
+1497: 031c: \******************************************************************************
+1498: 031c: \***
+1499: 031c: \***    Screen Validation
+1500: 031c: \***
+1501: 031c: \******************************************************************************
+1502: 031c: \******************************************************************************
+1503: 031c: 
+1504: 031c:   MAIN.SCREEN:
+1505: 032c: 
+1506: 032c:       WHILE NOT EXIT.NOW
+1507: 0337: 
+1508: 0337:           CALL DM.SHOW.SCREEN(1, "", 2, 2)
+1509: 0351: 
+1510: 0351:           IF RESET = TRUE THEN BEGIN
+1511: 0366:               CALL DM.STATUS ("MESSAGE(299,'')")
+1512: 037a:           ENDIF
+1513: 0382: 
+1514: 0382:           CALL DM.CURRENT.FIELD (3)
+1515: 0393: 
+1516: 0393:           RET.KEY% = F3.KEY%
+1517: 03b0: 
+1518: 03b0:           WHILE RET.KEY% <> ENTER.KEY%
+1519: 03bb: 
+1520: 03bb:               RET.KEY% = DM.PROCESS.SCREEN(3, 3, FALSE)
+1521: 03e6: 
+1522: 03e6:               IF RET.KEY% = F3.KEY%   THEN BEGIN
+1523: 0411: 
+1524: 0411:                   CALL DM.STATUS ("MESSAGE(405,'')")
+1525: 0425:                   WAIT ;500
+1526: 043c:                   GOSUB CHAIN.TO.CALLER
+1527: 044e:                   RET.KEY% = ENTER.KEY%
+1528: 046b:                   EXIT.NOW = TRUE
+1529: 0480: 
+1530: 0480:               ENDIF ELSE IF RET.KEY% = ENTER.KEY%     THEN BEGIN
+1531: 04ae: 
+1532: 04ae:                   IF UCASE$(FIELD$(3)) = CHR$(89) THEN BEGIN
+1533: 04f1: 
+1534: 04f1:                       ! BCF file will be opened only if the user gives correct
+1535: 04f1:                       ! letter and press enter. Thus even if the screen kept 
+1536: 04f1:                       ! open, BCF file will not be in open mode.
+1537: 04f1: 
+1538: 04f1:                       IF BCF.OPEN.FLAG$ <> "Y" THEN BEGIN
+1539: 050c:                           IF END #BCF.SESS.NUM% THEN FILE.ERROR
+1540: 0528:                           OPEN BCF.FILE.NAME$ RECL BCF.RECL% AS BCF.SESS.NUM% LOCKED 
+1541: 0554:                           BCF.OPEN.FLAG$ = "Y"
+1542: 0569:                           CALL DM.STATUS ("MESSAGE(251,'')")
+1543: 057d:                       ENDIF
+1544: 0585:                       WAIT ;500
+1545: 059c: 
+1546: 059c:                       BCF.REC.NO% = 14
+1547: 05b3:                       FILE.OPERATION$ = "R"
+1548: 05ca:                       RC% = READ.BCF
+1549: 05e3: 
+1550: 05e3:                       IF  BCF.DEALDIR.SERIAL.NUM$ = "0000" AND          \          
+1551: 065d:                           BCF.DIDIR.SERIAL.NUM$   = "0000" AND          \ 
+1552: 065d:                           BCF.DVCHR.SERIAL.NUM$   = "0000" THEN BEGIN
+1553: 065d: 
+1554: 065d:                           CALL DM.STATUS                                \
+1555: 0671:                          ("MESSAGE(186,',BCF serial numbers are already initialized, F3 to exit')")
+1556: 0671:                           RET.KEY% = F3.KEY% 
+1557: 0690: 
+1558: 0690:                       ENDIF ELSE BEGIN
+1559: 0698:                           GOSUB  MAIN.PROCESSING
+1560: 06aa: 
+1561: 06aa:                   ENDIF 
+1562: 06b5: 
+1563: 06b5:                   ENDIF ELSE IF FIELD$(3) = "" THEN BEGIN
+1564: 06df: 
+1565: 06df:                       CALL DM.STATUS ("MESSAGE(002,'')")
+1566: 06f3:                       RET.KEY% = F3.KEY%
+1567: 0712: 
+1568: 0712:                   ENDIF ELSE BEGIN
+1569: 071a: 
+1570: 071a:                       CALL DM.STATUS ("MESSAGE(005,'')")
+1571: 072e:                       RET.KEY% = F3.KEY%
+1572: 074b: 
+1573: 074b:                   ENDIF
+1574: 0755: 
+1575: 0755:               ENDIF ELSE IF RET.KEY% = ESC.KEY%    THEN BEGIN
+1576: 0780: 
+1577: 0780:                   GOTO ESCAPE.PRESSED
+1578: 078d: 
+1579: 078d:               ENDIF ELSE BEGIN
+1580: 0795: 
+1581: 0795:                   CALL DM.STATUS ("MESSAGE(001,'')")
+1582: 07a9:                   RET.KEY% = F3.KEY%
+1583: 07c6: 
+1584: 07c6:              ENDIF
+1585: 07ce: 
+1586: 07ce:           WEND
+1587: 07fc: 
+1588: 07fc: 
+1589: 07fc:      WEND 
+1590: 080e: 
+1591: 080e: 
+1592: 080e: RETURN
+1593: 081e: 
+1594: 081e: \******************************************************************************
+1595: 081e: \******************************************************************************
+1596: 081e: \***
+1597: 081e: \***    MAIN PROCESSING
+1598: 081e: \***
+1599: 081e: \******************************************************************************
+1600: 081e: \******************************************************************************
+1601: 081e: 
+1602: 081e:   MAIN.PROCESSING:   
+1603: 082e:     
+1604: 082e:       BCF.REC.NO% = 14
+1605: 0845: 
+1606: 0845:       FILE.OPERATION$ = "R"	
+1607: 085c: 
+1608: 085c:       RC% = READ.BCF
+1609: 0875: 
+1610: 0875:       IF RC% <> 0 THEN BEGIN
+1611: 0890:           GOTO FILE.ERROR
+1612: 089d:       ENDIF ELSE BEGIN
+1613: 08a5:           GOSUB SET.SERIAL.ZERO
+1614: 08b7:       ENDIF
+1615: 08bf:       
+1616: 08bf:   RETURN
+1617: 08cf: 
+1618: 08cf: \******************************************************************************
+1619: 08cf: \******************************************************************************
+1620: 08cf: \***
+1621: 08cf: \***    SET.SERIAL.ZERO
+1622: 08cf: \***
+1623: 08cf: \******************************************************************************
+1624: 08cf: \******************************************************************************
+1625: 08cf: 
+1626: 08cf:   SET.SERIAL.ZERO:
+1627: 08df: 
+1628: 08df:       ! Below hard coded variables will reset the serial numbers of DEALDIR
+1629: 08df:       ! DIDIR and DVCHR. Store can have an initial deal load then
+1630: 08df: 
+1631: 08df:       BCF.DEALDIR.SERIAL.NUM$ = "0000"
+1632: 08f6:       BCF.DIDIR.SERIAL.NUM$   = "0000"
+1633: 090d:       BCF.DVCHR.SERIAL.NUM$   = "0000"
+1634: 0924:       
+1635: 0924:       FILE.OPERATION$ = "W"
+1636: 093b: 
+1637: 093b:       RC% = WRITE.BCF     
+1638: 0954: 
+1639: 0954:       IF RC% <> 0 THEN BEGIN
+1640: 096f:           GOTO FILE.ERROR
+1641: 097a:      
+1642: 097a:       ENDIF
+1643: 0982: 
+1644: 0982:       RESET = TRUE
+1645: 0994: 
+1646: 0994:       GOSUB CLOSE.PROCESSING
+1647: 09a6: 
+1648: 09a6:   RETURN
+1649: 09b6: 
+1650: 09b6: \******************************************************************************
+1651: 09b6: \******************************************************************************
+1652: 09b6: \***
+1653: 09b6: \***     CLOSE.PROCESSING
+1654: 09b6: \***
+1655: 09b6: \******************************************************************************
+1656: 09b6: \******************************************************************************
+1657: 09b6: 
+1658: 09b6:      CLOSE.PROCESSING:
+1659: 09c6: 
+1660: 09c6:          IF BCF.OPEN.FLAG$ <> "N" THEN BEGIN
+1661: 09e1:             CLOSE BCF.SESS.NUM%   
+1662: 09f5:             BCF.OPEN.FLAG$ = "N"
+1663: 0a0a:          ENDIF
+1664: 0a12: 
+1665: 0a12:      RETURN 
+1666: 0a22: 
+1667: 0a22: \******************************************************************************
+1668: 0a22: \******************************************************************************
+1669: 0a22: \***
+1670: 0a22: \***     DEALLOCATE.SESSION.NUMBERS
+1671: 0a22: \***
+1672: 0a22: \******************************************************************************
+1673: 0a22: \******************************************************************************
+1674: 0a22: 
+1675: 0a22:      DEALLOCATE.SESSION.NUMBERS:
+1676: 0a32: 
+1677: 0a32:          FUNCTION.FLAG$   = "C"          
+1678: 0a49: 
+1679: 0a49:          PASSED.INTEGER% EQ BCF.REPORT.NUM%
+1680: 0a5f:          PASSED.STRING$ EQ BCF.FILE.NAME$
+1681: 0a7d:          GOSUB CALL.F20.SESS.NUM.UTILITY
+1682: 0a8f:          BCF.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+1683: 0aa5: 
+1684: 0aa5:      RETURN
+1685: 0ab5: 
+1686: 0ab5: \******************************************************************************
+1687: 0ab5: \******************************************************************************
+1688: 0ab5: \***
+1689: 0ab5: \***   SUBROUTINE :  ESCAPE.PRESSED
+1690: 0ab5: \***
+1691: 0ab5: \******************************************************************************
+1692: 0ab5: \******************************************************************************
+1693: 0ab5: 
+1694: 0ab5:   ESCAPE.PRESSED:
+1695: 0ac5: 
+1696: 0ac5:     PSBCHN.MENCON = "000000"
+1697: 0adc: 
+1698: 0adc:  
+1699: 0adc: CHAIN.TO.CALLER:           
+1700: 0aec: 
+1701: 0aec:     ! Processing - Please wait
+1702: 0aec:     CALL DM.STATUS ("MESSAGE(405,'')")
+1703: 0b00:     CALL DM.QUIT
+1704: 0b0d: 
+1705: 0b0d:     ! Current program and chaining program
+1706: 0b0d:     PSBCHN.APP = "C:/ADX_UPGM/PSE50.286"
+1707: 0b24:     PSBCHN.PRG = "C:/ADX_UPGM/" + CHAIN.TO.PROG$ + ".286"
+1708: 0b4d: 
+1709: 0b4d:     %INCLUDE PSBCHNE.J86          ! Include CHAIN operation
+1710: 0b4d: \/*********************************************************************/ PSBCHNE
+1711: 0b4d: \/*                                                                   */ PSBCHNE
+1712: 0b4d: \/*      PSBCHNE.J86  -  Chain to PSB Application Program             */ PSBCHNE
+1713: 0b4d: \/*      ------------------------------------------------             */ PSBCHNE
+1714: 0b4d: \/*                                                                   */ PSBCHNE
+1715: 0b4d: \/*********************************************************************/ PSBCHNE
+1716: 0b4d:                                                                        ! PSBCHNE
+1717: 0b4d:         CHAIN  PSBCHN.PRG , PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON ,   \ PSBCHNE
+1718: 0bcd:                             PSBCHN.U1 , PSBCHN.U2  , PSBCHN.U3         ! PSBCHNE
+1719: 0bcd:                                                                        ! PSBCHNE
+1720: 0bcd: 
+1721: 0bcd:     GOSUB STOP.PROGRAM
+1722: 0bdf: 
+1723: 0bdf: RETURN
+1724: 0bef: 
+1725: 0bef: 
+1726: 0bef: \******************************************************************************
+1727: 0bef: \******************************************************************************
+1728: 0bef: \***
+1729: 0bef: \***   SUBROUTINE : TERMINATION
+1730: 0bef: \***
+1731: 0bef: \******************************************************************************
+1732: 0bef: \******************************************************************************
+1733: 0bef: 
+1734: 0bef:      TERMINATION:
+1735: 0bff: 
+1736: 0bff:          GOSUB CLOSE.PROCESSING
+1737: 0c11:          GOSUB DEALLOCATE.SESSION.NUMBERS
+1738: 0c23: 
+1739: 0c23:      RETURN
+1740: 0c33: 
+1741: 0c33: \******************************************************************************
+1742: 0c33: \******************************************************************************
+1743: 0c33: \***                                                                           
+1744: 0c33: \***   ERROR ROUTINE  :  FILE.ERROR                                            
+1745: 0c33: \***                                                                           
+1746: 0c33: \***   Call APPLICATION.LOG to log an event 106 with                           
+1747: 0c33: \***   flag, current report number and current key                             
+1748: 0c33: \***                                                                           
+1749: 0c33: \***                                                                           
+1750: 0c33: \******************************************************************************
+1751: 0c33: \******************************************************************************
+1752: 0c33: 
+1753: 0c33:   FILE.ERROR:         
+1754: 0c43:  
+1755: 0c43:       EVENT.NO%     = 106
+1756: 0c54:       
+1757: 0c54:       FILE.NO$  = CHR$(SHIFT(CURRENT.REPORT.NUM%,8)) + \
+1758: 0ca7:                 CHR$(SHIFT(CURRENT.REPORT.NUM%,0))
+1759: 0ca7: 
+1760: 0ca7:       IF FILE.OPERATION$ = "O" THEN BEGIN  ! Open error
+1761: 0cc5: 
+1762: 0cc5:           MESSAGE.NO%   = 501    ! Message No. for open error
+1763: 0cd6:           VAR.STRING.2$ = RIGHT$("000" + STR$(CURRENT.REPORT.NUM%),3)
+1764: 0d23: 
+1765: 0d23:       ENDIF ELSE IF FILE.OPERATION$ = "R" THEN BEGIN  ! Read error
+1766: 0d44: 
+1767: 0d44:           MESSAGE.NO%   = 508    ! Message No. for Read error
+1768: 0d55:           VAR.STRING.2$ = RIGHT$("000" + STR$(CURRENT.REPORT.NUM%),3) + \
+1769: 0dc0:                         UNPACK$(CURRENT.CODE$)    
+1770: 0dc0: 
+1771: 0dc0:       ENDIF ELSE IF FILE.OPERATION$ = "W" THEN BEGIN  ! Read error
+1772: 0de1: 
+1773: 0de1:           MESSAGE.NO%   = 504    ! Message No. for Write error
+1774: 0df2:           VAR.STRING.2$ = RIGHT$("000" + STR$(CURRENT.REPORT.NUM%),3) + \
+1775: 0e5a:                         UNPACK$(CURRENT.CODE$)       
+1776: 0e5a: 
+1777: 0e5a:       ENDIF
+1778: 0e62: 
+1779: 0e62:       VAR.STRING.1$ = FILE.OPERATION$                        +          \
+1780: 0eec:                 CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +          \
+1781: 0eec:                 CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +          \
+1782: 0eec:                 CURRENT.CODE$
+1783: 0eec:       VAR.STRING.2$ = "PSD96"
+1784: 0f03: 
+1785: 0f03:       RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,               \
+1786: 0f45:                       VAR.STRING.2$,EVENT.NO%)
+1787: 0f45: 
+1788: 0f45: 
+1789: 0f45:       GOTO ESCAPE.PRESSED
+1790: 0f50: 
+1791: 0f50: \******************************************************************************
+1792: 0f50: \******************************************************************************
+1793: 0f50: \***
+1794: 0f50: \***   SUBROUTINE : ERROR.DETECTED
+1795: 0f50: \***
+1796: 0f50: \******************************************************************************
+1797: 0f50: \******************************************************************************
+1798: 0f50: 
+1799: 0f50:   ERROR.DETECTED:         
+1800: 0f60: 
+1801: 0f60:      
+1802: 0f60:       CALL STANDARD.ERROR.DETECTED(ERRN, ERRF%, ERRL, ERR)
+1803: 0f8d: 
+1804: 0f8d:       GOSUB FILE.ERROR
+1805: 0f9f: 
+1806: 0f9f: \******************************************************************************
+1807: 0f9f: \******************************************************************************
+1808: 0f9f: \***
+1809: 0f9f: \***   SUBROUTINE : STOP.PROGRAM
+1810: 0f9f: \***
+1811: 0f9f: \******************************************************************************
+1812: 0f9f: \******************************************************************************
+1813: 0f9f: 
+1814: 0f9f:      STOP.PROGRAM:
+1815: 0fb4: 
+1816: 0fb4:      END
+1817: 0fb4: 
+1818: 0fb4: \******************************************************************************
+1819: 0fb4: \******************************************************************************
+1820: 0fb4: \***
+1821: 0fb4: \***    End of program 
+1822: 0fb4: \***
+1823: 0fb4: \******************************************************************************
+1824: 0fb4: \******************************************************************************
+1825: 0fb4:  
+1826: 0fb4: End of Compilation

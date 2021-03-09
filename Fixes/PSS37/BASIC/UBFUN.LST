@@ -1,0 +1,351 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* UOD buffer File Functions                                      */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : UBFUN.BAS                                        */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Stuart Highley          11 August 2008     */
+   8: 0000: \/                                                                 */
+   9: 0000: \/* VERSION B.          Charles Skadorwa        9  October 2008    */
+  10: 0000: \/*                     Stuart Highley          17 October 2008    */
+  11: 0000: \/* Changed the length of the user ID from 3 to 8 to cope with     */
+  12: 0000: \/* all 9s sign on.                                                */
+  13: 0000: \/*                                                                */
+  14: 0000: \/* VERSION C.          Stuart Highley          16 December 2008   */
+  15: 0000: \/* Added rejected batch flag.                                     */
+  16: 0000: \/*                                                                */
+  17: 0000: \/* VERSION D           Mark Goode              29th Decemeber 2008*/
+  18: 0000: \/* Changes to the fields on the audit record                      */
+  19: 0000: \/*                                                                */
+  20: 0000: \/* VERSION E           Mark Goode               25th February 2009*/
+  21: 0000: \/* Add audit item detail record                                   */ 
+  22: 0000: \/*                                                                */ 
+  23: 0000: \/* VERSION F           Mark Goode               4th February 2009 */
+  24: 0000: \/* Add audit trailer record                                       */
+  25: 0000: \/*                                                                */  
+  26: 0000: \/******************************************************************/
+  27: 0000: 
+  28: 0000:     INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  29: 0000: 
+  30: 0000:     STRING GLOBAL    CURRENT.CODE$,                                 \
+  31: 0000:                      FILE.OPERATION$
+  32: 0000: 
+  33: 0000:     %INCLUDE UBDEC.J86
+  34: 0000: \/******************************************************************/
+  35: 0000: \/*                                                                */
+  36: 0000: \/* UOD Banked FILE GLOBAL VARIABLE DECLARATIONS                   */
+  37: 0000: \/*                                                                */
+  38: 0000: \/* REFERENCE   : UBDEC.J86                                        */
+  39: 0000: \/*                                                                */
+  40: 0000: \/* VERSION A.          Stuart Highley            14 August 2008   */
+  41: 0000: \/                                                                 */
+  42: 0000: \/* VERSION B.          Charles Skadorwa          9 October 2008   */
+  43: 0000: \/*                                                                */
+  44: 0000: \/* VERSION C.          Stuart Highley            16 December 2008 */
+  45: 0000: \/* Look carefully below and ye shall find my change.              */
+  46: 0000: \/*                                                                */
+  47: 0000: \/* VERSION D.          Mark Goode                22nd December 08 */
+  48: 0000: \/* Changes to the fields on the audit record                      */
+  49: 0000: \/******************************************************************/
+  50: 0000: 
+  51: 0000:    STRING GLOBAL                \
+  52: 0000:       UB.TEMP.NAME$,            \
+  53: 0000:       UB.FILE.NAME$,            \
+  54: 0000:       UB.REC$,                  \
+  55: 0000:       UB.REC.TYPE$,             \
+  56: 0000:       UB.OP.ID$,                \
+  57: 0000:       UB.METHOD$,               \
+  58: 0000:       UB.REPORT.RQD$,           \
+  59: 0000:       UB.LICENCE$,              \
+  60: 0000:       UB.DESPATCH.DATE$,        \
+  61: 0000:       UB.BOOKED.DATE$,          \
+  62: 0000:       UB.BOOKED.TIME$,          \
+  63: 0000:       UB.BOOK.TYPE$,            \
+  64: 0000:       UB.BAR.CODE$,             \
+  65: 0000:       UB.QTY$,                  \
+  66: 0000:       UB.DRVR.ID$,              \
+  67: 0000:       UB.DRVR.CHCK.DATE$,       \
+  68: 0000:       UB.DRVR.CHCK.TIME$,       \
+  69: 0000:       UB.DRVR.GIT.MATCH$,       \
+  70: 0000:       UB.REC.COUNT$,            \
+  71: 0000:       UB.ONIGHT.DELIVERY.TYPE$, \                                !BCSk
+  72: 0000:       UB.DRIVER.CHECKIN.REQD$,  \                                !BCSk
+  73: 0000:       UB.DRVR.REJECTED$,        \ "Y" or "N" on batch rec,       !CSH
+  74: 0000:                                 \ " " on session rec             !CSH
+  75: 0000:       UB.DRVR.CONFIRM.SCAN$,    \                                !BCSk
+  76: 0000:       UB.BOOKED.STATUS$                                          !DMG
+  77: 0000:       
+  78: 0000:    INTEGER*2 GLOBAL             \
+  79: 0000:       UB.RECL%,                 \
+  80: 0000:       UB.REPORT.NUM%,           \
+  81: 0000:       UB.SESS.NUM%
+  82: 0000: 
+  83: 0000: \/******************************************************************/
+  84: 0000: 
+  85: 0000:     %INCLUDE BTCMEM.J86
+  86: 0000: !********************************************************************
+  87: 0000: !***
+  88: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+  89: 0000: !***    AUTHOR:         Stuart William McConnachie
+  90: 0000: !***    DATE:           26th February 2006
+  91: 0000: !***
+  92: 0000: !********************************************************************
+  93: 0000: !***
+  94: 0000: !***    Controller CBASIC Memory Functions
+  95: 0000: !***
+  96: 0000: !********************************************************************
+  97: 0000: 
+  98: 0000: !Get a single byte integer from a string offset
+  99: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 100: 0000:     STRING S$
+ 101: 0000:     INTEGER*2 P%
+ 102: 0000:     INTEGER*2 GETN1
+ 103: 0000: END FUNCTION
+ 104: 0000: 
+ 105: 0000: !Get a two byte integer from a string offset
+ 106: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 107: 0000:     STRING S$
+ 108: 0000:     INTEGER*2 P%
+ 109: 0000:     INTEGER*2 GETN2
+ 110: 0000: END FUNCTION
+ 111: 0000: 
+ 112: 0000: !Get a four byte integer from a string offset
+ 113: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 114: 0000:     STRING S$
+ 115: 0000:     INTEGER*2 P%
+ 116: 0000:     INTEGER*4 GETN4
+ 117: 0000: END FUNCTION
+ 118: 0000: 
+ 119: 0000: !Get a 10 byte CBASIC real from a string offset
+ 120: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 121: 0000:     STRING S$
+ 122: 0000:     INTEGER*2 P%
+ 123: 0000:     REAL GETR10
+ 124: 0000: END FUNCTION
+ 125: 0000: 
+ 126: 0000: !Put a single byte integer into a string at offset
+ 127: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 128: 0000:     STRING S$
+ 129: 0000:     INTEGER*2 P%
+ 130: 0000:     INTEGER*1 N%
+ 131: 0000:     INTEGER*1 PUTN1
+ 132: 0000: END FUNCTION
+ 133: 0000: 
+ 134: 0000: !Put a two byte integer into a string at offset
+ 135: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 136: 0000:     STRING S$
+ 137: 0000:     INTEGER*2 P%
+ 138: 0000:     INTEGER*2 N%
+ 139: 0000:     INTEGER*1 PUTN2
+ 140: 0000: END FUNCTION
+ 141: 0000: 
+ 142: 0000: !Put a four byte integer into a string at offset
+ 143: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 144: 0000:     STRING S$
+ 145: 0000:     INTEGER*2 P%
+ 146: 0000:     INTEGER*4 N%
+ 147: 0000:     INTEGER*1 PUTN4
+ 148: 0000: END FUNCTION
+ 149: 0000: 
+ 150: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 151: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 152: 0000:     STRING S$
+ 153: 0000:     INTEGER*2 P%
+ 154: 0000:     REAL R
+ 155: 0000:     INTEGER*1 PUTR10
+ 156: 0000: END FUNCTION
+ 157: 0000: 
+ 158: 0000: !Peek a two byte integer from a memory address
+ 159: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 160: 0000:     INTEGER*4 A%
+ 161: 0000:     INTEGER*2 PEEKN2
+ 162: 0000: END FUNCTION
+ 163: 0000: 
+ 164: 0000: !Peek a four byte integer from a memory address
+ 165: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 166: 0000:     INTEGER*4 A%
+ 167: 0000:     INTEGER*4 PEEKN4
+ 168: 0000: END FUNCTION
+ 169: 0000: 
+ 170: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 171: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 172: 0000:     INTEGER*4 A%
+ 173: 0000:     REAL PEEKR10
+ 174: 0000: END FUNCTION
+ 175: 0000: 
+ 176: 0000: !Poke a two byte integer to a memory address
+ 177: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 178: 0000:     INTEGER*4 A%
+ 179: 0000:     INTEGER*2 N%
+ 180: 0000:     INTEGER*1 POKEN2
+ 181: 0000: END FUNCTION
+ 182: 0000: 
+ 183: 0000: !Poke a four byte integer to a memory address
+ 184: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 185: 0000:     INTEGER*4 A%
+ 186: 0000:     INTEGER*4 N%
+ 187: 0000:     INTEGER*1 POKEN4
+ 188: 0000: END FUNCTION
+ 189: 0000: 
+ 190: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 191: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 192: 0000:     INTEGER*4 A%
+ 193: 0000:     REAL R
+ 194: 0000:     INTEGER*1 POKER10
+ 195: 0000: END FUNCTION
+ 196: 0000: 
+ 197: 0000: 
+ 198: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 199: 0000: \/* FUNCTION UB.SET                                                */
+ 200: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 201: 0000: 
+ 202: 0000:     FUNCTION UB.SET PUBLIC
+ 203: 0014: 
+ 204: 0014:         INTEGER*1 UB.SET
+ 205: 0014: 
+ 206: 0014:         UB.TEMP.NAME$  = "PUT:"
+ 207: 0023:         UB.FILE.NAME$  = "PUB:"
+ 208: 0032:         UB.REPORT.NUM% = 778
+ 209: 003b: 
+ 210: 003b:     END FUNCTION
+ 211: 004a: 
+ 212: 004a: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 213: 004a: \/* FUNCTION READ.UB                                               */
+ 214: 004a: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 215: 004a: 
+ 216: 004a:     FUNCTION READ.UB PUBLIC
+ 217: 005e: 
+ 218: 005e:         INTEGER*2 READ.UB
+ 219: 005e: 
+ 220: 005e:         READ.UB = 1
+ 221: 0063: 
+ 222: 0063:         IF END #UB.SESS.NUM% THEN READ.ERROR
+ 223: 0077:         READ #UB.SESS.NUM% ; LINE UB.REC$
+ 224: 0090: 
+ 225: 0090:         UB.REC.TYPE$ = LEFT$(UB.REC$, 1)
+ 226: 00af:         IF UB.REC.TYPE$ = "H" THEN BEGIN                     ! HEADER
+ 227: 00c8:             UB.OP.ID$                = MID$(UB.REC$,  2, 8)                    !BSH
+ 228: 00e7:             UB.METHOD$               = MID$(UB.REC$, 10, 1)                    !BSH
+ 229: 0106:             UB.REPORT.RQD$           = MID$(UB.REC$, 11, 1)                    !BSH
+ 230: 0125:             UB.ONIGHT.DELIVERY.TYPE$ = MID$(UB.REC$, 12, 1)                    !BCSk
+ 231: 0144:             UB.DRIVER.CHECKIN.REQD$  = MID$(UB.REC$, 13, 1)                    !BCSk
+ 232: 0166:         ENDIF ELSE IF UB.REC.TYPE$ = "B" THEN BEGIN          ! BOOKIN
+ 233: 017f:             UB.LICENCE$        = MID$(UB.REC$, 2, 10)
+ 234: 019e:             UB.DESPATCH.DATE$  = MID$(UB.REC$, 12, 6)
+ 235: 01bd:             UB.BOOKED.DATE$    = MID$(UB.REC$, 18, 6)
+ 236: 01dc:             UB.BOOKED.TIME$    = MID$(UB.REC$, 24, 6)
+ 237: 01fb:             UB.BOOK.TYPE$      = MID$(UB.REC$, 30, 1)
+ 238: 021d:         ENDIF ELSE IF UB.REC.TYPE$ = "A" THEN BEGIN          ! AUDIT
+ 239: 0236:             UB.LICENCE$        = MID$(UB.REC$, 2, 10)        ! DMG
+ 240: 0255:             UB.DESPATCH.DATE$  = MID$(UB.REC$, 12, 6)        ! DMG
+ 241: 0274:             UB.BOOKED.DATE$    = MID$(UB.REC$, 18, 6)        ! DMG
+ 242: 0293:             UB.BOOKED.TIME$    = MID$(UB.REC$, 24, 6)        ! DMG
+ 243: 02b2:             UB.BOOKED.STATUS$  = MID$(UB.REC$, 30, 1)        ! DMG
+ 244: 02d4:         ENDIF ELSE IF UB.REC.TYPE$ = "C" THEN BEGIN          ! CONFIRMATION      !BCSk
+ 245: 02ed:             UB.DRVR.ID$           = MID$(UB.REC$,  2, 8)                         !BCSk
+ 246: 030c:             UB.DRVR.CHCK.DATE$    = MID$(UB.REC$, 10, 6)                         !BCSk
+ 247: 032b:             UB.DRVR.CHCK.TIME$    = MID$(UB.REC$, 16, 6)                         !BCSk
+ 248: 034a:             UB.DRVR.GIT.MATCH$    = MID$(UB.REC$, 22, 1)                         !BCSk
+ 249: 0369:             UB.DRVR.CONFIRM.SCAN$ = MID$(UB.REC$, 23, 1)                         !CSH
+ 250: 0388:             UB.DRVR.REJECTED$     = MID$(UB.REC$, 24, 1)                         !CSH
+ 251: 03aa:         ENDIF ELSE IF UB.REC.TYPE$ = "D" THEN BEGIN       ! Audit item record    !EMG            
+ 252: 03c0:             UB.BAR.CODE$        = MID$(UB.REC$, 2, 13)                           !EMG
+ 253: 03df:             UB.QTY$             = MID$(UB.REC$, 15, 4)                           !EMG
+ 254: 0400:         ENDIF ELSE IF UB.REC.TYPE$ = "E" THEN BEGIN       ! Audit trailer record !FMG            
+ 255: 0416:             UB.REC.COUNT$         = MID$(UB.REC$, 2, 5)                          !FMG
+ 256: 0437:         ENDIF ELSE IF UB.REC.TYPE$ = "T" THEN BEGIN       ! TRAILER
+ 257: 044d:             UB.REC.COUNT$     = MID$(UB.REC$, 2, 5)
+ 258: 046c:         ENDIF
+ 259: 046c: 
+ 260: 046c:         READ.UB = 0
+ 261: 0471:         EXIT FUNCTION
+ 262: 0473: 
+ 263: 0473: READ.ERROR:
+ 264: 0473: 
+ 265: 0473:         FILE.OPERATION$     = "R"
+ 266: 0482:         CURRENT.REPORT.NUM% = UB.REPORT.NUM%
+ 267: 0490:         CURRENT.CODE$       = ""
+ 268: 049f: 
+ 269: 049f:     END FUNCTION
+ 270: 04ae: 
+ 271: 04ae: 
+ 272: 04ae: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 273: 04ae: \/* FUNCTION WRITE.UB                                              */
+ 274: 04ae: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 275: 04ae: 
+ 276: 04ae:     FUNCTION WRITE.UB PUBLIC
+ 277: 04c2: 
+ 278: 04c2:         INTEGER*2 WRITE.UB
+ 279: 04c2: 
+ 280: 04c2:         WRITE.UB = 1
+ 281: 04c7: 
+ 282: 04c7:         IF END #UB.SESS.NUM% THEN WRITE.ERROR                     !BSH
+ 283: 04db:         
+ 284: 04db:         IF UB.REC.TYPE$ = "H" THEN BEGIN
+ 285: 04f4:             WRITE FORM "C1 C8 C1 C1 C1 C1 C2"; #UB.SESS.NUM% ; \  !BSH
+ 286: 0592:               UB.REC.TYPE$,                              \
+ 287: 0592:               UB.OP.ID$,                                 \
+ 288: 0592:               UB.METHOD$,                                \
+ 289: 0592:               UB.REPORT.RQD$,                            \
+ 290: 0592:               UB.ONIGHT.DELIVERY.TYPE$,                  \        !BCSk
+ 291: 0592:               UB.DRIVER.CHECKIN.REQD$,                   \        !BCSk
+ 292: 0592:               CHR$(0DH) + CHR$(0AH)
+ 293: 0592:         ENDIF ELSE IF UB.REC.TYPE$ = "B" THEN BEGIN
+ 294: 05ab:             WRITE FORM "C1 C10 C6 C6 C6 C1 C2"; #UB.SESS.NUM% ; \
+ 295: 0649:               UB.REC.TYPE$,                                     \
+ 296: 0649:               UB.LICENCE$,                                      \
+ 297: 0649:               UB.DESPATCH.DATE$,                                \
+ 298: 0649:               UB.BOOKED.DATE$,                                  \
+ 299: 0649:               UB.BOOKED.TIME$,                                  \
+ 300: 0649:               UB.BOOK.TYPE$,                                    \
+ 301: 0649:               CHR$(0DH) + CHR$(0AH)
+ 302: 0649:         ENDIF ELSE IF UB.REC.TYPE$ = "A" THEN BEGIN
+ 303: 0662:             WRITE FORM "C1 C10 C6 C6 C6 C1"; #UB.SESS.NUM% ; \
+ 304: 0700:             UB.REC.TYPE$,                                       \
+ 305: 0700:             UB.LICENCE$,                                        \ DMG
+ 306: 0700:             UB.DESPATCH.DATE$,                                  \ DMG
+ 307: 0700:             UB.BOOKED.DATE$,                                    \ DMG
+ 308: 0700:             UB.BOOKED.TIME$,                                    \ DMG
+ 309: 0700:             UB.BOOKED.STATUS$,                                  \ DMG
+ 310: 0700:             CHR$(0DH) + CHR$(0AH)
+ 311: 0700:         ENDIF ELSE IF UB.REC.TYPE$ = "C" THEN BEGIN          ! CONFIRMATION    !BCSk
+ 312: 0719:             WRITE FORM "C1 C8 C6 C6 C1 C1 C1 C2"; #UB.SESS.NUM% ; \            !BCSk
+ 313: 07c7:               UB.REC.TYPE$,                                       \            !BSH  
+ 314: 07c7:               UB.DRVR.ID$,                                        \            !BCSk
+ 315: 07c7:               UB.DRVR.CHCK.DATE$,                                 \            !BCSk
+ 316: 07c7:               UB.DRVR.CHCK.TIME$,                                 \            !BCSk
+ 317: 07c7:               UB.DRVR.GIT.MATCH$,                                 \            !BCSk
+ 318: 07c7:               UB.DRVR.CONFIRM.SCAN$,                              \            !BCSk
+ 319: 07c7:               UB.DRVR.REJECTED$,                                  \            !CSH
+ 320: 07c7:               CHR$(0DH) + CHR$(0AH)                                            !BCSk
+ 321: 07c7:         ENDIF ELSE IF UB.REC.TYPE$ = "D" THEN BEGIN
+ 322: 07dd:             WRITE FORM "C1 C13 C4 C2"; #UB.SESS.NUM% ;            \            !EMG
+ 323: 084b:             UB.REC.TYPE$,                                         \            !EMG
+ 324: 084b:             UB.BAR.CODE$,                                         \            !EMG
+ 325: 084b:             UB.QTY$,                                              \            !EMG               
+ 326: 084b:             CHR$(0DH) + CHR$(0AH)
+ 327: 084b:         ENDIF ELSE IF UB.REC.TYPE$ = "E" THEN BEGIN                            !FMG
+ 328: 0861:             WRITE FORM "C1 C5 C2"; #UB.SESS.NUM% ; \                           !FMG
+ 329: 08be:               UB.REC.TYPE$,                        \                           !FMG
+ 330: 08be:               UB.REC.COUNT$,                       \                           !FMG
+ 331: 08be:               CHR$(0DH) + CHR$(0AH)                                            !FMG               
+ 332: 08be:         ENDIF ELSE IF UB.REC.TYPE$ = "T" THEN BEGIN
+ 333: 08d4:             WRITE FORM "C1 C5 C2"; #UB.SESS.NUM% ; \
+ 334: 092f:               UB.REC.TYPE$,                        \
+ 335: 092f:               UB.REC.COUNT$,                       \
+ 336: 092f:               CHR$(0DH) + CHR$(0AH)
+ 337: 092f:         ENDIF
+ 338: 092f: 
+ 339: 092f:         WRITE.UB = 0
+ 340: 0934:         EXIT FUNCTION
+ 341: 0936: 
+ 342: 0936: WRITE.ERROR:
+ 343: 0936: 
+ 344: 0936:         FILE.OPERATION$ = "W"
+ 345: 0945:         CURRENT.REPORT.NUM% = UB.REPORT.NUM%
+ 346: 0953:         CURRENT.CODE$ = UB.LICENCE$
+ 347: 0969: 
+ 348: 0969:     END FUNCTION
+ 349: 0978: 
+ 350: 0978: 
+ 351: 0978: End of Compilation

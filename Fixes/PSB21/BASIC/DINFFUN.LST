@@ -1,0 +1,1189 @@
+   1: 0000: !****************************************************************************
+   2: 0000: !
+   3: 0000: !       MODULE:         DEAL ITEM INFORMATION FILE FUNCTIONS
+   4: 0000: !
+   5: 0000: !       AUTHOR:         STUART WILLIAM MCCONNACHIE
+   6: 0000: !
+   7: 0000: !       DATE:           AUGUST 2002
+   8: 0000: !
+   9: 0000: !****************************************************************************
+  10: 0000: !
+  11: 0000: !       VERSION A           STUART WILLIAM MCCONNACHIE          AUG 2002
+  12: 0000: !
+  13: 0000: !       Functions for adding and removing items from the new format DINF
+  14: 0000: !       file for the flexible deals project.
+  15: 0000: !       Note the DINF file is actually two tables each of which is made
+  16: 0000: !       up of two double linked list of all deal/item combinations on the
+  17: 0000: !       system.  For details see the DINF file layout.
+  18: 0000: !
+  19: 0000: !       VERSION B           STUART WILLIAM MCCONNACHIE          OCT 2003
+  20: 0000: !
+  21: 0000: !       Increase performance by providing a batch add record mode for use
+  22: 0000: !       during deal initial loads.  During batch adds the previous record
+  23: 0000: !       backward chain pointers are not updated.  Instead these are
+  24: 0000: !       corrected once the update is complete.  Hence the number of reads
+  25: 0000: !       and writes to the DINF is reduced for each item add.
+  26: 0000: !       
+  27: 0000: !****************************************************************************
+  28: 0000: 
+  29: 0000: %INCLUDE DINFDEC.J86
+  30: 0000: !****************************************************************************
+  31: 0000: !
+  32: 0000: !       MODULE:         DEAL ITEM INFORMATION FILE FUNCTIONS
+  33: 0000: !
+  34: 0000: !       AUTHOR:         STUART WILLIAM MCCONNACHIE
+  35: 0000: !
+  36: 0000: !       DATE:           AUGUST 2002
+  37: 0000: !
+  38: 0000: !****************************************************************************
+  39: 0000: !
+  40: 0000: !       VERSION A           STUART WILLIAM MCCONNACHIE          AUG 2002
+  41: 0000: !
+  42: 0000: !       Functions for adding and removing items from the new format DINF
+  43: 0000: !       file for the flexible deals project.
+  44: 0000: !       Note the DINF file is actually two tables each of which is made
+  45: 0000: !       up of two double linked list of all deal/item combinations on the
+  46: 0000: !       system.  For details see the DINF file layout.
+  47: 0000: !
+  48: 0000: !****************************************************************************
+  49: 0000: 
+  50: 0000:     STRING GLOBAL       DINF.FILE.NAME$
+  51: 0000: 
+  52: 0000:     INTEGER*2 GLOBAL    DINF.REPORT.NUM%
+  53: 0000:     INTEGER*2 GLOBAL    DINF.SESS.NUM%
+  54: 0000:     INTEGER*2 GLOBAL    DINF.RECL%
+  55: 0000: 
+  56: 0000:     STRING GLOBAL       DINF.DEAL.NUM$
+  57: 0000:     STRING GLOBAL       DINF.BOOTS.CODE$
+  58: 0000:     STRING GLOBAL       DINF.PREV.DEAL.NUM$
+  59: 0000:     STRING GLOBAL       DINF.NEXT.DEAL.NUM$
+  60: 0000:     STRING GLOBAL       DINF.PREV.BOOTS.CODE$
+  61: 0000:     STRING GLOBAL       DINF.NEXT.BOOTS.CODE$
+  62: 0000:     STRING GLOBAL       DINF.RECORD$
+  63: 0000: 
+  64: 0000:     INTEGER*1 GLOBAL    DINF.LOCAL.PRICE.FLAG%
+  65: 0000:     INTEGER*1 GLOBAL    DINF.DEAL.LIST.ID%
+  66: 0000:     STRING GLOBAL       DINF.FILLER$
+  67: 0000:     
+  68: 0000: !****************************************************************************
+  69: 0000: 
+  70: 0000: 
+  71: 0000:     STRING GLOBAL       FILE.OPERATION$
+  72: 0000:     STRING GLOBAL       CURRENT.CODE$
+  73: 0000:     INTEGER*2 GLOBAL    CURRENT.REPORT.NUM%
+  74: 0000: 
+  75: 0000: 
+  76: 0000:     STRING      PREV.DEAL.NUM$
+  77: 0000:     STRING      NEXT.DEAL.NUM$
+  78: 0000:     STRING      PREV.BOOTS.CODE$
+  79: 0000:     STRING      NEXT.BOOTS.CODE$
+  80: 0000: 
+  81: 0000:     STRING      HOME.DEAL.NUM$
+  82: 0000:     STRING      HOME.BOOTS.CODE$
+  83: 0000:     STRING      HOME.PREV.DEAL.NUM$
+  84: 0000:     STRING      HOME.NEXT.DEAL.NUM$
+  85: 0000:     STRING      HOME.PREV.BOOTS.CODE$
+  86: 0000:     STRING      HOME.NEXT.BOOTS.CODE$
+  87: 0000: 
+  88: 0000:     INTEGER*1   DINF.INTEGRITY.ACTION%
+  89: 0000:     STRING      DINF.INTEGRITY.DEAL.NUM$
+  90: 0000:     STRING      DINF.INTEGRITY.BOOTS.CODE$
+  91: 0000:     STRING      DINF.INTEGRITY.RECORD$
+  92: 0000:     INTEGER*1   DINF.INTEGRITY.BATCH
+  93: 0000:     STRING      DINF.INTEGRITY.FILLER$
+  94: 0000:     STRING      DINF.INTEGRITY.EMPTY$
+  95: 0000: 
+  96: 0000:     STRING      DINF.KEY$
+  97: 0000:     STRING      DINF.INTEGRITY.KEY$
+  98: 0000:     STRING      NULL.DEAL.NUM$
+  99: 0000:     STRING      NULL.BOOTS.CODE$
+ 100: 0000:     STRING      HOME.LOP.DEAL.NUM$
+ 101: 0000:     STRING      HOME.HOP.DEAL.NUM$
+ 102: 0000:     STRING      HOME.LOP.BOOTS.CODE$
+ 103: 0000:     STRING      HOME.HOP.BOOTS.CODE$
+ 104: 0000:     STRING      NULL.RECORD$
+ 105: 0000: 
+ 106: 0000:     INTEGER*1   ACTION.ADD%
+ 107: 0000:     INTEGER*1   ACTION.REMOVE%
+ 108: 0000:     INTEGER*1   BATCH.ADD                                                   !BSWM
+ 109: 0000: 
+ 110: 0000:     INTEGER*2   I%
+ 111: 0000:     
+ 112: 0000: !******************************************************************************
+ 113: 0000: 
+ 114: 0000:     FUNCTION SUBSTR(S1$, O1%, S2$, O2%, L2%) EXTERNAL
+ 115: 0000:         STRING    S1$, S2$
+ 116: 0000:         INTEGER*2 O1%, O2%, L2%
+ 117: 0000:     END FUNCTION
+ 118: 0000: 
+ 119: 0000:     FUNCTION GETN4(S$, O%) EXTERNAL
+ 120: 0000:         INTEGER*4   GETN4
+ 121: 0000:         STRING      S$
+ 122: 0000:         INTEGER*2   O%
+ 123: 0000:     END FUNCTION
+ 124: 0000: 
+ 125: 0000:     FUNCTION PUTN4(S$, O%, N%) EXTERNAL
+ 126: 0000:         STRING      S$
+ 127: 0000:         INTEGER*2   O%
+ 128: 0000:         INTEGER*4   N%
+ 129: 0000:     END FUNCTION
+ 130: 0000: 
+ 131: 0000: !******************************************************************************
+ 132: 0000: 
+ 133: 0000:     FUNCTION DINF.SET PUBLIC
+ 134: 0014: 
+ 135: 0014:         INTEGER*1   DINF.SET
+ 136: 0014: 
+ 137: 0014:         DINF.SET = 1
+ 138: 0018: 
+ 139: 0018:         DINF.REPORT.NUM%     = 651
+ 140: 0021:         DINF.RECL%           = 22
+ 141: 002a:         DINF.FILE.NAME$      = "DINF"
+ 142: 0039: 
+ 143: 0039:         NULL.DEAL.NUM$       = PACK$("0000")
+ 144: 004b:         NULL.BOOTS.CODE$     = PACK$("000000")
+ 145: 005d: 
+ 146: 005d:         HOME.LOP.DEAL.NUM$   = PACK$("::::")
+ 147: 006f:         HOME.HOP.DEAL.NUM$   = PACK$(";;;;")
+ 148: 0081:         HOME.LOP.BOOTS.CODE$ = PACK$("::::::")
+ 149: 0093:         HOME.HOP.BOOTS.CODE$ = PACK$(";;;;;;")
+ 150: 00a5: 
+ 151: 00a5:         NULL.RECORD$         = STRING$(7, CHR$(00))
+ 152: 00bc: 
+ 153: 00bc:         DINF.INTEGRITY.KEY$  = PACK$("??????????")
+ 154: 00ce:         DINF.INTEGRITY.EMPTY$= STRING$(17, CHR$(00))
+ 155: 00e5: 
+ 156: 00e5:         ACTION.ADD%          = ASC("A")
+ 157: 00f1:         ACTION.REMOVE%       = ASC("D")
+ 158: 00fd: 
+ 159: 00fd:         DINF.SET = 0
+ 160: 0101: 
+ 161: 0101:     END FUNCTION
+ 162: 0110: 
+ 163: 0110: !******************************************************************************
+ 164: 0110: 
+ 165: 0110:     FUNCTION READ.DINF PUBLIC
+ 166: 0124: 
+ 167: 0124:         INTEGER*1   READ.DINF
+ 168: 0124: 
+ 169: 0124:         READ.DINF = 1
+ 170: 0128: 
+ 171: 0128:         DINF.KEY$ = DINF.DEAL.NUM$ + DINF.BOOTS.CODE$
+ 172: 014a:         IF END # DINF.SESS.NUM% THEN FILE.ERROR
+ 173: 015e:         READ FORM "T6,2C2,2C3,C7"; # DINF.SESS.NUM%                             \
+ 174: 01b9:             KEY DINF.KEY$;                                                      \
+ 175: 01b9:             DINF.PREV.DEAL.NUM$,                                                \
+ 176: 01b9:             DINF.NEXT.DEAL.NUM$,                                                \
+ 177: 01b9:             DINF.PREV.BOOTS.CODE$,                                              \
+ 178: 01b9:             DINF.NEXT.BOOTS.CODE$,                                              \
+ 179: 01b9:             DINF.RECORD$
+ 180: 01b9: 
+ 181: 01b9:         READ.DINF = 0
+ 182: 01bd: 
+ 183: 01bd:     EXIT FUNCTION
+ 184: 01bf: 
+ 185: 01bf:     FILE.ERROR:
+ 186: 01bf: 
+ 187: 01bf:         FILE.OPERATION$     = "R"
+ 188: 01ce:         CURRENT.REPORT.NUM% = DINF.REPORT.NUM%
+ 189: 01dc:         CURRENT.CODE$       = PACK$("0000") + DINF.KEY$
+ 190: 0206: 
+ 191: 0206:     END FUNCTION
+ 192: 0215: 
+ 193: 0215: !******************************************************************************
+ 194: 0215: 
+ 195: 0215:     FUNCTION WRITE.DINF     !DO NOT MAKE PUBLIC - MUST USE DINF.ADD.DEAL.ITEM
+ 196: 0229: 
+ 197: 0229:         INTEGER*1   WRITE.DINF
+ 198: 0229: 
+ 199: 0229:         WRITE.DINF = 1
+ 200: 022d: 
+ 201: 022d:         DINF.KEY$ = DINF.DEAL.NUM$ + DINF.BOOTS.CODE$
+ 202: 024f:         IF END # DINF.SESS.NUM% THEN FILE.ERROR
+ 203: 0263:         WRITE FORM "C5,2C2,2C3,C7"; # DINF.SESS.NUM%;                           \
+ 204: 02d2:             DINF.KEY$,                                                          \
+ 205: 02d2:             DINF.PREV.DEAL.NUM$,                                                \
+ 206: 02d2:             DINF.NEXT.DEAL.NUM$,                                                \
+ 207: 02d2:             DINF.PREV.BOOTS.CODE$,                                              \
+ 208: 02d2:             DINF.NEXT.BOOTS.CODE$,                                              \
+ 209: 02d2:             DINF.RECORD$
+ 210: 02d2: 
+ 211: 02d2:         WRITE.DINF = 0
+ 212: 02d6: 
+ 213: 02d6:     EXIT FUNCTION
+ 214: 02d8: 
+ 215: 02d8:     FILE.ERROR:
+ 216: 02d8: 
+ 217: 02d8:         FILE.OPERATION$     = "W"
+ 218: 02e7:         CURRENT.REPORT.NUM% = DINF.REPORT.NUM%
+ 219: 02f5:         CURRENT.CODE$       = PACK$("0000") + DINF.KEY$
+ 220: 031f: 
+ 221: 031f:     END FUNCTION
+ 222: 032e: 
+ 223: 032e: !******************************************************************************
+ 224: 032e: 
+ 225: 032e:     FUNCTION WRITE.DINF.HOLD   !DO NOT MAKE PUBLIC - MUST USE DINF.ADD.DEAL.ITEM
+ 226: 0342: 
+ 227: 0342:         INTEGER*1   WRITE.DINF.HOLD
+ 228: 0342: 
+ 229: 0342:         WRITE.DINF.HOLD = 1
+ 230: 0346: 
+ 231: 0346:         DINF.KEY$ = DINF.DEAL.NUM$ + DINF.BOOTS.CODE$
+ 232: 0368:         IF END # DINF.SESS.NUM% THEN FILE.ERROR
+ 233: 037c:         WRITE FORM "C5,2C2,2C3,C7"; HOLD # DINF.SESS.NUM%;                      \
+ 234: 03eb:             DINF.KEY$,                                                          \
+ 235: 03eb:             DINF.PREV.DEAL.NUM$,                                                \
+ 236: 03eb:             DINF.NEXT.DEAL.NUM$,                                                \
+ 237: 03eb:             DINF.PREV.BOOTS.CODE$,                                              \
+ 238: 03eb:             DINF.NEXT.BOOTS.CODE$,                                              \
+ 239: 03eb:             DINF.RECORD$
+ 240: 03eb: 
+ 241: 03eb:         WRITE.DINF.HOLD = 0
+ 242: 03ef: 
+ 243: 03ef:     EXIT FUNCTION
+ 244: 03f1: 
+ 245: 03f1:     FILE.ERROR:
+ 246: 03f1: 
+ 247: 03f1:         FILE.OPERATION$     = "W"
+ 248: 0400:         CURRENT.REPORT.NUM% = DINF.REPORT.NUM%
+ 249: 040e:         CURRENT.CODE$       = PACK$("0000") + DINF.KEY$
+ 250: 0438: 
+ 251: 0438:     END FUNCTION
+ 252: 0447: 
+ 253: 0447: !******************************************************************************
+ 254: 0447: 
+ 255: 0447:     FUNCTION DELETE.DINF    !DO NOT MAKE PUBLIC - MUST USE DINF.REMOVE.DEAL.ITEM
+ 256: 045b: 
+ 257: 045b:         INTEGER*1   DELETE.DINF
+ 258: 045b: 
+ 259: 045b:         DELETE.DINF = 1
+ 260: 045f: 
+ 261: 045f:         DINF.KEY$ = DINF.DEAL.NUM$ + DINF.BOOTS.CODE$
+ 262: 0481:         IF END # DINF.SESS.NUM% THEN FILE.ERROR
+ 263: 0495:         DELREC DINF.SESS.NUM%; DINF.KEY$
+ 264: 04a9: 
+ 265: 04a9:         DELETE.DINF = 0
+ 266: 04ad: 
+ 267: 04ad:     EXIT FUNCTION
+ 268: 04af: 
+ 269: 04af:     FILE.ERROR:
+ 270: 04af: 
+ 271: 04af:         FILE.OPERATION$     = "D"
+ 272: 04be:         CURRENT.REPORT.NUM% = DINF.REPORT.NUM%
+ 273: 04cc:         CURRENT.CODE$       = PACK$("0000") + DINF.KEY$
+ 274: 04f6: 
+ 275: 04f6:     END FUNCTION
+ 276: 0505: 
+ 277: 0505: !******************************************************************************
+ 278: 0505: 
+ 279: 0505:     SUB DINF.CONCAT.RECORD PUBLIC
+ 280: 0519: 
+ 281: 0519:         DINF.RECORD$ = CHR$(DINF.LOCAL.PRICE.FLAG%) +                   \
+ 282: 0564:                        CHR$(DINF.DEAL.LIST.ID%)  +                      \
+ 283: 0564:                        DINF.FILLER$
+ 284: 0564: 
+ 285: 0564:     END SUB
+ 286: 0570: 
+ 287: 0570: !****************************************************************************
+ 288: 0570: 
+ 289: 0570:     SUB DINF.SPLIT.RECORD PUBLIC
+ 290: 0584:     
+ 291: 0584:         IF LEN(DINF.RECORD$) <> DINF.RECL% - 15 THEN EXIT SUB
+ 292: 05a5: 
+ 293: 05a5:         DINF.LOCAL.PRICE.FLAG% = ASC(MID$(DINF.RECORD$, 1, 1))
+ 294: 05c8:         DINF.DEAL.LIST.ID%     = ASC(MID$(DINF.RECORD$, 2, 1))
+ 295: 05eb:         DINF.FILLER$           = MID$(DINF.RECORD$, 3, 5)
+ 296: 060a: 
+ 297: 060a:     END SUB
+ 298: 0616: 
+ 299: 0616: !****************************************************************************
+ 300: 0616: 
+ 301: 0616:     SUB DINF.SAVE (SAVE$) PUBLIC                                            !BSWM
+ 302: 062a:     
+ 303: 062a:         STRING      SAVE$                                                   !BSWM
+ 304: 062a:         
+ 305: 062a:         SAVE$ = DINF.DEAL.NUM$ +                                            \BSWM
+ 306: 0684:                 DINF.BOOTS.CODE$ +                                          \BSWM
+ 307: 0684:                 DINF.PREV.DEAL.NUM$ +                                       \BSWM
+ 308: 0684:                 DINF.NEXT.DEAL.NUM$ +                                       \BSWM
+ 309: 0684:                 DINF.PREV.BOOTS.CODE$ +                                     \BSWM
+ 310: 0684:                 DINF.NEXT.BOOTS.CODE$ +                                     \BSWM
+ 311: 0684:                 DINF.RECORD$                                                !BSWM
+ 312: 0684:                 
+ 313: 0684:     END SUB                                                                 !BSWM
+ 314: 0690: 
+ 315: 0690: !****************************************************************************
+ 316: 0690: 
+ 317: 0690:     SUB DINF.RESTORE (RESTORE$) PUBLIC                                      !BSWM
+ 318: 06a4:     
+ 319: 06a4:         STRING      RESTORE$                                                !BSWM
+ 320: 06a4:         
+ 321: 06a4:         DINF.DEAL.NUM$          = MID$(RESTORE$,1,2)                        !BSWM
+ 322: 06c2:         DINF.BOOTS.CODE$        = MID$(RESTORE$,3,3)                        !BSWM
+ 323: 06e0:         DINF.PREV.DEAL.NUM$     = MID$(RESTORE$,6,2)                        !BSWM
+ 324: 06fe:         DINF.NEXT.DEAL.NUM$     = MID$(RESTORE$,8,2)                        !BSWM
+ 325: 071c:         DINF.PREV.BOOTS.CODE$   = MID$(RESTORE$,10,3)                       !BSWM
+ 326: 073a:         DINF.NEXT.BOOTS.CODE$   = MID$(RESTORE$,13,3)                       !BSWM
+ 327: 0758:         DINF.RECORD$            = MID$(RESTORE$,16,7)                       !BSWM
+ 328: 0776:         CALL DINF.SPLIT.RECORD                                              !BSWM
+ 329: 077a:         
+ 330: 077a:     END SUB                                                                 !BSWM
+ 331: 0786:     
+ 332: 0786: !****************************************************************************
+ 333: 0786: 
+ 334: 0786:     FUNCTION DINF.REMOVE (DEAL.NUM$, BOOTS.CODE$)   !DO NOT MAKE PUBLIC
+ 335: 07a4: 
+ 336: 07a4:         INTEGER*1   DINF.REMOVE
+ 337: 07a4:         STRING      DEAL.NUM$
+ 338: 07a4:         STRING      BOOTS.CODE$
+ 339: 07a4: 
+ 340: 07a4:         DINF.REMOVE = 1
+ 341: 07a8: 
+ 342: 07a8:         !Read the record for the deal+item to delete
+ 343: 07a8:         DINF.DEAL.NUM$ = DEAL.NUM$
+ 344: 07b9:         DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 345: 07ca:         IF READ.DINF THEN GOTO REMOVED.OKAY
+ 346: 07d5: 
+ 347: 07d5:         !Set up home keys
+ 348: 07d5:         IF ASC(LEFT$(DINF.RECORD$,1)) THEN BEGIN
+ 349: 07f5:            HOME.DEAL.NUM$ = HOME.LOP.DEAL.NUM$
+ 350: 0806:            HOME.BOOTS.CODE$ = HOME.LOP.BOOTS.CODE$
+ 351: 0819:         ENDIF ELSE BEGIN
+ 352: 0819:            HOME.DEAL.NUM$ = HOME.HOP.DEAL.NUM$
+ 353: 082a:            HOME.BOOTS.CODE$ = HOME.HOP.BOOTS.CODE$
+ 354: 083b:         ENDIF
+ 355: 083b: 
+ 356: 083b:         !Save pointers
+ 357: 083b:         PREV.DEAL.NUM$ = DINF.PREV.DEAL.NUM$
+ 358: 084f:         NEXT.DEAL.NUM$ = DINF.NEXT.DEAL.NUM$
+ 359: 0863:         PREV.BOOTS.CODE$ = DINF.PREV.BOOTS.CODE$
+ 360: 0877:         NEXT.BOOTS.CODE$ = DINF.NEXT.BOOTS.CODE$
+ 361: 088b: 
+ 362: 088b:         !Need to correct back chain pointer from next deal
+ 363: 088b:         IF NEXT.DEAL.NUM$ <> NULL.DEAL.NUM$ THEN BEGIN
+ 364: 08a2:             !Correct back pointer
+ 365: 08a2:             DINF.DEAL.NUM$ = NEXT.DEAL.NUM$
+ 366: 08b5:             DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 367: 08c6:             IF READ.DINF THEN EXIT FUNCTION
+ 368: 08d1:             DINF.PREV.DEAL.NUM$ = PREV.DEAL.NUM$
+ 369: 08e4:             IF WRITE.DINF THEN EXIT FUNCTION
+ 370: 08ef:         ENDIF
+ 371: 08ef: 
+ 372: 08ef:         !Need to correct back chain pointer from next item
+ 373: 08ef:         IF NEXT.BOOTS.CODE$ <> NULL.BOOTS.CODE$ THEN BEGIN
+ 374: 0906:             !Correct back pointer
+ 375: 0906:             DINF.DEAL.NUM$ = DEAL.NUM$
+ 376: 0917:             DINF.BOOTS.CODE$ = NEXT.BOOTS.CODE$
+ 377: 092a:             IF READ.DINF THEN EXIT FUNCTION
+ 378: 0935:             DINF.PREV.BOOTS.CODE$ = PREV.BOOTS.CODE$
+ 379: 0948:             IF WRITE.DINF THEN EXIT FUNCTION
+ 380: 0953:         ENDIF
+ 381: 0953: 
+ 382: 0953:         !Need to remove record from home chain?
+ 383: 0953:         IF PREV.BOOTS.CODE$ = HOME.BOOTS.CODE$ AND                          \
+ 384: 09a2:            NEXT.BOOTS.CODE$ = NULL.BOOTS.CODE$ THEN BEGIN
+ 385: 09a2:             !Remove home record
+ 386: 09a2:             DINF.DEAL.NUM$ = DEAL.NUM$
+ 387: 09b3:             DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 388: 09c6:             !Home record not already removed
+ 389: 09c6:             IF READ.DINF = 0 THEN BEGIN
+ 390: 09d1:                 HOME.PREV.DEAL.NUM$ = DINF.PREV.DEAL.NUM$
+ 391: 09e5:                 HOME.NEXT.DEAL.NUM$ = DINF.NEXT.DEAL.NUM$
+ 392: 09f9:                 !Need to correct back pointer
+ 393: 09f9:                 IF HOME.NEXT.DEAL.NUM$ <> NULL.DEAL.NUM$ THEN BEGIN
+ 394: 0a10:                     DINF.DEAL.NUM$ = HOME.NEXT.DEAL.NUM$
+ 395: 0a23:                     DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 396: 0a36:                     IF READ.DINF THEN EXIT FUNCTION
+ 397: 0a41:                     DINF.PREV.DEAL.NUM$ = HOME.PREV.DEAL.NUM$
+ 398: 0a54:                     IF WRITE.DINF THEN EXIT FUNCTION
+ 399: 0a5f:                 ENDIF
+ 400: 0a5f:                 !Correct forward pointer
+ 401: 0a5f:                 DINF.DEAL.NUM$ = HOME.PREV.DEAL.NUM$
+ 402: 0a72:                 DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 403: 0a85:                 IF READ.DINF THEN EXIT FUNCTION
+ 404: 0a90:                 DINF.NEXT.DEAL.NUM$ = HOME.NEXT.DEAL.NUM$
+ 405: 0aa3:                 IF WRITE.DINF THEN EXIT FUNCTION
+ 406: 0aae:                 !Actually remove the home record
+ 407: 0aae:                 DINF.DEAL.NUM$ = DEAL.NUM$
+ 408: 0abf:                 DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 409: 0ad2:                 IF DELETE.DINF THEN EXIT FUNCTION
+ 410: 0add:             ENDIF
+ 411: 0adf:         !Else need to correct forward chain pointer from prev record
+ 412: 0adf:         ENDIF ELSE BEGIN
+ 413: 0adf:             !Correct forward pointer
+ 414: 0adf:             DINF.DEAL.NUM$ = DEAL.NUM$
+ 415: 0af0:             DINF.BOOTS.CODE$ = PREV.BOOTS.CODE$
+ 416: 0b03:             IF READ.DINF THEN EXIT FUNCTION
+ 417: 0b0e:             DINF.NEXT.BOOTS.CODE$ = NEXT.BOOTS.CODE$
+ 418: 0b21:             IF WRITE.DINF THEN EXIT FUNCTION
+ 419: 0b2c:         ENDIF
+ 420: 0b2c: 
+ 421: 0b2c:         !Need to remove record from home chain?
+ 422: 0b2c:         IF PREV.DEAL.NUM$ = HOME.DEAL.NUM$ AND                              \
+ 423: 0b7b:            NEXT.DEAL.NUM$ = NULL.DEAL.NUM$ THEN BEGIN
+ 424: 0b7b:             !Remove home record
+ 425: 0b7b:             DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 426: 0b8e:             DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 427: 0b9f:             !Home record not already removed
+ 428: 0b9f:             IF READ.DINF = 0 THEN BEGIN
+ 429: 0baa:                 HOME.PREV.BOOTS.CODE$ = DINF.PREV.BOOTS.CODE$
+ 430: 0bbe:                 HOME.NEXT.BOOTS.CODE$ = DINF.NEXT.BOOTS.CODE$
+ 431: 0bd2:                 !Need to correct back pointer
+ 432: 0bd2:                 IF HOME.NEXT.BOOTS.CODE$ <> NULL.BOOTS.CODE$ THEN BEGIN
+ 433: 0be9:                     DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 434: 0bfc:                     DINF.BOOTS.CODE$ = HOME.NEXT.BOOTS.CODE$
+ 435: 0c0f:                     IF READ.DINF THEN EXIT FUNCTION
+ 436: 0c1a:                     DINF.PREV.BOOTS.CODE$ = HOME.PREV.BOOTS.CODE$
+ 437: 0c2d:                     IF WRITE.DINF THEN EXIT FUNCTION
+ 438: 0c38:                 ENDIF
+ 439: 0c38:                 !Correct forward pointer
+ 440: 0c38:                 DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 441: 0c4b:                 DINF.BOOTS.CODE$ = HOME.PREV.BOOTS.CODE$
+ 442: 0c5e:                 IF READ.DINF THEN EXIT FUNCTION
+ 443: 0c69:                 DINF.NEXT.BOOTS.CODE$ = HOME.NEXT.BOOTS.CODE$
+ 444: 0c7c:                 IF WRITE.DINF THEN EXIT FUNCTION
+ 445: 0c87:                 !Actually remove the home record
+ 446: 0c87:                 DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 447: 0c9a:                 DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 448: 0cab:                 IF DELETE.DINF THEN EXIT FUNCTION
+ 449: 0cb6:             ENDIF
+ 450: 0cb8:         !Else need to correct forward chain pointer from prev record
+ 451: 0cb8:         ENDIF ELSE BEGIN
+ 452: 0cb8:             !Correct forward pointer
+ 453: 0cb8:             DINF.DEAL.NUM$ = PREV.DEAL.NUM$
+ 454: 0ccb:             DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 455: 0cdc:             IF READ.DINF THEN EXIT FUNCTION
+ 456: 0ce6:             DINF.NEXT.DEAL.NUM$ = NEXT.DEAL.NUM$
+ 457: 0cf9:             IF WRITE.DINF THEN EXIT FUNCTION
+ 458: 0d03:         ENDIF
+ 459: 0d03: 
+ 460: 0d03:         DINF.DEAL.NUM$ = DEAL.NUM$
+ 461: 0d14:         DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 462: 0d25:         IF DELETE.DINF THEN EXIT FUNCTION
+ 463: 0d2f: 
+ 464: 0d2f:     REMOVED.OKAY:
+ 465: 0d2f: 
+ 466: 0d2f:         DINF.REMOVE = 0
+ 467: 0d33: 
+ 468: 0d33:     EXIT FUNCTION
+ 469: 0d35: 
+ 470: 0d35:     END FUNCTION
+ 471: 0d4e: 
+ 472: 0d4e: !******************************************************************************
+ 473: 0d4e: 
+ 474: 0d4e:     FUNCTION DINF.ADD (DEAL.NUM$, BOOTS.CODE$, RECORD$) !DO NOT MAKE PUBLIC
+ 475: 0d71: 
+ 476: 0d71:         INTEGER*1   DINF.ADD
+ 477: 0d71:         STRING      DEAL.NUM$
+ 478: 0d71:         STRING      BOOTS.CODE$
+ 479: 0d71:         STRING      RECORD$
+ 480: 0d71: 
+ 481: 0d71:         DINF.ADD = 1
+ 482: 0d75: 
+ 483: 0d75:         !Read the record for this deal+item to see if it exists
+ 484: 0d75:         DINF.DEAL.NUM$ = DEAL.NUM$
+ 485: 0d86:         DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 486: 0d97: 
+ 487: 0d97:         !If record already on file
+ 488: 0d97:         IF READ.DINF = 0 THEN BEGIN
+ 489: 0da2: 
+ 490: 0da2:             GOSUB GET.HOME.KEYS
+ 491: 0dac:             GOSUB SAVE.POINTERS
+ 492: 0db6: 
+ 493: 0db6:             !Old and new records not both on local or head office price?
+ 494: 0db6:             IF LEFT$(RECORD$,1) <> LEFT$(DINF.RECORD$,1) THEN BEGIN
+ 495: 0dee:             
+ 496: 0dee:                 IF BATCH.ADD THEN EXIT FUNCTION                             !BSWM
+ 497: 0df8:             
+ 498: 0df8:                 !Need to remove old record from file first
+ 499: 0df8:                 IF DINF.REMOVE (DEAL.NUM$, BOOTS.CODE$) THEN EXIT FUNCTION
+ 500: 0e12:                 GOSUB INSERT.CHAIN
+ 501: 0e1c:                 
+ 502: 0e1c:             ENDIF
+ 503: 0e1e: 
+ 504: 0e1e:         !Item not yet on file
+ 505: 0e1e:         ENDIF ELSE BEGIN
+ 506: 0e1e: 
+ 507: 0e1e:             GOSUB INSERT.CHAIN
+ 508: 0e28: 
+ 509: 0e28:         ENDIF
+ 510: 0e28: 
+ 511: 0e28:         GOSUB WRITE.RECORD
+ 512: 0e32:         GOSUB UPDATE.HOME.POINTERS
+ 513: 0e3c: 
+ 514: 0e3c:         DINF.ADD = 0
+ 515: 0e40: 
+ 516: 0e40:     EXIT FUNCTION
+ 517: 0e43: 
+ 518: 0e43: 
+ 519: 0e43:     GET.HOME.KEYS:
+ 520: 0e43:      IF ASC(LEFT$(DINF.RECORD$,1)) THEN BEGIN
+ 521: 0e63:         HOME.DEAL.NUM$ = HOME.LOP.DEAL.NUM$
+ 522: 0e74:         HOME.BOOTS.CODE$ = HOME.LOP.BOOTS.CODE$
+ 523: 0e87:      ENDIF ELSE BEGIN
+ 524: 0e87:         HOME.DEAL.NUM$ = HOME.HOP.DEAL.NUM$
+ 525: 0e98:         HOME.BOOTS.CODE$ = HOME.HOP.BOOTS.CODE$
+ 526: 0ea9:      ENDIF
+ 527: 0ea9: 
+ 528: 0ea9:     RETURN
+ 529: 0eb1: 
+ 530: 0eb1: 
+ 531: 0eb1:     SAVE.POINTERS:
+ 532: 0eb1: 
+ 533: 0eb1:         PREV.DEAL.NUM$ = DINF.PREV.DEAL.NUM$
+ 534: 0ec5:         NEXT.DEAL.NUM$ = DINF.NEXT.DEAL.NUM$
+ 535: 0ed9:         PREV.BOOTS.CODE$ = DINF.PREV.BOOTS.CODE$
+ 536: 0eed:         NEXT.BOOTS.CODE$ = DINF.NEXT.BOOTS.CODE$
+ 537: 0f01: 
+ 538: 0f01:     RETURN
+ 539: 0f09: 
+ 540: 0f09: 
+ 541: 0f09:     WRITE.RECORD:
+ 542: 0f09: 
+ 543: 0f09:         DINF.DEAL.NUM$ = DEAL.NUM$
+ 544: 0f1a:         DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 545: 0f2b:         DINF.PREV.DEAL.NUM$ = PREV.DEAL.NUM$
+ 546: 0f3e:         DINF.NEXT.DEAL.NUM$ = NEXT.DEAL.NUM$
+ 547: 0f51:         DINF.PREV.BOOTS.CODE$ = PREV.BOOTS.CODE$
+ 548: 0f64:         DINF.NEXT.BOOTS.CODE$ = NEXT.BOOTS.CODE$
+ 549: 0f77:         DINF.RECORD$ = RECORD$
+ 550: 0f88:         IF WRITE.DINF THEN EXIT FUNCTION
+ 551: 0f93: 
+ 552: 0f93:     RETURN
+ 553: 0f9b: 
+ 554: 0f9b: 
+ 555: 0f9b:     INSERT.CHAIN:
+ 556: 0f9b: 
+ 557: 0f9b:         DINF.RECORD$ = RECORD$
+ 558: 0fac:         GOSUB GET.HOME.KEYS
+ 559: 0fb6: 
+ 560: 0fb6:         PREV.DEAL.NUM$ = HOME.DEAL.NUM$
+ 561: 0fc7:         NEXT.DEAL.NUM$ = NULL.DEAL.NUM$
+ 562: 0fd8:         PREV.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 563: 0fe9:         NEXT.BOOTS.CODE$ = NULL.BOOTS.CODE$
+ 564: 0ffa: 
+ 565: 0ffa:         !Read home record for current deal
+ 566: 0ffa:         DINF.DEAL.NUM$ = DEAL.NUM$
+ 567: 100b:         DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 568: 101e:         !If home record already exists
+ 569: 101e:         IF READ.DINF = 0 THEN BEGIN
+ 570: 1026:             NEXT.BOOTS.CODE$ = DINF.NEXT.BOOTS.CODE$
+ 571: 103a:         ENDIF
+ 572: 103a: 
+ 573: 103a:         !Read home record for current item
+ 574: 103a:         DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 575: 104d:         DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 576: 105e:         !If home record already exists
+ 577: 105e:         IF READ.DINF = 0 THEN BEGIN
+ 578: 1066:             NEXT.DEAL.NUM$ = DINF.NEXT.DEAL.NUM$
+ 579: 107a:         ENDIF
+ 580: 107a: 
+ 581: 107a:         IF NOT BATCH.ADD THEN BEGIN                                         !BSWM
+ 582: 1084:         
+ 583: 1084:             !Need to adjust back chain pointer
+ 584: 1084:             IF NEXT.DEAL.NUM$ <> NULL.DEAL.NUM$ THEN BEGIN
+ 585: 109b:                 DINF.DEAL.NUM$ = NEXT.DEAL.NUM$
+ 586: 10ae:                 DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 587: 10bf:                 IF READ.DINF THEN EXIT FUNCTION
+ 588: 10ca:                 DINF.PREV.DEAL.NUM$ = DEAL.NUM$
+ 589: 10db:                 IF WRITE.DINF THEN EXIT FUNCTION
+ 590: 10e6:             ENDIF
+ 591: 10e6: 
+ 592: 10e6:             !Need to adjust back chain pointer
+ 593: 10e6:             IF NEXT.BOOTS.CODE$ <> NULL.BOOTS.CODE$ THEN BEGIN
+ 594: 10fd:                 DINF.DEAL.NUM$ = DEAL.NUM$
+ 595: 110e:                 DINF.BOOTS.CODE$ = NEXT.BOOTS.CODE$
+ 596: 1121:                 IF READ.DINF THEN EXIT FUNCTION
+ 597: 112c:                 DINF.PREV.BOOTS.CODE$ = BOOTS.CODE$
+ 598: 113d:                 IF WRITE.DINF THEN EXIT FUNCTION
+ 599: 1148:             ENDIF
+ 600: 1148: 
+ 601: 1148:         ENDIF                                                               !BSWM
+ 602: 1148:         
+ 603: 1148:     RETURN
+ 604: 1150: 
+ 605: 1150: 
+ 606: 1150:     UPDATE.HOME.POINTERS:
+ 607: 1150: 
+ 608: 1150:         !Home record needs updating
+ 609: 1150:         IF PREV.BOOTS.CODE$ = HOME.BOOTS.CODE$ THEN BEGIN
+ 610: 116a:             !Read the home record
+ 611: 116a:             DINF.DEAL.NUM$ = DEAL.NUM$
+ 612: 117b:             DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 613: 118e:             !If home record exists
+ 614: 118e:             IF READ.DINF = 0 THEN BEGIN
+ 615: 1196:                 !Update home record
+ 616: 1196:                 DINF.NEXT.BOOTS.CODE$ = BOOTS.CODE$
+ 617: 11a7:                 IF WRITE.DINF THEN EXIT FUNCTION
+ 618: 11b5:             !Else create home record
+ 619: 11b5:             ENDIF ELSE BEGIN
+ 620: 11b5:                 !Read master record
+ 621: 11b5:                 DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 622: 11c8:                 DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 623: 11db:                 !If master record does not exist
+ 624: 11db:                 IF READ.DINF <> 0 THEN BEGIN
+ 625: 11e3:                     !Create master record
+ 626: 11e3:                     DINF.PREV.DEAL.NUM$ = NULL.DEAL.NUM$
+ 627: 11f6:                     DINF.NEXT.DEAL.NUM$ = NULL.DEAL.NUM$
+ 628: 1209:                     DINF.PREV.BOOTS.CODE$ = NULL.BOOTS.CODE$
+ 629: 121c:                     DINF.NEXT.BOOTS.CODE$ = NULL.BOOTS.CODE$
+ 630: 122f:                     DINF.RECORD$ = NULL.RECORD$
+ 631: 1242:                 ENDIF
+ 632: 1242:                 !Update master record
+ 633: 1242:                 HOME.NEXT.DEAL.NUM$ = DINF.NEXT.DEAL.NUM$
+ 634: 1256:                 DINF.NEXT.DEAL.NUM$ = DEAL.NUM$
+ 635: 1267:                 IF WRITE.DINF.HOLD THEN EXIT FUNCTION
+ 636: 1272:                 !Create home record
+ 637: 1272:                 DINF.DEAL.NUM$ = DEAL.NUM$
+ 638: 1283:                 DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 639: 1296:                 DINF.PREV.DEAL.NUM$ = HOME.DEAL.NUM$
+ 640: 12a9:                 DINF.NEXT.DEAL.NUM$ = HOME.NEXT.DEAL.NUM$
+ 641: 12bc:                 DINF.PREV.BOOTS.CODE$ = NULL.BOOTS.CODE$
+ 642: 12cf:                 DINF.NEXT.BOOTS.CODE$ = BOOTS.CODE$
+ 643: 12e0:                 DINF.RECORD$ = NULL.RECORD$
+ 644: 12f3:                 IF WRITE.DINF.HOLD THEN EXIT FUNCTION
+ 645: 12fe:             ENDIF
+ 646: 12fe: 
+ 647: 12fe:             IF NOT BATCH.ADD THEN BEGIN                                     !BSWM
+ 648: 1308:                 !If first item in chain
+ 649: 1308:                 IF DINF.PREV.DEAL.NUM$ = HOME.DEAL.NUM$ THEN BEGIN
+ 650: 1322:                     !Update backward pointer
+ 651: 1322:                     IF DINF.NEXT.DEAL.NUM$ <> NULL.DEAL.NUM$ THEN BEGIN
+ 652: 133c:                         DINF.DEAL.NUM$ = DINF.NEXT.DEAL.NUM$
+ 653: 1352:                         DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 654: 1365:                         IF READ.DINF THEN EXIT FUNCTION
+ 655: 1370:                         DINF.PREV.DEAL.NUM$ = DEAL.NUM$
+ 656: 1381:                         IF WRITE.DINF THEN EXIT FUNCTION
+ 657: 138c:                     ENDIF
+ 658: 138c:                 ENDIF
+ 659: 138c:             ENDIF                                                           !BSWM
+ 660: 138c: 
+ 661: 138c:         ENDIF
+ 662: 138c: 
+ 663: 138c:         !Home record needs updating
+ 664: 138c:         IF PREV.DEAL.NUM$ = HOME.DEAL.NUM$ THEN BEGIN
+ 665: 13a6:             !Read the home record
+ 666: 13a6:             DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 667: 13b9:             DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 668: 13ca:             !If home record exists
+ 669: 13ca:             IF READ.DINF = 0 THEN BEGIN
+ 670: 13d2:                 !Update home record
+ 671: 13d2:                 DINF.NEXT.DEAL.NUM$ = DEAL.NUM$
+ 672: 13e3:                 IF WRITE.DINF THEN EXIT FUNCTION
+ 673: 13f1:             !Else create home record
+ 674: 13f1:             ENDIF ELSE BEGIN
+ 675: 13f1:                 !Read master record
+ 676: 13f1:                 DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 677: 1404:                 DINF.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 678: 1417:                 !If master record does not exist
+ 679: 1417:                 IF READ.DINF <> 0 THEN BEGIN
+ 680: 141f:                     !Create master record
+ 681: 141f:                     DINF.PREV.DEAL.NUM$ = NULL.DEAL.NUM$
+ 682: 1432:                     DINF.NEXT.DEAL.NUM$ = NULL.DEAL.NUM$
+ 683: 1445:                     DINF.PREV.BOOTS.CODE$ = NULL.BOOTS.CODE$
+ 684: 1458:                     DINF.NEXT.BOOTS.CODE$ = NULL.BOOTS.CODE$
+ 685: 146b:                     DINF.RECORD$ = NULL.RECORD$
+ 686: 147e:                 ENDIF
+ 687: 147e:                 !Update master record
+ 688: 147e:                 HOME.NEXT.BOOTS.CODE$ = DINF.NEXT.BOOTS.CODE$
+ 689: 1492:                 DINF.NEXT.BOOTS.CODE$ = BOOTS.CODE$
+ 690: 14a3:                 IF WRITE.DINF.HOLD THEN EXIT FUNCTION
+ 691: 14ae:                 !Create home record
+ 692: 14ae:                 DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 693: 14c1:                 DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 694: 14d2:                 DINF.PREV.DEAL.NUM$ = NULL.DEAL.NUM$
+ 695: 14e5:                 DINF.NEXT.DEAL.NUM$ = DEAL.NUM$
+ 696: 14f6:                 DINF.PREV.BOOTS.CODE$ = HOME.BOOTS.CODE$
+ 697: 1509:                 DINF.NEXT.BOOTS.CODE$ = HOME.NEXT.BOOTS.CODE$
+ 698: 151c:                 DINF.RECORD$ = NULL.RECORD$
+ 699: 152f:                 IF WRITE.DINF.HOLD THEN EXIT FUNCTION
+ 700: 153a:             ENDIF
+ 701: 153a: 
+ 702: 153a:             IF NOT BATCH.ADD THEN BEGIN                                     !BSWM
+ 703: 1544:                 !If first item in chain
+ 704: 1544:                 IF DINF.PREV.BOOTS.CODE$ = HOME.BOOTS.CODE$ THEN BEGIN
+ 705: 155e:                     !Update backward pointer
+ 706: 155e:                     IF DINF.NEXT.BOOTS.CODE$ <> NULL.BOOTS.CODE$ THEN BEGIN
+ 707: 1578:                         DINF.DEAL.NUM$ = HOME.DEAL.NUM$
+ 708: 158b:                         DINF.BOOTS.CODE$ = DINF.NEXT.BOOTS.CODE$
+ 709: 15a1:                         IF READ.DINF THEN EXIT FUNCTION
+ 710: 15ab:                         DINF.PREV.BOOTS.CODE$ = BOOTS.CODE$
+ 711: 15bc:                         IF WRITE.DINF THEN EXIT FUNCTION
+ 712: 15c6:                     ENDIF
+ 713: 15c6:                 ENDIF
+ 714: 15c6:             ENDIF                                                           !BSWM
+ 715: 15c6: 
+ 716: 15c6:         ENDIF
+ 717: 15c6: 
+ 718: 15c6:     RETURN
+ 719: 15ce: 
+ 720: 15ce: 
+ 721: 15ce:     END FUNCTION
+ 722: 15ec: 
+ 723: 15ec: !******************************************************************************
+ 724: 15ec: 
+ 725: 15ec:     FUNCTION DINF.GET.NEXT.ITEM PUBLIC
+ 726: 1600: 
+ 727: 1600:         INTEGER*1   DINF.GET.NEXT.ITEM
+ 728: 1600: 
+ 729: 1600:         DINF.GET.NEXT.ITEM = 1
+ 730: 1604: 
+ 731: 1604:         DINF.BOOTS.CODE$ = DINF.NEXT.BOOTS.CODE$
+ 732: 161a:         IF DINF.BOOTS.CODE$ = NULL.BOOTS.CODE$ THEN EXIT FUNCTION
+ 733: 1636: 
+ 734: 1636:         DINF.GET.NEXT.ITEM = READ.DINF
+ 735: 163d: 
+ 736: 163d:     END FUNCTION
+ 737: 164c: 
+ 738: 164c: !******************************************************************************
+ 739: 164c: 
+ 740: 164c:     FUNCTION DINF.GET.PREV.ITEM PUBLIC
+ 741: 1660: 
+ 742: 1660:         INTEGER*1   DINF.GET.PREV.ITEM
+ 743: 1660: 
+ 744: 1660:         DINF.GET.PREV.ITEM = 1
+ 745: 1664: 
+ 746: 1664:         DINF.BOOTS.CODE$ = DINF.PREV.BOOTS.CODE$
+ 747: 167a:         IF DINF.BOOTS.CODE$ = HOME.HOP.BOOTS.CODE$ OR \
+ 748: 16cc:            DINF.BOOTS.CODE$ = HOME.LOP.BOOTS.CODE$ THEN EXIT FUNCTION
+ 749: 16ce: 
+ 750: 16ce:         DINF.GET.PREV.ITEM = READ.DINF
+ 751: 16d5: 
+ 752: 16d5:     END FUNCTION
+ 753: 16e4: 
+ 754: 16e4: !******************************************************************************
+ 755: 16e4: 
+ 756: 16e4:     FUNCTION DINF.GET.FIRST.ITEM.DEAL (DEAL.NUM$,LOCAL.PRICE%) PUBLIC
+ 757: 16fd: 
+ 758: 16fd:         INTEGER*1   DINF.GET.FIRST.ITEM.DEAL
+ 759: 16fd:         STRING      DEAL.NUM$
+ 760: 16fd:         INTEGER*1   LOCAL.PRICE%
+ 761: 16fd: 
+ 762: 16fd:         DINF.GET.FIRST.ITEM.DEAL = 1
+ 763: 1701: 
+ 764: 1701:         DINF.DEAL.NUM$ = DEAL.NUM$
+ 765: 1712:         IF LOCAL.PRICE% THEN BEGIN
+ 766: 1718:            DINF.BOOTS.CODE$ = HOME.LOP.BOOTS.CODE$
+ 767: 172d:         ENDIF ELSE BEGIN
+ 768: 172d:            DINF.BOOTS.CODE$ = HOME.HOP.BOOTS.CODE$
+ 769: 1740:         ENDIF
+ 770: 1740: 
+ 771: 1740:         IF READ.DINF THEN EXIT FUNCTION
+ 772: 174a: 
+ 773: 174a:         DINF.GET.FIRST.ITEM.DEAL = DINF.GET.NEXT.ITEM
+ 774: 1751: 
+ 775: 1751:     END FUNCTION
+ 776: 1765: 
+ 777: 1765: !******************************************************************************
+ 778: 1765: 
+ 779: 1765:     FUNCTION DINF.GET.FIRST.ITEM(LOCAL.PRICE%) PUBLIC
+ 780: 1779: 
+ 781: 1779:         INTEGER*1   DINF.GET.FIRST.ITEM
+ 782: 1779:         INTEGER*1   LOCAL.PRICE%
+ 783: 1779: 
+ 784: 1779:         DINF.GET.FIRST.ITEM = 1
+ 785: 177d: 
+ 786: 177d:         IF LOCAL.PRICE% THEN BEGIN
+ 787: 1783:            DINF.DEAL.NUM$ = HOME.LOP.DEAL.NUM$
+ 788: 1796:            DINF.BOOTS.CODE$ = HOME.LOP.BOOTS.CODE$
+ 789: 17ab:         ENDIF ELSE BEGIN
+ 790: 17ab:            DINF.DEAL.NUM$ = HOME.HOP.DEAL.NUM$
+ 791: 17be:            DINF.BOOTS.CODE$ = HOME.HOP.BOOTS.CODE$
+ 792: 17d1:         ENDIF
+ 793: 17d1: 
+ 794: 17d1:         IF READ.DINF THEN EXIT FUNCTION
+ 795: 17db: 
+ 796: 17db:         DINF.GET.FIRST.ITEM = DINF.GET.NEXT.ITEM
+ 797: 17e2: 
+ 798: 17e2:     END FUNCTION
+ 799: 17f1: 
+ 800: 17f1: !******************************************************************************
+ 801: 17f1: 
+ 802: 17f1:     FUNCTION DINF.GET.NEXT.DEAL PUBLIC
+ 803: 1805: 
+ 804: 1805:         INTEGER*1   DINF.GET.NEXT.DEAL
+ 805: 1805: 
+ 806: 1805:         DINF.GET.NEXT.DEAL = 1
+ 807: 1809: 
+ 808: 1809:         DINF.DEAL.NUM$ = DINF.NEXT.DEAL.NUM$
+ 809: 181f:         IF DINF.DEAL.NUM$ = NULL.DEAL.NUM$ THEN EXIT FUNCTION
+ 810: 183b: 
+ 811: 183b:         DINF.GET.NEXT.DEAL = READ.DINF
+ 812: 1842: 
+ 813: 1842:     END FUNCTION
+ 814: 1851: 
+ 815: 1851: !******************************************************************************
+ 816: 1851:     
+ 817: 1851:     FUNCTION DINF.GET.PREV.DEAL PUBLIC
+ 818: 1865: 
+ 819: 1865:         INTEGER*1   DINF.GET.PREV.DEAL
+ 820: 1865: 
+ 821: 1865:         DINF.GET.PREV.DEAL = 1
+ 822: 1869: 
+ 823: 1869:         DINF.DEAL.NUM$ = DINF.PREV.DEAL.NUM$
+ 824: 187f:         IF DINF.DEAL.NUM$ = HOME.HOP.DEAL.NUM$ OR \
+ 825: 18d1:            DINF.DEAL.NUM$ = HOME.LOP.DEAL.NUM$ THEN EXIT FUNCTION
+ 826: 18d3: 
+ 827: 18d3:         DINF.GET.PREV.DEAL = READ.DINF
+ 828: 18da: 
+ 829: 18da:     END FUNCTION
+ 830: 18e9: 
+ 831: 18e9: !******************************************************************************
+ 832: 18e9: 
+ 833: 18e9:     FUNCTION DINF.GET.FIRST.DEAL.ITEM (BOOTS.CODE$,LOCAL.PRICE%) PUBLIC
+ 834: 1902: 
+ 835: 1902:         INTEGER*1   DINF.GET.FIRST.DEAL.ITEM
+ 836: 1902:         STRING      BOOTS.CODE$
+ 837: 1902:         INTEGER*1   LOCAL.PRICE%
+ 838: 1902: 
+ 839: 1902:         DINF.GET.FIRST.DEAL.ITEM = 1
+ 840: 1906: 
+ 841: 1906:         DINF.BOOTS.CODE$ = BOOTS.CODE$
+ 842: 1917:         IF LOCAL.PRICE% THEN BEGIN
+ 843: 191d:            DINF.DEAL.NUM$ = HOME.LOP.DEAL.NUM$
+ 844: 1932:         ENDIF ELSE BEGIN
+ 845: 1932:            DINF.DEAL.NUM$ = HOME.HOP.DEAL.NUM$
+ 846: 1945:         ENDIF
+ 847: 1945: 
+ 848: 1945:         IF READ.DINF THEN EXIT FUNCTION
+ 849: 194f: 
+ 850: 194f:         DINF.GET.FIRST.DEAL.ITEM = DINF.GET.NEXT.DEAL
+ 851: 1956: 
+ 852: 1956:     END FUNCTION
+ 853: 196a: 
+ 854: 196a: !******************************************************************************
+ 855: 196a: 
+ 856: 196a:     FUNCTION DINF.GET.FIRST.DEAL (LOCAL.PRICE%) PUBLIC
+ 857: 197e: 
+ 858: 197e:         INTEGER*1   DINF.GET.FIRST.DEAL
+ 859: 197e:         INTEGER*1   LOCAL.PRICE%
+ 860: 197e: 
+ 861: 197e:         DINF.GET.FIRST.DEAL = 1
+ 862: 1982: 
+ 863: 1982:         IF LOCAL.PRICE% THEN BEGIN
+ 864: 1988:            DINF.DEAL.NUM$ = HOME.LOP.DEAL.NUM$
+ 865: 199b:            DINF.BOOTS.CODE$ = HOME.LOP.BOOTS.CODE$
+ 866: 19b0:         ENDIF ELSE BEGIN
+ 867: 19b0:            DINF.DEAL.NUM$ = HOME.HOP.DEAL.NUM$
+ 868: 19c3:            DINF.BOOTS.CODE$ = HOME.HOP.BOOTS.CODE$
+ 869: 19d6:         ENDIF
+ 870: 19d6: 
+ 871: 19d6:         IF READ.DINF THEN EXIT FUNCTION
+ 872: 19e0: 
+ 873: 19e0:         DINF.GET.FIRST.DEAL = DINF.GET.NEXT.DEAL
+ 874: 19e7: 
+ 875: 19e7:     END FUNCTION
+ 876: 19f6: 
+ 877: 19f6: !******************************************************************************
+ 878: 19f6: 
+ 879: 19f6:     FUNCTION DINF.CORRECT.CHAIN                                             !BSWM
+ 880: 1a0a:     
+ 881: 1a0a:         INTEGER*1   DINF.CORRECT.CHAIN                                      !BSWM
+ 882: 1a0a:         INTEGER*1   PRICE%                                                  !BSWM
+ 883: 1a0a:         INTEGER*1   RC%                                                     !BSWM
+ 884: 1a0a:         STRING      STATE$                                                  !BSWM
+ 885: 1a0a:         STRING      PREV$                                                   !BSWM
+ 886: 1a0a:     
+ 887: 1a0a:         DINF.CORRECT.CHAIN = 1                                              !BSWM
+ 888: 1a0e:     
+ 889: 1a0e:         FOR PRICE% = 0 TO 1                                                 !BSWM
+ 890: 1a16:     
+ 891: 1a16:             IF PRICE% THEN BEGIN                                            !BSWM
+ 892: 1a1d:                 HOME.DEAL.NUM$ = HOME.LOP.DEAL.NUM$                         !BSWM
+ 893: 1a30:             ENDIF ELSE BEGIN                                                !BSWM
+ 894: 1a30:                 HOME.DEAL.NUM$ = HOME.HOP.DEAL.NUM$                         !BSWM
+ 895: 1a41:             ENDIF                                                           !BSWM
+ 896: 1a41:             
+ 897: 1a41:             RC% = DINF.GET.FIRST.DEAL (PRICE%)                              !BSWM
+ 898: 1a4f:             WHILE RC% = 0                                                   !BSWM
+ 899: 1a52:                 
+ 900: 1a52:                 IF DINF.PREV.DEAL.NUM$ <> HOME.DEAL.NUM$ THEN BEGIN         !BSWM
+ 901: 1a6c:                     DINF.PREV.DEAL.NUM$ = HOME.DEAL.NUM$                    !BSWM
+ 902: 1a7f:                     IF WRITE.DINF THEN EXIT FUNCTION                        !BSWM
+ 903: 1a8a:                 ENDIF                                                       !BSWM
+ 904: 1a8a:                 
+ 905: 1a8a:                 CALL DINF.SAVE (STATE$)                                     !BSWM
+ 906: 1a95:                 HOME.BOOTS.CODE$ = DINF.BOOTS.CODE$                         !BSWM
+ 907: 1aa9:                 PREV$ = DINF.BOOTS.CODE$                                    !BSWM
+ 908: 1abd:                 
+ 909: 1abd:                 RC% = DINF.GET.FIRST.ITEM.DEAL (DINF.DEAL.NUM$, PRICE%)     !BSWM
+ 910: 1ad7:                 WHILE RC% = 0                                               !BSWM
+ 911: 1ad9:                     IF DINF.PREV.BOOTS.CODE$ = HOME.BOOTS.CODE$ THEN BEGIN  !BSWM
+ 912: 1af3:                         DINF.PREV.BOOTS.CODE$ = PREV$                       !BSWM
+ 913: 1b06:                         IF WRITE.DINF THEN EXIT FUNCTION                    !BSWM
+ 914: 1b11:                     ENDIF                                                   !BSWM
+ 915: 1b11:                     PREV$ = DINF.BOOTS.CODE$                                !BSWM
+ 916: 1b25:                     RC% = DINF.GET.NEXT.ITEM                                !BSWM
+ 917: 1b2c:                 WEND                                                        !BSWM
+ 918: 1b33:                 
+ 919: 1b33:                 CALL DINF.RESTORE (STATE$)                                  !BSWM
+ 920: 1b3e:                 HOME.DEAL.NUM$ = DINF.DEAL.NUM$                             !BSWM
+ 921: 1b52:                 RC% = DINF.GET.NEXT.DEAL                                    !BSWM
+ 922: 1b59:                 
+ 923: 1b59:             WEND                                                            !BSWM
+ 924: 1b63:         
+ 925: 1b63:             IF PRICE% THEN BEGIN                                            !BSWM
+ 926: 1b6a:                 HOME.BOOTS.CODE$ = HOME.LOP.BOOTS.CODE$                     !BSWM
+ 927: 1b7d:             ENDIF ELSE BEGIN                                                !BSWM
+ 928: 1b7d:                 HOME.BOOTS.CODE$ = HOME.HOP.BOOTS.CODE$                     !BSWM
+ 929: 1b8e:             ENDIF                                                           !BSWM
+ 930: 1b8e:             
+ 931: 1b8e:             RC% = DINF.GET.FIRST.ITEM (PRICE%)                              !BSWM
+ 932: 1b9c:             WHILE RC% = 0                                                   !BSWM
+ 933: 1b9f:             
+ 934: 1b9f:                 IF DINF.PREV.BOOTS.CODE$ <> HOME.BOOTS.CODE$ THEN BEGIN     !BSWM
+ 935: 1bb9:                     DINF.PREV.BOOTS.CODE$ = HOME.BOOTS.CODE$                !BSWM
+ 936: 1bcc:                     IF WRITE.DINF THEN EXIT FUNCTION                        !BSWM
+ 937: 1bd7:                 ENDIF                                                       !BSWM
+ 938: 1bd7:                 
+ 939: 1bd7:                 CALL DINF.SAVE (STATE$)                                     !BSWM
+ 940: 1be2:                 HOME.DEAL.NUM$ = DINF.DEAL.NUM$                             !BSWM
+ 941: 1bf6:                 PREV$ = DINF.DEAL.NUM$                                      !BSWM
+ 942: 1c0a:                 
+ 943: 1c0a:                 RC% = DINF.GET.FIRST.DEAL.ITEM (DINF.BOOTS.CODE$, PRICE%)   !BSWM
+ 944: 1c24:                 WHILE RC% = 0                                               !BSWM
+ 945: 1c26:                     IF DINF.PREV.DEAL.NUM$ = HOME.DEAL.NUM$ THEN BEGIN      !BSWM
+ 946: 1c40:                         DINF.PREV.DEAL.NUM$ = PREV$                         !BSWM
+ 947: 1c53:                         IF WRITE.DINF THEN EXIT FUNCTION                    !BSWM
+ 948: 1c5d:                     ENDIF                                                   !BSWM
+ 949: 1c5d:                     PREV$ = DINF.DEAL.NUM$                                  !BSWM
+ 950: 1c71:                     RC% = DINF.GET.NEXT.DEAL                                !BSWM
+ 951: 1c78:                 WEND                                                        !BSWM
+ 952: 1c7f:                 
+ 953: 1c7f:                 CALL DINF.RESTORE (STATE$)                                  !BSWM
+ 954: 1c8a:                 HOME.BOOTS.CODE$ = DINF.BOOTS.CODE$                         !BSWM
+ 955: 1c9e:                 RC% = DINF.GET.NEXT.ITEM                                    !BSWM
+ 956: 1ca5:                 
+ 957: 1ca5:             WEND                                                            !BSWM
+ 958: 1caf:         
+ 959: 1caf:         NEXT PRICE%                                                         !BSWM
+ 960: 1cc1:         
+ 961: 1cc1:         DINF.CORRECT.CHAIN = 0                                              !BSWM
+ 962: 1cc5:     
+ 963: 1cc5:     END FUNCTION                                                            !BSWM
+ 964: 1cd4:     
+ 965: 1cd4: !******************************************************************************
+ 966: 1cd4: 
+ 967: 1cd4:     FUNCTION SET.INTEGRITY.LOCK (ACTION%, DEAL.NUM$, BOOTS.CODE$, RECORD$, BATCH%)   !BSWM
+ 968: 1cf7: 
+ 969: 1cf7:         INTEGER*1   SET.INTEGRITY.LOCK
+ 970: 1cf7:         INTEGER*1   INTEGRITY.ERROR
+ 971: 1cf7:         INTEGER*1   ACTION%
+ 972: 1cf7:         STRING      DEAL.NUM$
+ 973: 1cf7:         STRING      BOOTS.CODE$
+ 974: 1cf7:         STRING      RECORD$
+ 975: 1cf7:         INTEGER*1   BATCH%
+ 976: 1cf7: 
+ 977: 1cf7:         SET.INTEGRITY.LOCK = 1
+ 978: 1cfb:         
+ 979: 1cfb:         IF BATCH.ADD THEN BEGIN
+ 980: 1d02:             BATCH% = -1
+ 981: 1d06:             GOTO BATCH.UPDATE
+ 982: 1d09:         ENDIF
+ 983: 1d09: 
+ 984: 1d09:     RETRY.LOCK:
+ 985: 1d09: 
+ 986: 1d09:         IF END # DINF.SESS.NUM% THEN MISSING.INTEGRITY.RECORD
+ 987: 1d1d:         READ FORM "T6,I1,C2,C3,C7,I1,C3"; # DINF.SESS.NUM%                  \BSWM
+ 988: 1d77:             AUTOLOCK KEY DINF.INTEGRITY.KEY$;                               \
+ 989: 1d77:             DINF.INTEGRITY.ACTION%,                                         \
+ 990: 1d77:             DINF.INTEGRITY.DEAL.NUM$,                                       \
+ 991: 1d77:             DINF.INTEGRITY.BOOTS.CODE$,                                     \
+ 992: 1d77:             DINF.INTEGRITY.RECORD$,                                         \
+ 993: 1d77:             DINF.INTEGRITY.BATCH,                                           \BSWM
+ 994: 1d77:             DINF.INTEGRITY.FILLER$
+ 995: 1d77: 
+ 996: 1d77:         INTEGRITY.ERROR = 0
+ 997: 1d7c: 
+ 998: 1d7c:         IF DINF.INTEGRITY.ACTION% = ACTION.ADD% THEN BEGIN
+ 999: 1d85: 
+1000: 1d85:             INTEGRITY.ERROR = DINF.ADD(DINF.INTEGRITY.DEAL.NUM$,            \
+1001: 1da9:                 DINF.INTEGRITY.BOOTS.CODE$,                                 \
+1002: 1da9:                 DINF.INTEGRITY.RECORD$)
+1003: 1da9: 
+1004: 1da9:         ENDIF ELSE IF DINF.INTEGRITY.ACTION% = ACTION.REMOVE% THEN BEGIN
+1005: 1db2: 
+1006: 1db2:             INTEGRITY.ERROR = DINF.REMOVE(DINF.INTEGRITY.DEAL.NUM$,         \
+1007: 1dcc:                 DINF.INTEGRITY.BOOTS.CODE$)
+1008: 1dcc: 
+1009: 1dcc:         ENDIF
+1010: 1dcc: 
+1011: 1dcc:         IF INTEGRITY.ERROR = 0 THEN BEGIN                                   !BSWM
+1012: 1dd3:             IF DINF.INTEGRITY.BATCH THEN BEGIN                              !BSWM
+1013: 1dda:                 INTEGRITY.ERROR = DINF.CORRECT.CHAIN                        !BSWM
+1014: 1de1:             ENDIF                                                           !BSWM
+1015: 1de1:         ENDIF                                                               !BSWM
+1016: 1de1:             
+1017: 1de1:         IF INTEGRITY.ERROR THEN BEGIN
+1018: 1deb: 
+1019: 1deb:             IF END # DINF.SESS.NUM% THEN FILE.ERROR
+1020: 1dff:             WRITE FORM "C5,I1,C2,C3,C7,I1,C3"; #DINF.SESS.NUM% AUTOUNLOCK;  \BSWM
+1021: 1e66:                 DINF.INTEGRITY.KEY$,                                        \
+1022: 1e66:                 DINF.INTEGRITY.ACTION%,                                     \
+1023: 1e66:                 DINF.INTEGRITY.DEAL.NUM$,                                   \
+1024: 1e66:                 DINF.INTEGRITY.BOOTS.CODE$,                                 \
+1025: 1e66:                 DINF.INTEGRITY.RECORD$,                                     \
+1026: 1e66:                 DINF.INTEGRITY.BATCH,                                       \BSWM
+1027: 1e66:                 DINF.INTEGRITY.FILLER$
+1028: 1e66: 
+1029: 1e66:             FILE.ERROR:
+1030: 1e66: 
+1031: 1e66:                 FILE.OPERATION$     = "W"
+1032: 1e75:                 CURRENT.REPORT.NUM% = DINF.REPORT.NUM%
+1033: 1e83:                 CURRENT.CODE$       = PACK$("0000") + DINF.INTEGRITY.KEY$
+1034: 1eaf: 
+1035: 1eaf:         ENDIF ELSE BEGIN
+1036: 1eaf: 
+1037: 1eaf:             BATCH.UPDATE:
+1038: 1eaf:             
+1039: 1eaf:             IF END # DINF.SESS.NUM% THEN FILE.ERROR
+1040: 1ec3:             WRITE FORM "C5,I1,C2,C3,C7,I1,C3"; #DINF.SESS.NUM%;             \BSWM
+1041: 1f24:                 DINF.INTEGRITY.KEY$,                                        \
+1042: 1f24:                 ACTION%,                                                    \
+1043: 1f24:                 DEAL.NUM$,                                                  \
+1044: 1f24:                 BOOTS.CODE$,                                                \
+1045: 1f24:                 RECORD$,                                                    \
+1046: 1f24:                 BATCH%,                                                     \BSWM
+1047: 1f24:                 DINF.INTEGRITY.FILLER$
+1048: 1f24: 
+1049: 1f24:             SET.INTEGRITY.LOCK = 0
+1050: 1f28: 
+1051: 1f28:         ENDIF
+1052: 1f28: 
+1053: 1f28:     EXIT FUNCTION
+1054: 1f2a: 
+1055: 1f2a: 
+1056: 1f2a:     MISSING.INTEGRITY.RECORD:
+1057: 1f2a: 
+1058: 1f2a:         IF END # DINF.SESS.NUM% THEN FILE.ERROR
+1059: 1f3e:         WRITE FORM "C5,C17"; # DINF.SESS.NUM%;                                  \
+1060: 1f6a:             DINF.INTEGRITY.KEY$,                                                \
+1061: 1f6a:             DINF.INTEGRITY.EMPTY$
+1062: 1f6a: 
+1063: 1f6a:         GOTO RETRY.LOCK
+1064: 1f6d: 
+1065: 1f6d:     END FUNCTION
+1066: 1f8b: 
+1067: 1f8b: !******************************************************************************
+1068: 1f8b: 
+1069: 1f8b:     FUNCTION RELEASE.INTEGRITY.LOCK
+1070: 1f9f: 
+1071: 1f9f:         INTEGER*1   RELEASE.INTEGRITY.LOCK
+1072: 1f9f: 
+1073: 1f9f:         ON ERROR GOTO ERROR.DETECTED
+1074: 1fac: 
+1075: 1fac:         RELEASE.INTEGRITY.LOCK = 1
+1076: 1fb0: 
+1077: 1fb0:     RETRY.UNLOCK:
+1078: 1fb0: 
+1079: 1fb0:         IF NOT BATCH.ADD THEN BEGIN                                         !BSWM
+1080: 1fb7:             IF END # DINF.SESS.NUM% THEN EXIT.FUNCTION
+1081: 1fcb:             WRITE FORM "C5,C17"; # DINF.SESS.NUM% AUTOUNLOCK;               \
+1082: 1ff7:                 DINF.INTEGRITY.KEY$,                                        \
+1083: 1ff7:                 DINF.INTEGRITY.EMPTY$
+1084: 1ff7:         ENDIF                                                               !BSWM
+1085: 1ff7: 
+1086: 1ff7:         RELEASE.INTEGRITY.LOCK = 0
+1087: 1ffb: 
+1088: 1ffb:     EXIT.FUNCTION:
+1089: 1ffb: 
+1090: 1ffb:     EXIT FUNCTION
+1091: 1ffd: 
+1092: 1ffd: 
+1093: 1ffd:     UNLOCK.ERROR:
+1094: 1ffd: 
+1095: 1ffd:         IF SET.INTEGRITY.LOCK(0, NULL.DEAL.NUM$, NULL.BOOTS.CODE$,          \BSWM
+1096: 2028:                               NULL.RECORD$, 0) THEN EXIT FUNCTION           !BSWM
+1097: 202a:         GOTO RETRY.UNLOCK
+1098: 202c: 
+1099: 202c: 
+1100: 202c:     ERROR.DETECTED:
+1101: 202c: 
+1102: 202c:         !OS BUG: Get this error if delete of record occurs in same sector
+1103: 202c:         !as locked integrity record:
+1104: 202c:         IF ERRN = 080F306C9H THEN BEGIN
+1105: 203f:             RESUME UNLOCK.ERROR
+1106: 204e:         ENDIF
+1107: 204e: 
+1108: 204e:         RESUME EXIT.FUNCTION
+1109: 205d: 
+1110: 205d: 
+1111: 205d:     END FUNCTION
+1112: 206c: 
+1113: 206c: !******************************************************************************
+1114: 206c: 
+1115: 206c:     FUNCTION DINF.ADD.DEAL.ITEM (DEAL.NUM$, BOOTS.CODE$, RECORD$) PUBLIC
+1116: 208f: 
+1117: 208f:         INTEGER*1   DINF.ADD.DEAL.ITEM
+1118: 208f:         INTEGER*1   RETURN.CODE
+1119: 208f:         STRING      DEAL.NUM$
+1120: 208f:         STRING      BOOTS.CODE$
+1121: 208f:         STRING      RECORD$
+1122: 208f: 
+1123: 208f:         DINF.ADD.DEAL.ITEM = 1
+1124: 2093: 
+1125: 2093:         IF SET.INTEGRITY.LOCK (ACTION.ADD%, DEAL.NUM$, BOOTS.CODE$,         \BSWM
+1126: 20b9:                                RECORD$, 0) THEN EXIT FUNCTION               !BSWM
+1127: 20bb:         RETURN.CODE = DINF.ADD (DEAL.NUM$, BOOTS.CODE$, RECORD$)
+1128: 20d7:         IF RELEASE.INTEGRITY.LOCK THEN EXIT FUNCTION
+1129: 20e1: 
+1130: 20e1:         DINF.ADD.DEAL.ITEM = RETURN.CODE
+1131: 20e7: 
+1132: 20e7:     END FUNCTION
+1133: 2105: 
+1134: 2105: !******************************************************************************
+1135: 2105: 
+1136: 2105:     FUNCTION DINF.REMOVE.DEAL.ITEM (DEAL.NUM$, BOOTS.CODE$) PUBLIC
+1137: 2123: 
+1138: 2123:         INTEGER*1   DINF.REMOVE.DEAL.ITEM
+1139: 2123:         INTEGER*1   RETURN.CODE
+1140: 2123:         STRING      DEAL.NUM$
+1141: 2123:         STRING      BOOTS.CODE$
+1142: 2123: 
+1143: 2123:         DINF.REMOVE.DEAL.ITEM = 1
+1144: 2127:         IF BATCH.ADD THEN EXIT FUNCTION                                     !BSWM
+1145: 2130: 
+1146: 2130:         IF SET.INTEGRITY.LOCK (ACTION.REMOVE%, DEAL.NUM$, BOOTS.CODE$,      \BSWM
+1147: 2158:                                NULL.RECORD$, 0) THEN EXIT FUNCTION          !BSWM
+1148: 215a:         RETURN.CODE = DINF.REMOVE (DEAL.NUM$, BOOTS.CODE$)
+1149: 2170:         IF RELEASE.INTEGRITY.LOCK THEN EXIT FUNCTION
+1150: 217a: 
+1151: 217a:         DINF.REMOVE.DEAL.ITEM = RETURN.CODE
+1152: 2180: 
+1153: 2180:     END FUNCTION
+1154: 2199: 
+1155: 2199: !******************************************************************************
+1156: 2199: 
+1157: 2199:     FUNCTION DINF.BATCH.ADD.START PUBLIC                                    !BSWM
+1158: 21ad: 
+1159: 21ad:         INTEGER*1   DINF.BATCH.ADD.START                                    !BSWM
+1160: 21ad:         
+1161: 21ad:         DINF.BATCH.ADD.START = 1                                            !BSWM
+1162: 21b1:         IF NOT BATCH.ADD THEN BEGIN                                         !BSWM
+1163: 21b8:             IF SET.INTEGRITY.LOCK (0, NULL.DEAL.NUM$, NULL.BOOTS.CODE$,     \BSWM
+1164: 21e3:                                    NULL.RECORD$, -1) THEN EXIT FUNCTION     !BSWM
+1165: 21e5:             BATCH.ADD = -1                                                  !BSWM
+1166: 21ea:         ENDIF                                                               !BSWM
+1167: 21ea:         DINF.BATCH.ADD.START = 0                                            !BSWM
+1168: 21ee:         
+1169: 21ee:     END FUNCTION                                                            !BSWM
+1170: 21fd:     
+1171: 21fd: !******************************************************************************
+1172: 21fd: 
+1173: 21fd:     FUNCTION DINF.BATCH.ADD.END PUBLIC                                      !BSWM
+1174: 2211:     
+1175: 2211:         INTEGER*1   DINF.BATCH.ADD.END                                      !BSWM
+1176: 2211:         
+1177: 2211:         DINF.BATCH.ADD.END = 1                                              !BSWM
+1178: 2215:         IF BATCH.ADD THEN BEGIN                                             !BSWM
+1179: 221c:             IF DINF.CORRECT.CHAIN THEN EXIT FUNCTION                        !BSWM
+1180: 2226:             BATCH.ADD = 0                                                   !BSWM
+1181: 222b:             IF RELEASE.INTEGRITY.LOCK THEN EXIT FUNCTION                    !BSWM
+1182: 2235:         ENDIF                                                               !BSWM
+1183: 2235:         DINF.BATCH.ADD.END = 0                                              !BSWM
+1184: 2239: 
+1185: 2239:     END FUNCTION                                                            !BSWM
+1186: 2248: 
+1187: 2248: !******************************************************************************
+1188: 2248: 
+1189: 2248: End of Compilation

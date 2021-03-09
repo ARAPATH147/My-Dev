@@ -1,0 +1,180 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***    %INCLUDE FOR STOCKTAKE GROUP CODE FILE PUBLIC FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***        REFERENCE   :   XGCFFUN.BAS
+   7: 0000: \***
+   8: 0000: \***        FILE TYPE   :   Keyed
+   9: 0000: \***
+  10: 0000: \***    VERSION A.              STEVE WRIGHT.                       24 AUG 1999.
+  11: 0000: \***    Design changed, forcing key to change from 3 byte Product Group to
+  12: 0000: \***    1 byte Business Centre letter. Key length of 3 has been retained to
+  13: 0000: \***    allow for key to change back to Product Group if BC proves inadequete
+  14: 0000: \***
+  15: 0000: \*******************************************************************************
+  16: 0000: \*******************************************************************************
+  17: 0000: 
+  18: 0000: INTEGER*2 GLOBAL           \
+  19: 0000:    CURRENT.REPORT.NUM% 
+  20: 0000:          
+  21: 0000: STRING GLOBAL              \
+  22: 0000:    CURRENT.CODE$,          \
+  23: 0000:    FILE.OPERATION$           
+  24: 0000: 
+  25: 0000: %INCLUDE XGCFDEC.J86
+  26: 0000: \******************************************************************************
+  27: 0000: \******************************************************************************
+  28: 0000: \***
+  29: 0000: \***         %INCLUDE FOR STOCKTAKE GROUP CODE FILE
+  30: 0000: \***
+  31: 0000: \***                  FILE TYPE    : Keyed
+  32: 0000: \***
+  33: 0000: \***                  REFERENCE    : XGCFDEC.J86
+  34: 0000: \***
+  35: 0000: \***    VERSION A               Steve Wright                        24 Aug 1999
+  36: 0000: \***
+  37: 0000: \*******************************************************************************
+  38: 0000: \*******************************************************************************
+  39: 0000: 
+  40: 0000: STRING GLOBAL           \
+  41: 0000:    XGCF.FILE.NAME$,     \
+  42: 0000:    XGCF.PRODUCT.GRP$,   \  Redundant - key changed from product group to BC
+  43: 0000:    XGCF.BAR.CODE$,      \
+  44: 0000:    XGCF.BSNS.CNTR$,     \  New key - 1 byte business centre
+  45: 0000:    XGCF.RSRVD$          !  New key - 2 byte filler, must be 0x0000 (set by function)
+  46: 0000: 
+  47: 0000: INTEGER*2 GLOBAL        \
+  48: 0000:    XGCF.RECL%,          \  
+  49: 0000:    XGCF.REPORT.NUM%,    \ 
+  50: 0000:    XGCF.SESS.NUM%
+  51: 0000: 
+  52: 0000: 
+  53: 0000: FUNCTION XGCF.SET PUBLIC
+  54: 0014: 
+  55: 0014:    XGCF.REPORT.NUM% = 587
+  56: 001d:    XGCF.RECL% = 14
+  57: 0026:    XGCF.FILE.NAME$ = "XGCF"
+  58: 0035: 
+  59: 0035: END FUNCTION
+  60: 0041: 
+  61: 0041: 
+  62: 0041: FUNCTION READ.XGCF PUBLIC
+  63: 0055:    INTEGER*2 READ.XGCF
+  64: 0055:     
+  65: 0055:    READ.XGCF = 1
+  66: 005a:    
+  67: 005a:    XGCF.PRODUCT.GRP$ = XGCF.BSNS.CNTR$ + CHR$(0) + CHR$(0)    
+  68: 008c: 
+  69: 008c:    IF END #XGCF.SESS.NUM% THEN READ.ERROR   
+  70: 00a0:    READ FORM "T4,C11";                                                  \
+  71: 00d2:              #XGCF.SESS.NUM%                                            \
+  72: 00d2:          KEY XGCF.PRODUCT.GRP$;                                         \
+  73: 00d2:              XGCF.BAR.CODE$
+  74: 00d2: 
+  75: 00d2:    READ.XGCF = 0
+  76: 00d7:    EXIT FUNCTION     
+  77: 00d9:      
+  78: 00d9: READ.ERROR:
+  79: 00d9:    FILE.OPERATION$ = "R"
+  80: 00e8:    CURRENT.REPORT.NUM% = XGCF.REPORT.NUM%
+  81: 00f6:    CURRENT.CODE$ = UNPACK$(XGCF.PRODUCT.GRP$)
+  82: 0111:    
+  83: 0111: END FUNCTION
+  84: 0120: 
+  85: 0120: 
+  86: 0120: FUNCTION READ.XGCF.LOCK PUBLIC
+  87: 0134:    INTEGER*2 READ.XGCF.LOCK
+  88: 0134:     
+  89: 0134:    READ.XGCF.LOCK = 1    
+  90: 0139: 
+  91: 0139:    XGCF.PRODUCT.GRP$ = XGCF.BSNS.CNTR$ + CHR$(0) + CHR$(0)    
+  92: 016b:    
+  93: 016b:    IF END #XGCF.SESS.NUM% THEN READ.ERROR
+  94: 017f:    READ FORM "T4,C11";                                                  \
+  95: 01b1:              #XGCF.SESS.NUM% AUTOLOCK                                   \
+  96: 01b1:          KEY XGCF.PRODUCT.GRP$;                                         \
+  97: 01b1:              XGCF.BAR.CODE$
+  98: 01b1:              
+  99: 01b1:    READ.XGCF.LOCK = 0
+ 100: 01b6:    EXIT FUNCTION
+ 101: 01b8:     
+ 102: 01b8: READ.ERROR:                 
+ 103: 01b8:    FILE.OPERATION$ = "R"
+ 104: 01c7:    CURRENT.REPORT.NUM% = XGCF.REPORT.NUM%
+ 105: 01d5:    CURRENT.CODE$ = UNPACK$(XGCF.PRODUCT.GRP$)
+ 106: 01f0:    
+ 107: 01f0: END FUNCTION
+ 108: 01ff: 
+ 109: 01ff: 
+ 110: 01ff: FUNCTION WRITE.XGCF PUBLIC
+ 111: 0213:    INTEGER*2 WRITE.XGCF
+ 112: 0213:     
+ 113: 0213:    WRITE.XGCF = 1
+ 114: 0218: 
+ 115: 0218:    XGCF.PRODUCT.GRP$ = XGCF.BSNS.CNTR$ + CHR$(0) + CHR$(0)    
+ 116: 024a: 
+ 117: 024a:    IF END #XGCF.SESS.NUM% THEN WRITE.ERROR
+ 118: 025e:    WRITE FORM "C3,C11";                                                 \
+ 119: 0290:              #XGCF.SESS.NUM%;                                           \
+ 120: 0290:              XGCF.PRODUCT.GRP$,                                         \
+ 121: 0290:              XGCF.BAR.CODE$
+ 122: 0290: 
+ 123: 0290:    WRITE.XGCF = 0
+ 124: 0295:    EXIT FUNCTION
+ 125: 0297: 
+ 126: 0297: WRITE.ERROR:
+ 127: 0297:    FILE.OPERATION$ = "W"
+ 128: 02a6:    CURRENT.REPORT.NUM% = XGCF.REPORT.NUM%
+ 129: 02b4:    CURRENT.CODE$ = UNPACK$(XGCF.PRODUCT.GRP$)
+ 130: 02cf:    
+ 131: 02cf: END FUNCTION
+ 132: 02de: 
+ 133: 02de: 
+ 134: 02de: FUNCTION WRITE.XGCF.HOLD PUBLIC
+ 135: 02f2:    INTEGER*2 WRITE.XGCF.HOLD
+ 136: 02f2:     
+ 137: 02f2:    WRITE.XGCF.HOLD = 1
+ 138: 02f7: 
+ 139: 02f7:    XGCF.PRODUCT.GRP$ = XGCF.BSNS.CNTR$ + CHR$(0) + CHR$(0)    
+ 140: 0329: 
+ 141: 0329:    IF END #XGCF.SESS.NUM% THEN WRITE.ERROR
+ 142: 033d:    WRITE FORM "C3,C11"; HOLD                                            \
+ 143: 036f:              #XGCF.SESS.NUM%;                                           \
+ 144: 036f:              XGCF.PRODUCT.GRP$,                                         \
+ 145: 036f:              XGCF.BAR.CODE$
+ 146: 036f: 
+ 147: 036f:    WRITE.XGCF.HOLD = 0
+ 148: 0374:    EXIT FUNCTION
+ 149: 0376: 
+ 150: 0376: WRITE.ERROR:
+ 151: 0376:    FILE.OPERATION$ = "W"
+ 152: 0385:    CURRENT.REPORT.NUM% = XGCF.REPORT.NUM%
+ 153: 0393:    CURRENT.CODE$ = UNPACK$(XGCF.PRODUCT.GRP$)
+ 154: 03ae:    
+ 155: 03ae: END FUNCTION
+ 156: 03bd:  
+ 157: 03bd: FUNCTION WRITE.XGCF.UNLOCK PUBLIC
+ 158: 03d1:    INTEGER*2 WRITE.XGCF.UNLOCK
+ 159: 03d1:     
+ 160: 03d1:    WRITE.XGCF.UNLOCK = 1
+ 161: 03d6: 
+ 162: 03d6:    XGCF.PRODUCT.GRP$ = XGCF.BSNS.CNTR$ + CHR$(0) + CHR$(0)    
+ 163: 0408: 
+ 164: 0408:    IF END #XGCF.SESS.NUM% THEN WRITE.ERROR
+ 165: 041c:    WRITE FORM "C3,C11";                                                 \
+ 166: 044e:              #XGCF.SESS.NUM% AUTOUNLOCK;                                \
+ 167: 044e:              XGCF.PRODUCT.GRP$,                                         \
+ 168: 044e:              XGCF.BAR.CODE$
+ 169: 044e: 
+ 170: 044e:    WRITE.XGCF.UNLOCK = 0
+ 171: 0453:    EXIT FUNCTION
+ 172: 0455: 
+ 173: 0455: WRITE.ERROR:
+ 174: 0455:    FILE.OPERATION$ = "W"
+ 175: 0464:    CURRENT.REPORT.NUM% = XGCF.REPORT.NUM%
+ 176: 0472:    CURRENT.CODE$ = UNPACK$(XGCF.PRODUCT.GRP$)
+ 177: 048d: 
+ 178: 048d: END FUNCTION
+ 179: 049c: 
+ 180: 049c: End of Compilation

@@ -1,0 +1,125 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***              RETURNS / AUTOMATIC CREDIT CLAIMING SYSTEM
+   5: 0000: \***
+   6: 0000: \***                 EXTERNAL FILE FUNCTION DEFINITIONS
+   7: 0000: \***
+   8: 0000: \***                    REFERENCE    : CCWKFFUN.BAS
+   9: 0000: \***
+  10: 0000: \***    Version A.         Michael Kelsall              30th September 1993
+  11: 0000: \***
+  12: 0000: \*******************************************************************************
+  13: 0000: \*******************************************************************************
+  14: 0000:  
+  15: 0000:   INTEGER*2 GLOBAL              \
+  16: 0000:          CURRENT.REPORT.NUM%
+  17: 0000:          
+  18: 0000:   STRING GLOBAL                 \
+  19: 0000:          CURRENT.CODE$,         \
+  20: 0000:          FILE.OPERATION$
+  21: 0000:          
+  22: 0000:   %INCLUDE CCWKFDEC.J86                                                
+  23: 0000: \******************************************************************************
+  24: 0000: \******************************************************************************
+  25: 0000: \***
+  26: 0000: \***      %INCLUDE FOR RETURNS WORK FILE - FIELD DEFINITIONS
+  27: 0000: \***                                       FILE REFERENCE PARAMETERS
+  28: 0000: \***
+  29: 0000: \***                  REFERENCE: CCWKFDEC.J86
+  30: 0000: \***
+  31: 0000: \***  Version A          Michael J. Kelsall              30th September 1993
+  32: 0000: \***
+  33: 0000: \******************************************************************************
+  34: 0000: \*******************************************************************************
+  35: 0000: 
+  36: 0000:   STRING GLOBAL								\
+  37: 0000: 	CCWKF.FILE.NAME$,						\
+  38: 0000: 	CCWKF.RECORD$
+  39: 0000: 
+  40: 0000:   INTEGER*2 GLOBAL							\
+  41: 0000: 	CCWKF.RECL%,	          					\
+  42: 0000: 	CCWKF.SESS.NUM%,						\
+  43: 0000: 	CCWKF.REPORT.NUM%
+  44: 0000:                                                                      
+  45: 0000:   
+  46: 0000:   FUNCTION CCWKF.SET PUBLIC
+  47: 0014:     INTEGER*2 CCWKF.SET
+  48: 0014:     
+  49: 0014:     CCWKF.SET = 1
+  50: 0019: 
+  51: 0019:       CCWKF.REPORT.NUM%  = 327
+  52: 0022:       CCWKF.FILE.NAME$ = "CCWKF"
+  53: 0031:     
+  54: 0031:     CCWKF.SET = 0
+  55: 0036: 
+  56: 0036:   END FUNCTION
+  57: 0045: 
+  58: 0045: 
+  59: 0045: 
+  60: 0045:   FUNCTION READ.CCWKF PUBLIC
+  61: 0059:     INTEGER*2 READ.CCWKF 
+  62: 0059:     
+  63: 0059:     READ.CCWKF = 1
+  64: 005e:     
+  65: 005e:        IF END #CCWKF.SESS.NUM% THEN READ.ERROR
+  66: 0072:        READ #CCWKF.SESS.NUM%; LINE CCWKF.RECORD$
+  67: 008b:     
+  68: 008b:     READ.CCWKF = 0
+  69: 0090:     EXIT FUNCTION
+  70: 0092:     
+  71: 0092:     READ.ERROR:
+  72: 0092:     
+  73: 0092:        CURRENT.CODE$ = ""
+  74: 00a1:        FILE.OPERATION$ = "R"
+  75: 00b0:        CURRENT.REPORT.NUM% = CCWKF.REPORT.NUM%
+  76: 00be:        
+  77: 00be:        EXIT FUNCTION
+  78: 00c0:                             
+  79: 00c0:   END FUNCTION
+  80: 00cf:   
+  81: 00cf: 
+  82: 00cf: 
+  83: 00cf:   FUNCTION WRITE.CCWKF PUBLIC
+  84: 00e3: 
+  85: 00e3:     INTEGER*2 WRITE.CCWKF
+  86: 00e3:     WRITE.CCWKF = 1  
+  87: 00e8: 
+  88: 00e8:        IF END #CCWKF.SESS.NUM% THEN WRITE.ERROR                 
+  89: 00fc:        PRINT #CCWKF.SESS.NUM%; CCWKF.RECORD$                
+  90: 011a:        
+  91: 011a:     WRITE.CCWKF = 0
+  92: 011f:     EXIT FUNCTION
+  93: 0121:     
+  94: 0121:     WRITE.ERROR:
+  95: 0121:        CURRENT.CODE$ = CCWKF.RECORD$
+  96: 0137:        FILE.OPERATION$= "W"
+  97: 0146:        CURRENT.REPORT.NUM% = CCWKF.REPORT.NUM%
+  98: 0154:        
+  99: 0154:        EXIT FUNCTION    
+ 100: 0156: 
+ 101: 0156:   END FUNCTION
+ 102: 0165: 
+ 103: 0165:   
+ 104: 0165: 
+ 105: 0165:   FUNCTION WRITE.HOLD.CCWKF PUBLIC                                      
+ 106: 0179: 
+ 107: 0179:     INTEGER*2 WRITE.HOLD.CCWKF                                          
+ 108: 0179:     WRITE.HOLD.CCWKF = 1                                                
+ 109: 017e: 
+ 110: 017e:        IF END #CCWKF.SESS.NUM% THEN WRITE.HOLD.ERROR                    
+ 111: 0192:        PRINT #CCWKF.SESS.NUM%; CCWKF.RECORD$         
+ 112: 01b0:        
+ 113: 01b0:     WRITE.HOLD.CCWKF = 0                                                
+ 114: 01b5:     EXIT FUNCTION                                                       
+ 115: 01b7:     
+ 116: 01b7:     WRITE.HOLD.ERROR:                                                   
+ 117: 01b7:     
+ 118: 01b7:        CURRENT.CODE$ = CCWKF.RECORD$                                    
+ 119: 01cd:        FILE.OPERATION$= "W"                                             
+ 120: 01dc:        CURRENT.REPORT.NUM% = CCWKF.REPORT.NUM%                          
+ 121: 01ea:        
+ 122: 01ea:        EXIT FUNCTION                                                    
+ 123: 01ec: 
+ 124: 01ec:   END FUNCTION                                                          
+ 125: 01fb: End of Compilation

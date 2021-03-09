@@ -1,0 +1,144 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***               FUNCTIONS FOR THE DQ FILE
+   5: 0000: \***
+   6: 0000: \***                     REFERENCE    : DQFUN.BAS
+   7: 0000: \***
+   8: 0000: \***       Version A      Mark Goode      20th October 2010
+   9: 0000: \***
+  10: 0000: \***       Version B      Mark Goode      26th September 2011
+  11: 0000: \***       Removed redundant code and comments
+  12: 0000: \***
+  13: 0000: \******************************************************************************
+  14: 0000: \*******************************************************************************
+  15: 0000: 
+  16: 0000:    %INCLUDE DQDEC.J86
+  17: 0000: REM \
+  18: 0000: \******************************************************************************
+  19: 0000: \******************************************************************************
+  20: 0000: \***
+  21: 0000: \***                 %INCLUDE FOR THE DQ QUEUE FILE
+  22: 0000: \***   
+  23: 0000: \***                      FILE TYPE  :   Sequential
+  24: 0000: \***
+  25: 0000: \***                      REFERENCE  :   DQDEC.J86
+  26: 0000: \***
+  27: 0000: \***    Version A         Mark Goode      20th October 2010
+  28: 0000: \***
+  29: 0000: \******************************************************************************
+  30: 0000: \*******************************************************************************
+  31: 0000: 
+  32: 0000:   STRING GLOBAL           \
+  33: 0000:     DQ.MESSAGE$,          \
+  34: 0000:     DQ.PAYLOAD$,          \ 
+  35: 0000:     DQ.RECORD$,           \
+  36: 0000:     DQ.ARRAY.RECORD$(1),  \  
+  37: 0000:     DQ.FILE.NAME$
+  38: 0000:     
+  39: 0000:   INTEGER*2 GLOBAL        \
+  40: 0000:     DQ.REC.NUM%,          \
+  41: 0000:     DQ.ELEMENT%,          \
+  42: 0000:     DQ.REPORT.NUM%,       \      
+  43: 0000:     DQ.SESS.NUM%,         \
+  44: 0000:     DQ1.SESS.NUM%
+  45: 0000: 
+  46: 0000: 
+  47: 0000: 
+  48: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  49: 0000: 
+  50: 0000:    STRING GLOBAL                                                       \
+  51: 0000:       CURRENT.CODE$,                                                   \
+  52: 0000:       FILE.OPERATION$          
+  53: 0000:    
+  54: 0000: \------------------------------------------------------------------------------   
+  55: 0000: 
+  56: 0000:    FUNCTION DQ.SET PUBLIC   
+  57: 0014:  \***************************
+  58: 0014:   
+  59: 0014:       DQ.REPORT.NUM% = 812
+  60: 001d:       DQ.FILE.NAME$  = "DQ:"
+  61: 002c:   
+  62: 002c:    END FUNCTION
+  63: 0038: 
+  64: 0038: \------------------------------------------------------------------------------
+  65: 0038:   
+  66: 0038:    FUNCTION READ.DQ PUBLIC
+  67: 004c:  \****************************   
+  68: 004c: 
+  69: 004c:       INTEGER*2 I%, READ.DQ      
+  70: 004c:     
+  71: 004c:       READ.DQ = 1
+  72: 0051:       
+  73: 0051:       IF END #DQ.SESS.NUM% THEN END.OF.DQ    
+  74: 0065:       READ   #DQ.SESS.NUM%,DQ.REC.NUM%; DQ.RECORD$
+  75: 0092:     
+  76: 0092:       READ.DQ = 0     
+  77: 0097:       EXIT FUNCTION      
+  78: 0099:       
+  79: 0099:       
+  80: 0099:       END.OF.DQ:
+  81: 0099:       
+  82: 0099:          FILE.OPERATION$     = "R"
+  83: 00a8:          CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+  84: 00fa:                                       STR$(DQ.REC.NUM%)), 8)
+  85: 00fa:          CURRENT.REPORT.NUM% = DQ.REPORT.NUM%
+  86: 0108: 
+  87: 0108:       EXIT FUNCTION
+  88: 010a:           
+  89: 010a:    END FUNCTION                             
+  90: 0119:                 
+  91: 0119: \---------------------------------------------------------------------------- 
+  92: 0119: 
+  93: 0119:    FUNCTION WRITE.DQ PUBLIC
+  94: 012d:  \****************************   
+  95: 012d: 
+  96: 012d:       INTEGER*2 I%, WRITE.DQ                                                    
+  97: 012d:     
+  98: 012d:       WRITE.DQ = 1      
+  99: 0132:   
+ 100: 0132:       IF END #DQ.SESS.NUM% THEN DQ.WRITE.PROBLEM  
+ 101: 0146:       WRITE  #DQ.SESS.NUM%; DQ.PAYLOAD$ 
+ 102: 0164:       WRITE.DQ = 0     
+ 103: 0169:       EXIT FUNCTION      
+ 104: 016b:       
+ 105: 016b:       
+ 106: 016b:       DQ.WRITE.PROBLEM:
+ 107: 016b:           
+ 108: 016b:            FILE.OPERATION$     = "W"
+ 109: 017a:            CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+ 110: 01cc:                                         STR$(DQ.REC.NUM%)), 8)
+ 111: 01cc:            CURRENT.REPORT.NUM% = DQ.REPORT.NUM%
+ 112: 01da: 
+ 113: 01da:    END FUNCTION
+ 114: 01e9:    
+ 115: 01e9:    \---------------------------------------------------------------------------- 
+ 116: 01e9: 
+ 117: 01e9:    FUNCTION WRITE.MATRIX.DQ PUBLIC
+ 118: 01fd:  \****************************   
+ 119: 01fd: 
+ 120: 01fd:       INTEGER*2 I%, WRITE.MATRIX.DQ                                                    
+ 121: 01fd:     
+ 122: 01fd:       WRITE.MATRIX.DQ = 1      
+ 123: 0202:   
+ 124: 0202:       IF END #DQ.SESS.NUM% THEN DQ.WRITE.MATRIX.PROBLEM  
+ 125: 0216:       WRITE MATRIX #DQ.SESS.NUM%; DQ.ARRAY.RECORD$(0), DQ.ELEMENT%+1 
+ 126: 023d:       WRITE.MATRIX.DQ = 0     
+ 127: 0242:       EXIT FUNCTION      
+ 128: 0244:       
+ 129: 0244:       
+ 130: 0244:       DQ.WRITE.MATRIX.PROBLEM:
+ 131: 0244:       
+ 132: 0244:            FILE.OPERATION$     = "W"
+ 133: 0253:            CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+ 134: 02a5:                                         STR$(DQ.REC.NUM%)), 8)
+ 135: 02a5:            CURRENT.REPORT.NUM% = DQ.REPORT.NUM%
+ 136: 02b3: 
+ 137: 02b3:       EXIT FUNCTION
+ 138: 02b5:           
+ 139: 02b5: 
+ 140: 02b5:    END FUNCTION
+ 141: 02c4: 
+ 142: 02c4: \------------------------------------------------------------------------------
+ 143: 02c4: 
+ 144: 02c4: End of Compilation

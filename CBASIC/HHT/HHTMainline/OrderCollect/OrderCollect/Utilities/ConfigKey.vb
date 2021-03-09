@@ -1,0 +1,77 @@
+﻿Public Class ConfigKey
+
+    'Public Const APPCONFIG_FILE_PATH As String = "\Program Files\btstoreapps"
+    Public Const CONFIG_FILE_PATH As String = "\Program Files\btstoreapps\OrdCol_Config.CSV"
+    Public Const MESSAGE_FILE_PATH As String = "\Program Files\btstoreapps\OrdCol_Message.CSV"
+
+    Public Const RECONNECT_ATTEMPTS = 3
+    Public Const CANCEL_SLEEP_TIME = 100
+
+    'Constants for BTC Configuration
+    Public Const APP_VERSION = "AppVersion"
+    Public Const APP_ID = "AppID"
+    'Public Const CONN_STRING = "ConnString"
+    Public Const DEVICE_TYPE = "DeviceType"
+    'Public Const IPPORT_TESTLAB = "IPPortTESTLAB"
+    Public Const IPPORT = "IPPort"
+    'Public Const IPPORT_TFTP = "IPPortTFTP"
+    Public Const STORE_NO = "StoreNo"
+    Public Const SUPPLIER_NUMBER = "SupplierNo"
+
+    'Public Const TRANSACTION_TIMEOUT = "transactionTimeout"
+    'Public Const DO_AUTO_RECONNECT = "DoAutoReconnect"
+    'Public Const CONN_TIMEOUT = "ConnTimeOut"
+    'Public Const TOTAL_RECONN_RETRIES = "TotalReConnRetries"
+    'Public Const CONN_RETRY_DELAY = "ConnRetryDelay"
+    'Public Const TEST_IPPORT = "TestIPPort"
+    '
+    'Public Const LOG_LEVEL = "LogLevel"
+    Public Const PREVIOUS_USER = "PreviousUser"
+    'Public Const TIMEOUT = "TimeOut"
+    'Public Const BATTERY_SUSPEND_TIMEOUT = "BattSuspendTimeout"
+    'Public Const LAST_ACTBUILD_TIME = "LastActBuildTime"
+    'Public Const MESSAGE_FILE_PATH = "MessageFilePath"
+    'Public Const EXPORT_FILE_PATH = "ExportFilePath"
+    Public Const LOG_FILE_PATH = "LogFilePath"
+    'Public Const DATABASE_PATH = "DatabasePath"
+    'Public Const TEMP_EXPORT_FILE_PATH = "TempExportFilePath"
+    'Public Const ACTIVE_FILE_PATH = "ActiveFilePath"
+    'Public Const APPLICATION_LAUNCHER = "ApplicationLauncher"
+    'Public Const APPLICATION_PARAMETERS = "ApplicationParameters"
+    'Public Const REMOTE_PATH = "RemotePath"
+    'Public Const ACTIVEDATA_VALID_TIME = "ActiveDataValidTime"
+    'Public Const LAST_EXDATA_DOWNLOAD_TIME = "LastExDataDownloadTime"
+    'Public Const ACTIVE_DATA_AVAILABILITY = "ActiveDataAvailable"
+    'Public Const CURRENCY_KEY = "ValidCurrency"
+    Public Const AUTO_LOGOFF_TIMEOUT = "AutoLogOffTimeOut"
+    'Public Const USER_IDLE_TIMEOUT = "UserIdleTimeOut"
+    'Public Const CONTROL_FILE_NAME = "ControlFileName"
+    'Public Const FILENAME_FIELD_START_INDEX = "FileNameFieldStartIndex"
+    'Public Const FILENAME_FIELD_LENGTH = "FileNameFieldLength"
+    'Public Const BUILDSTATUS_FIELD_START_INDEX = "BuildStatusStartIndex"
+    'Public Const BUILDSTATUS_FIELD_LENGTH = "BuildStausLength"
+    'Public Const SYNCTRL_DOWNLOAD_RETRY = "DownloadRetry"
+    'Public Const ACK_1 = "Acknowledgement1"
+    'Public Const ACK_2 = "Acknowledgement2"
+    'Public Const LOCAL_PATH = "LocalPath"
+    'Public Const TIME_LAST_BUILD_STARTINDEX = "TimeLastBuildStartIndex"
+    'Public Const TIME_LAST_BUILD_LENGTH = "TimeLastBuildLength"
+    'Public Const IS_TYPE_STARTINDEX = "IsTypeStartIndex"
+    'Public Const IS_TYPE_LENGTH = "IsTypeLength"
+    'Public Const LIST_ID = "ListID"
+    'Public Const LAST_DURATION_START_INDEX = "LastDurationStartIndex"
+    'Public Const LAST_DURATION_LENGTH = "LastDurationStartLength"
+
+    'Public Const FILE_TYPE_STARTINDEX = "FileTypeStartIndex"
+    'Public Const FILE_TYPE_LENGTH = "FileTypeLength"
+
+    'Connection constants
+    Public Const WAIT_TIME_BEFORE_RECONNECT = "WaitTimeBeforeReconnect"
+    Public Const TIME_OUT_DURATION = "TimeOutDuration_InSeconds"
+    Public Const IPPORT_LOCAL = "IPPortLOCAL"
+    Public Const PING_TIMEOUT = "PingTimeOut"
+
+    Public Const PRIMARY_IPADDRESS As String = "primaryIP"
+    Public Const SECONDARY_IPADDRESS As String = "secondaryIP"
+    Public Const ACTIVE_IPADDRESS As String = "activeIP"
+End Class

@@ -1,0 +1,720 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***    Pending Prices Keyed File (PPFK) public functions
+   6: 0000: \***
+   7: 0000: \******************************************************************************
+   8: 0000: \***
+   9: 0000: \***    Version 1.0             Mark Walker                 13th October 2011
+  10: 0000: \***    Initial version.
+  11: 0000: \***
+  12: 0000: \***    VERSION 1.1.                ROBERT COWEY.                02 FEB 2012.
+  13: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+  14: 0000: \***    Defect 2678
+  15: 0000: \***    Defined variable PPFK.PCR.COUNT.READ% to save total number of price 
+  16: 0000: \***    changes for an item as found by READ.PPFK.
+  17: 0000: \***    Modified WRITE.PPFK to clear any unwanted price change data from the
+  18: 0000: \***    PPFK tables populated by most recent READ.PPFK and to delete any 
+  19: 0000: \***    remaining unwanted PPFK price change records.
+  20: 0000: \***    This prevents unwanted retention of superceded price changes.
+  21: 0000: \***
+  22: 0000: \***    VERSION 1.2.                ROBERT COWEY.                01 MAR 2012.
+  23: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.7.
+  24: 0000: \***    Defect 53 - Commented 1.2 RC (53)
+  25: 0000: \***    Modified function DELETE.PPFK to use PPFK.PCR.COUNT.READ% to 
+  26: 0000: \***    determine number of PPFK record entries to be deleted.
+  27: 0000: \***    Removed redundant (never executed) code preceding FOR loop.
+  28: 0000: \***
+  29: 0000: \******************************************************************************
+  30: 0000: \******************************************************************************
+  31: 0000: 
+  32: 0000:     INTEGER*1 GLOBAL            \
+  33: 0000:         TRUE,                   \
+  34: 0000:         FALSE
+  35: 0000: 
+  36: 0000:     STRING                      \
+  37: 0000:         PPFK.KEY$,              \
+  38: 0000:         PPFK.END.SEQ$,          \
+  39: 0000:         WORK.BOOTS.CODE$,       \
+  40: 0000:         WORK.DATE.DUE$(1),      \
+  41: 0000:         WORK.RPD.NO$(1),        \
+  42: 0000:         WORK.STATUS.FLAG$(1),   \
+  43: 0000:         WORK.INC.DEC.FLAG$(1),  \
+  44: 0000:         WORK.PRICE$(1),         \
+  45: 0000:         WORK.MARKDOWN$(1)
+  46: 0000: 
+  47: 0000: %INCLUDE PPFKDEC.J86
+  48: 0000: \******************************************************************************
+  49: 0000: \******************************************************************************
+  50: 0000: \***
+  51: 0000: \***    Pending Prices Keyed File (PPFK) variable definitions
+  52: 0000: \***
+  53: 0000: \******************************************************************************
+  54: 0000: \***
+  55: 0000: \***    Version 1.0             Mark Walker                 13th October 2011
+  56: 0000: \***    Initial version.
+  57: 0000: \***
+  58: 0000: \***    VERSION 1.1.                ROBERT COWEY.                02 FEB 2012.
+  59: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+  60: 0000: \***    Defect 2678
+  61: 0000: \***    Defined variable PPFK.PCR.COUNT.READ% to save total number of price 
+  62: 0000: \***    changes for an item as found by READ.PPFK
+  63: 0000: \***
+  64: 0000: \***    VERSION 1.2.                ROBERT COWEY.                01 MAR 2012.
+  65: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.7.
+  66: 0000: \***    Defect 53.
+  67: 0000: \***    Modified function DELETE.PPFK.
+  68: 0000: \***    No code changes to this file.
+  69: 0000: \***
+  70: 0000: \******************************************************************************
+  71: 0000: \******************************************************************************
+  72: 0000: 
+  73: 0000:     STRING GLOBAL                           \
+  74: 0000:         PPFK.FILE.NAME$,                    \
+  75: 0000:         PPFK.BOOTS.CODE$,                   \
+  76: 0000:         PPFK.DATE.DUE$(1),                  \
+  77: 0000:         PPFK.RPD.NO$(1),                    \
+  78: 0000:         PPFK.STATUS.FLAG$(1),               \
+  79: 0000:         PPFK.INC.DEC.FLAG$(1),              \        
+  80: 0000:         PPFK.PRICE$(1),                     \
+  81: 0000:         PPFK.MARKDOWN$(1),                  \
+  82: 0000:         PPFK.READ.FORM$,                    \
+  83: 0000:         PPFK.WRITE.FORM$,                   \
+  84: 0000:         PPFK.PACK01$,                       \
+  85: 0000:         PPFK.PACK03$,                       \
+  86: 0000:         PPFK.PACK04$
+  87: 0000:         
+  88: 0000:     INTEGER*2 GLOBAL                        \
+  89: 0000:         PPFK.SESS.NUM%,                     \
+  90: 0000:         PPFK.REPORT.NUM%,                   \
+  91: 0000:         PPFK.PCR.MAX%,                      \
+  92: 0000:         PPFK.PCR.PER.RECORD%,               \
+  93: 0000:         PPFK.PCR.RECL%,                     \
+  94: 0000:         PPFK.PCR.COUNT%,                    \
+  95: 0000:         PPFK.PCR.COUNT.READ%,               \ ! 1.1 RC
+  96: 0000:         PPFK.RECL%,                         \
+  97: 0000:         PPFK.KEYL%
+  98: 0000:         
+  99: 0000:     INTEGER*4 GLOBAL                        \
+ 100: 0000:         PPFK.MAXR%
+ 101: 0000: 
+ 102: 0000: 
+ 103: 0000: \******************************************************************************
+ 104: 0000: \***
+ 105: 0000: \***    PPFK.SET
+ 106: 0000: \***
+ 107: 0000: \******************************************************************************
+ 108: 0000: \***
+ 109: 0000: \***    Define PPFK constants
+ 110: 0000: \***
+ 111: 0000: \******************************************************************************
+ 112: 0000: FUNCTION PPFK.SET PUBLIC
+ 113: 0014:                                      ! Use W-RAM Drive for speed. No PPFK
+ 114: 0014:     PPFK.FILE.NAME$  = "W:\PPFK.BIN" ! logical as only this program uses it.
+ 115: 0023:     PPFK.REPORT.NUM% = 835 
+ 116: 002c: 
+ 117: 002c:     PPFK.RECL% = 84     ! Record length
+ 118: 0035:     PPFK.KEYL% = 5      ! Key length
+ 119: 003e:     PPFK.MAXR% = 307000 ! Maximum number of records
+ 120: 004d: 
+ 121: 004d:     ! Maximum number of pending price changes allowed for a single item
+ 122: 004d:     PPFK.PCR.MAX% = 120
+ 123: 0056: 
+ 124: 0056:     ! Dimension arrays for maximum number of expected price changes
+ 125: 0056:     DIM PPFK.DATE.DUE$(PPFK.PCR.MAX%)
+ 126: 0082:     DIM PPFK.RPD.NO$(PPFK.PCR.MAX%)
+ 127: 00ae:     DIM PPFK.STATUS.FLAG$(PPFK.PCR.MAX%)
+ 128: 00da:     DIM PPFK.INC.DEC.FLAG$(PPFK.PCR.MAX%)
+ 129: 0106:     DIM PPFK.PRICE$(PPFK.PCR.MAX%)
+ 130: 0132:     DIM PPFK.MARKDOWN$(PPFK.PCR.MAX%)
+ 131: 015e: 
+ 132: 015e:     ! Number of pending price changes per PPFK sequence record
+ 133: 015e:     PPFK.PCR.PER.RECORD% = 6
+ 134: 0167: 
+ 135: 0167:     ! Record length of pending price change sub-records
+ 136: 0167:     PPFK.PCR.RECL% = 13
+ 137: 0170: 
+ 138: 0170:     !Dimension arrays for number of pending price changes per PPFK sequence record
+ 139: 0170:     DIM WORK.DATE.DUE$(PPFK.PCR.PER.RECORD%)
+ 140: 0196:     DIM WORK.RPD.NO$(PPFK.PCR.PER.RECORD%)
+ 141: 01bc:     DIM WORK.STATUS.FLAG$(PPFK.PCR.PER.RECORD%)
+ 142: 01e2:     DIM WORK.INC.DEC.FLAG$(PPFK.PCR.PER.RECORD%)
+ 143: 0208:     DIM WORK.PRICE$(PPFK.PCR.PER.RECORD%)
+ 144: 022e:     DIM WORK.MARKDOWN$(PPFK.PCR.PER.RECORD%)
+ 145: 0254: 
+ 146: 0254:     ! Define pre-packed null values (for performance reasons)
+ 147: 0254:     PPFK.PACK01$ = PACK$("00")
+ 148: 0268:     PPFK.PACK03$ = PACK$("000000")
+ 149: 027c:     PPFK.PACK04$ = PACK$("00000000")
+ 150: 0290: 
+ 151: 0290:     ! Build format string for reading PPFK sequence records
+ 152: 0290:     PPFK.READ.FORM$ = "T6,C1" + \
+ 153: 02b2:                       STRING$(PPFK.PCR.PER.RECORD%,",C3,C3,C1,C1,C4,C1")
+ 154: 02b2: 
+ 155: 02b2:     ! Build format string for writing PPFK sequence records
+ 156: 02b2:     PPFK.WRITE.FORM$ = "C5,C1" + \
+ 157: 02d4:                        STRING$(PPFK.PCR.PER.RECORD%,",C3,C3,C1,C1,C4,C1")
+ 158: 02d4: 
+ 159: 02d4: END FUNCTION
+ 160: 02e0: 
+ 161: 02e0: \******************************************************************************
+ 162: 02e0: \***
+ 163: 02e0: \***    READ.PPFK.SEQ
+ 164: 02e0: \***
+ 165: 02e0: \******************************************************************************
+ 166: 02e0: \***
+ 167: 02e0: \***    Reads a single sequence record from the PPFK for a specified item
+ 168: 02e0: \***
+ 169: 02e0: \***    INPUT:
+ 170: 02e0: \***        PPFK.KEY$ - Boots item code and sequence          4 UPD + 1 UPD
+ 171: 02e0: \***
+ 172: 02e0: \***    OUTPUT:
+ 173: 02e0: \***        PPFK.END.SEQ$ - Count of PPFK sequence records            1 UPD
+ 174: 02e0: \***
+ 175: 02e0: \***        The following fields are populated 'n' times
+ 176: 02e0: \***        WORK.DATE.DUE$(n)     - Date price change is due          3 UPD
+ 177: 02e0: \***        WORK.RPD.NO$(n)       - RPD Number                        3 UPD
+ 178: 02e0: \***        WORK.STATUS.FLAG$(n)  - SEL Printed flag                  1 ASC
+ 179: 02e0: \***        WORK.INC.DEC.FLAG$(n) - Price Increase/Decrease flag      1 ASC
+ 180: 02e0: \***        WORK.PRICE$(n)        - New price                         4 UPD
+ 181: 02e0: \***        WORK.MARKDOWN$(n)     - Markdown flag                     1 ASC
+ 182: 02e0: \***
+ 183: 02e0: \***        where n = number of price change records per sequence record
+ 184: 02e0: \***
+ 185: 02e0: \******************************************************************************
+ 186: 02e0: FUNCTION READ.PPFK.SEQ !PRIVATE
+ 187: 02f4: 
+ 188: 02f4:     INTEGER*1 READ.PPFK.SEQ
+ 189: 02f4: 
+ 190: 02f4:     READ.PPFK.SEQ = 1
+ 191: 02f8: 
+ 192: 02f8:     IF END #PPFK.SESS.NUM% THEN PPFK.READ.ERROR
+ 193: 030c:     READ FORM PPFK.READ.FORM$; #PPFK.SESS.NUM%      \
+ 194: 0610:              KEY PPFK.KEY$;                         \
+ 195: 0610:              PPFK.END.SEQ$,                         \
+ 196: 0610:              WORK.DATE.DUE$(1),                     \
+ 197: 0610:              WORK.RPD.NO$(1),                       \
+ 198: 0610:              WORK.STATUS.FLAG$(1),                  \
+ 199: 0610:              WORK.INC.DEC.FLAG$(1),                 \
+ 200: 0610:              WORK.PRICE$(1),                        \
+ 201: 0610:              WORK.MARKDOWN$(1),                     \
+ 202: 0610:              WORK.DATE.DUE$(2),                     \
+ 203: 0610:              WORK.RPD.NO$(2),                       \
+ 204: 0610:              WORK.STATUS.FLAG$(2),                  \
+ 205: 0610:              WORK.INC.DEC.FLAG$(2),                 \
+ 206: 0610:              WORK.PRICE$(2),                        \
+ 207: 0610:              WORK.MARKDOWN$(2),                     \
+ 208: 0610:              WORK.DATE.DUE$(3),                     \
+ 209: 0610:              WORK.RPD.NO$(3),                       \
+ 210: 0610:              WORK.STATUS.FLAG$(3),                  \
+ 211: 0610:              WORK.INC.DEC.FLAG$(3),                 \
+ 212: 0610:              WORK.PRICE$(3),                        \
+ 213: 0610:              WORK.MARKDOWN$(3),                     \
+ 214: 0610:              WORK.DATE.DUE$(4),                     \
+ 215: 0610:              WORK.RPD.NO$(4),                       \
+ 216: 0610:              WORK.STATUS.FLAG$(4),                  \
+ 217: 0610:              WORK.INC.DEC.FLAG$(4),                 \
+ 218: 0610:              WORK.PRICE$(4),                        \
+ 219: 0610:              WORK.MARKDOWN$(4),                     \
+ 220: 0610:              WORK.DATE.DUE$(5),                     \
+ 221: 0610:              WORK.RPD.NO$(5),                       \
+ 222: 0610:              WORK.STATUS.FLAG$(5),                  \
+ 223: 0610:              WORK.INC.DEC.FLAG$(5),                 \
+ 224: 0610:              WORK.PRICE$(5),                        \
+ 225: 0610:              WORK.MARKDOWN$(5),                     \
+ 226: 0610:              WORK.DATE.DUE$(6),                     \
+ 227: 0610:              WORK.RPD.NO$(6),                       \
+ 228: 0610:              WORK.STATUS.FLAG$(6),                  \
+ 229: 0610:              WORK.INC.DEC.FLAG$(6),                 \
+ 230: 0610:              WORK.PRICE$(6),                        \
+ 231: 0610:              WORK.MARKDOWN$(6)
+ 232: 0610: 
+ 233: 0610:     READ.PPFK.SEQ = 0
+ 234: 0614: 
+ 235: 0614:     PPFK.READ.ERROR:
+ 236: 0614: 
+ 237: 0614: END FUNCTION
+ 238: 0623: 
+ 239: 0623: \******************************************************************************
+ 240: 0623: \***
+ 241: 0623: \***    WRITE.PPFK.SEQ
+ 242: 0623: \***
+ 243: 0623: \******************************************************************************
+ 244: 0623: \***
+ 245: 0623: \***    Writes a single sequence record to the PPFK for a specified item
+ 246: 0623: \***
+ 247: 0623: \***    INPUT:
+ 248: 0623: \***        PPFK.KEY$     - Boots item code and sequence      4 UPD + 1 UPD
+ 249: 0623: \***        PPFK.END.SEQ$ - Count of PPFK sequence records            1 UPD
+ 250: 0623: \***
+ 251: 0623: \***        The following fields are required 'n' times
+ 252: 0623: \***        WORK.DATE.DUE$(n)     - Date price change is due          3 UPD
+ 253: 0623: \***        WORK.RPD.NO$(n)       - RPD Number                        3 UPD
+ 254: 0623: \***        WORK.STATUS.FLAG$(n)  - SEL Printed flag                  1 ASC
+ 255: 0623: \***        WORK.INC.DEC.FLAG$(n) - Price Increase/Decrease flag      1 ASC
+ 256: 0623: \***        WORK.PRICE$(n)        - New price                         4 UPD
+ 257: 0623: \***        WORK.MARKDOWN$(n)     - Markdown flag                     1 ASC
+ 258: 0623: \***
+ 259: 0623: \***        where n = number of price change records per sequence record
+ 260: 0623: \***
+ 261: 0623: \******************************************************************************
+ 262: 0623: FUNCTION WRITE.PPFK.SEQ !PRIVATE
+ 263: 0637: 
+ 264: 0637:     INTEGER*1 WRITE.PPFK.SEQ
+ 265: 0637: 
+ 266: 0637:     WRITE.PPFK.SEQ = 1
+ 267: 063b: 
+ 268: 063b:     IF END #PPFK.SESS.NUM% THEN PPFK.WRITE.ERROR
+ 269: 064f:     WRITE FORM PPFK.WRITE.FORM$; #PPFK.SESS.NUM%;   \
+ 270: 0a06:              PPFK.KEY$,                             \
+ 271: 0a06:              PPFK.END.SEQ$,                         \
+ 272: 0a06:              WORK.DATE.DUE$(1),                     \
+ 273: 0a06:              WORK.RPD.NO$(1),                       \
+ 274: 0a06:              WORK.STATUS.FLAG$(1),                  \
+ 275: 0a06:              WORK.INC.DEC.FLAG$(1),                 \
+ 276: 0a06:              WORK.PRICE$(1),                        \
+ 277: 0a06:              WORK.MARKDOWN$(1),                     \
+ 278: 0a06:              WORK.DATE.DUE$(2),                     \
+ 279: 0a06:              WORK.RPD.NO$(2),                       \
+ 280: 0a06:              WORK.STATUS.FLAG$(2),                  \
+ 281: 0a06:              WORK.INC.DEC.FLAG$(2),                 \
+ 282: 0a06:              WORK.PRICE$(2),                        \
+ 283: 0a06:              WORK.MARKDOWN$(2),                     \
+ 284: 0a06:              WORK.DATE.DUE$(3),                     \
+ 285: 0a06:              WORK.RPD.NO$(3),                       \
+ 286: 0a06:              WORK.STATUS.FLAG$(3),                  \
+ 287: 0a06:              WORK.INC.DEC.FLAG$(3),                 \
+ 288: 0a06:              WORK.PRICE$(3),                        \
+ 289: 0a06:              WORK.MARKDOWN$(3),                     \
+ 290: 0a06:              WORK.DATE.DUE$(4),                     \
+ 291: 0a06:              WORK.RPD.NO$(4),                       \
+ 292: 0a06:              WORK.STATUS.FLAG$(4),                  \
+ 293: 0a06:              WORK.INC.DEC.FLAG$(4),                 \
+ 294: 0a06:              WORK.PRICE$(4),                        \
+ 295: 0a06:              WORK.MARKDOWN$(4),                     \
+ 296: 0a06:              WORK.DATE.DUE$(5),                     \
+ 297: 0a06:              WORK.RPD.NO$(5),                       \
+ 298: 0a06:              WORK.STATUS.FLAG$(5),                  \
+ 299: 0a06:              WORK.INC.DEC.FLAG$(5),                 \
+ 300: 0a06:              WORK.PRICE$(5),                        \
+ 301: 0a06:              WORK.MARKDOWN$(5),                     \
+ 302: 0a06:              WORK.DATE.DUE$(6),                     \
+ 303: 0a06:              WORK.RPD.NO$(6),                       \
+ 304: 0a06:              WORK.STATUS.FLAG$(6),                  \
+ 305: 0a06:              WORK.INC.DEC.FLAG$(6),                 \
+ 306: 0a06:              WORK.PRICE$(6),                        \
+ 307: 0a06:              WORK.MARKDOWN$(6)
+ 308: 0a06: 
+ 309: 0a06:     WRITE.PPFK.SEQ = 0
+ 310: 0a0a: 
+ 311: 0a0a:     PPFK.WRITE.ERROR:
+ 312: 0a0a: 
+ 313: 0a0a: END FUNCTION
+ 314: 0a19: 
+ 315: 0a19: \******************************************************************************
+ 316: 0a19: \***
+ 317: 0a19: \***    DELETE.PPFK.SEQ
+ 318: 0a19: \***
+ 319: 0a19: \******************************************************************************
+ 320: 0a19: \***
+ 321: 0a19: \***    Deletes a single sequence record from the PPFK for a specified item
+ 322: 0a19: \***
+ 323: 0a19: \***    INPUT:
+ 324: 0a19: \***        PPFK.KEY$ - Boots item code and sequence          4 UPD + 1 UPD
+ 325: 0a19: \***
+ 326: 0a19: \******************************************************************************
+ 327: 0a19: FUNCTION DELETE.PPFK.SEQ !PRIVATE
+ 328: 0a2d: 
+ 329: 0a2d:     INTEGER*1 DELETE.PPFK.SEQ
+ 330: 0a2d: 
+ 331: 0a2d:     DELETE.PPFK.SEQ = 1
+ 332: 0a31: 
+ 333: 0a31:     IF END # PPFK.SESS.NUM% THEN PPFK.DELETE.ERROR
+ 334: 0a45:     DELREC PPFK.SESS.NUM%; PPFK.KEY$
+ 335: 0a59: 
+ 336: 0a59:     DELETE.PPFK.SEQ = 0
+ 337: 0a5d: 
+ 338: 0a5d:     PPFK.DELETE.ERROR:
+ 339: 0a5d: 
+ 340: 0a5d: END FUNCTION
+ 341: 0a6c: 
+ 342: 0a6c: \******************************************************************************
+ 343: 0a6c: \***
+ 344: 0a6c: \***    READ.PPFK
+ 345: 0a6c: \***
+ 346: 0a6c: \******************************************************************************
+ 347: 0a6c: \***
+ 348: 0a6c: \***    Reads all pending prices from the PPFK file for a specified item
+ 349: 0a6c: \***
+ 350: 0a6c: \***    INPUT:
+ 351: 0a6c: \***        PPFK.BOOTS.CODE$      - 7-digit boots item code           7 ASC
+ 352: 0a6c: \***
+ 353: 0a6c: \***    OUTPUT:
+ 354: 0a6c: \***        PPFK.PCR.COUNT%       - Number of price change records    2 INT
+ 355: 0a6c: \***
+ 356: 0a6c: \***        The following arrays will be fully populated:
+ 357: 0a6c: \***        PPFK.DATE.DUE$(n)     - Date price change is due          3 UPD
+ 358: 0a6c: \***        PPFK.RPD.NO$(n)       - RPD Number                        3 UPD
+ 359: 0a6c: \***        PPFK.STATUS.FLAG$(n)  - SEL Printed flag                  1 ASC
+ 360: 0a6c: \***        PPFK.INC.DEC.FLAG$(n) - Price Increase/Decrease flag      1 ASC
+ 361: 0a6c: \***        PPFK.PRICE$(n)        - New price                         4 UPD
+ 362: 0a6c: \***        PPFK.MARKDOWN$(n)     - Markdown flag                     1 ASC
+ 363: 0a6c: \***
+ 364: 0a6c: \***        where n = count of number of price change records
+ 365: 0a6c: \***
+ 366: 0a6c: \******************************************************************************
+ 367: 0a6c: FUNCTION READ.PPFK PUBLIC
+ 368: 0a80: 
+ 369: 0a80:     INTEGER*1   READ.PPFK
+ 370: 0a80:     INTEGER*1   RC%
+ 371: 0a80:     INTEGER*1   END.OF.PPFK.PRICES
+ 372: 0a80:     INTEGER*1   END.OF.PPFK.RECORDS
+ 373: 0a80:     INTEGER*2   PPFK.RECORD.COUNT%
+ 374: 0a80:     INTEGER*2   PPFK.SEQ.COUNT%
+ 375: 0a80:     INTEGER*2   I%,J%,K%
+ 376: 0a80: 
+ 377: 0a80:     READ.PPFK = 1
+ 378: 0a84: 
+ 379: 0a84:     ! Initialise total number of price changes for this item
+ 380: 0a84:     PPFK.PCR.COUNT% = 0
+ 381: 0a8d:     PPFK.PCR.COUNT.READ% = 0                                          ! 1.1 RC
+ 382: 0a96: 
+ 383: 0a96:     ! Pack item code
+ 384: 0a96:     WORK.BOOTS.CODE$ = PACK$("0" + PPFK.BOOTS.CODE$)
+ 385: 0abb: 
+ 386: 0abb:     ! Build key field for initial record
+ 387: 0abb:     PPFK.KEY$ = WORK.BOOTS.CODE$ + PACK$("01")
+ 388: 0ad8: 
+ 389: 0ad8:     ! Read the first PPFK sequence record
+ 390: 0ad8:     RC% = READ.PPFK.SEQ
+ 391: 0adf: 
+ 392: 0adf:     PPFK.RECORD.COUNT% = VAL(UNPACK$(PPFK.END.SEQ$))
+ 393: 0af9: 
+ 394: 0af9:     ! IF PPFK sequence record read was unsuccessful
+ 395: 0af9:     IF RC% <> 0 THEN BEGIN
+ 396: 0b03:         ! Ensure all output values are reset when a file read error occurs
+ 397: 0b03:         PPFK.PCR.COUNT% = 0
+ 398: 0b0c:         DIM PPFK.DATE.DUE$(PPFK.PCR.MAX%)
+ 399: 0b38:         DIM PPFK.RPD.NO$(PPFK.PCR.MAX%)
+ 400: 0b64:         DIM PPFK.STATUS.FLAG$(PPFK.PCR.MAX%)
+ 401: 0b90:         DIM PPFK.INC.DEC.FLAG$(PPFK.PCR.MAX%)
+ 402: 0bbc:         DIM PPFK.PRICE$(PPFK.PCR.MAX%)
+ 403: 0be8:         DIM PPFK.MARKDOWN$(PPFK.PCR.MAX%)
+ 404: 0c14: 
+ 405: 0c14:         EXIT FUNCTION
+ 406: 0c17: 
+ 407: 0c17:     ENDIF
+ 408: 0c17: 
+ 409: 0c17:     I% = 1  ! Index for PPFK sequence records
+ 410: 0c1d: 
+ 411: 0c1d:     END.OF.PPFK.RECORDS = FALSE
+ 412: 0c27: 
+ 413: 0c27:     ! WHILE there are still PPFK sequence records to process
+ 414: 0c27:     WHILE NOT END.OF.PPFK.RECORDS
+ 415: 0c2a: 
+ 416: 0c2a:         J% = 1  ! Index for price changes
+ 417: 0c30: 
+ 418: 0c30:         END.OF.PPFK.PRICES = FALSE
+ 419: 0c3a: 
+ 420: 0c3a:         ! WHILE there are still price changes to process
+ 421: 0c3a:         WHILE NOT END.OF.PPFK.PRICES
+ 422: 0c3d: 
+ 423: 0c3d:             ! IF price change slot is empty
+ 424: 0c3d:             IF WORK.DATE.DUE$(J%) = PPFK.PACK03$ THEN BEGIN
+ 425: 0c65: 
+ 426: 0c65:                 END.OF.PPFK.PRICES = TRUE
+ 427: 0c72: 
+ 428: 0c72:             ENDIF ELSE BEGIN
+ 429: 0c72: 
+ 430: 0c72:                 ! Increment total number of price changes for this item
+ 431: 0c72:                 PPFK.PCR.COUNT% = PPFK.PCR.COUNT% + 1
+ 432: 0c79: 
+ 433: 0c79:                 PPFK.DATE.DUE$(PPFK.PCR.COUNT%)     = WORK.DATE.DUE$(J%)
+ 434: 0cab:                 PPFK.RPD.NO$(PPFK.PCR.COUNT%)       = WORK.RPD.NO$(J%)
+ 435: 0cdd:                 PPFK.STATUS.FLAG$(PPFK.PCR.COUNT%)  = WORK.STATUS.FLAG$(J%)
+ 436: 0d0f:                 PPFK.INC.DEC.FLAG$(PPFK.PCR.COUNT%) = WORK.INC.DEC.FLAG$(J%)
+ 437: 0d41:                 PPFK.PRICE$(PPFK.PCR.COUNT%)        = WORK.PRICE$(J%)
+ 438: 0d73:                 PPFK.MARKDOWN$(PPFK.PCR.COUNT%)     = WORK.MARKDOWN$(J%)
+ 439: 0da5: 
+ 440: 0da5:                 ! IF we've just processed the record in the last price change slot
+ 441: 0da5:                 IF J% = PPFK.PCR.PER.RECORD% THEN BEGIN
+ 442: 0db2:                     END.OF.PPFK.PRICES = TRUE
+ 443: 0dbe:                 ENDIF ELSE BEGIN
+ 444: 0dbe:                     ! Move on to next price change slot
+ 445: 0dbe:                     J% = J% + 1
+ 446: 0dc2:                 ENDIF
+ 447: 0dc2: 
+ 448: 0dc2:             ENDIF
+ 449: 0dc2: 
+ 450: 0dc2:         WEND
+ 451: 0dcc: 
+ 452: 0dcc:         ! IF there are more PPFK sequence records to read
+ 453: 0dcc:         IF I% < PPFK.RECORD.COUNT% THEN BEGIN
+ 454: 0dd8: 
+ 455: 0dd8:             ! Move on to the next PPFK sequence record
+ 456: 0dd8:             I% = I% + 1
+ 457: 0ddc: 
+ 458: 0ddc:             ! Build key field for the next record
+ 459: 0ddc:             PPFK.KEY$ = WORK.BOOTS.CODE$ + PACK$(RIGHT$("00" + STR$(I%),2))
+ 460: 0e28: 
+ 461: 0e28:             ! Read the next PPFK sequence record
+ 462: 0e28:             RC% = READ.PPFK.SEQ
+ 463: 0e2f: 
+ 464: 0e2f:             ! IF PPFK sequence record read was unsuccessful
+ 465: 0e2f:             IF RC% <> 0 THEN BEGIN
+ 466: 0e39: 
+ 467: 0e39:                 ! Ensure all output values are reset when a file read error occurs
+ 468: 0e39:                 PPFK.PCR.COUNT% = 0
+ 469: 0e42:                 DIM PPFK.DATE.DUE$(PPFK.PCR.MAX%)
+ 470: 0e6e:                 DIM PPFK.RPD.NO$(PPFK.PCR.MAX%)
+ 471: 0e9a:                 DIM PPFK.STATUS.FLAG$(PPFK.PCR.MAX%)
+ 472: 0ec6:                 DIM PPFK.INC.DEC.FLAG$(PPFK.PCR.MAX%)
+ 473: 0ef2:                 DIM PPFK.PRICE$(PPFK.PCR.MAX%)
+ 474: 0f1e:                 DIM PPFK.MARKDOWN$(PPFK.PCR.MAX%)
+ 475: 0f4a: 
+ 476: 0f4a:                 EXIT FUNCTION
+ 477: 0f4c:             ENDIF
+ 478: 0f4e: 
+ 479: 0f4e:         ! ELSE we must have just processed the last PPFK sequence record
+ 480: 0f4e:         ENDIF ELSE BEGIN
+ 481: 0f4e:             END.OF.PPFK.RECORDS = TRUE
+ 482: 0f58:         ENDIF
+ 483: 0f58: 
+ 484: 0f58:     WEND
+ 485: 0f62: 
+ 486: 0f62:     PPFK.PCR.COUNT.READ% = PPFK.PCR.COUNT%                            ! 1.1 RC
+ 487: 0f70:     READ.PPFK = 0
+ 488: 0f74: 
+ 489: 0f74: END FUNCTION
+ 490: 0f83: 
+ 491: 0f83: 
+ 492: 0f83: \******************************************************************************
+ 493: 0f83: \***
+ 494: 0f83: \***    WRITE.PPFK
+ 495: 0f83: \***
+ 496: 0f83: \******************************************************************************
+ 497: 0f83: \***
+ 498: 0f83: \***    Writes all pending prices to the PPFK file for a specified item
+ 499: 0f83: \***
+ 500: 0f83: \***    INPUT:
+ 501: 0f83: \***        PPFK.BOOTS.CODE$      - 7-digit boots item code           7 ASC
+ 502: 0f83: \***        PPFK.PCR.COUNT%       - Number of price change records    2 INT
+ 503: 0f83: \***        PPFK.DATE.DUE$(n)     - Date price change is due          3 UPD
+ 504: 0f83: \***        PPFK.RPD.NO$(n)       - RPD Number                        3 UPD
+ 505: 0f83: \***        PPFK.STATUS.FLAG$(n)  - SEL Printed flag                  1 ASC
+ 506: 0f83: \***        PPFK.INC.DEC.FLAG$(n) - Price Increase/Decrease flag      1 ASC
+ 507: 0f83: \***        PPFK.PRICE$(n)        - New price                         4 UPD
+ 508: 0f83: \***        PPFK.MARKDOWN$(n)     - Markdown flag                     1 ASC
+ 509: 0f83: \***
+ 510: 0f83: \***        where n = count of number of price change records
+ 511: 0f83: \***
+ 512: 0f83: \******************************************************************************
+ 513: 0f83: FUNCTION WRITE.PPFK PUBLIC
+ 514: 0f97: 
+ 515: 0f97:     INTEGER*1   WRITE.PPFK
+ 516: 0f97:     INTEGER*1   RC%
+ 517: 0f97:     INTEGER*1   PPFK.PCRS.USED%
+ 518: 0f97:     INTEGER*2   I%,J%
+ 519: 0f97:     INTEGER*2   PPFK.RECORD.COUNT%
+ 520: 0f97:     INTEGER*2   PPFK.PCR.INDEX%
+ 521: 0f97: 
+ 522: 0f97:     WRITE.PPFK = 1
+ 523: 0f9b: 
+ 524: 0f9b:     ! Pack item code
+ 525: 0f9b:     WORK.BOOTS.CODE$ = PACK$("0" + PPFK.BOOTS.CODE$)
+ 526: 0fc0: 
+ 527: 0fc0:     ! IF there are no price changes
+ 528: 0fc0:     IF PPFK.PCR.COUNT% = 0 THEN BEGIN
+ 529: 0fca: 
+ 530: 0fca:         ! Build key field for initial PPFK sequence record
+ 531: 0fca:         PPFK.KEY$ = WORK.BOOTS.CODE$ + PACK$("01")
+ 532: 0fe7: 
+ 533: 0fe7:         ! Delete PPFK sequence record
+ 534: 0fe7:         RC% = DELETE.PPFK.SEQ
+ 535: 0fee:         
+ 536: 0fee:         ! IF PPFK sequence record delete was unsuccessful
+ 537: 0fee:         IF RC% <> 0 THEN BEGIN
+ 538: 0ff5:             EXIT FUNCTION
+ 539: 0ff8:         ENDIF
+ 540: 0ff8: 
+ 541: 0ff8:         WRITE.PPFK = 0
+ 542: 0ffc:         EXIT FUNCTION
+ 543: 0fff: 
+ 544: 0fff:     ENDIF
+ 545: 0fff: 
+ 546: 0fff:     ! Calculate the number of fully populated sequence records required
+ 547: 0fff:     PPFK.RECORD.COUNT% = INT(PPFK.PCR.COUNT% / PPFK.PCR.PER.RECORD%)
+ 548: 102a: 
+ 549: 102a:     ! Calculate how many used slots we have in the partially populated sequence record
+ 550: 102a:     PPFK.PCRS.USED% = MOD(PPFK.PCR.COUNT%,PPFK.PCR.PER.RECORD%)
+ 551: 1046: 
+ 552: 1046:     ! Calculate whether we need an extra partially full sequence record
+ 553: 1046:     IF PPFK.PCRS.USED% > 0 THEN BEGIN
+ 554: 1050: 
+ 555: 1050:         ! Include the partially populated sequence record in the total
+ 556: 1050:         PPFK.RECORD.COUNT% = PPFK.RECORD.COUNT% + 1
+ 557: 1054: 
+ 558: 1054:         ! FOR all remaining price change slots in the partially full sequence record
+ 559: 1054:         FOR I% = (PPFK.PCRS.USED% + 1) TO PPFK.PCR.PER.RECORD%
+ 560: 1060: 
+ 561: 1060:             ! Calculate position of empty price change slots
+ 562: 1060:             PPFK.PCR.INDEX% = ((PPFK.RECORD.COUNT% - 1) * PPFK.PCR.PER.RECORD%) + I%
+ 563: 1072: 
+ 564: 1072:             ! Clear all values in the empty price change slots
+ 565: 1072:             PPFK.DATE.DUE$(PPFK.PCR.INDEX%)     = PPFK.PACK03$
+ 566: 1093:             PPFK.RPD.NO$(PPFK.PCR.INDEX%)       = PPFK.PACK03$
+ 567: 10b7:             PPFK.STATUS.FLAG$(PPFK.PCR.INDEX%)  = PPFK.PACK01$
+ 568: 10db:             PPFK.INC.DEC.FLAG$(PPFK.PCR.INDEX%) = PPFK.PACK01$
+ 569: 10ff:             PPFK.PRICE$(PPFK.PCR.INDEX%)        = PPFK.PACK04$
+ 570: 1123:             PPFK.MARKDOWN$(PPFK.PCR.INDEX%)     = PPFK.PACK01$
+ 571: 1147: 
+ 572: 1147:         NEXT I%
+ 573: 115e: 
+ 574: 115e: !       Clear remaining unwanted price change data (if any) populated by READ.PPFK   ! 1.1 RC
+ 575: 115e:         WHILE I% <= PPFK.PCR.COUNT.READ%                                             ! 1.1 RC
+ 576: 1161: !       Where I% is the total number of price changes to be written                  ! 1.1 RC
+ 577: 1161:                                                                                      
+ 578: 1161:             ! Calculate position of empty price change slots                         ! 1.1 RC
+ 579: 1161:             PPFK.PCR.INDEX% = ((PPFK.RECORD.COUNT% - 1) * PPFK.PCR.PER.RECORD%) + I% ! 1.1 RC
+ 580: 1173: 
+ 581: 1173:             ! Clear all values in the empty price change slots                       ! 1.1 RC
+ 582: 1173:             PPFK.DATE.DUE$(PPFK.PCR.INDEX%)     = PPFK.PACK03$                       ! 1.1 RC
+ 583: 1194:             PPFK.RPD.NO$(PPFK.PCR.INDEX%)       = PPFK.PACK03$                       ! 1.1 RC
+ 584: 11b8:             PPFK.STATUS.FLAG$(PPFK.PCR.INDEX%)  = PPFK.PACK01$                       ! 1.1 RC
+ 585: 11dc:             PPFK.INC.DEC.FLAG$(PPFK.PCR.INDEX%) = PPFK.PACK01$                       ! 1.1 RC
+ 586: 1200:             PPFK.PRICE$(PPFK.PCR.INDEX%)        = PPFK.PACK04$                       ! 1.1 RC
+ 587: 1224:             PPFK.MARKDOWN$(PPFK.PCR.INDEX%)     = PPFK.PACK01$                       ! 1.1 RC
+ 588: 1248: 
+ 589: 1248:             I% = I% + 1                                                              ! 1.1 RC
+ 590: 124c:         WEND                                                                         ! 1.1 RC
+ 591: 125c: 
+ 592: 125c:     ENDIF
+ 593: 125c: 
+ 594: 125c:     PPFK.PCR.INDEX% = 0 ! Index for price change records
+ 595: 1262: 
+ 596: 1262:     ! FOR each required PPFK sequence record
+ 597: 1262:     FOR I% = 1 TO PPFK.RECORD.COUNT%
+ 598: 126b: 
+ 599: 126b:         ! FOR each PPFK price change slot
+ 600: 126b:         FOR J% = 1 TO PPFK.PCR.PER.RECORD%
+ 601: 1274: 
+ 602: 1274:             ! Increment price change record index
+ 603: 1274:             PPFK.PCR.INDEX% = PPFK.PCR.INDEX% + 1
+ 604: 1278: 
+ 605: 1278:             WORK.DATE.DUE$(J%)     = PPFK.DATE.DUE$(PPFK.PCR.INDEX%)
+ 606: 12a7:             WORK.RPD.NO$(J%)       = PPFK.RPD.NO$(PPFK.PCR.INDEX%)
+ 607: 12d6:             WORK.STATUS.FLAG$(J%)  = PPFK.STATUS.FLAG$(PPFK.PCR.INDEX%)
+ 608: 1305:             WORK.INC.DEC.FLAG$(J%) = PPFK.INC.DEC.FLAG$(PPFK.PCR.INDEX%)
+ 609: 1334:             WORK.PRICE$(J%)        = PPFK.PRICE$(PPFK.PCR.INDEX%)
+ 610: 1363:             WORK.MARKDOWN$(J%)     = PPFK.MARKDOWN$(PPFK.PCR.INDEX%)
+ 611: 1392: 
+ 612: 1392:         NEXT J%
+ 613: 13a9: 
+ 614: 13a9:         ! Build key field for PPFK record
+ 615: 13a9:         PPFK.KEY$ = WORK.BOOTS.CODE$ + PACK$(RIGHT$("00" + STR$(I%),2))
+ 616: 13f5: 
+ 617: 13f5:         ! Set total number of PPFK sequence records
+ 618: 13f5:         PPFK.END.SEQ$ = PACK$(RIGHT$("00" + STR$(PPFK.RECORD.COUNT%),2))
+ 619: 1436: 
+ 620: 1436:         ! Write PPFK sequence record
+ 621: 1436:         RC% = WRITE.PPFK.SEQ
+ 622: 143d: 
+ 623: 143d:         ! IF PPFK sequence record write was unsuccessful
+ 624: 143d:         IF RC% <> 0 THEN BEGIN
+ 625: 1444:             EXIT FUNCTION
+ 626: 1447:         ENDIF
+ 627: 1447: 
+ 628: 1447:     NEXT I%
+ 629: 145a: 
+ 630: 145a: !   Delete remaining unwanted PPFK price change records (if any)        ! 1.1 RC
+ 631: 145a: !   Redundant PPFK records arise when there are less PPFK records       ! 1.1 RC
+ 632: 145a: !   written by WRITE.PPFK than read in by a previous READ.PPFK.         ! 1.1 RC
+ 633: 145a: 
+ 634: 145a:     WHILE PPFK.PCR.COUNT.READ% \                                        ! 1.1 RC
+ 635: 145c:             > (I% -1) * PPFK.PCR.PER.RECORD%                            ! 1.1 RC
+ 636: 145c: !   Where I% is the sequence number of the next PPFK price change       ! 1.1 RC
+ 637: 145c: !   record for potential deletion                                       ! 1.1 RC
+ 638: 145c:         
+ 639: 145c: !       Build key field for PPFK record                                 ! 1.1 RC
+ 640: 145c:         PPFK.KEY$ = WORK.BOOTS.CODE$ + PACK$(RIGHT$("00" + STR$(I%),2)) ! 1.1 RC
+ 641: 14a8: 
+ 642: 14a8: !       Delete PPFK sequence record                                     ! 1.1 RC
+ 643: 14a8:         RC% = DELETE.PPFK.SEQ                                           ! 1.1 RC
+ 644: 14af: 
+ 645: 14af:         IF RC% <> 0 THEN BEGIN                                          ! 1.1 RC
+ 646: 14b6:             EXIT FUNCTION                                               ! 1.1 RC
+ 647: 14b8:         ENDIF                                                           ! 1.1 RC
+ 648: 14b8:     
+ 649: 14b8:         I% = I% + 1                                                     ! 1.1 RC
+ 650: 14bc:     WEND                                                                ! 1.1 RC
+ 651: 14d0: 
+ 652: 14d0:     WRITE.PPFK = 0
+ 653: 14d4: 
+ 654: 14d4: END FUNCTION
+ 655: 14e3: 
+ 656: 14e3: 
+ 657: 14e3: \******************************************************************************
+ 658: 14e3: \***
+ 659: 14e3: \***    DELETE.PPFK
+ 660: 14e3: \***
+ 661: 14e3: \******************************************************************************
+ 662: 14e3: \***
+ 663: 14e3: \***    Deletes all pending prices from the PPFK file for a specified item
+ 664: 14e3: \***
+ 665: 14e3: \***    INPUT:
+ 666: 14e3: \***        PPFK.BOOTS.CODE$      - 7-digit boots item code           7 ASC
+ 667: 14e3: \***        PPFK.PCR.COUNT%       - Number of price change records    2 INT
+ 668: 14e3: \***
+ 669: 14e3: \******************************************************************************
+ 670: 14e3: FUNCTION DELETE.PPFK PUBLIC
+ 671: 14f7: 
+ 672: 14f7:     INTEGER*1   DELETE.PPFK
+ 673: 14f7:     INTEGER*1   RC%
+ 674: 14f7:     INTEGER*1   PPFK.PCRS.USED%
+ 675: 14f7:     INTEGER*2   I%
+ 676: 14f7:     INTEGER*2   PPFK.RECORD.COUNT%
+ 677: 14f7:     INTEGER*2   PPFK.PCR.INDEX%
+ 678: 14f7: 
+ 679: 14f7:     DELETE.PPFK = 1
+ 680: 14fb: 
+ 681: 14fb:     ! Strip check digit and pack item code
+ 682: 14fb:     WORK.BOOTS.CODE$ = PACK$("0" + PPFK.BOOTS.CODE$)
+ 683: 1520: 
+ 684: 1520:     ! Calculate the number of fully populated sequence records present
+ 685: 1520:     PPFK.RECORD.COUNT% = INT(PPFK.PCR.COUNT.READ% / PPFK.PCR.PER.RECORD%) ! 1.2 RC (53)
+ 686: 154b: 
+ 687: 154b:     ! Calculate how many used slots we have in the partially populated sequence record
+ 688: 154b:     PPFK.PCRS.USED% = MOD(PPFK.PCR.COUNT.READ%, PPFK.PCR.PER.RECORD%)     ! 1.2 RC (53)
+ 689: 1567: 
+ 690: 1567:     ! Calculate whether we have an extra partially full sequence record
+ 691: 1567:     IF PPFK.PCRS.USED% > 0 THEN BEGIN
+ 692: 156e: 
+ 693: 156e:         ! Include the partially populated sequence record in the total
+ 694: 156e:         PPFK.RECORD.COUNT% = PPFK.RECORD.COUNT% + 1
+ 695: 1572: 
+ 696: 1572:     ENDIF
+ 697: 1572:     
+ 698: 1572: !   Redundant (never executed) lines deleted                              ! 1.2 RC (53)
+ 699: 1572:     
+ 700: 1572:     ! FOR each required PPFK sequence record
+ 701: 1572:         FOR I% = PPFK.RECORD.COUNT% TO 1 STEP -1 
+ 702: 157a:     
+ 703: 157a:             ! Build key field for PPFK record
+ 704: 157a:             PPFK.KEY$ = WORK.BOOTS.CODE$ + PACK$(RIGHT$("00" + STR$(I%),2))
+ 705: 15c6:     
+ 706: 15c6:             ! Delete PPFK sequence record
+ 707: 15c6:             RC% = DELETE.PPFK.SEQ
+ 708: 15cd:     
+ 709: 15cd:             ! IF PPFK sequence record delete was unsuccessful
+ 710: 15cd:             IF RC% <> 0 THEN BEGIN
+ 711: 15d4:                 EXIT FUNCTION
+ 712: 15d6:             ENDIF
+ 713: 15d6:     
+ 714: 15d6:         NEXT I%
+ 715: 15e6: 
+ 716: 15e6:     DELETE.PPFK = 0
+ 717: 15ea: 
+ 718: 15ea: END FUNCTION
+ 719: 15f9: 
+ 720: 15f9: End of Compilation

@@ -1,0 +1,537 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***                      CSR Item file functions
+   6: 0000: \***
+   7: 0000: \***                            CITEMFUN.BAS
+   8: 0000: \***
+   9: 0000: \***  VERSION A:   Les Cook 21st August 1992
+  10: 0000: \***
+  11: 0000: \***  VERSION B:   Steven Goulding  10/3/93
+  12: 0000: \***  CITEM.PREVIOUS.THEORETICAL.STOCK% field added
+  13: 0000: \***
+  14: 0000: \***    VERSION C.              ROBERT COWEY.                       21 OCT 1993.
+  15: 0000: \***    Corrected setting of FILE.OPERATION$ within WRITE functions.
+  16: 0000: \***
+  17: 0000: \***    VERSION D       STUART WILLIAM MCCONNACHIE     02/04/96
+  18: 0000: \***    Added fields for last delivery date and quantity.
+  19: 0000: \***
+  20: 0000: \*******************************************************************************
+  21: 0000: \*******************************************************************************
+  22: 0000: 
+  23: 0000:    INTEGER*2 GLOBAL                   \
+  24: 0000:       CURRENT.REPORT.NUM%
+  25: 0000: 
+  26: 0000:    STRING GLOBAL                      \
+  27: 0000:       CURRENT.CODE$,                  \
+  28: 0000:       FILE.OPERATION$
+  29: 0000: 
+  30: 0000:    %INCLUDE CITEMDEC.J86                                               ! CRC
+  31: 0000: REM \
+  32: 0000: \******************************************************************************
+  33: 0000: \******************************************************************************
+  34: 0000: \***
+  35: 0000: \***         %INCLUDE FOR CSR ITEM FILE FIELD DECLARATIONS
+  36: 0000: \***
+  37: 0000: \***               FILE TYPE    : Keyed
+  38: 0000: \***
+  39: 0000: \***               REFERENCE    : CITEMDEC.J86
+  40: 0000: \***
+  41: 0000: \***      Version A           Les Cook                1/9/92
+  42: 0000: \***      Based on CITEMFLD.J86 and CITEMNUD.J86
+  43: 0000: \***
+  44: 0000: \***      Version B           Steve Goulding          10/9/93
+  45: 0000: \***      CITEM.PREVIOUS.THEORETICAL.STOCK% added
+  46: 0000: \***
+  47: 0000: \***    VERSION C.              ROBERT COWEY.                       21 OCT 1993.
+  48: 0000: \***    No changes to this file.
+  49: 0000: \***
+  50: 0000: \***    VERSION D              NIK SEN                 5/10/94
+  51: 0000: \***    CITEM.THEORETICAL.STOCK.FLAG$ added as it is required by the function
+  52: 0000: \***    CITEMDIR.J86. Note that this field has not been added to the file
+  53: 0000: \***    read/write functions in CITEMFUN.BAS.
+  54: 0000: \***
+  55: 0000: \***    VERSION E       STUART WILLIAM MCCONNACHIE     02/04/96
+  56: 0000: \***    Added fields for last delivery date and quantity.
+  57: 0000: \***
+  58: 0000: \*******************************************************************************
+  59: 0000: \*******************************************************************************
+  60: 0000: 
+  61: 0000:   STRING GLOBAL                       \
+  62: 0000:     CITEM.FILE.NAME$,                 \
+  63: 0000:     CITEM.BOOTS.CODE$,                \ 4 byte UPD with check digit (key)
+  64: 0000:     CITEM.SHELF.ALLOCATION$,          \ 2 byte UPD
+  65: 0000:     CITEM.VULNERABLE.ESA$,            \ 2 byte UPD
+  66: 0000:     CITEM.SPECIAL.ORDER.ESA$,         \ 2 byte UPD
+  67: 0000:     CITEM.TOTAL.ESA$,                 \ 2 byte UPD
+  68: 0000:     CITEM.INITIAL.DISPLAY.STOCK$,     \ 2 byte UPD for promotions
+  69: 0000:     CITEM.ON.ORDER.IN.THIS.PDT$,      \ 2 byte UPD
+  70: 0000:     CITEM.ON.ORDER.TODAY$,            \ 2 byte UPD
+  71: 0000:     CITEM.TOTAL.ON.ORDER$,            \ 2 byte UPD
+  72: 0000:     CITEM.DATE.OF.LAST.MANUAL.COUNT$, \ 3 byte UPD  YYMMDD
+  73: 0000:     CITEM.UNIT$,                      \ 1 byte UPD
+  74: 0000:     CITEM.VULNERABLE.REPORT.FLAG$,    \ 1 byte ASCII  Y or N
+  75: 0000:     CITEM.DAYS.TO.DELETION$,          \ 1 byte UPD
+  76: 0000:     CITEM.SALES.SIGN.FLAG$,           \ 1 byte UPD
+  77: 0000:     CITEM.WEEK.4.SALES$,              \ 4 byte UPD (last weeks) 4 fields
+  78: 0000:     CITEM.WEEK.3.SALES$,              \ 4 byte UPD  holding details of the
+  79: 0000:     CITEM.WEEK.2.SALES$,              \ 4 byte UPD  last 4 weeks sales for
+  80: 0000:     CITEM.WEEK.1.SALES$,              \ 4 byte UPD  vulnerable lines report
+  81: 0000:     CITEM.LIST.FREQUENCY$,            \ 1 byte UPD (1-7)
+  82: 0000:     CITEM.YESTERDAYS.SALES$,          \ 2 byte UPD
+  83: 0000:     CITEM.COUNT.REQUEST.FLAG$,        \ 1 byte ASCII
+  84: 0000:     CITEM.THEORETICAL.STOCK.FLAG$,    \ 1 byte ASCII
+  85: 0000:     CITEM.LAST.DELIVERY.DATE$,        \ 3 byte UPD YYMMDD              ESWM
+  86: 0000:     CITEM.FILLER$                     ! 14 byte ASCII  Spaces.         BSMG
+  87: 0000: 
+  88: 0000: INTEGER*2 GLOBAL                      \
+  89: 0000:     CITEM.ALTER.SALES.QUANTITY%,      \ 2 byte INTEGER Signed
+  90: 0000:     CITEM.PREVIOUS.THEORETICAL.STOCK%,\                                BSMG
+  91: 0000:     CITEM.LAST.DELIVERY.QTY%,         \ 2 byte INTEGER Signed          ESWM
+  92: 0000:     CITEM.REPORT.NUM%,                \
+  93: 0000:     CITEM.RECL%,                      \
+  94: 0000:     CITEM.SESS.NUM%
+  95: 0000: 
+  96: 0000: 
+  97: 0000: 
+  98: 0000:   FUNCTION CITEM.SET PUBLIC
+  99: 0014: \***************************
+ 100: 0014: 
+ 101: 0014:     CITEM.REPORT.NUM% = 184
+ 102: 001d:     CITEM.RECL%       = 64
+ 103: 0026:     CITEM.FILE.NAME$  = "CITEM"
+ 104: 0035: 
+ 105: 0035:   END FUNCTION
+ 106: 0041: 
+ 107: 0041: \******************************************************************************
+ 108: 0041: \***
+ 109: 0041: \***  Function to check the validity of a UPD string
+ 110: 0041: \***  The function return logical true if the string contains a valid
+ 111: 0041: \***  UPD value, and a logical false if it does not.
+ 112: 0041: \***
+ 113: 0041: \******************************************************************************
+ 114: 0041: 
+ 115: 0041:   FUNCTION VALID.UPD(UPD$) PUBLIC
+ 116: 005a: \*********************************
+ 117: 005a: \
+ 118: 005a: 
+ 119: 005a: 
+ 120: 005a:       INTEGER*1 VALID.UPD,             \
+ 121: 005a:                 I%,                    \
+ 122: 005a:                 VALID,                 \
+ 123: 005a:                 VALID.UPD.UPD$         ! VARIABLE NAME CANNOT HAVE () IN IT!!!
+ 124: 005a: 
+ 125: 005a:       INTEGER*2 BYTE%, HIGH%, LOW%
+ 126: 005a:       STRING UPD$
+ 127: 005a: 
+ 128: 005a:       VALID.UPD.UPD$ = 1
+ 129: 005f: 
+ 130: 005f:       IF UPD$ = PACK$(STRING$(LEN(UPD$),"??")) THEN BEGIN
+ 131: 008a:          VALID.UPD = -1
+ 132: 008e:          EXIT FUNCTION
+ 133: 0091:       ENDIF
+ 134: 0091: 
+ 135: 0091:       I% = 1
+ 136: 0096:       VALID = -1
+ 137: 009b:       WHILE I% <= LEN(UPD$) AND VALID
+ 138: 009d:          BYTE% = ASC(MID$(UPD$, I%, 1))
+ 139: 00ba:          HIGH% = (BYTE% AND 11110000b) / 16
+ 140: 00c6:          LOW% = BYTE% AND 00001111b
+ 141: 00d2:          IF LOW% > 9 OR HIGH% > 9 THEN VALID = 0
+ 142: 00ed:          I% = I% + 1
+ 143: 00f1:       WEND
+ 144: 0113:       VALID.UPD = VALID
+ 145: 0119: 
+ 146: 0119:       VALID.UPD.UPD$ = 0
+ 147: 011e: 
+ 148: 011e: END FUNCTION
+ 149: 0132: 
+ 150: 0132: \****************************************************************************
+ 151: 0132: \***
+ 152: 0132: \***  Function to verify the contents of the UPD fields to prevent any
+ 153: 0132: \***  packed negative values from beging written to the file.
+ 154: 0132: \***
+ 155: 0132: \***************************************************************************
+ 156: 0132: 
+ 157: 0132:   FUNCTION CHECK.CITEM.UPD PUBLIC
+ 158: 0146: \*********************************
+ 159: 0146: 
+ 160: 0146:       INTEGER*1 CHECK.CITEM.UPD
+ 161: 0146: 
+ 162: 0146:       CHECK.CITEM.UPD = 1
+ 163: 014a: 
+ 164: 014a: 
+ 165: 014a:       IF NOT VALID.UPD(CITEM.SHELF.ALLOCATION$) THEN                    \
+ 166: 0160:              CITEM.SHELF.ALLOCATION$ = PACK$("0000")
+ 167: 0174: 
+ 168: 0174:       IF NOT VALID.UPD(CITEM.VULNERABLE.ESA$) THEN                      \
+ 169: 018a:              CITEM.VULNERABLE.ESA$ = PACK$("0000")
+ 170: 019e: 
+ 171: 019e:       IF NOT VALID.UPD(CITEM.SPECIAL.ORDER.ESA$) THEN                   \
+ 172: 01b4:              CITEM.SPECIAL.ORDER.ESA$ = PACK$("0000")
+ 173: 01c8: 
+ 174: 01c8:       IF NOT VALID.UPD(CITEM.TOTAL.ESA$) THEN                           \
+ 175: 01de:              CITEM.TOTAL.ESA$ = PACK$("0000")
+ 176: 01f2: 
+ 177: 01f2:       IF NOT VALID.UPD(CITEM.INITIAL.DISPLAY.STOCK$) THEN               \
+ 178: 0208:              CITEM.INITIAL.DISPLAY.STOCK$ = PACK$("0000")
+ 179: 021c: 
+ 180: 021c:       IF NOT VALID.UPD(CITEM.ON.ORDER.IN.THIS.PDT$) THEN                \
+ 181: 0232:              CITEM.ON.ORDER.IN.THIS.PDT$ = PACK$("0000")
+ 182: 0246: 
+ 183: 0246:       IF NOT VALID.UPD(CITEM.ON.ORDER.TODAY$) THEN                      \
+ 184: 025c:              CITEM.ON.ORDER.TODAY$ = PACK$("0000")
+ 185: 0270: 
+ 186: 0270:       IF NOT VALID.UPD(CITEM.TOTAL.ON.ORDER$) THEN                      \
+ 187: 0286:              CITEM.TOTAL.ON.ORDER$ = PACK$("0000")
+ 188: 029a: 
+ 189: 029a:       IF NOT VALID.UPD(CITEM.DATE.OF.LAST.MANUAL.COUNT$) THEN           \
+ 190: 02b0:              CITEM.DATE.OF.LAST.MANUAL.COUNT$ = PACK$("000000")
+ 191: 02c4: 
+ 192: 02c4:       IF NOT VALID.UPD(CITEM.UNIT$) THEN                                \
+ 193: 02da:              CITEM.UNIT$ = PACK$("00")
+ 194: 02ee: 
+ 195: 02ee:       IF NOT VALID.UPD(CITEM.WEEK.4.SALES$) THEN                        \
+ 196: 0304:              CITEM.WEEK.4.SALES$ = PACK$("00000000")
+ 197: 0318: 
+ 198: 0318:       IF NOT VALID.UPD(CITEM.WEEK.3.SALES$) THEN                        \
+ 199: 032e:              CITEM.WEEK.3.SALES$ = PACK$("00000000")
+ 200: 0342: 
+ 201: 0342:       IF NOT VALID.UPD(CITEM.WEEK.2.SALES$) THEN                        \
+ 202: 0358:              CITEM.WEEK.2.SALES$ = PACK$("00000000")
+ 203: 036c: 
+ 204: 036c:       IF NOT VALID.UPD(CITEM.WEEK.1.SALES$) THEN                        \
+ 205: 0382:              CITEM.WEEK.1.SALES$ = PACK$("00000000")
+ 206: 0396: 
+ 207: 0396:       IF NOT VALID.UPD(CITEM.YESTERDAYS.SALES$) THEN                    \
+ 208: 03ac:              CITEM.YESTERDAYS.SALES$ = PACK$("0000")
+ 209: 03c0: 
+ 210: 03c0:       CHECK.CITEM.UPD = 0
+ 211: 03c4: 
+ 212: 03c4:   END FUNCTION
+ 213: 03d3: 
+ 214: 03d3: \-----------------------------------------------------------------------------
+ 215: 03d3: 
+ 216: 03d3: 
+ 217: 03d3:   FUNCTION READ.CITEM PUBLIC
+ 218: 03e7: \****************************
+ 219: 03e7: 
+ 220: 03e7:     INTEGER*1 READ.CITEM
+ 221: 03e7: 
+ 222: 03e7:     READ.CITEM = 1
+ 223: 03eb: 
+ 224: 03eb:     IF END #CITEM.SESS.NUM% THEN READ.CITEM.ERROR
+ 225: 03ff:     READ FORM "T5,8C2,C3,3C1,4C4,I2,C1,C2,C1,I2,C3,I2,C9";              \ DSWM
+ 226: 052e:          #CITEM.SESS.NUM%                                               \
+ 227: 052e:          KEY CITEM.BOOTS.CODE$;                                         \
+ 228: 052e:              CITEM.SHELF.ALLOCATION$,                                   \
+ 229: 052e:              CITEM.VULNERABLE.ESA$,                                     \
+ 230: 052e:              CITEM.SPECIAL.ORDER.ESA$,                                  \
+ 231: 052e:              CITEM.TOTAL.ESA$,                                          \
+ 232: 052e:              CITEM.INITIAL.DISPLAY.STOCK$,                              \
+ 233: 052e:              CITEM.ON.ORDER.IN.THIS.PDT$,                               \
+ 234: 052e:              CITEM.ON.ORDER.TODAY$,                                     \
+ 235: 052e:              CITEM.TOTAL.ON.ORDER$,                                     \
+ 236: 052e:              CITEM.DATE.OF.LAST.MANUAL.COUNT$,                          \
+ 237: 052e:              CITEM.UNIT$,                                               \
+ 238: 052e:              CITEM.VULNERABLE.REPORT.FLAG$,                             \
+ 239: 052e:              CITEM.SALES.SIGN.FLAG$,                                    \
+ 240: 052e:              CITEM.WEEK.4.SALES$,                                       \
+ 241: 052e:              CITEM.WEEK.3.SALES$,                                       \
+ 242: 052e:              CITEM.WEEK.2.SALES$,                                       \
+ 243: 052e:              CITEM.WEEK.1.SALES$,                                       \
+ 244: 052e:              CITEM.ALTER.SALES.QUANTITY%,                               \
+ 245: 052e:              CITEM.LIST.FREQUENCY$,                                     \
+ 246: 052e:              CITEM.YESTERDAYS.SALES$,                                   \
+ 247: 052e:              CITEM.COUNT.REQUEST.FLAG$,                                 \
+ 248: 052e:              CITEM.PREVIOUS.THEORETICAL.STOCK%,                         \ BSMG
+ 249: 052e:              CITEM.LAST.DELIVERY.DATE$,                                 \ DSWM
+ 250: 052e:              CITEM.LAST.DELIVERY.QTY%,                                  \ DSWM
+ 251: 052e:              CITEM.FILLER$
+ 252: 052e: 
+ 253: 052e:     READ.CITEM = 0
+ 254: 0532:     EXIT FUNCTION
+ 255: 0534: 
+ 256: 0534:     READ.CITEM.ERROR:
+ 257: 0534: 
+ 258: 0534:         CURRENT.CODE$       = CITEM.BOOTS.CODE$
+ 259: 054a:         FILE.OPERATION$     = "R"
+ 260: 0559:         CURRENT.REPORT.NUM% = CITEM.REPORT.NUM%
+ 261: 0567: 
+ 262: 0567:         EXIT FUNCTION
+ 263: 0569: 
+ 264: 0569:   END FUNCTION
+ 265: 0578: 
+ 266: 0578: \-----------------------------------------------------------------------------
+ 267: 0578: 
+ 268: 0578:   FUNCTION READ.CITEM.LOCK PUBLIC
+ 269: 058c: \*********************************
+ 270: 058c: 
+ 271: 058c:     INTEGER*1 READ.CITEM.LOCK
+ 272: 058c: 
+ 273: 058c:     READ.CITEM.LOCK = 1
+ 274: 0590: 
+ 275: 0590: IF END #CITEM.SESS.NUM% THEN READ.CITEM.LOCK.ERROR
+ 276: 05a4:     READ FORM "T5,8C2,C3,3C1,4C4,I2,C1,C2,C1,I2,C3,I2,C9";              \ DSWM
+ 277: 06d3:          #CITEM.SESS.NUM% AUTOLOCK                                      \
+ 278: 06d3:          KEY CITEM.BOOTS.CODE$;                                         \
+ 279: 06d3:              CITEM.SHELF.ALLOCATION$,                                   \
+ 280: 06d3:              CITEM.VULNERABLE.ESA$,                                     \
+ 281: 06d3:              CITEM.SPECIAL.ORDER.ESA$,                                  \
+ 282: 06d3:              CITEM.TOTAL.ESA$,                                          \
+ 283: 06d3:              CITEM.INITIAL.DISPLAY.STOCK$,                              \
+ 284: 06d3:              CITEM.ON.ORDER.IN.THIS.PDT$,                               \
+ 285: 06d3:              CITEM.ON.ORDER.TODAY$,                                     \
+ 286: 06d3:              CITEM.TOTAL.ON.ORDER$,                                     \
+ 287: 06d3:              CITEM.DATE.OF.LAST.MANUAL.COUNT$,                          \
+ 288: 06d3:              CITEM.UNIT$,                                               \
+ 289: 06d3:              CITEM.VULNERABLE.REPORT.FLAG$,                             \
+ 290: 06d3:              CITEM.SALES.SIGN.FLAG$,                                    \
+ 291: 06d3:              CITEM.WEEK.4.SALES$,                                       \
+ 292: 06d3:              CITEM.WEEK.3.SALES$,                                       \
+ 293: 06d3:              CITEM.WEEK.2.SALES$,                                       \
+ 294: 06d3:              CITEM.WEEK.1.SALES$,                                       \
+ 295: 06d3:              CITEM.ALTER.SALES.QUANTITY%,                               \
+ 296: 06d3:              CITEM.LIST.FREQUENCY$,                                     \
+ 297: 06d3:              CITEM.YESTERDAYS.SALES$,                                   \
+ 298: 06d3:              CITEM.COUNT.REQUEST.FLAG$,                                 \
+ 299: 06d3:              CITEM.PREVIOUS.THEORETICAL.STOCK%,                         \ BSMG
+ 300: 06d3:              CITEM.LAST.DELIVERY.DATE$,                                 \ DSWM
+ 301: 06d3:              CITEM.LAST.DELIVERY.QTY%,                                  \ DSWM
+ 302: 06d3:              CITEM.FILLER$
+ 303: 06d3: 
+ 304: 06d3:     READ.CITEM.LOCK = 0
+ 305: 06d7:     EXIT FUNCTION
+ 306: 06d9: 
+ 307: 06d9:     READ.CITEM.LOCK.ERROR:
+ 308: 06d9: 
+ 309: 06d9:        CURRENT.CODE$       = CITEM.BOOTS.CODE$
+ 310: 06ef:        FILE.OPERATION$     = "R"
+ 311: 06fe:        CURRENT.REPORT.NUM% = CITEM.REPORT.NUM%
+ 312: 070c: 
+ 313: 070c:        EXIT FUNCTION
+ 314: 070e: 
+ 315: 070e: 
+ 316: 070e:   END FUNCTION
+ 317: 071d: 
+ 318: 071d: 
+ 319: 071d: \-----------------------------------------------------------------------------
+ 320: 071d: 
+ 321: 071d: 
+ 322: 071d:   FUNCTION WRITE.CITEM PUBLIC
+ 323: 0731: \*****************************
+ 324: 0731: 
+ 325: 0731:     INTEGER*1         CHECK.CITEM.RC%, WRITE.CITEM
+ 326: 0731: 
+ 327: 0731:     WRITE.CITEM = 1
+ 328: 0735: 
+ 329: 0735:     CHECK.CITEM.RC% = CHECK.CITEM.UPD
+ 330: 073c: 
+ 331: 073c:     IF CHECK.CITEM.RC% = 1 THEN GOTO WRITE.CITEM.ERROR
+ 332: 0746: 
+ 333: 0746:     IF END #CITEM.SESS.NUM% THEN WRITE.CITEM.ERROR
+ 334: 075a:     WRITE FORM "C4,8C2,C3,3C1,4C4,I2,C1,C2,C1,I2,C3,I2,C9";             \ DSWM
+ 335: 08f0:              #CITEM.SESS.NUM%;                                          \
+ 336: 08f0:              CITEM.BOOTS.CODE$,                                         \
+ 337: 08f0:              CITEM.SHELF.ALLOCATION$,                                   \
+ 338: 08f0:              CITEM.VULNERABLE.ESA$,                                     \
+ 339: 08f0:              CITEM.SPECIAL.ORDER.ESA$,                                  \
+ 340: 08f0:              CITEM.TOTAL.ESA$,                                          \
+ 341: 08f0:              CITEM.INITIAL.DISPLAY.STOCK$,                              \
+ 342: 08f0:              CITEM.ON.ORDER.IN.THIS.PDT$,                               \
+ 343: 08f0:              CITEM.ON.ORDER.TODAY$,                                     \
+ 344: 08f0:              CITEM.TOTAL.ON.ORDER$,                                     \
+ 345: 08f0:              CITEM.DATE.OF.LAST.MANUAL.COUNT$,                          \
+ 346: 08f0:              CITEM.UNIT$,                                               \
+ 347: 08f0:              CITEM.VULNERABLE.REPORT.FLAG$,                             \
+ 348: 08f0:              CITEM.SALES.SIGN.FLAG$,                                    \
+ 349: 08f0:              CITEM.WEEK.4.SALES$,                                       \
+ 350: 08f0:              CITEM.WEEK.3.SALES$,                                       \
+ 351: 08f0:              CITEM.WEEK.2.SALES$,                                       \
+ 352: 08f0:              CITEM.WEEK.1.SALES$,                                       \
+ 353: 08f0:              CITEM.ALTER.SALES.QUANTITY%,                               \
+ 354: 08f0:              CITEM.LIST.FREQUENCY$,                                     \
+ 355: 08f0:              CITEM.YESTERDAYS.SALES$,                                   \
+ 356: 08f0:              CITEM.COUNT.REQUEST.FLAG$,                                 \
+ 357: 08f0:              CITEM.PREVIOUS.THEORETICAL.STOCK%,                         \ BSMG
+ 358: 08f0:              CITEM.LAST.DELIVERY.DATE$,                                 \ DSWM
+ 359: 08f0:              CITEM.LAST.DELIVERY.QTY%,                                  \ DSWM
+ 360: 08f0:              CITEM.FILLER$
+ 361: 08f0: 
+ 362: 08f0:     WRITE.CITEM = 0
+ 363: 08f4:     EXIT FUNCTION
+ 364: 08f6: 
+ 365: 08f6:     WRITE.CITEM.ERROR:
+ 366: 08f6: 
+ 367: 08f6:        CURRENT.CODE$       = CITEM.BOOTS.CODE$
+ 368: 090c:        FILE.OPERATION$     = "W"                                       ! BRC
+ 369: 091b:        CURRENT.REPORT.NUM% = CITEM.REPORT.NUM%
+ 370: 0929: 
+ 371: 0929:        EXIT FUNCTION
+ 372: 092b: 
+ 373: 092b:   END FUNCTION
+ 374: 093a: 
+ 375: 093a: \-----------------------------------------------------------------------------
+ 376: 093a: 
+ 377: 093a:   FUNCTION WRITE.CITEM.HOLD PUBLIC
+ 378: 094e: \**********************************
+ 379: 094e: 
+ 380: 094e:     INTEGER*1            CHECK.CITEM.RC%, WRITE.CITEM.HOLD
+ 381: 094e: 
+ 382: 094e:     WRITE.CITEM.HOLD = 1
+ 383: 0952: 
+ 384: 0952:     CHECK.CITEM.RC% = CHECK.CITEM.UPD
+ 385: 0959: 
+ 386: 0959:     IF CHECK.CITEM.RC% = 1 THEN GOTO WRITE.CITEM.HOLD.ERROR
+ 387: 0963: 
+ 388: 0963:     IF END #CITEM.SESS.NUM% THEN WRITE.CITEM.HOLD.ERROR
+ 389: 0977:     WRITE FORM "C4,8C2,C3,3C1,4C4,I2,C1,C2,C1,I2,C3,I2,C9"; HOLD        \ DSWM
+ 390: 0b0d:              #CITEM.SESS.NUM%;                                          \
+ 391: 0b0d:              CITEM.BOOTS.CODE$,                                         \
+ 392: 0b0d:              CITEM.SHELF.ALLOCATION$,                                   \
+ 393: 0b0d:              CITEM.VULNERABLE.ESA$,                                     \
+ 394: 0b0d:              CITEM.SPECIAL.ORDER.ESA$,                                  \
+ 395: 0b0d:              CITEM.TOTAL.ESA$,                                          \
+ 396: 0b0d:              CITEM.INITIAL.DISPLAY.STOCK$,                              \
+ 397: 0b0d:              CITEM.ON.ORDER.IN.THIS.PDT$,                               \
+ 398: 0b0d:              CITEM.ON.ORDER.TODAY$,                                     \
+ 399: 0b0d:              CITEM.TOTAL.ON.ORDER$,                                     \
+ 400: 0b0d:              CITEM.DATE.OF.LAST.MANUAL.COUNT$,                          \
+ 401: 0b0d:              CITEM.UNIT$,                                               \
+ 402: 0b0d:              CITEM.VULNERABLE.REPORT.FLAG$,                             \
+ 403: 0b0d:              CITEM.SALES.SIGN.FLAG$,                                    \
+ 404: 0b0d:              CITEM.WEEK.4.SALES$,                                       \
+ 405: 0b0d:              CITEM.WEEK.3.SALES$,                                       \
+ 406: 0b0d:              CITEM.WEEK.2.SALES$,                                       \
+ 407: 0b0d:              CITEM.WEEK.1.SALES$,                                       \
+ 408: 0b0d:              CITEM.ALTER.SALES.QUANTITY%,                               \
+ 409: 0b0d:              CITEM.LIST.FREQUENCY$,                                     \
+ 410: 0b0d:              CITEM.YESTERDAYS.SALES$,                                   \
+ 411: 0b0d:              CITEM.COUNT.REQUEST.FLAG$,                                 \
+ 412: 0b0d:              CITEM.PREVIOUS.THEORETICAL.STOCK%,                         \ BSMG
+ 413: 0b0d:              CITEM.LAST.DELIVERY.DATE$,                                 \ DSWM
+ 414: 0b0d:              CITEM.LAST.DELIVERY.QTY%,                                  \ DSWM
+ 415: 0b0d:              CITEM.FILLER$
+ 416: 0b0d: 
+ 417: 0b0d:     WRITE.CITEM.HOLD = 0
+ 418: 0b11:     EXIT FUNCTION
+ 419: 0b13: 
+ 420: 0b13:     WRITE.CITEM.HOLD.ERROR:
+ 421: 0b13: 
+ 422: 0b13:        CURRENT.CODE$       = CITEM.BOOTS.CODE$
+ 423: 0b29:        FILE.OPERATION$     = "W"                                       ! BRC
+ 424: 0b38:        CURRENT.REPORT.NUM% = CITEM.REPORT.NUM%
+ 425: 0b46: 
+ 426: 0b46:        EXIT FUNCTION
+ 427: 0b48: 
+ 428: 0b48:   END FUNCTION
+ 429: 0b57: 
+ 430: 0b57: \-----------------------------------------------------------------------------
+ 431: 0b57: 
+ 432: 0b57:   FUNCTION WRITE.CITEM.UNLOCK PUBLIC
+ 433: 0b6b: \************************************
+ 434: 0b6b: 
+ 435: 0b6b:     INTEGER*1             CHECK.CITEM.RC%, WRITE.CITEM.UNLOCK
+ 436: 0b6b: 
+ 437: 0b6b:     WRITE.CITEM.UNLOCK = 1
+ 438: 0b6f: 
+ 439: 0b6f:     CHECK.CITEM.RC% = CHECK.CITEM.UPD
+ 440: 0b76:     IF CHECK.CITEM.RC% = 1 THEN GOTO WRITE.CITEM.UNLOCK.ERROR
+ 441: 0b80: 
+ 442: 0b80:     IF END #CITEM.SESS.NUM% THEN WRITE.CITEM.UNLOCK.ERROR
+ 443: 0b94:     WRITE FORM "C4,8C2,C3,3C1,4C4,I2,C1,C2,C1,I2,C3,I2,C9";             \ DSWM
+ 444: 0d2a:              #CITEM.SESS.NUM% AUTOUNLOCK;                               \
+ 445: 0d2a:              CITEM.BOOTS.CODE$,                                         \
+ 446: 0d2a:              CITEM.SHELF.ALLOCATION$,                                   \
+ 447: 0d2a:              CITEM.VULNERABLE.ESA$,                                     \
+ 448: 0d2a:              CITEM.SPECIAL.ORDER.ESA$,                                  \
+ 449: 0d2a:              CITEM.TOTAL.ESA$,                                          \
+ 450: 0d2a:              CITEM.INITIAL.DISPLAY.STOCK$,                              \
+ 451: 0d2a:              CITEM.ON.ORDER.IN.THIS.PDT$,                               \
+ 452: 0d2a:              CITEM.ON.ORDER.TODAY$,                                     \
+ 453: 0d2a:              CITEM.TOTAL.ON.ORDER$,                                     \
+ 454: 0d2a:              CITEM.DATE.OF.LAST.MANUAL.COUNT$,                          \
+ 455: 0d2a:              CITEM.UNIT$,                                               \
+ 456: 0d2a:              CITEM.VULNERABLE.REPORT.FLAG$,                             \
+ 457: 0d2a:              CITEM.SALES.SIGN.FLAG$,                                    \
+ 458: 0d2a:              CITEM.WEEK.4.SALES$,                                       \
+ 459: 0d2a:              CITEM.WEEK.3.SALES$,                                       \
+ 460: 0d2a:              CITEM.WEEK.2.SALES$,                                       \
+ 461: 0d2a:              CITEM.WEEK.1.SALES$,                                       \
+ 462: 0d2a:              CITEM.ALTER.SALES.QUANTITY%,                               \
+ 463: 0d2a:              CITEM.LIST.FREQUENCY$,                                     \
+ 464: 0d2a:              CITEM.YESTERDAYS.SALES$,                                   \
+ 465: 0d2a:              CITEM.COUNT.REQUEST.FLAG$,                                 \
+ 466: 0d2a:              CITEM.PREVIOUS.THEORETICAL.STOCK%,                         \ BSMG
+ 467: 0d2a:              CITEM.LAST.DELIVERY.DATE$,                                 \ DSWM
+ 468: 0d2a:              CITEM.LAST.DELIVERY.QTY%,                                  \ DSWM
+ 469: 0d2a:              CITEM.FILLER$
+ 470: 0d2a: 
+ 471: 0d2a:     WRITE.CITEM.UNLOCK = 0
+ 472: 0d2e:     EXIT FUNCTION
+ 473: 0d30: 
+ 474: 0d30:     WRITE.CITEM.UNLOCK.ERROR:
+ 475: 0d30: 
+ 476: 0d30:        CURRENT.CODE$       = CITEM.BOOTS.CODE$
+ 477: 0d46:        FILE.OPERATION$     = "W"                                       ! BRC
+ 478: 0d55:        CURRENT.REPORT.NUM% = CITEM.REPORT.NUM%
+ 479: 0d63: 
+ 480: 0d63:        EXIT FUNCTION
+ 481: 0d65: 
+ 482: 0d65:   END FUNCTION
+ 483: 0d74: 
+ 484: 0d74: \-----------------------------------------------------------------------------
+ 485: 0d74: 
+ 486: 0d74:   FUNCTION WRITE.CITEM.HOLD.UNLOCK PUBLIC
+ 487: 0d88: \*****************************************
+ 488: 0d88: 
+ 489: 0d88:    INTEGER*1             CHECK.CITEM.RC%, WRITE.CITEM.HOLD.UNLOCK
+ 490: 0d88: 
+ 491: 0d88:     WRITE.CITEM.HOLD.UNLOCK = 1
+ 492: 0d8c: 
+ 493: 0d8c:     CHECK.CITEM.RC% = CHECK.CITEM.UPD
+ 494: 0d93:     IF CHECK.CITEM.RC% = 1 THEN GOTO WRITE.CITEM.HOLD.UNLOCK.ERROR
+ 495: 0d9d: 
+ 496: 0d9d:     IF END #CITEM.SESS.NUM% THEN WRITE.CITEM.HOLD.UNLOCK.ERROR
+ 497: 0db1:     WRITE FORM "C4,8C2,C3,3C1,4C4,I2,C1,C2,C1,I2,C3,I2,C9"; HOLD        \ DSWM
+ 498: 0f47:              #CITEM.SESS.NUM% AUTOUNLOCK;                               \
+ 499: 0f47:              CITEM.BOOTS.CODE$,                                         \
+ 500: 0f47:              CITEM.SHELF.ALLOCATION$,                                   \
+ 501: 0f47:              CITEM.VULNERABLE.ESA$,                                     \
+ 502: 0f47:              CITEM.SPECIAL.ORDER.ESA$,                                  \
+ 503: 0f47:              CITEM.TOTAL.ESA$,                                          \
+ 504: 0f47:              CITEM.INITIAL.DISPLAY.STOCK$,                              \
+ 505: 0f47:              CITEM.ON.ORDER.IN.THIS.PDT$,                               \
+ 506: 0f47:              CITEM.ON.ORDER.TODAY$,                                     \
+ 507: 0f47:              CITEM.TOTAL.ON.ORDER$,                                     \
+ 508: 0f47:              CITEM.DATE.OF.LAST.MANUAL.COUNT$,                          \
+ 509: 0f47:              CITEM.UNIT$,                                               \
+ 510: 0f47:              CITEM.VULNERABLE.REPORT.FLAG$,                             \
+ 511: 0f47:              CITEM.SALES.SIGN.FLAG$,                                    \
+ 512: 0f47:              CITEM.WEEK.4.SALES$,                                       \
+ 513: 0f47:              CITEM.WEEK.3.SALES$,                                       \
+ 514: 0f47:              CITEM.WEEK.2.SALES$,                                       \
+ 515: 0f47:              CITEM.WEEK.1.SALES$,                                       \
+ 516: 0f47:              CITEM.ALTER.SALES.QUANTITY%,                               \
+ 517: 0f47:              CITEM.LIST.FREQUENCY$,                                     \
+ 518: 0f47:              CITEM.YESTERDAYS.SALES$,                                   \
+ 519: 0f47:              CITEM.COUNT.REQUEST.FLAG$,                                 \
+ 520: 0f47:              CITEM.PREVIOUS.THEORETICAL.STOCK%,                         \
+ 521: 0f47:              CITEM.LAST.DELIVERY.DATE$,                                 \ DSWM
+ 522: 0f47:              CITEM.LAST.DELIVERY.QTY%,                                  \ DSWM
+ 523: 0f47:              CITEM.FILLER$
+ 524: 0f47: 
+ 525: 0f47:     WRITE.CITEM.HOLD.UNLOCK = 0
+ 526: 0f4b:     EXIT FUNCTION
+ 527: 0f4d: 
+ 528: 0f4d:     WRITE.CITEM.HOLD.UNLOCK.ERROR:
+ 529: 0f4d: 
+ 530: 0f4d:        CURRENT.CODE$       = CITEM.BOOTS.CODE$
+ 531: 0f63:        FILE.OPERATION$     = "W"                                       ! BRC
+ 532: 0f72:        CURRENT.REPORT.NUM% = CITEM.REPORT.NUM%
+ 533: 0f80: 
+ 534: 0f80:        EXIT FUNCTION
+ 535: 0f82: 
+ 536: 0f82:   END FUNCTION
+ 537: 0f91: End of Compilation

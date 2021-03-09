@@ -1,0 +1,435 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***                   INVCE OK FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***                  REFERENCE  : INVOKFUN.BAS
+   8: 0000: \***
+   9: 0000: \***    Version A         Andrew Wedgeworth             3rd August 1992
+  10: 0000: \***
+  11: 0000: \***    Version B         Stephen Kelsey (CTG)          9th October 1992
+  12: 0000: \***    Add the functions WRITE.INVOK, READ.INVOK.LOCKED and WRITE.INVOK.UNLOCK
+  13: 0000: \***    Include the new PSC30 fields.
+  14: 0000: \***
+  15: 0000: \***    Version C         Les Cook                     15th February 1993
+  16: 0000: \***    Add new fields to all functions.
+  17: 0000: \***
+  18: 0000: \***    Version D         David Smallwood              20th July 1994    
+  19: 0000: \***    Add CSR PHASE1 transmission flag to all functions.              
+  20: 0000: \***
+  21: 0000: \***    Version E         Mick Bayliss                 19th Oct. 1994
+  22: 0000: \***    Add new CSR Phase 2 PSC14 Flag and Conversion Status Flag to all
+  23: 0000: \***    functions. Also error in format corrected by adding in missing
+  24: 0000: \***    fields.
+  25: 0000: \***
+  26: 0000: \***    Version F         Andrew Wedgeworth            27th March 1997
+  27: 0000: \***    Added date of successful processing of Advantage Card Points Events
+  28: 0000: \***    data sent from the mainframe.  This is updated by PSB59.
+  29: 0000: \***
+  30: 0000: \***    Version G         Nik Sen                      10th February 1998
+  31: 0000: \***    Added parameter for MINSITS RP late delivery days.
+  32: 0000: \***
+  33: 0000: \******************************************************************************
+  34: 0000: \*******************************************************************************
+  35: 0000: 
+  36: 0000:   STRING GLOBAL                                                        \
+  37: 0000:      CURRENT.CODE$,                                                    \ 
+  38: 0000:      FILE.OPERATION$
+  39: 0000: 
+  40: 0000:   INTEGER*2 GLOBAL                                                     \
+  41: 0000:      CURRENT.REPORT.NUM%  
+  42: 0000: 
+  43: 0000: 
+  44: 0000:   %INCLUDE INVOKDEC.J86                                                ! DDS
+  45: 0000: \******************************************************************************
+  46: 0000: \******************************************************************************
+  47: 0000: \***
+  48: 0000: \***   $Workfile:   INVOKDEC.J86  $
+  49: 0000: \***
+  50: 0000: \***   $Revision:   1.4  $
+  51: 0000: \***
+  52: 0000: \******************************************************************************
+  53: 0000: \******************************************************************************
+  54: 0000: \***
+  55: 0000: \***   $Log:   V:\archive\j86\invokdec.j8v  $
+  56: 0000: \***   
+  57: 0000: \***      Rev 1.4   10 Feb 1998 14:11:36   DEV45PS
+  58: 0000: \***   Added RP Delivery Days field
+  59: 0000: \***   
+  60: 0000: \***      Rev 1.3   09 Apr 1997 09:22:06   DEVAWPS
+  61: 0000: \***   Added date of successful processing of Points
+  62: 0000: \***   Events details.
+  63: 0000: \***   
+  64: 0000: \***      Rev 1.2   20 Dec 1994 11:02:52   DEVMJPS
+  65: 0000: \***   CSR/2 Amendments - new fields added are 
+  66: 0000: \***   PSC14 flag and Conversion Status flag 
+  67: 0000: \***   
+  68: 0000: \******************************************************************************
+  69: 0000: \******************************************************************************
+  70: 0000: REM \
+  71: 0000: \******************************************************************************
+  72: 0000: \******************************************************************************
+  73: 0000: \***
+  74: 0000: \***    FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS FOR INVCE OK FILE 
+  75: 0000: \***
+  76: 0000: \***                     REFERENCE   : INVOKDEC.J86
+  77: 0000: \***
+  78: 0000: \***    Version A            Andrew Wedgeworth              3rd August 1992
+  79: 0000: \***    
+  80: 0000: \***    Version B            Stephen Kelsey                 12th October 1992
+  81: 0000: \***    Include Direct Implementation Flag, PSC30 flag and date.
+  82: 0000: \***
+  83: 0000: \***    Version C            Les Cook                       15th February 1993
+  84: 0000: \***    Include UOD Implementation Flag, UOD Booked in date, Previous serial
+  85: 0000: \***    number and success flag.
+  86: 0000: \***
+  87: 0000: \***    Version D            David Smallwood                20th July 1994   
+  88: 0000: \***    Include CSR PHASE1 transmission flag and CSR start method flag.
+  89: 0000: \***    
+  90: 0000: \***    Version E            Mick Bayliss                   19th Oct. 1994
+  91: 0000: \***    New fields for CSR Phase 2 - PSC14 Flag and Conversion Status Flag.
+  92: 0000: \***
+  93: 0000: \***    Version F            Andrew Wedgeworth              27th March 1997
+  94: 0000: \***    Added date of successful processing of Points Events details sent from 
+  95: 0000: \***    the mainframe.
+  96: 0000: \***
+  97: 0000: \***    Version G            Nik Sen                        10th February 1998
+  98: 0000: \***    Added parameter used by MINSITS RP to determine number of days to 
+  99: 0000: \***    check for late delivery.
+ 100: 0000: \***
+ 101: 0000: \******************************************************************************
+ 102: 0000: \******************************************************************************
+ 103: 0000: 
+ 104: 0000: 
+ 105: 0000: \******************************************************************************
+ 106: 0000: \***
+ 107: 0000: \***   FILE REFERENCE PARAMETERS
+ 108: 0000: \***
+ 109: 0000: \******************************************************************************
+ 110: 0000: 
+ 111: 0000:   STRING GLOBAL           \
+ 112: 0000:     INVOK.FILE.NAME$
+ 113: 0000: 
+ 114: 0000:   INTEGER*2 GLOBAL        \
+ 115: 0000:     INVOK.SESS.NUM%,      \
+ 116: 0000:     INVOK.REPORT.NUM%
+ 117: 0000: 
+ 118: 0000: 
+ 119: 0000: \******************************************************************************
+ 120: 0000: \***
+ 121: 0000: \***   FIELD DECLARATIONS
+ 122: 0000: \***
+ 123: 0000: \******************************************************************************
+ 124: 0000: 
+ 125: 0000:   STRING GLOBAL                \
+ 126: 0000:     INVOK.SERIAL.NO$,          \ 5 bytes ASCII
+ 127: 0000:     INVOK.DATE$,               \ 3 bytes YYMMDD UPD
+ 128: 0000:     INVOK.SUCCESS.FLAG$,       \ 1 bytes ASCII
+ 129: 0000:     INVOK.STORE.NO$,           \ 4 bytes ASCII with leading zeroes
+ 130: 0000:     INVOK.INVENTORY.SRLNO$,    \ 5 bytes ASCII leading zeros
+ 131: 0000:     INVOK.INVENTORY.SUCCESS$,  \ 1 bytes ASCII 0=failed/1=success
+ 132: 0000:     INVOK.SALES.SRLNO$,        \ 5 bytes ASCII leading zeros
+ 133: 0000:     INVOK.SALES.SUCCESS$,      \ 1 bytes ASCII 0=failed/1=success
+ 134: 0000:     INVOK.NEW.LIST.SRLNO$,     \ 5 bytes ASCII
+ 135: 0000:     INVOK.NEW.LIST.SUCCESS$,   \ 1 bytes ASCII 0=failed/1=success
+ 136: 0000:     INVOK.CSR.DELIVERY.NO$,    \ 5 bytes ASCII				
+ 137: 0000:     INVOK.CSR.IDENT$,          \ 1 bytes ASCII value "Y" 		
+ 138: 0000:     INVOK.CSR.DELIVERY.DATE$,  \ 6 bytes ASCII YYMMDD			
+ 139: 0000:     INVOK.CSR.PSC11.FLAG$,     \ 1 bytes ASCII				
+ 140: 0000:     INVOK.CSR.PSC12.FLAG$,     \ 1 bytes ASCII				
+ 141: 0000:     INVOK.CSR.PSC13.FLAG$,     \ 1 bytes ASCII				
+ 142: 0000:     INVOK.CSR.PSC12.DAYS$,     \ 1 bytes UPD				
+ 143: 0000:     INVOK.PSS33.RUN.DATE$,     \ 3 bytes YYMMDD UPD                     
+ 144: 0000:     INVOK.PSS33.SUCCESS.FLAG$, \ 1 bytes ASCII 0=failed/1=success       
+ 145: 0000:     INVOK.DIR.IMPL.FLAG$,      \ 1 byte ASCII  1=phase 1 implemented   BSPK   
+ 146: 0000:                                \           blank=not yet implemented   BSPK 
+ 147: 0000:     INVOK.PSC30.RUN.DATE$,     \ 3 bytes YYMMDD UPD                    BSPK                     
+ 148: 0000:     INVOK.PSC30.SUCCESS.FLAG$, \ 1 bytes ASCII 0=failed/1=success      BSPK
+ 149: 0000:     INVOK.UOD.IMPL.FLAG$,      \ 1 byte ASCII 1=implemented            CLC
+ 150: 0000:     INVOK.LAST.UOD.DATE$,      \ 3 bytes UPD                           CLC
+ 151: 0000:     INVOK.PREV.SERIAL.NO$,     \ 5 bytes ASCII                         CLC
+ 152: 0000:     INVOK.PREV.SUCCESS.FLAG$,  \ 1 byte ASCII                          CLC
+ 153: 0000:     INVOK.SUPPRESS.EXCEP.REPORT$,     \ 1 byte ASCII Y/N               DDS
+ 154: 0000:     INVOK.CSR.STARTED.BY.SUP$,        \ 1 byte ASCII Y/N               DDS
+ 155: 0000:     INVOK.CSR.PSC14.FLAG$,            \ 1 byte ASCII S/E/X/Y           EMJB
+ 156: 0000:     INVOK.CSR.CONVERSION.STATUS.FLAG$,\ 1 byte ASCII P/S/X/C           EMJB
+ 157: 0000:     INVOK.PTS.EVENTS.OK.DATE$, \ 3 bytes UPD                           FAW
+ 158: 0000:     INVOK.RP.DAYS$,            \ 1 byte ASCII                          GNS
+ 159: 0000:     INVOK.FILLER$              ! 6 bytes spaces                        GNS
+ 160: 0000: 
+ 161: 0000:   INTEGER*2 GLOBAL        \
+ 162: 0000:     INVOK.RECL%
+ 163: 0000:   
+ 164: 0000: 
+ 165: 0000:   FUNCTION INVOK.SET PUBLIC
+ 166: 0014: \***************************
+ 167: 0014: 
+ 168: 0014:     INVOK.REPORT.NUM%  = 89
+ 169: 001d:     INVOK.RECL%      = 80
+ 170: 0026:     INVOK.FILE.NAME$ = "INVOK"
+ 171: 0035: 
+ 172: 0035:   END FUNCTION
+ 173: 0041: \-------------------------------------------------------------------------------  
+ 174: 0041: REM EJECT    
+ 175: 0041: 
+ 176: 0041:   FUNCTION READ.INVOK PUBLIC
+ 177: 0055: \****************************
+ 178: 0055: 
+ 179: 0055:     STRING FORMAT$                                                    !BSPK
+ 180: 0055:     INTEGER*2 READ.INVOK
+ 181: 0055:     
+ 182: 0055:     READ.INVOK = 1  
+ 183: 005a:     FORMAT$ = "C5,C3,C1,C4,C5,C1,C5,C1,C5,C1,C1,C5,C6"                !BSPK
+ 184: 0067:     FORMAT$ = FORMAT$ +",C1,C1,C1,C1,C3,C1,C1,C3,C1,C1,C3,"   \       !EMJB
+ 185: 0083:                       +"C5,C1,C1,C1,C1,C1,C3,C1,C6"                   !GNS 
+ 186: 0083: 
+ 187: 0083:     IF END #INVOK.SESS.NUM% THEN ERROR.READ.INVOK
+ 188: 0097:     READ FORM FORMAT$;                                                \BSPK
+ 189: 022a:                  #INVOK.SESS.NUM%                                       \
+ 190: 022a:                  ,1;                                                    \
+ 191: 022a:                  INVOK.SERIAL.NO$,                                      \ 
+ 192: 022a:                  INVOK.DATE$,                                           \ 
+ 193: 022a:                  INVOK.SUCCESS.FLAG$,                                   \ 
+ 194: 022a:                  INVOK.STORE.NO$,                                       \ 
+ 195: 022a:                  INVOK.INVENTORY.SRLNO$,                                \ 
+ 196: 022a:                  INVOK.INVENTORY.SUCCESS$,                              \ 
+ 197: 022a:                  INVOK.SALES.SRLNO$,                                    \ 
+ 198: 022a:                  INVOK.SALES.SUCCESS$,                                  \ 
+ 199: 022a:                  INVOK.NEW.LIST.SRLNO$,                                 \ 
+ 200: 022a:                  INVOK.NEW.LIST.SUCCESS$,                               \ 
+ 201: 022a:                  INVOK.CSR.IDENT$,                                      \ 
+ 202: 022a:                  INVOK.CSR.DELIVERY.NO$,                                \ 
+ 203: 022a:                  INVOK.CSR.DELIVERY.DATE$,                              \ 
+ 204: 022a:                  INVOK.CSR.PSC11.FLAG$,                                 \ 
+ 205: 022a:                  INVOK.CSR.PSC12.FLAG$,                                 \ 
+ 206: 022a:                  INVOK.CSR.PSC13.FLAG$,                                 \ 
+ 207: 022a:                  INVOK.CSR.PSC12.DAYS$,                                 \ 
+ 208: 022a:                  INVOK.PSS33.RUN.DATE$,                                 \ 
+ 209: 022a:                  INVOK.PSS33.SUCCESS.FLAG$,                             \ 
+ 210: 022a:                  INVOK.DIR.IMPL.FLAG$,                                  \ 
+ 211: 022a:                  INVOK.PSC30.RUN.DATE$,                                 \ BSPK
+ 212: 022a:                  INVOK.PSC30.SUCCESS.FLAG$,                             \ BSPK
+ 213: 022a:                  INVOK.UOD.IMPL.FLAG$,                 \                  CLC
+ 214: 022a:                  INVOK.LAST.UOD.DATE$,                 \                  CLC
+ 215: 022a:                  INVOK.PREV.SERIAL.NO$,                \                  CLC
+ 216: 022a:                  INVOK.PREV.SUCCESS.FLAG$,             \                  CLC
+ 217: 022a:                  INVOK.SUPPRESS.EXCEP.REPORT$,         \                  DDS
+ 218: 022a:                  INVOK.CSR.STARTED.BY.SUP$,            \                  DDS       
+ 219: 022a:                  INVOK.CSR.PSC14.FLAG$,                \              !EMJB
+ 220: 022a:                  INVOK.CSR.CONVERSION.STATUS.FLAG$,    \              !EMJB
+ 221: 022a:                  INVOK.PTS.EVENTS.OK.DATE$,            \               FAW
+ 222: 022a:                  INVOK.RP.DAYS$,                       \               GNS
+ 223: 022a:                  INVOK.FILLER$                                         
+ 224: 022a:     
+ 225: 022a:     READ.INVOK = 0
+ 226: 022f:     EXIT FUNCTION
+ 227: 0231:     
+ 228: 0231:     
+ 229: 0231:     ERROR.READ.INVOK:
+ 230: 0231:     
+ 231: 0231:        FILE.OPERATION$     = "R"
+ 232: 0240:        CURRENT.REPORT.NUM% = INVOK.REPORT.NUM%           
+ 233: 024e:        CURRENT.CODE$       = PACK$("0000000000000000")
+ 234: 0262:        
+ 235: 0262:        EXIT FUNCTION             
+ 236: 0264:     
+ 237: 0264:   END FUNCTION
+ 238: 0273: \----------------------------------------------------------------------
+ 239: 0273: REM EJECT    
+ 240: 0273: 
+ 241: 0273:  FUNCTION READ.INVOK.LOCKED PUBLIC                                     ! BSPK
+ 242: 0287: \*********************************
+ 243: 0287: 
+ 244: 0287:     STRING    FORMAT$                                                  ! BSPK
+ 245: 0287:     INTEGER*2 READ.INVOK.LOCKED                                        ! BSPK
+ 246: 0287: 
+ 247: 0287:     READ.INVOK.LOCKED = 1                                               ! BSPK
+ 248: 028c:     FORMAT$ = "C5,C3,C1,C4,C5,C1,C5,C1,C5,C1,C1,C5,C6"                  ! BSPK
+ 249: 0299:     FORMAT$ = FORMAT$ +",C1,C1,C1,C1,C3,C1,C1,C3,C1,C1,C3,"   \       !EMJB
+ 250: 02b5:                       +"C5,C1,C1,C1,C1,C1,C3,C1,C6"                     !GNS 
+ 251: 02b5: 
+ 252: 02b5:     IF END #INVOK.SESS.NUM% THEN ERROR.READ.INVOK.LOCKED                ! BSPK
+ 253: 02c9:     READ FORM FORMAT$;                                                  \ BSPK
+ 254: 045c:                  #INVOK.SESS.NUM%                                       \ BSPK
+ 255: 045c:                  AUTOLOCK,1;                                            \ BSPK
+ 256: 045c:                  INVOK.SERIAL.NO$,                                      \ BSPK
+ 257: 045c:                  INVOK.DATE$,                                           \ BSPK
+ 258: 045c:                  INVOK.SUCCESS.FLAG$,                                   \ BSPK
+ 259: 045c:                  INVOK.STORE.NO$,                                       \ BSPK
+ 260: 045c:                  INVOK.INVENTORY.SRLNO$,                                \ BSPK
+ 261: 045c:                  INVOK.INVENTORY.SUCCESS$,                              \ BSPK
+ 262: 045c:                  INVOK.SALES.SRLNO$,                                    \ BSPK
+ 263: 045c:                  INVOK.SALES.SUCCESS$,                                  \ BSPK
+ 264: 045c:                  INVOK.NEW.LIST.SRLNO$,                                 \ BSPK
+ 265: 045c:                  INVOK.NEW.LIST.SUCCESS$,                               \ BSPK
+ 266: 045c:                  INVOK.CSR.IDENT$,                                      \ BSPK
+ 267: 045c:                  INVOK.CSR.DELIVERY.NO$,                                \ BSPK
+ 268: 045c:                  INVOK.CSR.DELIVERY.DATE$,                              \ BSPK
+ 269: 045c:                  INVOK.CSR.PSC11.FLAG$,                                 \ BSPK
+ 270: 045c:                  INVOK.CSR.PSC12.FLAG$,                                 \ BSPK
+ 271: 045c:                  INVOK.CSR.PSC13.FLAG$,                                 \ BSPK
+ 272: 045c:                  INVOK.CSR.PSC12.DAYS$,                                 \ BSPK
+ 273: 045c:                  INVOK.PSS33.RUN.DATE$,                \              !EMJB
+ 274: 045c:                  INVOK.PSS33.SUCCESS.FLAG$,            \              !EMJB
+ 275: 045c:                  INVOK.DIR.IMPL.FLAG$,                 \              !EMJB    
+ 276: 045c:                  INVOK.PSC30.RUN.DATE$,                                 \ BSPK
+ 277: 045c:                  INVOK.PSC30.SUCCESS.FLAG$,                             \ BSPK
+ 278: 045c:                  INVOK.UOD.IMPL.FLAG$,                 \                  CLC
+ 279: 045c:                  INVOK.LAST.UOD.DATE$,                 \                  CLC
+ 280: 045c:                  INVOK.PREV.SERIAL.NO$,                \                  CLC
+ 281: 045c:                  INVOK.PREV.SUCCESS.FLAG$,             \                  CLC
+ 282: 045c:                  INVOK.SUPPRESS.EXCEP.REPORT$,         \                  DDS
+ 283: 045c:                  INVOK.CSR.STARTED.BY.SUP$,            \                  DDS       
+ 284: 045c:                  INVOK.CSR.PSC14.FLAG$,                \              !EMJB
+ 285: 045c:                  INVOK.CSR.CONVERSION.STATUS.FLAG$,    \              !EMJB
+ 286: 045c:                  INVOK.PTS.EVENTS.OK.DATE$,            \               FAW
+ 287: 045c:                  INVOK.RP.DAYS$,                       \               GNS
+ 288: 045c:                  INVOK.FILLER$                                         
+ 289: 045c:   
+ 290: 045c:        READ.INVOK.LOCKED = 0 
+ 291: 0461: 
+ 292: 0461:        EXIT FUNCTION                                                    ! BSPK
+ 293: 0463:     
+ 294: 0463: ERROR.READ.INVOK.LOCKED:                                                ! BSPK
+ 295: 0463:     
+ 296: 0463:        FILE.OPERATION$     = "R"                                        ! BSPK
+ 297: 0472:        CURRENT.REPORT.NUM% = INVOK.REPORT.NUM%                          ! BSPK
+ 298: 0480:        CURRENT.CODE$       = PACK$("0000000000000000")                  ! BSPK
+ 299: 0494:        
+ 300: 0494:        EXIT FUNCTION                                                    ! BSPK
+ 301: 0496:     
+ 302: 0496:   END FUNCTION                                                          ! BSPK
+ 303: 04a5: \----------------------------------------------------------------------
+ 304: 04a5: REM EJECT
+ 305: 04a5: 
+ 306: 04a5:  FUNCTION WRITE.INVOK PUBLIC                                           ! BSPK
+ 307: 04b9: \***************************
+ 308: 04b9: 
+ 309: 04b9:     STRING    FORMAT$                                                  ! BSPK
+ 310: 04b9:     INTEGER*2 WRITE.INVOK                                              ! BSPK
+ 311: 04b9: 
+ 312: 04b9:     WRITE.INVOK = 1                                                     ! BSPK
+ 313: 04be:     FORMAT$ = "C5,C3,C1,C4,C5,C1,C5,C1,C5,C1,C1,C5,C6"                  ! BSPK
+ 314: 04cb:     FORMAT$ = FORMAT$ +",C1,C1,C1,C1,C3,C1,C1,C3,C1,C1,C3,"   \       !EMJB
+ 315: 04e7:                       +"C5,C1,C1,C1,C1,C1,C3,C1,C6"                     !GNS
+ 316: 04e7: 
+ 317: 04e7:     IF END #INVOK.SESS.NUM% THEN ERROR.WRITE.INVOK                      ! BSPK
+ 318: 04fb: 
+ 319: 04fb:     WRITE FORM FORMAT$;                                                 \ BSPK
+ 320: 072e:                  #INVOK.SESS.NUM%                                       \ BSPK
+ 321: 072e:                  ,1;                                                    \ BSPK
+ 322: 072e:                  INVOK.SERIAL.NO$,                                      \ BSPK
+ 323: 072e:                  INVOK.DATE$,                                           \ BSPK
+ 324: 072e:                  INVOK.SUCCESS.FLAG$,                                   \ BSPK
+ 325: 072e:                  INVOK.STORE.NO$,                                       \ BSPK
+ 326: 072e:                  INVOK.INVENTORY.SRLNO$,                                \ BSPK
+ 327: 072e:                  INVOK.INVENTORY.SUCCESS$,                              \ BSPK
+ 328: 072e:                  INVOK.SALES.SRLNO$,                                    \ BSPK
+ 329: 072e:                  INVOK.SALES.SUCCESS$,                                  \ BSPK
+ 330: 072e:                  INVOK.NEW.LIST.SRLNO$,                                 \ BSPK
+ 331: 072e:                  INVOK.NEW.LIST.SUCCESS$,                               \ BSPK
+ 332: 072e:                  INVOK.CSR.IDENT$,                                      \ BSPK
+ 333: 072e:                  INVOK.CSR.DELIVERY.NO$,                                \ BSPK
+ 334: 072e:                  INVOK.CSR.DELIVERY.DATE$,                              \ BSPK
+ 335: 072e:                  INVOK.CSR.PSC11.FLAG$,                                 \ BSPK
+ 336: 072e:                  INVOK.CSR.PSC12.FLAG$,                                 \ BSPK
+ 337: 072e:                  INVOK.CSR.PSC13.FLAG$,                                 \ BSPK
+ 338: 072e:                  INVOK.CSR.PSC12.DAYS$,                                 \ BSPK
+ 339: 072e:                  INVOK.PSS33.RUN.DATE$,                \              !EMJB
+ 340: 072e:                  INVOK.PSS33.SUCCESS.FLAG$,            \              !EMJB
+ 341: 072e:                  INVOK.DIR.IMPL.FLAG$,                 \              !EMJB    
+ 342: 072e:                  INVOK.PSC30.RUN.DATE$,                                 \ BSPK
+ 343: 072e:                  INVOK.PSC30.SUCCESS.FLAG$,                             \ BSPK
+ 344: 072e:                  INVOK.UOD.IMPL.FLAG$,                 \                  CLC
+ 345: 072e:                  INVOK.LAST.UOD.DATE$,                 \                  CLC
+ 346: 072e:                  INVOK.PREV.SERIAL.NO$,                \                  CLC
+ 347: 072e:                  INVOK.PREV.SUCCESS.FLAG$,             \                  CLC
+ 348: 072e:                  INVOK.SUPPRESS.EXCEP.REPORT$,         \                  DDS
+ 349: 072e:                  INVOK.CSR.STARTED.BY.SUP$,            \                  DDS       
+ 350: 072e:                  INVOK.CSR.PSC14.FLAG$,                \              !EMJB
+ 351: 072e:                  INVOK.CSR.CONVERSION.STATUS.FLAG$,    \              !EMJB
+ 352: 072e:                  INVOK.PTS.EVENTS.OK.DATE$,            \               FAW
+ 353: 072e:                  INVOK.RP.DAYS$,                       \               GNS
+ 354: 072e:                  INVOK.FILLER$                                         
+ 355: 072e:   
+ 356: 072e:        WRITE.INVOK = 0
+ 357: 0733: 
+ 358: 0733:        EXIT FUNCTION
+ 359: 0735:     
+ 360: 0735: ERROR.WRITE.INVOK:                                                      ! BSPK
+ 361: 0735:     
+ 362: 0735:        FILE.OPERATION$     = "W"                                        ! BSPK
+ 363: 0744:        CURRENT.REPORT.NUM% = INVOK.REPORT.NUM%                          ! BSPK
+ 364: 0752:        CURRENT.CODE$       = PACK$("0000000000000000")                  ! BSPK
+ 365: 0766:        
+ 366: 0766:        EXIT FUNCTION                                                    ! BSPK
+ 367: 0768:     
+ 368: 0768:   END FUNCTION                                                          ! BSPK
+ 369: 0777: \----------------------------------------------------------------------
+ 370: 0777: REM EJECT
+ 371: 0777: 
+ 372: 0777:  FUNCTION WRITE.INVOK.UNLOCK PUBLIC                                    ! BSPK
+ 373: 078b: \**********************************
+ 374: 078b: 
+ 375: 078b:     STRING    FORMAT$                                                  ! BSPK
+ 376: 078b:     INTEGER*2 WRITE.INVOK.UNLOCK                                       ! BSPK
+ 377: 078b: 
+ 378: 078b:     WRITE.INVOK.UNLOCK = 1                                              ! BSPK
+ 379: 0790:     FORMAT$ = "C5,C3,C1,C4,C5,C1,C5,C1,C5,C1,C1,C5,C6"                  ! BSPK
+ 380: 079d:     FORMAT$ = FORMAT$ +",C1,C1,C1,C1,C3,C1,C1,C3,C1,C1,C3,"   \       !EMJB
+ 381: 07b9:                       +"C5,C1,C1,C1,C1,C1,C3,C1,C6"                     ! GNS
+ 382: 07b9:     
+ 383: 07b9:     IF END #INVOK.SESS.NUM% THEN ERROR.WRITE.INVOK.UNLOCK               ! BSPK
+ 384: 07cd: 
+ 385: 07cd:     WRITE FORM FORMAT$;                                                 \ BSPK
+ 386: 0a00:                  #INVOK.SESS.NUM%                                       \ BSPK
+ 387: 0a00:                  AUTOUNLOCK,1;                                          \ BSPK 
+ 388: 0a00:                  INVOK.SERIAL.NO$,                                      \ BSPK
+ 389: 0a00:                  INVOK.DATE$,                                           \ BSPK
+ 390: 0a00:                  INVOK.SUCCESS.FLAG$,                                   \ BSPK
+ 391: 0a00:                  INVOK.STORE.NO$,                                       \ BSPK
+ 392: 0a00:                  INVOK.INVENTORY.SRLNO$,                                \ BSPK
+ 393: 0a00:                  INVOK.INVENTORY.SUCCESS$,                              \ BSPK
+ 394: 0a00:                  INVOK.SALES.SRLNO$,                                    \ BSPK
+ 395: 0a00:                  INVOK.SALES.SUCCESS$,                                  \ BSPK
+ 396: 0a00:                  INVOK.NEW.LIST.SRLNO$,                                 \ BSPK
+ 397: 0a00:                  INVOK.NEW.LIST.SUCCESS$,                               \ BSPK
+ 398: 0a00:                  INVOK.CSR.IDENT$,                                      \ BSPK
+ 399: 0a00:                  INVOK.CSR.DELIVERY.NO$,                                \ BSPK
+ 400: 0a00:                  INVOK.CSR.DELIVERY.DATE$,                              \ BSPK
+ 401: 0a00:                  INVOK.CSR.PSC11.FLAG$,                                 \ BSPK
+ 402: 0a00:                  INVOK.CSR.PSC12.FLAG$,                                 \ BSPK
+ 403: 0a00:                  INVOK.CSR.PSC13.FLAG$,                                 \ BSPK
+ 404: 0a00:                  INVOK.CSR.PSC12.DAYS$,                                 \ BSPK
+ 405: 0a00:                  INVOK.PSS33.RUN.DATE$,                \              !EMJB
+ 406: 0a00:                  INVOK.PSS33.SUCCESS.FLAG$,            \              !EMJB
+ 407: 0a00:                  INVOK.DIR.IMPL.FLAG$,                 \              !EMJB    
+ 408: 0a00:                  INVOK.PSC30.RUN.DATE$,                                 \ BSPK
+ 409: 0a00:                  INVOK.PSC30.SUCCESS.FLAG$,                             \ BSPK
+ 410: 0a00:                  INVOK.UOD.IMPL.FLAG$,                 \                  CLC
+ 411: 0a00:                  INVOK.LAST.UOD.DATE$,                 \                  CLC
+ 412: 0a00:                  INVOK.PREV.SERIAL.NO$,                \                  CLC
+ 413: 0a00:                  INVOK.PREV.SUCCESS.FLAG$,             \                  CLC
+ 414: 0a00:                  INVOK.SUPPRESS.EXCEP.REPORT$,         \                  DDS
+ 415: 0a00:                  INVOK.CSR.STARTED.BY.SUP$,            \                  DDS       
+ 416: 0a00:                  INVOK.CSR.PSC14.FLAG$,                \              !EMJB
+ 417: 0a00:                  INVOK.CSR.CONVERSION.STATUS.FLAG$,    \              !EMJB
+ 418: 0a00:                  INVOK.PTS.EVENTS.OK.DATE$,            \               FAW
+ 419: 0a00:                  INVOK.RP.DAYS$,                       \               GNS
+ 420: 0a00:                  INVOK.FILLER$                                         
+ 421: 0a00:  
+ 422: 0a00:        WRITE.INVOK.UNLOCK = 0
+ 423: 0a05:     
+ 424: 0a05:        EXIT FUNCTION
+ 425: 0a07:     
+ 426: 0a07: ERROR.WRITE.INVOK.UNLOCK:                                               ! BSPK
+ 427: 0a07:     
+ 428: 0a07:        FILE.OPERATION$     = "W"                                        ! BSPK
+ 429: 0a16:        CURRENT.REPORT.NUM% = INVOK.REPORT.NUM%                          ! BSPK
+ 430: 0a24:        CURRENT.CODE$       = PACK$("0000000000000000")                  ! BSPK
+ 431: 0a38:        
+ 432: 0a38:        EXIT FUNCTION                                                    ! BSPK
+ 433: 0a3a:     
+ 434: 0a3a:   END FUNCTION                                                          ! BSPK
+ 435: 0a49: End of Compilation

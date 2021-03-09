@@ -1,0 +1,485 @@
+   1: 0000: 
+   2: 0000: \REM
+   3: 0000: \*******************************************************************************
+   4: 0000: \*******************************************************************************
+   5: 0000: \***
+   6: 0000: \***    %INCLUDE FOR PRODUCT GROUP FILES PUBLIC FUNCTIONS
+   7: 0000: \***
+   8: 0000: \***        REFERENCE   :   PGFDEC (J86)
+   9: 0000: \***
+  10: 0000: \***        FILE TYPE   :   Direct (PGF and PGFD)
+  11: 0000: \***                        Keyed (PGFO)
+  12: 0000: \***
+  13: 0000: \***    VERSION B.              ROBERT COWEY.                       30 SEP 1993.
+  14: 0000: \***    Created by combining PGFFUNA, PGFDFNS and PGFOFNS.
+  15: 0000: \***
+  16: 0000: \***    REVISION 1.2.           ROBERT COWEY.                       27 OCT 2003.
+  17: 0000: \***    Defined WRITE.PGF function.
+  18: 0000: \***
+  19: 0000: \***    Version C               Mark Goode                          21 DEC 2004.
+  20: 0000: \***    Additional flag for product group marked OSSR.
+  21: 0000: \***
+  22: 0000: \***    Version D               Tittoo Thomas                        2 SEP 2011
+  23: 0000: \***    Changes to accomodate new csv format for PGDIR as part of
+  24: 0000: \***    the Core Stores Release 2 project
+  25: 0000: \***
+  26: 0000: \***    Version E               Mark Goode                           16 Nov 2011
+  27: 0000: \***    Defect 2512 - Changed the read # to a read form #, when
+  28: 0000: \***                  checking the format of the PGFDIR file.
+  29: 0000: \***
+  30: 0000: \***    Version F               Mark Goode                           05 Dec 2011
+  31: 0000: \***    Defect 2835 - Changes to the READ.PGFDIR. This now returns the record in
+  32: 0000: \***    the new format regardless, if the PGF direct file is in the old or new
+  33: 0000: \***    format.
+  34: 0000: \***
+  35: 0000: \***    Version G               Charles Skadorwa                     28 Dec 2011
+  36: 0000: \***    Defect 3329 - Change to READ.PGFDIR. In the new format PGFXX, the Product
+  37: 0000: \***    Group requires an extra zero adding to the Concept Group ie. PP0CCC. This
+  38: 0000: \***    is required as the Product Group is packed later and needs to be an even
+  39: 0000: \***    number of digits. This is not required for the old format.
+  40: 0000: \***
+  41: 0000: \***    Also changed WRITE.PGFDIR. The code was transposed for the new and old
+  42: 0000: \***    formats - not picked up as not used by any code.
+  43: 0000: \***
+  44: 0000: \*******************************************************************************
+  45: 0000: \*******************************************************************************
+  46: 0000: 
+  47: 0000: 
+  48: 0000:     %INCLUDE PGFDEC.J86  ! PGF variable declarations
+  49: 0000: 
+  50: 0000: \REM
+  51: 0000: \*******************************************************************************
+  52: 0000: \*******************************************************************************
+  53: 0000: \***
+  54: 0000: \***    %INCLUDE FOR PRODUCT GROUP FILES VARIABLE DECLARATIONS
+  55: 0000: \***
+  56: 0000: \***        REFERENCE   :   PGFDEC (J86)
+  57: 0000: \***
+  58: 0000: \***        FILE TYPE   :   Direct (PGF and PGFD)
+  59: 0000: \***                        Keyed (PGFO)
+  60: 0000: \***
+  61: 0000: \***    VERSION B.              ROBERT COWEY.                       30 SEP 1993.
+  62: 0000: \***    Created by combining PGFDECA, PGFDFLDA, PGFOFLDA, PGFDNUMA and PGFONUMA.
+  63: 0000: \***
+  64: 0000: \***    REVISION 1.2.           ROBERT COWEY.                       27 OCT 2003.
+  65: 0000: \***    Defined WRITE.PGF function.
+  66: 0000: \***    No changes to this file.
+  67: 0000: \***
+  68: 0000: \***   Version C                Mark Goode                          21st December 2004
+  69: 0000: \***   New field for Product groups marked as OSSR.
+  70: 0000: \***   'Y' - OSSR Product group.
+  71: 0000: \***   'N' - ' ' - Non-OSSR product group.
+  72: 0000: \***
+  73: 0000: \***    Version D               Tittoo Thomas                        2 SEP 2011
+  74: 0000: \***    Changes to accomodate new csv format for PGDIR as part of
+  75: 0000: \***    the Core Stores Release 2 project
+  76: 0000: \***
+  77: 0000: \*******************************************************************************
+  78: 0000: \*******************************************************************************
+  79: 0000: 
+  80: 0000: 
+  81: 0000: \*******************************************************************************
+  82: 0000: \*******************************************************************************
+  83: 0000: \***
+  84: 0000: \***    OLD RECORD LAYOUT
+  85: 0000: \***
+  86: 0000: \***     1  3  UPD  PROD.GRP.NO$     Key
+  87: 0000: \***     *  1  UPD  CON.GROUP$       Concept group
+  88: 0000: \***     *  2  UPD  CON.SEQ$         Concept sequence
+  89: 0000: \***     4 18  ASC  PROD.GRP.NAME$
+  90: 0000: \***    22  1  ASC  SEL.FLAG$        "Y" Shelf edge labels not to be printed
+  91: 0000: \***                                 "N" Shelf edge labels to be printed for
+  92: 0000: \***                                     items in the product group
+  93: 0000: \***    23  8  ASC  SPACE$
+  94: 0000: \***
+  95: 0000: \***    Record length 30
+  96: 0000: \***
+  97: 0000: \***    NEW CSV RECORD LAYOUT
+  98: 0000: \***
+  99: 0000: \***     1  ASC  REC.TYPE$        Hardcoded to 'P'
+ 100: 0000: \***     5  ASC  PROD.GRP.NO$     ccsss where,  cc is the Concept Group and
+ 101: 0000: \***                                            sss is the Sequence Number
+ 102: 0000: \***    18  ASC  PROD.GRP.NAME$
+ 103: 0000: \***     1  ASC  SEL.FLAG$        "Y" Shelf edge labels to be printed
+ 104: 0000: \***                              "N" Shelf edge labels not to be printed
+ 105: 0000: \***     1  UPD  OSSR.FLAG$       ALWAYS SET TO NULL - PLACEHOLDER ONLY
+ 106: 0000: \***
+ 107: 0000: \*******************************************************************************
+ 108: 0000: \*******************************************************************************
+ 109: 0000: \***
+ 110: 0000: \***    OTHER INFORMATION
+ 111: 0000: \***    Prefixes PGFDIR... and PGFO... are use for variables that are specific
+ 112: 0000: \***    to the direct (mainframe transmitted) of keyed (live store) usage of
+ 113: 0000: \***    the file.
+ 114: 0000: \***
+ 115: 0000: \*******************************************************************************
+ 116: 0000: \*******************************************************************************
+ 117: 0000: 
+ 118: 0000: 
+ 119: 0000:     STRING GLOBAL \
+ 120: 0000:         PGF.FILE.NAME$, \
+ 121: 0000:         PGF.PROD.GRP.NAME$, \
+ 122: 0000:         PGF.PROD.GRP.NO$, \
+ 123: 0000:         PGF.SEL.FLAG$, \
+ 124: 0000:         PGF.SPACE$, \
+ 125: 0000:         PGFDIR.FILE.NAME$, \
+ 126: 0000:         PGFDIR.REC.TYPE$, \                                             ! DTT
+ 127: 0000:         PGFO.FILE.NAME$,   \
+ 128: 0000:         PGF.OSSR.FLAG$
+ 129: 0000: 
+ 130: 0000:     INTEGER*2 GLOBAL \
+ 131: 0000:         PGF.RECL%, \
+ 132: 0000:         PGF.REPORT.NUM%, \
+ 133: 0000:         PGF.SESS.NUM%, \
+ 134: 0000:         PGFDIR.RECL%, \
+ 135: 0000:         PGFDIR.REPORT.NUM%, \
+ 136: 0000:         PGFDIR.SESS.NUM%, \
+ 137: 0000:         PGFO.RECL%, \
+ 138: 0000:         PGFO.REPORT.NUM%, \
+ 139: 0000:         PGFO.SESS.NUM%
+ 140: 0000: 
+ 141: 0000:     INTEGER*4 GLOBAL \
+ 142: 0000:         PGF.REC.NUM%, \
+ 143: 0000:         PGFDIR.REC.NO%
+ 144: 0000: 
+ 145: 0000:     %INCLUDE PSBF20G.J86 ! Globals for File session allocation utility   ! DTT
+ 146: 0000: REM\
+ 147: 0000: \*******************************************************************************
+ 148: 0000: \*******************************************************************************
+ 149: 0000: \***
+ 150: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 151: 0000: \***
+ 152: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 153: 0000: \*** 
+ 154: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 155: 0000: \*** 
+ 156: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 157: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 158: 0000: \***     to two byte integer.
+ 159: 0000: \***
+ 160: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 161: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 162: 0000: \***
+ 163: 0000: \*******************************************************************************
+ 164: 0000: \*******************************************************************************
+ 165: 0000: 
+ 166: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 167: 0000:                        F20.STRING.FILE.NO$,                            \
+ 168: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 169: 0000:                        SESS.NUM.TABLE$(1)
+ 170: 0000: 
+ 171: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 172: 0000: 
+ 173: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 174: 0000: 
+ 175: 0000: 
+ 176: 0000:     STRING GLOBAL \
+ 177: 0000:         CURRENT.CODE$, \
+ 178: 0000:         FILE.OPERATION$
+ 179: 0000: 
+ 180: 0000:     STRING \                                                             ! DTT
+ 181: 0000:         PGFDIR.MATRIX$(1), \                                             ! DTT
+ 182: 0000:         PGFDIR.RECORD$                                                   ! DTT
+ 183: 0000: 
+ 184: 0000:     INTEGER*1 GLOBAL \                                                   ! DTT
+ 185: 0000:         PGFDIR.NEW.FORMAT%                                               ! DTT
+ 186: 0000: 
+ 187: 0000:     INTEGER*2 GLOBAL \
+ 188: 0000:         CURRENT.REPORT.NUM%
+ 189: 0000: 
+ 190: 0000:     %INCLUDE PSBF20E.J86 ! External funcs for File session alloc util    ! DTT
+ 191: 0000: REM\
+ 192: 0000: \*******************************************************************************
+ 193: 0000: \*******************************************************************************
+ 194: 0000: \***
+ 195: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 196: 0000: \***
+ 197: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 198: 0000: \***
+ 199: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 200: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 201: 0000: \***     128 files.
+ 202: 0000: \***
+ 203: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 204: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 205: 0000: \***     as a variable.  This new variable contains the function's return
+ 206: 0000: \***     code.
+ 207: 0000: \***
+ 208: 0000: \*******************************************************************************
+ 209: 0000: \*******************************************************************************
+ 210: 0000: 
+ 211: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 212: 0000:                               PASSED.INTEGER%,                         \
+ 213: 0000:                               PASSED.STRING$)                          \
+ 214: 0000:    EXTERNAL
+ 215: 0000: 
+ 216: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 217: 0000:              PASSED.STRING$
+ 218: 0000:    ! 3 variables removed from here                                     ! CAW
+ 219: 0000: 
+ 220: 0000: 
+ 221: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 222: 0000:              PASSED.INTEGER%				               ! CJAS
+ 223: 0000: 
+ 224: 0000:    END FUNCTION
+ 225: 0000: 
+ 226: 0000: 
+ 227: 0000: FUNCTION PGF.SET PUBLIC
+ 228: 0014: 
+ 229: 0014:     INTEGER*2 PGF.SET
+ 230: 0014:     PGF.SET EQ 1
+ 231: 0019: 
+ 232: 0019:     PGF.FILE.NAME$     EQ "PGF"
+ 233: 0028:     PGFDIR.FILE.NAME$  EQ "PGFXX"
+ 234: 0037:     PGFO.FILE.NAME$    EQ "PGFO"
+ 235: 0046: 
+ 236: 0046:     PGF.REPORT.NUM%    EQ 10
+ 237: 004f:     PGFDIR.REPORT.NUM% EQ 52
+ 238: 0058:     PGFO.REPORT.NUM%   EQ 51
+ 239: 0061: 
+ 240: 0061:     PGF.RECL%          EQ 30
+ 241: 006a:     PGFDIR.RECL%       EQ 30
+ 242: 0073:     PGFO.RECL%         EQ 30
+ 243: 007c: 
+ 244: 007c:     PGFDIR.NEW.FORMAT% EQ 0                                             ! DTT
+ 245: 0084: 
+ 246: 0084: 
+ 247: 0084:     !---------------------------------------------------------
+ 248: 0084:     ! Open the PGFDIR, read the first record, then close the file
+ 249: 0084:     !---------------------------------------------------------
+ 250: 0084:     CALL SESS.NUM.UTILITY("O", PGFDIR.REPORT.NUM%, PGFDIR.FILE.NAME$)   ! DTT
+ 251: 00a2:     PGFDIR.SESS.NUM% = F20.INTEGER.FILE.NO%                             ! DTT
+ 252: 00b0: 
+ 253: 00b0:     IF END # PGFDIR.SESS.NUM% THEN EXIT.PGF.SET                         ! DTT
+ 254: 00c4:     OPEN PGFDIR.FILE.NAME$ AS PGFDIR.SESS.NUM%      \                   ! DTT
+ 255: 00e5:          BUFFSIZE 32256 LOCKED NOWRITE NODEL                            ! DTT
+ 256: 00e5: 
+ 257: 00e5:     FILE.OPERATION$ = "R"                                               ! DTT
+ 258: 00f4: 
+ 259: 00f4:     IF END # PGFDIR.SESS.NUM% THEN EXIT.PGF.SET                         ! DTT
+ 260: 0108:     READ FORM "C2";#PGFDIR.SESS.NUM%; PGFDIR.RECORD$                    ! EMG ! DTT
+ 261: 0128:     CLOSE PGFDIR.SESS.NUM%                                              ! DTT
+ 262: 0134: 
+ 263: 0134:     !------------------------------------------------
+ 264: 0134:     ! If the record is a header in old or new format
+ 265: 0134:     !------------------------------------------------
+ 266: 0134:     IF PGFDIR.RECORD$ = "P," THEN BEGIN                                 ! EMG ! DTT
+ 267: 0147:        PGFDIR.NEW.FORMAT% = -1                                          ! DTT
+ 268: 0151:     ENDIF ELSE BEGIN                                                    ! DTT
+ 269: 0151:        PGFDIR.NEW.FORMAT% = 0                                           ! DTT
+ 270: 0159:     ENDIF                                                               ! DTT
+ 271: 0159: 
+ 272: 0159:     PGF.SET EQ 0
+ 273: 015e: 
+ 274: 015e: EXIT.PGF.SET:                                                           ! DTT
+ 275: 015e: 
+ 276: 015e: END FUNCTION
+ 277: 016d: 
+ 278: 016d: 
+ 279: 016d: FUNCTION READ.PGF PUBLIC
+ 280: 0181: 
+ 281: 0181:     INTEGER*2 READ.PGF
+ 282: 0181:     READ.PGF EQ 1
+ 283: 0186: 
+ 284: 0186:     IF END # PGF.SESS.NUM% THEN READ.PGF.IF.END
+ 285: 019a:     READ FORM "T4,C18,2C1,C7"; \   CMG
+ 286: 01ed:       # PGF.SESS.NUM% \
+ 287: 01ed:         KEY PGF.PROD.GRP.NO$;   \
+ 288: 01ed:             PGF.PROD.GRP.NAME$, \
+ 289: 01ed:             PGF.SEL.FLAG$,      \
+ 290: 01ed:             PGF.OSSR.FLAG$,     \  CMG
+ 291: 01ed:             PGF.SPACE$
+ 292: 01ed: 
+ 293: 01ed:     READ.PGF EQ 0
+ 294: 01f2:     EXIT FUNCTION
+ 295: 01f4: 
+ 296: 01f4: READ.PGF.IF.END:
+ 297: 01f4: 
+ 298: 01f4:     FILE.OPERATION$     EQ "R"
+ 299: 0203:     CURRENT.REPORT.NUM% EQ PGF.REPORT.NUM%
+ 300: 0211:     CURRENT.CODE$       EQ PACK$("00000000") + PGF.PROD.GRP.NO$
+ 301: 023e: 
+ 302: 023e:     EXIT FUNCTION
+ 303: 0240: 
+ 304: 0240: END FUNCTION
+ 305: 024f: 
+ 306: 024f: 
+ 307: 024f: FUNCTION WRITE.PGF PUBLIC ! Entire function new for revision 1.2        ! 1.2 RC
+ 308: 0263: 
+ 309: 0263:     INTEGER*2 WRITE.PGF
+ 310: 0263:     WRITE.PGF EQ 1
+ 311: 0268: 
+ 312: 0268:     IF END # PGF.SESS.NUM% THEN WRITE.PGF.IF.END
+ 313: 027c:     WRITE FORM "C3,C18,2C1,C7"; \  CMG
+ 314: 02de:       # PGF.SESS.NUM% ;\
+ 315: 02de:             PGF.PROD.GRP.NO$,   \
+ 316: 02de:             PGF.PROD.GRP.NAME$, \
+ 317: 02de:             PGF.SEL.FLAG$,      \
+ 318: 02de:             PGF.OSSR.FLAG$,     \  CMG
+ 319: 02de:             PGF.SPACE$
+ 320: 02de: 
+ 321: 02de:     WRITE.PGF EQ 0
+ 322: 02e3:     EXIT FUNCTION
+ 323: 02e5: 
+ 324: 02e5: WRITE.PGF.IF.END:
+ 325: 02e5: 
+ 326: 02e5:     FILE.OPERATION$     EQ "W"
+ 327: 02f4:     CURRENT.REPORT.NUM% EQ PGF.REPORT.NUM%
+ 328: 0302:     CURRENT.CODE$       EQ PACK$("00000000") + PGF.PROD.GRP.NO$
+ 329: 032f: 
+ 330: 032f:     EXIT FUNCTION
+ 331: 0331: 
+ 332: 0331: END FUNCTION
+ 333: 0340: 
+ 334: 0340: 
+ 335: 0340: FUNCTION READ.PGFDIR PUBLIC
+ 336: 0354: 
+ 337: 0354:     INTEGER*2 READ.PGFDIR
+ 338: 0354:     READ.PGFDIR EQ 1
+ 339: 0359: 
+ 340: 0359:     IF PGFDIR.NEW.FORMAT% THEN BEGIN                                    ! DTT
+ 341: 0366: 
+ 342: 0366:         DIM PGFDIR.MATRIX$(5)                                           ! DTT
+ 343: 0387:         IF END # PGFDIR.SESS.NUM% THEN READ.PGFDIR.IF.END               ! DTT
+ 344: 039b:         READ MATRIX #PGFDIR.SESS.NUM%; PGFDIR.MATRIX$(1), 5             ! DTT
+ 345: 03b8:         PGFDIR.REC.TYPE$   = PGFDIR.MATRIX$(1)                          ! DTT
+ 346: 03d7:         PGF.PROD.GRP.NO$   = PGFDIR.MATRIX$(2)                          ! DTT
+ 347: 03f6: 
+ 348: 03f6:         ! Add extra zero to Concept Group so that field can be packed   ! FCS
+ 349: 03f6:         PGF.PROD.GRP.NO$ = LEFT$(PGF.PROD.GRP.NO$,2)  + \               ! FCS
+ 350: 0439:                            "0"                        + \               ! FCS
+ 351: 0439:                            RIGHT$(PGF.PROD.GRP.NO$,3)                   ! FCS
+ 352: 0439: 
+ 353: 0439: 
+ 354: 0439:         PGF.PROD.GRP.NAME$ = PGFDIR.MATRIX$(3)                          ! DTT
+ 355: 0458:         PGF.SEL.FLAG$      = PGFDIR.MATRIX$(4)                          ! DTT
+ 356: 0477:         PGF.OSSR.FLAG$     = PGFDIR.MATRIX$(5)                          ! DTT
+ 357: 0499: 
+ 358: 0499:     ENDIF ELSE BEGIN                                                    ! DTT
+ 359: 0499: 
+ 360: 0499:         IF END # PGFDIR.SESS.NUM% THEN READ.PGFDIR.IF.END
+ 361: 04ad:         READ FORM "C3,C18,2C1,C7"; \  CMG
+ 362: 04fb:            # PGFDIR.SESS.NUM%; \
+ 363: 04fb:               PGF.PROD.GRP.NO$, \
+ 364: 04fb:               PGF.PROD.GRP.NAME$, \
+ 365: 04fb:               PGF.SEL.FLAG$, \
+ 366: 04fb:               PGF.OSSR.FLAG$, \ CMG
+ 367: 04fb:               PGF.SPACE$
+ 368: 04fb: 
+ 369: 04fb:         PGFDIR.REC.TYPE$ = ""                                           ! FMG
+ 370: 050a:         PGF.PROD.GRP.NO$ = UNPACK$(PGF.PROD.GRP.NO$)                    ! FMG
+ 371: 0525: 
+ 372: 0525:     ENDIF                                                               ! DTT
+ 373: 0525: 
+ 374: 0525:     READ.PGFDIR EQ 0
+ 375: 052a:     EXIT FUNCTION
+ 376: 052c: 
+ 377: 052c: READ.PGFDIR.IF.END:
+ 378: 052c: 
+ 379: 052c:     FILE.OPERATION$     EQ "R"
+ 380: 053b:     CURRENT.REPORT.NUM% EQ  PGFDIR.REPORT.NUM%
+ 381: 0549:     CURRENT.CODE$       EQ \
+ 382: 0591:       PACK$(RIGHT$("00000000000000" + STR$(PGFDIR.REC.NO%),14))
+ 383: 0591: 
+ 384: 0591:     EXIT FUNCTION
+ 385: 0593: 
+ 386: 0593: END FUNCTION
+ 387: 05a2: 
+ 388: 05a2: 
+ 389: 05a2: FUNCTION WRITE.PGFDIR PUBLIC
+ 390: 05b6: 
+ 391: 05b6:     INTEGER*2 WRITE.PGFDIR
+ 392: 05b6:     WRITE.PGFDIR EQ 1
+ 393: 05bb: 
+ 394: 05bb:     IF PGFDIR.NEW.FORMAT% THEN BEGIN                                    ! DTT
+ 395: 05c8:         PGFDIR.MATRIX$(1) = PGFDIR.REC.TYPE$                            ! DTT
+ 396: 05e7:         PGFDIR.MATRIX$(2) = PGF.PROD.GRP.NO$                            ! DTT
+ 397: 0606:         PGFDIR.MATRIX$(3) = PGF.PROD.GRP.NAME$                          ! DTT
+ 398: 0625:         PGFDIR.MATRIX$(4) = PGF.SEL.FLAG$                               ! DTT
+ 399: 0644:         PGFDIR.MATRIX$(5) = PGF.OSSR.FLAG$                              ! DTT
+ 400: 0663:         IF END # PGFDIR.SESS.NUM% THEN WRITE.PGFDIR.IF.END              ! DTT
+ 401: 0677:         WRITE MATRIX #PGFDIR.SESS.NUM%; PGFDIR.MATRIX$(1), 5            ! DTT
+ 402: 0697: 
+ 403: 0697:     ENDIF ELSE BEGIN                                                    ! DTT
+ 404: 0697:         IF END # PGFDIR.SESS.NUM% THEN WRITE.PGFDIR.IF.END
+ 405: 06ab:         WRITE FORM "C3,C18,2C1,C7"; \    CMG
+ 406: 071d:           # PGFDIR.SESS.NUM%, \
+ 407: 071d:             PGFDIR.REC.NO%; \
+ 408: 071d:               PGF.PROD.GRP.NO$, \
+ 409: 071d:               PGF.PROD.GRP.NAME$, \
+ 410: 071d:               PGF.SEL.FLAG$, \
+ 411: 071d:               PGF.OSSR.FLAG$, \ CMG
+ 412: 071d:               PGF.SPACE$
+ 413: 071d:     ENDIF                                                               ! DTT
+ 414: 071d: 
+ 415: 071d:     WRITE.PGFDIR EQ 0
+ 416: 0722:     EXIT FUNCTION
+ 417: 0724: 
+ 418: 0724: WRITE.PGFDIR.IF.END:
+ 419: 0724: 
+ 420: 0724:     FILE.OPERATION$     EQ "W"
+ 421: 0733:     CURRENT.REPORT.NUM% EQ  PGFDIR.REPORT.NUM%
+ 422: 0741:     CURRENT.CODE$       EQ \
+ 423: 0789:       PACK$(RIGHT$("00000000000000" + STR$(PGFDIR.REC.NO%),14))
+ 424: 0789: 
+ 425: 0789:     EXIT FUNCTION
+ 426: 078b: 
+ 427: 078b: END FUNCTION
+ 428: 079a: 
+ 429: 079a: 
+ 430: 079a: FUNCTION READ.PGFO PUBLIC
+ 431: 07ae: 
+ 432: 07ae:     INTEGER*2 READ.PGFO
+ 433: 07ae:     READ.PGFO EQ 1
+ 434: 07b3: 
+ 435: 07b3:     IF END # PGFO.SESS.NUM% THEN READ.PGFO.IF.END
+ 436: 07c7:     READ FORM "T4,C18,2C1,C7"; \    CMG
+ 437: 081a:       # PGFO.SESS.NUM% \
+ 438: 081a:         KEY PGF.PROD.GRP.NO$; \
+ 439: 081a:             PGF.PROD.GRP.NAME$, \
+ 440: 081a:             PGF.SEL.FLAG$, \
+ 441: 081a:             PGF.OSSR.FLAG$, \ CMG
+ 442: 081a:             PGF.SPACE$
+ 443: 081a: 
+ 444: 081a:     READ.PGFO EQ 0
+ 445: 081f:     EXIT FUNCTION
+ 446: 0821: 
+ 447: 0821: READ.PGFO.IF.END:
+ 448: 0821: 
+ 449: 0821:     FILE.OPERATION$     EQ "R"
+ 450: 0830:     CURRENT.REPORT.NUM% EQ PGFO.REPORT.NUM%
+ 451: 083e:     CURRENT.CODE$       EQ PACK$("00000000") + PGF.PROD.GRP.NO$
+ 452: 086b: 
+ 453: 086b:     EXIT FUNCTION
+ 454: 086d: 
+ 455: 086d: END FUNCTION
+ 456: 087c: 
+ 457: 087c: 
+ 458: 087c: FUNCTION WRITE.PGFO PUBLIC
+ 459: 0890: 
+ 460: 0890:     INTEGER*2 WRITE.PGFO
+ 461: 0890:     WRITE.PGFO EQ 1
+ 462: 0895: 
+ 463: 0895:     IF END # PGFO.SESS.NUM% THEN WRITE.PGFO.IF.END
+ 464: 08a9:     WRITE FORM "C3,C18,2C1,C7"; \   CMG
+ 465: 090b:       # PGFO.SESS.NUM%; \
+ 466: 090b:           PGF.PROD.GRP.NO$, \
+ 467: 090b:           PGF.PROD.GRP.NAME$, \
+ 468: 090b:           PGF.SEL.FLAG$, \
+ 469: 090b:           PGF.OSSR.FLAG$, \ CMG
+ 470: 090b:           PGF.SPACE$
+ 471: 090b: 
+ 472: 090b:     WRITE.PGFO EQ 0
+ 473: 0910:     EXIT FUNCTION
+ 474: 0912: 
+ 475: 0912: WRITE.PGFO.IF.END:
+ 476: 0912: 
+ 477: 0912:     FILE.OPERATION$     EQ "W"
+ 478: 0921:     CURRENT.REPORT.NUM% EQ PGFO.REPORT.NUM%
+ 479: 092f:     CURRENT.CODE$       EQ PACK$("00000000") + PGF.PROD.GRP.NO$
+ 480: 095c: 
+ 481: 095c:     EXIT FUNCTION
+ 482: 095e: 
+ 483: 095e: END FUNCTION
+ 484: 096d: 
+ 485: 096d: End of Compilation

@@ -1,0 +1,171 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           DIRECTS TEMPORARY STOCK MOVEMENT QUEUE FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***           REFERENCE    : DRSMQFUN.BAS
+   7: 0000: \***
+   8: 0000: \*******************************************************************************
+   9: 0000: \*******************************************************************************
+  10: 0000:                                           
+  11: 0000:   INTEGER*2 GLOBAL              \
+  12: 0000:      CURRENT.REPORT.NUM%
+  13: 0000:      
+  14: 0000:   STRING GLOBAL                 \
+  15: 0000:      CURRENT.CODE$,             \
+  16: 0000:      FILE.OPERATION$
+  17: 0000:   
+  18: 0000:   %INCLUDE DRSMQDEC.J86
+  19: 0000: \******************************************************************************
+  20: 0000: \******************************************************************************
+  21: 0000: \***
+  22: 0000: \***      %INCLUDE FOR DIRECTS TEMPORARY STOCK MOVEMENT QUEUE
+  23: 0000: \***       FILE FIELD DECLARATIONS
+  24: 0000: \***       FILE REFERENCE PARAMETERS
+  25: 0000: \***
+  26: 0000: \***               FILE TYPE    : Sequential
+  27: 0000: \***
+  28: 0000: \***               REFERENCE    : DRSMQDEC.J86
+  29: 0000: \***
+  30: 0000: \***
+  31: 0000: \******************************************************************************
+  32: 0000: \*******************************************************************************
+  33: 0000: \***
+  34: 0000: \***  The length of the records on this file vary depending on the record
+  35: 0000: \***  transaction type, but they all comprise combinations of the fields
+  36: 0000: \***  defined below.
+  37: 0000: \***
+  38: 0000: \***  Transaction type 17- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+  39: 0000: \***     TIME, SOURCE, SUPPLIER NUMBER, ORDER NUMBER, ORDER SUFFIX, PAGE
+  40: 0000: \***     NUMBER, ITEM COUNT, FIELD DELIMITER, ITEM CODE, BAR CODE,
+  41: 0000: \***     QUANTITY - GOOD, FIELD DELIMITER, QUANTITY - DAMAGED, FIELD DELIMITER,
+  42: 0000: \***     QUANTITY - STOLEN (the last 8 fields repeat ITEM COUNT times),
+  43: 0000: \***     RECORD DELIMITER, END OF RECORD DELIMITER
+  44: 0000: \***
+  45: 0000: \***  Transaction type 19- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+  46: 0000: \***     TIME, SUPPLIER NUMBER, ORDER NUMBER, ORDER SUFFIX, CONFIRM/AMEND FLAG,
+  47: 0000: \***     START TIME, END TIME, NO SINGLES ADDED, NO ITEMS ADDED, NO ITEMS
+  48: 0000: \***     BOOKED IN, RECORD DELIMITER, END OF RECORD DELIMITER
+  49: 0000: \***
+  50: 0000: \*******************************************************************************
+  51: 0000: \***
+  52: 0000: \***   REVISION 1.0     Neil Bennett                 2nd January 2007
+  53: 0000: \***   Add ASN processing support.
+  54: 0000: \***
+  55: 0000: \*******************************************************************************
+  56: 0000: 
+  57: 0000:   STRING GLOBAL              \
+  58: 0000:     DRSMQ.FILE.NAME$,        \
+  59: 0000:     DRSMQ.RECORD$,           \ Used to store the whole record which is unstrung
+  60: 0000:                              \ into the fields below
+  61: 0000:     DRSMQ.RECORD.DELIMITER$, \ 1 byte ASCII set to " (CHR$(34))
+  62: 0000:     DRSMQ.TRANS.TYPE$,       \ 1 byte UPD.
+  63: 0000:                              \             17 = Delivery without confirmation
+  64: 0000:                              \                  of Direct Order detail
+  65: 0000:                              \             19 = Delivery without confirmation
+  66: 0000:                              \                  of Direct Order header
+  67: 0000:     DRSMQ.FIELD.DELIMITER$,  \ 1 byte ASCII set to ; (CHR$(59))
+  68: 0000:     DRSMQ.DATE$,             \ 3 byte UPD set to current date
+  69: 0000:     DRSMQ.TIME$,             \ 3 byte UPD set to current time
+  70: 0000:     DRSMQ.ITEM.COUNT$,       \ 1 byte UPD between 1 and 17
+  71: 0000:     DRSMQ.BOOTS.CODE$,       \ 4 bytes UPD
+  72: 0000:     DRSMQ.QUANTITY$,         \ variable length string equivalent to
+  73: 0000:                              \ STR$(DRSMQ.QUANTITY%)
+  74: 0000:                              \ +ve indicates add to stock
+  75: 0000:                              \ -ve indicates subtract from stock
+  76: 0000:     DRSMQ.ENDREC.MARKER$,    \ 2 bytes ASCII set to XODOA
+  77: 0000:     DRSMQ.SUPPLIER.NO$,      \ 4 bytes UPD
+  78: 0000:     DRSMQ.ORDER.NO$,         \ 2 bytes UPD
+  79: 0000:     DRSMQ.ORDER.SFX$,        \ 1 byte ASCII
+  80: 0000:     DRSMQ.PAGE.NO$,          \ 1 byte UPD
+  81: 0000:     DRSMQ.ORDER.DATE$,       \ 3 bytes UPD
+  82: 0000:     DRSMQ.SOURCE$,           \ 1 byte ASCII Source flag
+  83: 0000:                              \ 'S' - PSS65, 'P' - PDT, PSS57
+  84: 0000:     DRSMQ.BAR.CODE$,         \ 6 bytes UPD
+  85: 0000:     DRSMQ.QTY.GOOD$,         \ VARIABLE ASCII
+  86: 0000:                              \ Quantity of singles booked in in good condition
+  87: 0000:     DRSMQ.QTY.BAD$,          \ VARIABLE ASCII
+  88: 0000:                              \ Quantity of singles booked in in bad condition
+  89: 0000:     DRSMQ.QTY.STOLEN$,       \ VARIABLE ASCII
+  90: 0000:                              \ Quantity of singles recognised as stolen
+  91: 0000:     DRSMQ.CONF.AMND.FLAG$,   \ 1 byte ASCII - Confirm/ Amend Flag
+  92: 0000:                              \ 'C' - Order has been confirmed
+  93: 0000:                              \ 'A' - Order has been amended
+  94: 0000:                              \ ' ' - Nothing has been done to the order
+  95: 0000:     DRSMQ.START.TIME$,       \ 2 byte UPD (HHMM) time order started to be
+  96: 0000:                              \ processed
+  97: 0000:     DRSMQ.END.TIME$,         \ 2 byte UPD (HHMM) time order was completed
+  98: 0000:     DRSMQ.SNGLS.ADDED$,      \ 5 bytes ASCII Singles added to order
+  99: 0000:     DRSMQ.ITEMS.ADDED$,      \ 5 bytes ASCII Items added to order
+ 100: 0000:     DRSMQ.ITEMS.BOOKED$,     \ 5 bytes ASCII Items booked in on the order
+ 101: 0000:     DRSMQ.CARTON.FLAG$,      \ 1 byte  ASCII - ' ' Old Process,             ! 1.0NWB
+ 102: 0000:                              \                 'N' Normal Book In           ! 1.0NWB
+ 103: 0000:                              \                 'A' Carton Audit Process     ! 1.0NWB
+ 104: 0000:                              \                 'E' Exception Process (nof)  ! 1.0NWB
+ 105: 0000:     DRSMQ.CARTON.NO$         ! 4 bytes UPD (0-9999)                         ! 1.0NWB
+ 106: 0000: 
+ 107: 0000: 
+ 108: 0000:   INTEGER*2 GLOBAL           \
+ 109: 0000:     DRSMQ.SESS.NUM%,         \
+ 110: 0000:     DRSMQ.REPORT.NUM%
+ 111: 0000:   
+ 112: 0000:   FUNCTION DRSMQ.SET PUBLIC
+ 113: 0014: \***************************
+ 114: 0014: 
+ 115: 0014:     DRSMQ.REPORT.NUM%  = 245
+ 116: 001d:     DRSMQ.FILE.NAME$ = "DRSMQ"
+ 117: 002c:     
+ 118: 002c:   END FUNCTION
+ 119: 0038: \-----------------------------------------------------------------------------
+ 120: 0038:     
+ 121: 0038:                                                                      
+ 122: 0038:   FUNCTION READ.DRSMQ PUBLIC
+ 123: 004c: \****************************
+ 124: 004c: 
+ 125: 004c:     INTEGER*2 READ.DRSMQ
+ 126: 004c:     
+ 127: 004c:     READ.DRSMQ = 1
+ 128: 0051:     
+ 129: 0051:     IF END #DRSMQ.SESS.NUM% THEN READ.ERROR
+ 130: 0065:     READ #DRSMQ.SESS.NUM%; LINE DRSMQ.RECORD$
+ 131: 007e:     READ.DRSMQ = 0
+ 132: 0083:     EXIT FUNCTION
+ 133: 0085:     
+ 134: 0085:     READ.ERROR:
+ 135: 0085:     
+ 136: 0085:        CURRENT.CODE$ = DRSMQ.RECORD$
+ 137: 009b:        FILE.OPERATION$ = "R"
+ 138: 00aa:        CURRENT.REPORT.NUM% = DRSMQ.REPORT.NUM%
+ 139: 00b8:        
+ 140: 00b8:        EXIT FUNCTION
+ 141: 00ba:                                
+ 142: 00ba:   END FUNCTION
+ 143: 00c9: \-----------------------------------------------------------------------------  
+ 144: 00c9: 
+ 145: 00c9:   FUNCTION WRITE.DRSMQ PUBLIC
+ 146: 00dd: \*****************************
+ 147: 00dd: 
+ 148: 00dd:   INTEGER*2 WRITE.DRSMQ  
+ 149: 00dd: 
+ 150: 00dd:   STRING  FORMAT$,                                                   \
+ 151: 00dd:           STRING.LENGTH$
+ 152: 00dd: 
+ 153: 00dd:   WRITE.DRSMQ = 1         
+ 154: 00e2: 
+ 155: 00e2:     STRING.LENGTH$ = STR$(LEN(DRSMQ.RECORD$))
+ 156: 0109:     FORMAT$ = "C" + STRING.LENGTH$                                      
+ 157: 0121:     IF END #DRSMQ.SESS.NUM% THEN WRITE.ERROR
+ 158: 0135:     WRITE FORM FORMAT$; #DRSMQ.SESS.NUM%; DRSMQ.RECORD$                  
+ 159: 015b:     WRITE.DRSMQ = 0
+ 160: 0160:     EXIT FUNCTION
+ 161: 0162:     
+ 162: 0162:     WRITE.ERROR:
+ 163: 0162:     
+ 164: 0162:        CURRENT.CODE$ = DRSMQ.RECORD$
+ 165: 0178:        FILE.OPERATION$ = "O"
+ 166: 0187:        CURRENT.REPORT.NUM% = DRSMQ.REPORT.NUM%
+ 167: 0195:        
+ 168: 0195:        EXIT FUNCTION
+ 169: 0197: 
+ 170: 0197:   END FUNCTION
+ 171: 01a6: End of Compilation

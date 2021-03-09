@@ -1,0 +1,259 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***          STORE DIRECT SUPPLIER FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***              REFERENCE    : DIRSUFUN.BAS
+   8: 0000: \***
+   9: 0000: \***   Version A           Mark Goode          2nd December 2008
+  10: 0000: \***   Add new fields for the +ve UOD project
+  11: 0000: \******************************************************************************
+  12: 0000: \******************************************************************************
+  13: 0000: 
+  14: 0000:   INTEGER*2 GLOBAL                   \
+  15: 0000:        CURRENT.REPORT.NUM%
+  16: 0000:   
+  17: 0000:   STRING GLOBAL                      \
+  18: 0000:        CURRENT.CODE$,                \
+  19: 0000:        FILE.OPERATION$
+  20: 0000:   
+  21: 0000:   %INCLUDE DIRSUDEC.J86
+  22: 0000: REM \
+  23: 0000: \******************************************************************************
+  24: 0000: \******************************************************************************
+  25: 0000: \***
+  26: 0000: \***     %INCLUDE FOR STORE DIRECT SUPPLIER FILE FIELD DECLARATIONS
+  27: 0000: \***                                             FILE REFERENCE PARAMETERS
+  28: 0000: \***      
+  29: 0000: \***               FILE TYPE    : Keyed
+  30: 0000: \***
+  31: 0000: \***               REFERENCE    : DIRSUDEC.J86
+  32: 0000: \***
+  33: 0000: \***     Version A - L Cook
+  34: 0000: \***
+  35: 0000: \***     Combined DIRSUFLA.J86 and DIRSUNUA.J86
+  36: 0000: \***
+  37: 0000: \***   Version B           Mark Goode          3rd December 2008
+  38: 0000: \***   Add new fields for the +ve UOD project
+  39: 0000: \***
+  40: 0000: \******************************************************************************
+  41: 0000: \******************************************************************************
+  42: 0000: 
+  43: 0000:   STRING GLOBAL            \
+  44: 0000:     DIRSUP.FILE.NAME$,     \
+  45: 0000:     DIRSUP.RECKEY$,        \ 4 byte key which comprises the following fields
+  46: 0000:       DIRSUP.BUS.CENTRE$,  \ 1 byte ASCII (key)
+  47: 0000:       DIRSUP.SUPPLIER.NO$, \ 3 bytes UPD (key)
+  48: 0000:                            \
+  49: 0000:     DIRSUP.SUPPLIER.NAME$, \ 10 byte ASCII
+  50: 0000:     DIRSUP.LEAD.TIME.MON$, \ 2 bytes UPD. Lead time for MONDAY in days
+  51: 0000:     DIRSUP.LEAD.TIME.TUE$, \ 2 bytes UPD. Lead time for TUESDAY in days
+  52: 0000:     DIRSUP.LEAD.TIME.WED$, \ 2 bytes UPD. Lead time for WEDNESDAY in days
+  53: 0000:     DIRSUP.LEAD.TIME.THU$, \ 2 bytes UPD. Lead time for THURSDAY in days
+  54: 0000:     DIRSUP.LEAD.TIME.FRI$, \ 2 bytes UPD. Lead time for FRIDAY in days
+  55: 0000:     DIRSUP.LAPSING.DAYS$,  \ 2 bytes UPD. Number of days before order lapses
+  56: 0000:     DIRSUP.PART.ORDER.RULES$, \ 1 byte ASCII. A=Rest of order supplied, 
+  57: 0000:                               \               N,Z=not supplied 
+  58: 0000:     DIRSUP.MAX.CHECK.QTY$,    \ 2 bytes UPD.
+  59: 0000:     DIRSUP.CHECK.QTY$,        \ 2 bytes UPD.
+  60: 0000:     DIRSUP.DISCREPANCY.QTY$,  \ 2 bytes UPD.
+  61: 0000:     DIRSUP.DISCREPANCY.PERC$, \ 2 bytes UPD. Discrepancy percentage
+  62: 0000:     DIRSUP.ASN.FLAG$,         \ 1 byte ASCII. Identifies supplier as ASN or Directs   ! BMG
+  63: 0000:     DIRSUP.STATIC.SUPPLIER$,  \ 1 byte ASCII. Identifies supplier as being static     ! BMG
+  64: 0000:     DIRSUP.FILLER$          ! 3 bytes ASCII set to low values                         ! BMG
+  65: 0000: 
+  66: 0000:   INTEGER*2 GLOBAL        \
+  67: 0000:     DIRSUP.RECL%,         \
+  68: 0000:     DIRSUP.SESS.NUM%,     \
+  69: 0000:     DIRSUP.REPORT.NUM%
+  70: 0000:     
+  71: 0000:   INTEGER*4 GLOBAL        \
+  72: 0000:     DIRSUP.NO.RECS%  
+  73: 0000:   
+  74: 0000:   FUNCTION DIRSUP.SET PUBLIC
+  75: 0014: \****************************
+  76: 0014: 
+  77: 0014:     DIRSUP.REPORT.NUM%  = 230
+  78: 001d:     DIRSUP.RECL%        = 40
+  79: 0026:     DIRSUP.FILE.NAME$   = "DIRSU"
+  80: 0035:     DIRSUP.NO.RECS%     = 6000
+  81: 0044:               
+  82: 0044:   END FUNCTION
+  83: 0050: 
+  84: 0050: \-----------------------------------------------------------------------------
+  85: 0050: 
+  86: 0050:   FUNCTION READ.DIRSUP.LOCK PUBLIC
+  87: 0064: \**********************************  
+  88: 0064: 
+  89: 0064:   INTEGER*2 READ.DIRSUP.LOCK
+  90: 0064: 
+  91: 0064:   STRING         FORMAT$
+  92: 0064: 
+  93: 0064:   READ.DIRSUP.LOCK = 1
+  94: 0069: 
+  95: 0069:     FORMAT$ = "T5,C10,6C2,C1,4C2,2C1,C3"                              ! AMG
+  96: 0076:     IF END #DIRSUP.SESS.NUM% THEN READ.LOCK.ERROR
+  97: 008a:     READ FORM FORMAT$; #DIRSUP.SESS.NUM% AUTOLOCK KEY DIRSUP.RECKEY$; \
+  98: 015a:                     DIRSUP.SUPPLIER.NAME$,                            \
+  99: 015a:                     DIRSUP.LEAD.TIME.MON$,                            \
+ 100: 015a:                     DIRSUP.LEAD.TIME.TUE$,                            \
+ 101: 015a:                     DIRSUP.LEAD.TIME.WED$,                            \
+ 102: 015a:                     DIRSUP.LEAD.TIME.THU$,                            \ 
+ 103: 015a:                     DIRSUP.LEAD.TIME.FRI$,                            \ 
+ 104: 015a:                     DIRSUP.LAPSING.DAYS$,                             \ 
+ 105: 015a:                     DIRSUP.PART.ORDER.RULES$,                         \ 
+ 106: 015a:                     DIRSUP.MAX.CHECK.QTY$,                            \
+ 107: 015a:                     DIRSUP.CHECK.QTY$,                                \
+ 108: 015a:                     DIRSUP.DISCREPANCY.QTY$,                          \
+ 109: 015a:                     DIRSUP.DISCREPANCY.PERC$,                         \
+ 110: 015a:                     DIRSUP.ASN.FLAG$,                                 \ AMG
+ 111: 015a:                     DIRSUP.STATIC.SUPPLIER$,                          \ AMG
+ 112: 015a:                     DIRSUP.FILLER$
+ 113: 015a:      
+ 114: 015a:      READ.DIRSUP.LOCK = 0
+ 115: 015f:      EXIT FUNCTION
+ 116: 0161:      
+ 117: 0161:      READ.LOCK.ERROR:
+ 118: 0161:      
+ 119: 0161:         CURRENT.CODE$ = DIRSUP.RECKEY$
+ 120: 0177:         FILE.OPERATION$ = "R"
+ 121: 0186:         CURRENT.REPORT.NUM% = DIRSUP.REPORT.NUM%
+ 122: 0194:         
+ 123: 0194:         EXIT FUNCTION               
+ 124: 0196:                     
+ 125: 0196:   END FUNCTION
+ 126: 01a5: \-----------------------------------------------------------------------------
+ 127: 01a5: 
+ 128: 01a5: 
+ 129: 01a5:   FUNCTION READ.DIRSUP PUBLIC
+ 130: 01b9: \*****************************
+ 131: 01b9: 
+ 132: 01b9:   INTEGER*2 READ.DIRSUP
+ 133: 01b9:   
+ 134: 01b9:   STRING         FORMAT$
+ 135: 01b9: 
+ 136: 01b9:   READ.DIRSUP = 1
+ 137: 01be: 
+ 138: 01be:     IF END #DIRSUP.SESS.NUM% THEN READ.ERROR
+ 139: 01d2:     FORMAT$ = "T5,C10,6C2,C1,4C2,2C1,C3"                              ! AMG
+ 140: 01df:     READ FORM FORMAT$; #DIRSUP.SESS.NUM% KEY DIRSUP.RECKEY$;          \
+ 141: 02af:                     DIRSUP.SUPPLIER.NAME$,                            \
+ 142: 02af:                     DIRSUP.LEAD.TIME.MON$,                            \
+ 143: 02af:                     DIRSUP.LEAD.TIME.TUE$,                            \
+ 144: 02af:                     DIRSUP.LEAD.TIME.WED$,                            \
+ 145: 02af:                     DIRSUP.LEAD.TIME.THU$,                            \ 
+ 146: 02af:                     DIRSUP.LEAD.TIME.FRI$,                            \ 
+ 147: 02af:                     DIRSUP.LAPSING.DAYS$,                             \ 
+ 148: 02af:                     DIRSUP.PART.ORDER.RULES$,                         \ 
+ 149: 02af:                     DIRSUP.MAX.CHECK.QTY$,                            \
+ 150: 02af:                     DIRSUP.CHECK.QTY$,                                \
+ 151: 02af:                     DIRSUP.DISCREPANCY.QTY$,                          \
+ 152: 02af:                     DIRSUP.DISCREPANCY.PERC$,                         \
+ 153: 02af:                     DIRSUP.ASN.FLAG$,                                 \ AMG
+ 154: 02af:                     DIRSUP.STATIC.SUPPLIER$,                          \ AMG
+ 155: 02af:                     DIRSUP.FILLER$
+ 156: 02af:                     
+ 157: 02af:      READ.DIRSUP = 0
+ 158: 02b4:      EXIT FUNCTION
+ 159: 02b6:      
+ 160: 02b6:      READ.ERROR:
+ 161: 02b6:      
+ 162: 02b6:         CURRENT.CODE$ = DIRSUP.RECKEY$
+ 163: 02cc:         FILE.OPERATION$ = "R"
+ 164: 02db:         CURRENT.REPORT.NUM% = DIRSUP.REPORT.NUM%
+ 165: 02e9:         
+ 166: 02e9:         EXIT FUNCTION
+ 167: 02eb:         
+ 168: 02eb:   END FUNCTION
+ 169: 02fa: \-----------------------------------------------------------------------------
+ 170: 02fa: 
+ 171: 02fa: 
+ 172: 02fa:   FUNCTION WRITE.DIRSUP.UNLOCK PUBLIC
+ 173: 030e: \*************************************
+ 174: 030e: 
+ 175: 030e:   INTEGER*2 WRITE.DIRSUP.UNLOCK  
+ 176: 030e: 
+ 177: 030e:   STRING         FORMAT$
+ 178: 030e:   
+ 179: 030e:   WRITE.DIRSUP.UNLOCK = 1
+ 180: 0313: 
+ 181: 0313:     IF END #DIRSUP.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 182: 0327:     FORMAT$ = "C1,C3,C10,6C2,C1,4C2,2C1,C3"                           ! AMG
+ 183: 0334:     WRITE FORM FORMAT$; #DIRSUP.SESS.NUM% AUTOUNLOCK;                 \
+ 184: 045a:                     DIRSUP.BUS.CENTRE$,                               \
+ 185: 045a:                     DIRSUP.SUPPLIER.NO$,                              \
+ 186: 045a:                     DIRSUP.SUPPLIER.NAME$,                            \
+ 187: 045a:                     DIRSUP.LEAD.TIME.MON$,                            \
+ 188: 045a:                     DIRSUP.LEAD.TIME.TUE$,                            \
+ 189: 045a:                     DIRSUP.LEAD.TIME.WED$,                            \
+ 190: 045a:                     DIRSUP.LEAD.TIME.THU$,                            \ 
+ 191: 045a:                     DIRSUP.LEAD.TIME.FRI$,                            \ 
+ 192: 045a:                     DIRSUP.LAPSING.DAYS$,                             \ 
+ 193: 045a:                     DIRSUP.PART.ORDER.RULES$,                         \ 
+ 194: 045a:                     DIRSUP.MAX.CHECK.QTY$,                            \
+ 195: 045a:                     DIRSUP.CHECK.QTY$,                                \
+ 196: 045a:                     DIRSUP.DISCREPANCY.QTY$,                          \
+ 197: 045a:                     DIRSUP.DISCREPANCY.PERC$,                         \
+ 198: 045a:                     DIRSUP.ASN.FLAG$,                                 \ AMG
+ 199: 045a:                     DIRSUP.STATIC.SUPPLIER$,                          \ AMG
+ 200: 045a:                     DIRSUP.FILLER$
+ 201: 045a:     
+ 202: 045a:     WRITE.DIRSUP.UNLOCK = 0
+ 203: 045f:     EXIT FUNCTION
+ 204: 0461:     
+ 205: 0461:     WRITE.UNLOCK.ERROR:
+ 206: 0461:     
+ 207: 0461:        CURRENT.CODE$ = DIRSUP.BUS.CENTRE$
+ 208: 0477:        FILE.OPERATION$ = "O"
+ 209: 0486:        CURRENT.REPORT.NUM% = DIRSUP.REPORT.NUM%
+ 210: 0494:        
+ 211: 0494:        EXIT FUNCTION 
+ 212: 0496: 
+ 213: 0496:   END FUNCTION
+ 214: 04a5: \-----------------------------------------------------------------------------
+ 215: 04a5: 
+ 216: 04a5: 
+ 217: 04a5:   FUNCTION WRITE.DIRSUP PUBLIC
+ 218: 04b9: \******************************
+ 219: 04b9: 
+ 220: 04b9:   INTEGER*2 WRITE.DIRSUP  
+ 221: 04b9: 
+ 222: 04b9:   STRING     FORMAT$    
+ 223: 04b9:   
+ 224: 04b9:   WRITE.DIRSUP = 1    
+ 225: 04be: 
+ 226: 04be:     IF END #DIRSUP.SESS.NUM% THEN WRITE.ERROR
+ 227: 04d2:     FORMAT$ = "C1,C3,C10,6C2,C1,4C2,2C1,C3"                           ! AMG
+ 228: 04df:     WRITE FORM FORMAT$; #DIRSUP.SESS.NUM%;                            \
+ 229: 0605:                     DIRSUP.BUS.CENTRE$,                               \
+ 230: 0605:                     DIRSUP.SUPPLIER.NO$,                              \
+ 231: 0605:                     DIRSUP.SUPPLIER.NAME$,                            \
+ 232: 0605:                     DIRSUP.LEAD.TIME.MON$,                            \
+ 233: 0605:                     DIRSUP.LEAD.TIME.TUE$,                            \
+ 234: 0605:                     DIRSUP.LEAD.TIME.WED$,                            \
+ 235: 0605:                     DIRSUP.LEAD.TIME.THU$,                            \ 
+ 236: 0605:                     DIRSUP.LEAD.TIME.FRI$,                            \ 
+ 237: 0605:                     DIRSUP.LAPSING.DAYS$,                             \ 
+ 238: 0605:                     DIRSUP.PART.ORDER.RULES$,                         \ 
+ 239: 0605:                     DIRSUP.MAX.CHECK.QTY$,                            \
+ 240: 0605:                     DIRSUP.CHECK.QTY$,                                \
+ 241: 0605:                     DIRSUP.DISCREPANCY.QTY$,                          \
+ 242: 0605:                     DIRSUP.DISCREPANCY.PERC$,                         \
+ 243: 0605:                     DIRSUP.ASN.FLAG$,                                 \ AMG
+ 244: 0605:                     DIRSUP.STATIC.SUPPLIER$,                          \ AMG
+ 245: 0605:                     DIRSUP.FILLER$
+ 246: 0605:                     
+ 247: 0605:     WRITE.DIRSUP = 0 
+ 248: 060a:     EXIT FUNCTION
+ 249: 060c:     
+ 250: 060c:     WRITE.ERROR:
+ 251: 060c:     
+ 252: 060c:        CURRENT.CODE$ = DIRSUP.BUS.CENTRE$
+ 253: 0622:        FILE.OPERATION$ = "O"
+ 254: 0631:        CURRENT.REPORT.NUM% = DIRSUP.REPORT.NUM%
+ 255: 063f:        
+ 256: 063f:        EXIT FUNCTION
+ 257: 0641:                     
+ 258: 0641:   END FUNCTION
+ 259: 0650: End of Compilation

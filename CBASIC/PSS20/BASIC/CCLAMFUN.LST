@@ -1,0 +1,495 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  KEYED
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  CCLAMFUN.BAS
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***                               FILE OF CURRENT CREDIT CLAIMS
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***      VERSION A : Michael J. Kelsall      16th December 1993
+  16: 0000: \***      
+  17: 0000: \*****************************************************************************
+  18: 0000: \*****************************************************************************
+  19: 0000: 
+  20: 0000:   INTEGER*2 GLOBAL            \
+  21: 0000:          CURRENT.REPORT.NUM% 
+  22: 0000:          
+  23: 0000:   STRING GLOBAL               \
+  24: 0000:          CURRENT.CODE$,       \
+  25: 0000:          FILE.OPERATION$           
+  26: 0000: 
+  27: 0000:   %INCLUDE CCLAMDEC.J86
+  28: 0000: 
+  29: 0000: \*****************************************************************************
+  30: 0000: \*****************************************************************************
+  31: 0000: \***
+  32: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  33: 0000: \***
+  34: 0000: \***                   FILE TYPE:  KEYED
+  35: 0000: \***
+  36: 0000: \***                   REFERENCE:  CCLAMDEC.J86
+  37: 0000: \***
+  38: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  39: 0000: \***				   FILE OF CURRENT CREDIT CLAIMS
+  40: 0000: \***
+  41: 0000: \***
+  42: 0000: \***      VERSION A : Michael J. Kelsall      16th December 1993
+  43: 0000: \***      
+  44: 0000: \*****************************************************************************
+  45: 0000: \*****************************************************************************
+  46: 0000: 
+  47: 0000: STRING GLOBAL			\
+  48: 0000:    CCLAM.FILE.NAME$,		\
+  49: 0000:    CCLAM.CREDIT.CLAIM.NUM$,	\  4 byte UPD;   Record Key
+  50: 0000:    CCLAM.UOD.NUM$,		\  7 byte UPD
+  51: 0000:    				\  CCLAM.NUM.OF.ITEMS% here (I2)
+  52: 0000:    CCLAM.SUPPLY.ROUTE$,		\  1 byte ASC;  "W" = Warehouse,
+  53: 0000:    				\ 	        "E" = EPSOM,
+  54: 0000: 				\	        "O" = Other Directs,
+  55: 0000: 				\               "D" = Dispensary.
+  56: 0000:    CCLAM.DISP.LOCATION$,	\  1 byte ASC   "M" = MDS, "D" = Dispensary.
+  57: 0000:    CCLAM.BC.LETTER$,		\  1 byte ASC    
+  58: 0000:    CCLAM.RECALL.NUM$,		\  8 byte ASC
+  59: 0000:    CCLAM.AUTHORISATION$,	\ 15 byte ASC
+  60: 0000:    CCLAM.SUPPLIER$,		\ 15 byte ASC
+  61: 0000:    CCLAM.METHOD.OF.RETURN$,	\  1 byte UPD;   1 = Carrier,
+  62: 0000:    				\                2 = BIRD,
+  63: 0000: 				\	 	 3 = Via D6,
+  64: 0000: 				\		 4 = Representative.
+  65: 0000:    CCLAM.CARRIER$,		\  1 byte UPD;   1 = GPO,
+  66: 0000:    				\                2 = Parcelforce,
+  67: 0000: 				\	 	 3 = Securicor,
+  68: 0000: 				\ 		 4 = Other.
+  69: 0000:    CCLAM.BIRD.NUM$,		\  8 byte ASC					
+  70: 0000:    CCLAM.REASON.NUM$,		\  1 byte UPD     (See CSRNS declaration)
+  71: 0000:    CCLAM.RECEIVING.STORE$,	\  2 byte UPD    
+  72: 0000:    CCLAM.DESTINATION$,		\  1 byte UPD    1 = Business Centre, 
+  73: 0000:    				\	         2 = MTS,
+  74: 0000:    				\		 3 = Pharmacy, 
+  75: 0000: 				\		 4 = Other.
+  76: 0000:    CCLAM.WAREHOUSE.ROUTE$,	\  1 byte ASC   "R" = RDC, "C" = CSR.
+  77: 0000:    CCLAM.UOD.TYPE$,		\  1 byte UPD    1 = Travel Outer,
+  78: 0000:    				\		 2 = Town tray,
+  79: 0000: 				\		 3 = Roll cage,
+  80: 0000: 				\     	         4 = Other.
+  81: 0000:    CCLAM.DAMAGE.REASON$,        \  1 byte UPD    1 = Bad packaging,	
+  82: 0000:    				\		 2 = Poor handling.
+  83: 0000:    CCLAM.INVOICE.NUM$,		\* 9 byte ASC 
+  84: 0000:    CCLAM.FOLIO.NUM$,		\  3 byte UPD
+  85: 0000:    CCLAM.BATCH.REF$,		\  3 byte UPD
+  86: 0000:    CCLAM.WHOLE.PART.CON$,       \  1 byte ASC   "W" = Whole, "P" = Part
+  87: 0000:    CCLAM.REPAIR.CATEGORY$, 	\  1 byte UPD;   1 = Plan4,
+  88: 0000:    				\   		 2 = Estimate,
+  89: 0000: 				\		 3 = Boots guarantee,
+  90: 0000: 				\		 4 = Supplier guarantee,
+  91: 0000: 				\		 5 = Other guarantee,
+  92: 0000:    CCLAM.REPAIR.NUM$,		\  6 byte UPD
+  93: 0000:    CCLAM.PLAN4.POLICY.NUM$,	\  6 byte UPD 
+  94: 0000:    CCLAM.DDDA.DCDR.NUM$,	\  4 byte UPD
+  95: 0000:    CCLAM.DELIV.NOTE.NUM$,	\* 9 byte ASC
+  96: 0000:    CCLAM.DELIV.DATE$,		\  3 byte UPD
+  97: 0000:    CCLAM.NUM.CARTONS.RECEIV$,	\  1 byte UPD
+  98: 0000:    CCLAM.ORDER.NUM$,		\  7 byte ASC
+  99: 0000:    CCLAM.COMMENT$,  		\*20 byte ASC
+ 100: 0000:    CCLAM.DATE.OF.CLAIM$,	\  3 byte UPD;  Date of UOD despatch
+ 101: 0000:    CCLAM.TIME.OF.CLAIM$,	\  3 byte UPD;  Time of UOD despatch
+ 102: 0000:    CCLAM.RETRIEVAL.FLAG$,	\  1 byte ASC;  "Y", "N"  PSS35 sets to Y
+ 103: 0000:    				\                         PSB30 sets to N
+ 104: 0000:    CCLAM.CF.RPT.MARKER$,	\  1 byte ASC;  "Y"       PSS35 sets to Y
+ 105: 0000:    				\               "N"       PSS20 sets to N
+ 106: 0000:    CCLAM.CANC.MARKER$,		\  1 byte ASC;  Y or N
+ 107: 0000:    CCLAM.FILLER$		!  7 byte ASC;  Spaces.
+ 108: 0000: 
+ 109: 0000: 
+ 110: 0000: INTEGER*2 GLOBAL		\
+ 111: 0000:    CCLAM.RECL%,			\
+ 112: 0000:    CCLAM.REPORT.NUM%,		\
+ 113: 0000:    CCLAM.SESS.NUM%,		\
+ 114: 0000: 				\
+ 115: 0000:    CCLAM.NUM.OF.ITEMS%		!  2 byte INT
+ 116: 0000: 
+ 117: 0000: 
+ 118: 0000: 
+ 119: 0000: 
+ 120: 0000:   FUNCTION CCLAM.SET PUBLIC
+ 121: 0014: 
+ 122: 0014:      INTEGER*2 CCLAM.SET
+ 123: 0014:      CCLAM.SET = 1
+ 124: 0019:        CCLAM.REPORT.NUM% = 316
+ 125: 0022:        CCLAM.RECL%      = 160
+ 126: 002b:        CCLAM.FILE.NAME$ = "CCLAM"
+ 127: 003a:      CCLAM.SET = 0
+ 128: 003f: 
+ 129: 003f:   END FUNCTION
+ 130: 004e: 
+ 131: 004e: 
+ 132: 004e: 
+ 133: 004e:   FUNCTION READ.CCLAM PUBLIC
+ 134: 0062: 
+ 135: 0062:     INTEGER*2 READ.CCLAM
+ 136: 0062:     STRING FORMAT$
+ 137: 0062:     READ.CCLAM = 1    
+ 138: 0067:        FORMAT$ = "T5,C7,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,C9,2C3" +               \
+ 139: 007b:                  ",2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,3C1,C7"
+ 140: 007b:        IF END #CCLAM.SESS.NUM% THEN READ.ERROR   
+ 141: 008f:        READ FORM FORMAT$; #CCLAM.SESS.NUM% KEY CCLAM.CREDIT.CLAIM.NUM$; \
+ 142: 0246:               CCLAM.UOD.NUM$,                                           \  
+ 143: 0246:               CCLAM.NUM.OF.ITEMS%,                                      \
+ 144: 0246:               CCLAM.SUPPLY.ROUTE$,                                      \        
+ 145: 0246:               CCLAM.DISP.LOCATION$,                                     \  
+ 146: 0246:               CCLAM.BC.LETTER$,                                         \  
+ 147: 0246:               CCLAM.RECALL.NUM$,                                        \  
+ 148: 0246:               CCLAM.AUTHORISATION$,                                     \ 
+ 149: 0246:               CCLAM.SUPPLIER$,                                          \ 
+ 150: 0246:               CCLAM.METHOD.OF.RETURN$,                                  \  
+ 151: 0246:               CCLAM.CARRIER$,                                           \  
+ 152: 0246:               CCLAM.BIRD.NUM$,                                          \  
+ 153: 0246:               CCLAM.REASON.NUM$,                                        \  
+ 154: 0246:               CCLAM.RECEIVING.STORE$,                                   \  
+ 155: 0246:               CCLAM.DESTINATION$,                                       \  
+ 156: 0246:               CCLAM.WAREHOUSE.ROUTE$,                                   \  
+ 157: 0246:               CCLAM.UOD.TYPE$,                                          \  
+ 158: 0246:               CCLAM.DAMAGE.REASON$,                                     \  
+ 159: 0246:               CCLAM.INVOICE.NUM$,                                       \  
+ 160: 0246:               CCLAM.FOLIO.NUM$,                                         \  
+ 161: 0246:               CCLAM.BATCH.REF$,                                         \  
+ 162: 0246:               CCLAM.WHOLE.PART.CON$,                                    \
+ 163: 0246:               CCLAM.REPAIR.CATEGORY$,                                   \  
+ 164: 0246:               CCLAM.REPAIR.NUM$,                                        \  
+ 165: 0246:               CCLAM.PLAN4.POLICY.NUM$,                                  \  
+ 166: 0246:               CCLAM.DDDA.DCDR.NUM$,                                     \  
+ 167: 0246:               CCLAM.DELIV.NOTE.NUM$,                                    \  
+ 168: 0246:               CCLAM.DELIV.DATE$,                                        \
+ 169: 0246:               CCLAM.NUM.CARTONS.RECEIV$,                                \  
+ 170: 0246:               CCLAM.ORDER.NUM$,                                         \  
+ 171: 0246:               CCLAM.COMMENT$,                                           \  
+ 172: 0246:               CCLAM.DATE.OF.CLAIM$,                                     \  
+ 173: 0246:               CCLAM.TIME.OF.CLAIM$,                                     \  
+ 174: 0246:               CCLAM.RETRIEVAL.FLAG$,                                    \  
+ 175: 0246:               CCLAM.CF.RPT.MARKER$,                                     \
+ 176: 0246:               CCLAM.CANC.MARKER$,                                       \  
+ 177: 0246:               CCLAM.FILLER$             
+ 178: 0246:        READ.CCLAM = 0
+ 179: 024b:        EXIT FUNCTION     
+ 180: 024d:         
+ 181: 024d:     READ.ERROR:
+ 182: 024d: 
+ 183: 024d:         CURRENT.CODE$ = CCLAM.CREDIT.CLAIM.NUM$
+ 184: 0263:         FILE.OPERATION$ = "R"
+ 185: 0272:         CURRENT.REPORT.NUM% = CCLAM.REPORT.NUM%
+ 186: 0280:         EXIT FUNCTION
+ 187: 0282: 
+ 188: 0282:   END FUNCTION
+ 189: 0291:   
+ 190: 0291: 
+ 191: 0291: 
+ 192: 0291:   FUNCTION READ.CCLAM.LOCKED PUBLIC
+ 193: 02a5: 
+ 194: 02a5:     INTEGER*2 READ.CCLAM.LOCKED
+ 195: 02a5:     STRING FORMAT$
+ 196: 02a5:     READ.CCLAM.LOCKED = 1    
+ 197: 02aa:        FORMAT$ = "T5,C7,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,C9,2C3" +               \
+ 198: 02be:                  ",2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,3C1,C7"
+ 199: 02be:        IF END #CCLAM.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 200: 02d2:        READ FORM FORMAT$; #CCLAM.SESS.NUM% AUTOLOCK                     \
+ 201: 0489:           KEY CCLAM.CREDIT.CLAIM.NUM$;                                  \
+ 202: 0489:               CCLAM.UOD.NUM$,                                           \  
+ 203: 0489:               CCLAM.NUM.OF.ITEMS%,                                      \
+ 204: 0489:               CCLAM.SUPPLY.ROUTE$,                                      \        
+ 205: 0489:               CCLAM.DISP.LOCATION$,                                     \  
+ 206: 0489:               CCLAM.BC.LETTER$,                                         \  
+ 207: 0489:               CCLAM.RECALL.NUM$,                                        \  
+ 208: 0489:               CCLAM.AUTHORISATION$,                                     \ 
+ 209: 0489:               CCLAM.SUPPLIER$,                                          \ 
+ 210: 0489:               CCLAM.METHOD.OF.RETURN$,                                  \  
+ 211: 0489:               CCLAM.CARRIER$,                                           \  
+ 212: 0489:               CCLAM.BIRD.NUM$,                                          \  
+ 213: 0489:               CCLAM.REASON.NUM$,                                        \  
+ 214: 0489:               CCLAM.RECEIVING.STORE$,                                   \  
+ 215: 0489:               CCLAM.DESTINATION$,                                       \  
+ 216: 0489:               CCLAM.WAREHOUSE.ROUTE$,                                   \  
+ 217: 0489:               CCLAM.UOD.TYPE$,                                          \  
+ 218: 0489:               CCLAM.DAMAGE.REASON$,                                     \  
+ 219: 0489:               CCLAM.INVOICE.NUM$,                                       \  
+ 220: 0489:               CCLAM.FOLIO.NUM$,                                         \  
+ 221: 0489:               CCLAM.BATCH.REF$,                                         \  
+ 222: 0489:               CCLAM.WHOLE.PART.CON$,                                    \
+ 223: 0489:               CCLAM.REPAIR.CATEGORY$,                                   \  
+ 224: 0489:               CCLAM.REPAIR.NUM$,                                        \  
+ 225: 0489:               CCLAM.PLAN4.POLICY.NUM$,                                  \  
+ 226: 0489:               CCLAM.DDDA.DCDR.NUM$,                                     \  
+ 227: 0489:               CCLAM.DELIV.NOTE.NUM$,                                    \  
+ 228: 0489:               CCLAM.DELIV.DATE$,                                        \
+ 229: 0489:               CCLAM.NUM.CARTONS.RECEIV$,                                \  
+ 230: 0489:               CCLAM.ORDER.NUM$,                                         \  
+ 231: 0489:               CCLAM.COMMENT$,                                           \  
+ 232: 0489:               CCLAM.DATE.OF.CLAIM$,                                     \  
+ 233: 0489:               CCLAM.TIME.OF.CLAIM$,                                     \  
+ 234: 0489:               CCLAM.RETRIEVAL.FLAG$,                                    \  
+ 235: 0489:               CCLAM.CF.RPT.MARKER$,                                     \
+ 236: 0489:               CCLAM.CANC.MARKER$,                                       \  
+ 237: 0489:               CCLAM.FILLER$             
+ 238: 0489:        READ.CCLAM.LOCKED = 0
+ 239: 048e:        EXIT FUNCTION     
+ 240: 0490:         
+ 241: 0490:     READ.LOCKED.ERROR:
+ 242: 0490: 
+ 243: 0490:         CURRENT.CODE$ = CCLAM.CREDIT.CLAIM.NUM$
+ 244: 04a6:         FILE.OPERATION$ = "R"
+ 245: 04b5:         CURRENT.REPORT.NUM% = CCLAM.REPORT.NUM%
+ 246: 04c3:            
+ 247: 04c3:         EXIT FUNCTION
+ 248: 04c5: 
+ 249: 04c5:   END FUNCTION  
+ 250: 04d4: 
+ 251: 04d4: 
+ 252: 04d4: 
+ 253: 04d4:   FUNCTION WRITE.HOLD.CCLAM PUBLIC
+ 254: 04e8: 
+ 255: 04e8:     INTEGER*2 WRITE.HOLD.CCLAM
+ 256: 04e8:     STRING FORMAT$
+ 257: 04e8:     WRITE.HOLD.CCLAM = 1
+ 258: 04ed:        FORMAT$ = "C4,C7,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,C9,2C3" +               \
+ 259: 0501:                  ",2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,3C1,C7"
+ 260: 0501:        IF END #CCLAM.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 261: 0515:        WRITE FORM FORMAT$; HOLD #CCLAM.SESS.NUM%;                       \        
+ 262: 0777:               CCLAM.CREDIT.CLAIM.NUM$,                                  \
+ 263: 0777:               CCLAM.UOD.NUM$,                                           \  
+ 264: 0777:               CCLAM.NUM.OF.ITEMS%,                                      \
+ 265: 0777:               CCLAM.SUPPLY.ROUTE$,                                      \        
+ 266: 0777:               CCLAM.DISP.LOCATION$,                                     \  
+ 267: 0777:               CCLAM.BC.LETTER$,                                         \  
+ 268: 0777:               CCLAM.RECALL.NUM$,                                        \  
+ 269: 0777:               CCLAM.AUTHORISATION$,                                     \ 
+ 270: 0777:               CCLAM.SUPPLIER$,                                          \ 
+ 271: 0777:               CCLAM.METHOD.OF.RETURN$,                                  \  
+ 272: 0777:               CCLAM.CARRIER$,                                           \  
+ 273: 0777:               CCLAM.BIRD.NUM$,                                          \  
+ 274: 0777:               CCLAM.REASON.NUM$,                                        \  
+ 275: 0777:               CCLAM.RECEIVING.STORE$,                                   \  
+ 276: 0777:               CCLAM.DESTINATION$,                                       \  
+ 277: 0777:               CCLAM.WAREHOUSE.ROUTE$,                                   \  
+ 278: 0777:               CCLAM.UOD.TYPE$,                                          \  
+ 279: 0777:               CCLAM.DAMAGE.REASON$,                                     \  
+ 280: 0777:               CCLAM.INVOICE.NUM$,                                       \  
+ 281: 0777:               CCLAM.FOLIO.NUM$,                                         \  
+ 282: 0777:               CCLAM.BATCH.REF$,                                         \  
+ 283: 0777:               CCLAM.WHOLE.PART.CON$,                                    \
+ 284: 0777:               CCLAM.REPAIR.CATEGORY$,                                   \  
+ 285: 0777:               CCLAM.REPAIR.NUM$,                                        \  
+ 286: 0777:               CCLAM.PLAN4.POLICY.NUM$,                                  \  
+ 287: 0777:               CCLAM.DDDA.DCDR.NUM$,                                     \  
+ 288: 0777:               CCLAM.DELIV.NOTE.NUM$,                                    \  
+ 289: 0777:               CCLAM.DELIV.DATE$,                                        \
+ 290: 0777:               CCLAM.NUM.CARTONS.RECEIV$,                                \  
+ 291: 0777:               CCLAM.ORDER.NUM$,                                         \  
+ 292: 0777:               CCLAM.COMMENT$,                                           \  
+ 293: 0777:               CCLAM.DATE.OF.CLAIM$,                                     \  
+ 294: 0777:               CCLAM.TIME.OF.CLAIM$,                                     \  
+ 295: 0777:               CCLAM.RETRIEVAL.FLAG$,                                    \  
+ 296: 0777:               CCLAM.CF.RPT.MARKER$,                                     \
+ 297: 0777:               CCLAM.CANC.MARKER$,                                       \  
+ 298: 0777:               CCLAM.FILLER$             
+ 299: 0777:        WRITE.HOLD.CCLAM = 0
+ 300: 077c:        EXIT FUNCTION         
+ 301: 077e:      
+ 302: 077e:     WRITE.HOLD.ERROR:
+ 303: 077e:      
+ 304: 077e:        FILE.OPERATION$ = "W"
+ 305: 078d:        CURRENT.REPORT.NUM% = CCLAM.REPORT.NUM%
+ 306: 079b:        CURRENT.CODE$ = CCLAM.CREDIT.CLAIM.NUM$
+ 307: 07b1:     
+ 308: 07b1:        EXIT FUNCTION    
+ 309: 07b3: 
+ 310: 07b3:   END FUNCTION
+ 311: 07c2: 
+ 312: 07c2: 
+ 313: 07c2: 
+ 314: 07c2:   FUNCTION WRITE.UNLOCK.CCLAM PUBLIC
+ 315: 07d6: 
+ 316: 07d6:     INTEGER*2 WRITE.UNLOCK.CCLAM
+ 317: 07d6:     STRING FORMAT$
+ 318: 07d6:     WRITE.UNLOCK.CCLAM = 1
+ 319: 07db:        FORMAT$ = "C4,C7,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,C9,2C3" +               \
+ 320: 07ef:                  ",2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,3C1,C7"
+ 321: 07ef:        IF END #CCLAM.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 322: 0803:        WRITE FORM FORMAT$; #CCLAM.SESS.NUM% AUTOUNLOCK;                 \
+ 323: 0a65:               CCLAM.CREDIT.CLAIM.NUM$,                                  \
+ 324: 0a65:               CCLAM.UOD.NUM$,                                           \  
+ 325: 0a65:               CCLAM.NUM.OF.ITEMS%,                                      \
+ 326: 0a65:               CCLAM.SUPPLY.ROUTE$,                                      \        
+ 327: 0a65:               CCLAM.DISP.LOCATION$,                                     \  
+ 328: 0a65:               CCLAM.BC.LETTER$,                                         \  
+ 329: 0a65:               CCLAM.RECALL.NUM$,                                        \  
+ 330: 0a65:               CCLAM.AUTHORISATION$,                                     \ 
+ 331: 0a65:               CCLAM.SUPPLIER$,                                          \ 
+ 332: 0a65:               CCLAM.METHOD.OF.RETURN$,                                  \  
+ 333: 0a65:               CCLAM.CARRIER$,                                           \  
+ 334: 0a65:               CCLAM.BIRD.NUM$,                                          \  
+ 335: 0a65:               CCLAM.REASON.NUM$,                                        \  
+ 336: 0a65:               CCLAM.RECEIVING.STORE$,                                   \  
+ 337: 0a65:               CCLAM.DESTINATION$,                                       \  
+ 338: 0a65:               CCLAM.WAREHOUSE.ROUTE$,                                   \  
+ 339: 0a65:               CCLAM.UOD.TYPE$,                                          \  
+ 340: 0a65:               CCLAM.DAMAGE.REASON$,                                     \  
+ 341: 0a65:               CCLAM.INVOICE.NUM$,                                       \  
+ 342: 0a65:               CCLAM.FOLIO.NUM$,                                         \  
+ 343: 0a65:               CCLAM.BATCH.REF$,                                         \  
+ 344: 0a65:               CCLAM.REPAIR.CATEGORY$,                                   \  
+ 345: 0a65:               CCLAM.WHOLE.PART.CON$,                                    \
+ 346: 0a65:               CCLAM.REPAIR.NUM$,                                        \  
+ 347: 0a65:               CCLAM.PLAN4.POLICY.NUM$,                                  \  
+ 348: 0a65:               CCLAM.DDDA.DCDR.NUM$,                                     \  
+ 349: 0a65:               CCLAM.DELIV.NOTE.NUM$,                                    \  
+ 350: 0a65:               CCLAM.DELIV.DATE$,                                        \
+ 351: 0a65:               CCLAM.NUM.CARTONS.RECEIV$,                                \  
+ 352: 0a65:               CCLAM.ORDER.NUM$,                                         \  
+ 353: 0a65:               CCLAM.COMMENT$,                                           \  
+ 354: 0a65:               CCLAM.DATE.OF.CLAIM$,                                     \  
+ 355: 0a65:               CCLAM.TIME.OF.CLAIM$,                                     \  
+ 356: 0a65:               CCLAM.RETRIEVAL.FLAG$,                                    \  
+ 357: 0a65:               CCLAM.CF.RPT.MARKER$,                                     \
+ 358: 0a65:               CCLAM.CANC.MARKER$,                                       \  
+ 359: 0a65:               CCLAM.FILLER$                     
+ 360: 0a65:        WRITE.UNLOCK.CCLAM = 0
+ 361: 0a6a:        EXIT FUNCTION         
+ 362: 0a6c:      
+ 363: 0a6c:     WRITE.UNLOCK.ERROR:
+ 364: 0a6c:      
+ 365: 0a6c:        FILE.OPERATION$ = "W"
+ 366: 0a7b:        CURRENT.REPORT.NUM% = CCLAM.REPORT.NUM%
+ 367: 0a89:        CURRENT.CODE$ = CCLAM.CREDIT.CLAIM.NUM$
+ 368: 0a9f:     
+ 369: 0a9f:        EXIT FUNCTION    
+ 370: 0aa1: 
+ 371: 0aa1:   END FUNCTION
+ 372: 0ab0: 
+ 373: 0ab0: 
+ 374: 0ab0: 
+ 375: 0ab0:   FUNCTION WRITE.HOLD.UNLOCK.CCLAM PUBLIC
+ 376: 0ac4: 
+ 377: 0ac4:     INTEGER*2 WRITE.HOLD.UNLOCK.CCLAM
+ 378: 0ac4:     STRING FORMAT$
+ 379: 0ac4:     WRITE.HOLD.UNLOCK.CCLAM = 1
+ 380: 0ac9:        FORMAT$ = "C4,C7,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,C9,2C3" +               \
+ 381: 0add:                  ",2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,3C1,C7"
+ 382: 0add:        IF END #CCLAM.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 383: 0af1:        WRITE FORM FORMAT$; HOLD #CCLAM.SESS.NUM% AUTOUNLOCK;            \
+ 384: 0d53:               CCLAM.CREDIT.CLAIM.NUM$,                                  \
+ 385: 0d53:               CCLAM.UOD.NUM$,                                           \  
+ 386: 0d53:               CCLAM.NUM.OF.ITEMS%,                                      \
+ 387: 0d53:               CCLAM.SUPPLY.ROUTE$,                                      \        
+ 388: 0d53:               CCLAM.DISP.LOCATION$,                                     \  
+ 389: 0d53:               CCLAM.BC.LETTER$,                                         \  
+ 390: 0d53:               CCLAM.RECALL.NUM$,                                        \  
+ 391: 0d53:               CCLAM.AUTHORISATION$,                                     \ 
+ 392: 0d53:               CCLAM.SUPPLIER$,                                          \ 
+ 393: 0d53:               CCLAM.METHOD.OF.RETURN$,                                  \  
+ 394: 0d53:               CCLAM.CARRIER$,                                           \  
+ 395: 0d53:               CCLAM.BIRD.NUM$,                                          \  
+ 396: 0d53:               CCLAM.REASON.NUM$,                                        \  
+ 397: 0d53:               CCLAM.RECEIVING.STORE$,                                   \  
+ 398: 0d53:               CCLAM.DESTINATION$,                                       \  
+ 399: 0d53:               CCLAM.WAREHOUSE.ROUTE$,                                   \  
+ 400: 0d53:               CCLAM.UOD.TYPE$,                                          \  
+ 401: 0d53:               CCLAM.DAMAGE.REASON$,                                     \  
+ 402: 0d53:               CCLAM.INVOICE.NUM$,                                       \  
+ 403: 0d53:               CCLAM.FOLIO.NUM$,                                         \  
+ 404: 0d53:               CCLAM.BATCH.REF$,                                         \  
+ 405: 0d53:               CCLAM.WHOLE.PART.CON$,                                    \
+ 406: 0d53:               CCLAM.REPAIR.CATEGORY$,                                   \  
+ 407: 0d53:               CCLAM.REPAIR.NUM$,                                        \  
+ 408: 0d53:               CCLAM.PLAN4.POLICY.NUM$,                                  \  
+ 409: 0d53:               CCLAM.DDDA.DCDR.NUM$,                                     \  
+ 410: 0d53:               CCLAM.DELIV.NOTE.NUM$,                                    \  
+ 411: 0d53:               CCLAM.DELIV.DATE$,                                        \
+ 412: 0d53:               CCLAM.NUM.CARTONS.RECEIV$,                                \  
+ 413: 0d53:               CCLAM.ORDER.NUM$,                                         \  
+ 414: 0d53:               CCLAM.COMMENT$,                                           \  
+ 415: 0d53:               CCLAM.DATE.OF.CLAIM$,                                     \  
+ 416: 0d53:               CCLAM.TIME.OF.CLAIM$,                                     \  
+ 417: 0d53:               CCLAM.RETRIEVAL.FLAG$,                                    \  
+ 418: 0d53:               CCLAM.CF.RPT.MARKER$,                                     \
+ 419: 0d53:               CCLAM.CANC.MARKER$,                                       \  
+ 420: 0d53:               CCLAM.FILLER$                     
+ 421: 0d53:        WRITE.HOLD.UNLOCK.CCLAM = 0
+ 422: 0d58:        EXIT FUNCTION         
+ 423: 0d5a:      
+ 424: 0d5a:     WRITE.HOLD.UNLOCK.ERROR:
+ 425: 0d5a:      
+ 426: 0d5a:        FILE.OPERATION$ = "W"
+ 427: 0d69:        CURRENT.REPORT.NUM% = CCLAM.REPORT.NUM%
+ 428: 0d77:        CURRENT.CODE$ = CCLAM.CREDIT.CLAIM.NUM$
+ 429: 0d8d:     
+ 430: 0d8d:        EXIT FUNCTION    
+ 431: 0d8f: 
+ 432: 0d8f:   END FUNCTION
+ 433: 0d9e: 
+ 434: 0d9e: 
+ 435: 0d9e: 
+ 436: 0d9e:   FUNCTION WRITE.CCLAM PUBLIC
+ 437: 0db2: 
+ 438: 0db2:     INTEGER*2 WRITE.CCLAM
+ 439: 0db2:     STRING FORMAT$
+ 440: 0db2:     WRITE.CCLAM = 1
+ 441: 0db7:        FORMAT$ = "C4,C7,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,C9,2C3" +       \
+ 442: 0dcb:                  ",2C1,2C6,C4,C9,C3,C1,C7,C20,2C3,3C1,C7"
+ 443: 0dcb:        IF END #CCLAM.SESS.NUM% THEN WRITE.ERROR
+ 444: 0ddf:        WRITE FORM FORMAT$; #CCLAM.SESS.NUM%;                            \     
+ 445: 1041:               CCLAM.CREDIT.CLAIM.NUM$,                                  \
+ 446: 1041:               CCLAM.UOD.NUM$,                                           \  
+ 447: 1041:               CCLAM.NUM.OF.ITEMS%,                                      \
+ 448: 1041:               CCLAM.SUPPLY.ROUTE$,                                      \        
+ 449: 1041:               CCLAM.DISP.LOCATION$,                                     \  
+ 450: 1041:               CCLAM.BC.LETTER$,                                         \  
+ 451: 1041:               CCLAM.RECALL.NUM$,                                        \  
+ 452: 1041:               CCLAM.AUTHORISATION$,                                     \ 
+ 453: 1041:               CCLAM.SUPPLIER$,                                          \ 
+ 454: 1041:               CCLAM.METHOD.OF.RETURN$,                                  \  
+ 455: 1041:               CCLAM.CARRIER$,                                           \  
+ 456: 1041:               CCLAM.BIRD.NUM$,                                          \  
+ 457: 1041:               CCLAM.REASON.NUM$,                                        \  
+ 458: 1041:               CCLAM.RECEIVING.STORE$,                                   \  
+ 459: 1041:               CCLAM.DESTINATION$,                                       \  
+ 460: 1041:               CCLAM.WAREHOUSE.ROUTE$,                                   \  
+ 461: 1041:               CCLAM.UOD.TYPE$,                                          \  
+ 462: 1041:               CCLAM.DAMAGE.REASON$,                                     \  
+ 463: 1041:               CCLAM.INVOICE.NUM$,                                       \  
+ 464: 1041:               CCLAM.FOLIO.NUM$,                                         \  
+ 465: 1041:               CCLAM.BATCH.REF$,                                         \  
+ 466: 1041:               CCLAM.WHOLE.PART.CON$,                                    \
+ 467: 1041:               CCLAM.REPAIR.CATEGORY$,                                   \  
+ 468: 1041:               CCLAM.REPAIR.NUM$,                                        \  
+ 469: 1041:               CCLAM.PLAN4.POLICY.NUM$,                                  \  
+ 470: 1041:               CCLAM.DDDA.DCDR.NUM$,                                     \  
+ 471: 1041:               CCLAM.DELIV.NOTE.NUM$,                                    \  
+ 472: 1041:               CCLAM.DELIV.DATE$,                                        \
+ 473: 1041:               CCLAM.NUM.CARTONS.RECEIV$,                                \  
+ 474: 1041:               CCLAM.ORDER.NUM$,                                         \  
+ 475: 1041:               CCLAM.COMMENT$,                                           \  
+ 476: 1041:               CCLAM.DATE.OF.CLAIM$,                                     \  
+ 477: 1041:               CCLAM.TIME.OF.CLAIM$,                                     \  
+ 478: 1041:               CCLAM.RETRIEVAL.FLAG$,                                    \  
+ 479: 1041:               CCLAM.CF.RPT.MARKER$,                                     \
+ 480: 1041:               CCLAM.CANC.MARKER$,                                       \  
+ 481: 1041:               CCLAM.FILLER$                   
+ 482: 1041:        WRITE.CCLAM = 0
+ 483: 1046:        EXIT FUNCTION         
+ 484: 1048:      
+ 485: 1048:     WRITE.ERROR:
+ 486: 1048:      
+ 487: 1048:        FILE.OPERATION$ = "W"
+ 488: 1057:        CURRENT.REPORT.NUM% = CCLAM.REPORT.NUM%
+ 489: 1065:        CURRENT.CODE$ = CCLAM.CREDIT.CLAIM.NUM$
+ 490: 107b:     
+ 491: 107b:        EXIT FUNCTION    
+ 492: 107d: 
+ 493: 107d:   END FUNCTION
+ 494: 108c: 
+ 495: 108c: End of Compilation

@@ -1,0 +1,156 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* Recalls Work (REWKF) FILE FUNCTIONS                            */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : REWKFFUN.BAS                                     */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Brian Greenfield        11th may 2007      */
+   8: 0000: \/*                                                                */
+   9: 0000: \/* VERSION B.          Brian Greenfield        15th April 2008    */
+  10: 0000: \/*                                                                */
+  11: 0000: \/* VERSION C.          Brian Greenfield        6th May 2008       */
+  12: 0000: \/*                                                                */
+  13: 0000: \/******************************************************************/
+  14: 0000: 
+  15: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  16: 0000: 
+  17: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  18: 0000:                     FILE.OPERATION$
+  19: 0000: 
+  20: 0000:    %INCLUDE REWKFDEC.J86
+  21: 0000: \/******************************************************************/
+  22: 0000: \/*                                                                */
+  23: 0000: \/* Recalls Work FILE GLOBAL VARIABLE DECLARATIONS                 */
+  24: 0000: \/*                                                                */
+  25: 0000: \/* REFERENCE   : REWKFDEC.J86                                     */
+  26: 0000: \/*                                                                */
+  27: 0000: \/* VERSION A.          Brian Greenfield        11th may 2007      */
+  28: 0000: \/*                                                                */
+  29: 0000: \/* VERSION B.          Brian Greenfield        15th April 2008    */
+  30: 0000: \/*                                                                */
+  31: 0000: \/* VERSION C.          Brian Greenfield        6th May 2008       */
+  32: 0000: \/*                                                                */
+  33: 0000: \/******************************************************************/
+  34: 0000: 
+  35: 0000:    STRING GLOBAL                \
+  36: 0000:       REWKF.FILE.NAME$,         \
+  37: 0000:                                 \
+  38: 0000:       REWKF.RCD$,               \  ? bytes  (25/47/8)
+  39: 0000:       REWKF.REC.TYPE$,          \  1 byte   (H/D/T)
+  40: 0000:       REWKF.REFERENCE$,         \  8 bytes
+  41: 0000:       REWKF.LABEL$,             \ 14 bytes (8 bytes label type)
+  42: 0000:                                 \          (6 bytes label number - zero's)
+  43: 0000:       REWKF.BATCH.TYPE$,        \  1 byte  (E/F/R/S/W/X/I/C) !BBG
+  44: 0000:       REWKF.MRQ$,               \  2 bytes ASCII !CBG
+  45: 0000:       REWKF.DUE.BY.DATE$,       \  8 bytes (YYYYMMDD) !BBG
+  46: 0000:       REWKF.BARCODE$,           \ 13 bytes (with check digit)
+  47: 0000:       REWKF.ITEM.CODE$,         \  7 bytes (with check digit)
+  48: 0000:       REWKF.DESCRIPTION$,       \ 20 bytes (truncated from the IDF)
+  49: 0000:       REWKF.TSF$,               \  4 bytes (1 - 9999 or SPACES for recall types F, S, & X)
+  50: 0000:       REWKF.ITEM.COUNT$         !  5 bytes (1 - 99999)
+  51: 0000:       
+  52: 0000:    INTEGER*2 GLOBAL             \
+  53: 0000:       REWKF.REPORT.NUM%,        \
+  54: 0000:       REWKF.SESS.NUM%           !
+  55: 0000: 
+  56: 0000: \/******************************************************************/
+  57: 0000: 
+  58: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  59: 0000: \/* FUNCTION REWKF.SET                                             */
+  60: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  61: 0000: 
+  62: 0000:    FUNCTION REWKF.SET PUBLIC
+  63: 0014: 
+  64: 0014:       INTEGER*1 REWKF.SET
+  65: 0014: 
+  66: 0014:       REWKF.REPORT.NUM% = 743
+  67: 001d:       REWKF.FILE.NAME$  = "REWKF"
+  68: 002c: 
+  69: 002c:    END FUNCTION
+  70: 003b: 
+  71: 003b: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  72: 003b: \/* FUNCTION READ.REWKF                                            */
+  73: 003b: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  74: 003b: 
+  75: 003b:    FUNCTION READ.REWKF PUBLIC
+  76: 004f: 
+  77: 004f:       INTEGER*2 READ.REWKF
+  78: 004f: 
+  79: 004f:       READ.REWKF = 1
+  80: 0054: 
+  81: 0054:       IF END #REWKF.SESS.NUM% THEN READ.ERROR
+  82: 0068:       READ #REWKF.SESS.NUM%; LINE REWKF.RCD$
+  83: 0081: 
+  84: 0081:       REWKF.REC.TYPE$ = MID$(REWKF.RCD$,1,2)
+  85: 00a0: 
+  86: 00a0:       IF REWKF.REC.TYPE$ = "YH" THEN BEGIN
+  87: 00b9:          REWKF.REFERENCE$   = MID$(REWKF.RCD$,3,8)
+  88: 00d8:          REWKF.LABEL$       = MID$(REWKF.RCD$,11,14)
+  89: 00f7:          REWKF.BATCH.TYPE$  = MID$(REWKF.RCD$,25,1) !BBG
+  90: 0116:          REWKF.MRQ$         = MID$(REWKF.RCD$,26,2) !BBG !CBG
+  91: 0135:          REWKF.DUE.BY.DATE$ = MID$(REWKF.RCD$,28,8) !BBG !CBG
+  92: 0157:       ENDIF ELSE IF REWKF.REC.TYPE$ = "YD" THEN BEGIN
+  93: 016d:          REWKF.BARCODE$     = MID$(REWKF.RCD$,3,13)
+  94: 018c:          REWKF.ITEM.CODE$   = MID$(REWKF.RCD$,16,7)
+  95: 01ab:          REWKF.DESCRIPTION$ = MID$(REWKF.RCD$,23,20)
+  96: 01ca:          REWKF.TSF$         = MID$(REWKF.RCD$,43,4)
+  97: 01eb:       ENDIF ELSE IF REWKF.REC.TYPE$ = "YT" THEN BEGIN
+  98: 0201:          REWKF.ITEM.COUNT$  = MID$(REWKF.RCD$,3,5)
+  99: 0220:       ENDIF
+ 100: 0220: 
+ 101: 0220:       READ.REWKF = 0
+ 102: 0225:    EXIT FUNCTION
+ 103: 0227: 
+ 104: 0227: 
+ 105: 0227: READ.ERROR:
+ 106: 0227: 
+ 107: 0227:       FILE.OPERATION$     = "R"
+ 108: 0236:       CURRENT.REPORT.NUM% = REWKF.REPORT.NUM%
+ 109: 0244:       CURRENT.CODE$       = ""
+ 110: 0253: 
+ 111: 0253:    END FUNCTION
+ 112: 0262: 
+ 113: 0262: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 114: 0262: \/* FUNCTION WRITE.REWKF                                           */
+ 115: 0262: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 116: 0262: 
+ 117: 0262:    FUNCTION WRITE.REWKF PUBLIC
+ 118: 0276: 
+ 119: 0276:       INTEGER*2 WRITE.REWKF
+ 120: 0276:       
+ 121: 0276:       WRITE.REWKF = 1
+ 122: 027b: 
+ 123: 027b:       IF REWKF.REC.TYPE$ = "YH" THEN BEGIN
+ 124: 0294:          REWKF.RCD$ = REWKF.REC.TYPE$ \
+ 125: 03da:                  + RIGHT$(STRING$(8,"0") + REWKF.REFERENCE$,8) \
+ 126: 03da:                  + RIGHT$(STRING$(14,"0") + REWKF.LABEL$,14) \  !BBG
+ 127: 03da:                  + RIGHT$("0" + REWKF.BATCH.TYPE$,1) \          !BBG
+ 128: 03da:                  + RIGHT$(" " + REWKF.MRQ$,2) \                 !BBG !CBG
+ 129: 03da:                  + RIGHT$(STRING$(8,"0") + REWKF.DUE.BY.DATE$,8)!BBG !CBG
+ 130: 03da:       ENDIF ELSE IF REWKF.REC.TYPE$ = "YD" THEN BEGIN
+ 131: 03f3:          REWKF.RCD$ = REWKF.REC.TYPE$ \
+ 132: 0519:                  + RIGHT$(STRING$(13,"0") + REWKF.BARCODE$,13) \
+ 133: 0519:                  + RIGHT$(STRING$(7,"0") + REWKF.ITEM.CODE$,7) \
+ 134: 0519:                  + LEFT$(REWKF.DESCRIPTION$ + STRING$(20," "),20) \
+ 135: 0519:                  + RIGHT$(STRING$(4," ") + REWKF.TSF$,4)
+ 136: 0519:       ENDIF ELSE IF REWKF.REC.TYPE$ = "YT" THEN BEGIN
+ 137: 052f:          REWKF.RCD$ = REWKF.REC.TYPE$ \
+ 138: 0582:                  + RIGHT$(STRING$(5,"0") + REWKF.ITEM.COUNT$,5)
+ 139: 0582:       ENDIF
+ 140: 0582: 
+ 141: 0582:       IF END #REWKF.SESS.NUM% THEN WRITE.ERROR
+ 142: 0596:       PRINT #REWKF.SESS.NUM%; REWKF.RCD$
+ 143: 05b4: 
+ 144: 05b4:       WRITE.REWKF = 0
+ 145: 05b9:       EXIT FUNCTION
+ 146: 05bb: 
+ 147: 05bb: WRITE.ERROR:
+ 148: 05bb: 
+ 149: 05bb:       FILE.OPERATION$ = "W"
+ 150: 05ca:       CURRENT.REPORT.NUM% = REWKF.REPORT.NUM%
+ 151: 05d8:       CURRENT.CODE$ = ""
+ 152: 05e7: 
+ 153: 05e7:    END FUNCTION
+ 154: 05f6: 
+ 155: 05f6: \/******************************************************************/
+ 156: 05f6: End of Compilation

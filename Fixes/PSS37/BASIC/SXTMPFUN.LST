@@ -1,0 +1,147 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   SXTMPFUN.BAS  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.4  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: \******************************************************************************\******************************************************************************
+  10: 0000: \******************************************************************************
+  11: 0000: \***
+  12: 0000: \***              STOCKTAKE TEMPORARY BUFFER FILE FUNCTIONS
+  13: 0000: \***
+  14: 0000: \***               REFERENCE    : SXTMPFUN.BAS
+  15: 0000: \***
+  16: 0000: \***         VERSION A            Nik Sen         30th June 1997
+  17: 0000: \***
+  18: 0000: \***         VERSION B            Nik Sen         18th August 1997
+  19: 0000: \***         Changed file length to accomodate changed data structure.
+  20: 0000: \***
+  21: 0000: \***         VERSION C            Nik Sen         23rd September 1997
+  22: 0000: \***         Changed file type from direct to sequential to speed up file
+  23: 0000: \***         copy after download.
+  24: 0000: \***
+  25: 0000: \***         VERSION D            Nik Sen          10th December 1997
+  26: 0000: \***         Changed record length to 30 bytes. (This is not actually
+  27: 0000: \***         required since file is now sequential) 
+  28: 0000: \***
+  29: 0000: \*******************************************************************************
+  30: 0000: \*******************************************************************************
+  31: 0000: 
+  32: 0000:     INTEGER*2 GLOBAL                \
+  33: 0000:        CURRENT.REPORT.NUM%
+  34: 0000:        
+  35: 0000:     STRING GLOBAL                    \
+  36: 0000:        CURRENT.CODE$,                \
+  37: 0000:        FILE.OPERATION$
+  38: 0000:     
+  39: 0000:     %INCLUDE SXTMPDEC.J86                                              
+  40: 0000: \******************************************************************************
+  41: 0000: \******************************************************************************
+  42: 0000: \***
+  43: 0000: \***         %INCLUDE FOR TEMPORARY STOCKTAKE BUFFER FILE FIELD DECLARATIONS
+  44: 0000: \***
+  45: 0000: \***               FILE TYPE    : DIRECT
+  46: 0000: \***
+  47: 0000: \***               REFERENCE    : SXTMPDEC.J86
+  48: 0000: \***
+  49: 0000: \***    VERSION A.              Nik Sen.               30 Jun 1997.
+  50: 0000: \***    New file for stocktaking system. Holds counts read from PDT.
+  51: 0000: \***
+  52: 0000: \***    VERSION B              Nik Sen                 23 September 1997
+  53: 0000: \***    Removed record count as file converted from direct to sequential.
+  54: 0000: \***
+  55: 0000: \*******************************************************************************
+  56: 0000: \*******************************************************************************
+  57: 0000: 
+  58: 0000: STRING GLOBAL                                                  \
+  59: 0000:    SXTMP.FILE.NAME$,           \
+  60: 0000:    SXTMP.DATA$,                \
+  61: 0000:    SXTMP.STORE.NUMBER$,        \
+  62: 0000:    SXTMP.STOCKTAKER.NO$,       \
+  63: 0000:    SXTMP.DATE$,                \
+  64: 0000:    SXTMP.LOCATION$,            \
+  65: 0000:    SXTMP.ITEM.CODE$,           \
+  66: 0000:    SXTMP.QUANTITY$,            \
+  67: 0000:    SXTMP.PRICE$,               \
+  68: 0000:    SXTMP.RECORD.COUNT$,        \
+  69: 0000:    SXTMP.FILLER$
+  70: 0000: 
+  71: 0000: 
+  72: 0000: INTEGER*2 GLOBAL                \
+  73: 0000:    SXTMP.REPORT.NUM%,           \
+  74: 0000:    SXTMP.SESS.NUM%             
+  75: 0000: 
+  76: 0000: 
+  77: 0000: INTEGER*1 GLOBAL                \
+  78: 0000:    SXTMP.RECL%         
+  79: 0000: 
+  80: 0000: 
+  81: 0000: 
+  82: 0000:   FUNCTION SXTMP.SET PUBLIC
+  83: 0014: \***************************
+  84: 0014: 
+  85: 0014:     SXTMP.REPORT.NUM% = 531
+  86: 001d:     SXTMP.RECL%       = 30                                             ! DNS
+  87: 0025:     SXTMP.FILE.NAME$  = "SXTMP"
+  88: 0034:     
+  89: 0034:   END FUNCTION
+  90: 0040:     
+  91: 0040: \-----------------------------------------------------------------------------
+  92: 0040: 
+  93: 0040: FUNCTION READ.SXTMP PUBLIC
+  94: 0054: \****************************
+  95: 0054: 
+  96: 0054:     INTEGER*2 READ.SXTMP
+  97: 0054:     
+  98: 0054:     READ.SXTMP = 1
+  99: 0059:     
+ 100: 0059:     IF END #SXTMP.SESS.NUM% THEN READ.SXTMP.ERROR
+ 101: 006d:     READ #SXTMP.SESS.NUM%;SXTMP.DATA$                                  ! CNS
+ 102: 008b: 
+ 103: 008b: 
+ 104: 008b:     READ.SXTMP = 0
+ 105: 0090:     EXIT FUNCTION
+ 106: 0092:     
+ 107: 0092: READ.SXTMP.ERROR:
+ 108: 0092:     
+ 109: 0092:        FILE.OPERATION$ = "R"
+ 110: 00a1:        CURRENT.REPORT.NUM% = SXTMP.REPORT.NUM%
+ 111: 00af:        
+ 112: 00af:        EXIT FUNCTION
+ 113: 00b1: 
+ 114: 00b1: END FUNCTION
+ 115: 00c0:                
+ 116: 00c0: 
+ 117: 00c0: \-----------------------------------------------------------------------------
+ 118: 00c0:   
+ 119: 00c0: 
+ 120: 00c0:   
+ 121: 00c0: FUNCTION WRITE.SXTMP PUBLIC
+ 122: 00d4: \*****************************
+ 123: 00d4: 
+ 124: 00d4:        INTEGER*2 WRITE.SXTMP
+ 125: 00d4:     
+ 126: 00d4:        WRITE.SXTMP = 1
+ 127: 00d9:     
+ 128: 00d9:        IF END #SXTMP.SESS.NUM% THEN WRITE.SXTMP.ERROR
+ 129: 00ed:        WRITE #SXTMP.SESS.NUM%;SXTMP.DATA$                              ! CNS
+ 130: 010b: 
+ 131: 010b: 
+ 132: 010b: 
+ 133: 010b:        WRITE.SXTMP = 0
+ 134: 0110: 
+ 135: 0110:        EXIT FUNCTION
+ 136: 0112:    
+ 137: 0112: WRITE.SXTMP.ERROR:
+ 138: 0112:    
+ 139: 0112:       FILE.OPERATION$ = "W"                                            
+ 140: 0121:       CURRENT.REPORT.NUM% = SXTMP.REPORT.NUM%
+ 141: 012f:       
+ 142: 012f:       EXIT FUNCTION
+ 143: 0131: 
+ 144: 0131: END FUNCTION
+ 145: 0140: 
+ 146: 0140: 
+ 147: 0140: End of Compilation

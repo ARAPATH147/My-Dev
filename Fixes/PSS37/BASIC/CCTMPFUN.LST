@@ -1,0 +1,263 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***              RETURNS / AUTOMATIC CREDIT CLAIMING SYSTEM
+   5: 0000: \***
+   6: 0000: \***                 EXTERNAL FILE FUNCTION DEFINITIONS
+   7: 0000: \***
+   8: 0000: \***                    REFERENCE    : CCTMPFUN.BAS
+   9: 0000: \***
+  10: 0000: \***    Version A.         Michael Kelsall              30th September 1993
+  11: 0000: \***
+  12: 0000: \*******************************************************************************
+  13: 0000: \*******************************************************************************
+  14: 0000:  
+  15: 0000:   INTEGER*2 GLOBAL              \
+  16: 0000:          CURRENT.REPORT.NUM%
+  17: 0000:          
+  18: 0000:   STRING GLOBAL                 \
+  19: 0000:          CURRENT.CODE$,         \
+  20: 0000:          FILE.OPERATION$
+  21: 0000:          
+  22: 0000:   %INCLUDE CCTMPDEC.J86                                                
+  23: 0000: REM \
+  24: 0000: \******************************************************************************
+  25: 0000: \******************************************************************************
+  26: 0000: \***
+  27: 0000: \***      %INCLUDE FOR CREDIT CLAIMING TEMPORARY FILE FIELD DECLARATIONS
+  28: 0000: \***                                             FILE REFERENCE PARAMETERS
+  29: 0000: \***
+  30: 0000: \***               FILE TYPE    : Sequential
+  31: 0000: \***
+  32: 0000: \***               REFERENCE    : CCTMPDEC.J86
+  33: 0000: \***
+  34: 0000: \***      Version A.     Michael J. Kelsall           30th September 1993.
+  35: 0000: \***
+  36: 0000: \***      Version 1.1    Brian Greenfield             14th May 2007
+  37: 0000: \***      Added new variable CCTMP.RECALL.TYPE$ for A7C Recalls.
+  38: 0000: \***
+  39: 0000: \******************************************************************************
+  40: 0000: \*******************************************************************************
+  41: 0000: \***
+  42: 0000: \***  The length of the records on this file vary depending on the record
+  43: 0000: \***  transaction type, but they all comprise combinations of the fields
+  44: 0000: \***  defined below.
+  45: 0000: \***
+  46: 0000: \***  RETURNS/AUTOMATIC CREDIT CLAIMING RECORD TYPES;
+  47: 0000: \***
+  48: 0000: \***  Transaction type 24 - Whole or Part consignment record
+  49: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, CREDIT CLAIM NUM, 
+  50: 0000: \***     BC LETTER, CLAIM TYPE, SUPPLIER NUM, INVOICE NUM, FOLIO NUM, 
+  51: 0000: \***     BATCH REF NUM, REPAIR CATEGORY, REPAIR NUM, PLAN4 POLICY NUM, 
+  52: 0000: \***     DDDA/DCDR NUM, DELIV NOTE NUM, DELIV DATE, NUM OF CARTONS, ORDER NUM,
+  53: 0000: \***     NUM OF ITEMS, ITEM/BAR CODE FLAG, BOOTS/BAR CODE, QTY, PRICE, 
+  54: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+  55: 0000: \***     (ITEM/BAR CODE FLAG to PRICE repeated NUM OF ITEMS times)
+  56: 0000: \***
+  57: 0000: \***  Transaction type 26 - Data from LDT
+  58: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, UOD NUM, UOD STATUS, 
+  59: 0000: \***     CREDIT CLAIM NUM, NUM OF ITEMS UPDATED, TOTAL QTY IN UOD, 
+  60: 0000: \***     ADJUST STOCK FIGURE FLAG, SUPPLY ROUTE, DISP LOCATION, BC LETTER, 
+  61: 0000: \***     RECALL NUM, AUTHORISATION, SUPPLIER, RETURN METHOD, CARRIER, BIRD NUM,
+  62: 0000: \***     REASON, WAREHOUSE ROUTE, UOD TYPE, REASON FOR DAMAGE, RECEIVING STORE,
+  63: 0000: \***     DESTINATION, DATE UOD OPENED, DATE UOD DESPATCHED, TIME UOD 
+  64: 0000: \***     DESPATCHED, RECALL.TYPE$, ITEM.BAR CODE FLAG, BOOTS/BAR CODE, QTY,       ! 1.1BG
+  65: 0000: \***     ITEM UPDATED FLAG, RECORD DELIMITER, END OF RECORD MARKER
+  66: 0000: \***     (ITEM/BAR CODE FLAG to ITEM UPDATED FLAG repeated NUM OF ITEMS times)
+  67: 0000: \***
+  68: 0000: \***  Transaction type 28 - Cancelled Credit Claim
+  69: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, CLAIM NUMBER, UOD
+  70: 0000: \***     NUM, NEW STATUS FLAG, RECORD DELIMITER, END OF RECORD MARKER
+  71: 0000: \***
+  72: 0000: \******************************************************************************
+  73: 0000: 
+  74: 0000:   STRING GLOBAL              \
+  75: 0000:     CCTMP.FILE.NAME$,        \
+  76: 0000:     CCTMP.RECORD$,           \ Used to store the whole record which is unstrung
+  77: 0000:                              \ into the fields below
+  78: 0000:     CCTMP.RECORD.DELIMITER$, \ 1 byte ASCII set to " (CHR$(34)) 
+  79: 0000:     CCTMP.TRANS.TYPE$,       \ 1 byte UPD. 24 = Whole/Part consignment (R/ACC)
+  80: 0000:                  \             25 = NS16 / Misc cont txn (R/ACC)
+  81: 0000:                  \             26 = Data from LDT (R/ACC)
+  82: 0000:                  \             27 = End of LDT session (R/ACC)
+  83: 0000:                  \         28 = Canc. Credit Claim (R/ACC)
+  84: 0000:     CCTMP.FIELD.DELIMITER$,  \ 1 byte ASCII set to ; (CHR$(59))
+  85: 0000:     CCTMP.ENDREC.MARKER$,    \ 2 bytes ASCII set to 0D0AH
+  86: 0000:     CCTMP.BC.LETTER$,        \ 1 byte ASCII
+  87: 0000:     CCTMP.CREDIT.CLAIM.NUM$, \ 4 byte UPD
+  88: 0000:     CCTMP.NUM.ITEMS.UPDATED$,\ 4 byte ASCII
+  89: 0000:     CCTMP.TOTAL.QTY.IN.UOD$, \ 4 byte ASCII
+  90: 0000:     CCTMP.CLAIM.TYPE$,       \ 1 byte ASC;  "M" = Missing,
+  91: 0000:                      \          "E" = Excess,
+  92: 0000:                  \              "R" = Repairs
+  93: 0000:     CCTMP.SUPPLIER.NUM$,     \ 3 byte UPD
+  94: 0000:     CCTMP.INVOICE.NUM$,      \ 3 byte UPD 
+  95: 0000:     CCTMP.FOLIO.NUM$,        \ 3 byte UPD
+  96: 0000:     CCTMP.BATCH.REF$,        \ 3 byte UPD
+  97: 0000:     CCTMP.REPAIR.CATEGORY$,  \ 1 byte UPD;   1 = Plan4,
+  98: 0000:                  \           2 = Estimate,
+  99: 0000:                  \           3 = Boots guarantee,
+ 100: 0000:                  \           4 = Supplier guarantee,
+ 101: 0000:                  \           5 = Other guarantee,
+ 102: 0000:     CCTMP.REPAIR.NUM$,       \ 4 byte UPD
+ 103: 0000:     CCTMP.PLAN4.POLICY.NUM$, \ 6 byte UPD; (Only if repair cat is Plan4)
+ 104: 0000:     CCTMP.DDDA.DCDR.NUM$,    \ 3 byte UPD
+ 105: 0000:     CCTMP.DELIV.NOTE.NUM$,   \ 3 byte UPD
+ 106: 0000:     CCTMP.NUM.CARTONS.RECEIV$,\1 byte UPD
+ 107: 0000:     CCTMP.ORDER.NUM$,        \ 3 byte UPD
+ 108: 0000:     CCTMP.ITEM.BARCODE.FLAG$,\ 1 byte ASC;  "I" = Boots item code,
+ 109: 0000:                  \              "B" = Barcode.
+ 110: 0000:     CCTMP.ITEM.BARCODE$,     \ 7 byte UPD
+ 111: 0000:     CCTMP.ITEM.PRICE$,       \ 3 byte UPD;  Spaces.
+ 112: 0000:     CCTMP.AUTHORISATION$,    \ 15 byte ASC
+ 113: 0000:     CCTMP.ADJ.STOCK.FIGURE$, \ 1 byte ASC  "Y" or "N"
+ 114: 0000:     CCTMP.RETURN.REASON$,    \ 1 byte UPD;  (See CCRSN file)
+ 115: 0000:     CCTMP.UOD.NUM$,      \ 7 byte UPD
+ 116: 0000:     CCTMP.UOD.STATUS$,       \ 1 byte ASC;  "O" = Open,
+ 117: 0000:                      \              "C" = Closed,
+ 118: 0000:                  \              "D" = Despatched
+ 119: 0000:     CCTMP.PREVIOUS.STATUS$,  \ 1 byte ASC   "O" = Open,
+ 120: 0000:                      \              "C" = Closed
+ 121: 0000:     CCTMP.SUPPLY.ROUTE$,     \ 1 byte ASC
+ 122: 0000:     CCTMP.DISP.LOCATION$,    \ 1 byte ASC   "M" = MDS,
+ 123: 0000:                      \              "D" = Dispensary
+ 124: 0000:     CCTMP.RECALL.NUM$,       \ 9 byte ASC 
+ 125: 0000:     CCTMP.SUPPLIER$,         \ 15 byte ASC
+ 126: 0000:     CCTMP.RETURN.METHOD$,    \ 1 byte UPD;   1 = Carrier,
+ 127: 0000:                      \           2 = BIRD,
+ 128: 0000:                  \               3 = Via D6,
+ 129: 0000:                  \               4 = Representative
+ 130: 0000:     CCTMP.CARRIER$,      \ 1 byte UPD;   1 = GPO,
+ 131: 0000:                      \               2 = Parcelforce,
+ 132: 0000:                  \               3 = Securicor,
+ 133: 0000:                  \               4 = Other
+ 134: 0000:     CCTMP.BIRD.NUM$,         \ 8 byte ASC
+ 135: 0000:     CCTMP.WAREHOUSE.ROUTE$,  \ 1 byte ASC   "R" = RDC,
+ 136: 0000:                      \          "C" = CSR
+ 137: 0000:     CCTMP.UOD.TYPE$,         \ 1 byte UPD;   1 = Travel Outer,
+ 138: 0000:                      \               2 = Town Tray,
+ 139: 0000:                  \               3 = Roll cage,
+ 140: 0000:                  \               4 = Other
+ 141: 0000:     CCTMP.DAMAGE.REASON$,    \ 1 byte UPD    1 = Bad packaging,
+ 142: 0000:                      \               2 = Poor handling
+ 143: 0000:     CCTMP.RECEIVING.STORE$,  \ 2 byte UPD
+ 144: 0000:     CCTMP.DESTINATION$,      \ 1 byte UPD    1 = Business Centre,
+ 145: 0000:                      \               2 = MTS,
+ 146: 0000:                  \               3 = Other
+ 147: 0000:     CCTMP.DATE.UOD.OPENED$,  \ 3 byte UPD
+ 148: 0000:     CCTMP.DATE.DESPATCHED$,  \ 3 byte UPD
+ 149: 0000:     CCTMP.TIME.DESPATCHED$,  \ 3 byte UPD
+ 150: 0000:     CCTMP.ITEM.UPDATED$,     \ 1 byte ASC
+ 151: 0000:     CCTMP.NEW.STATUS.FLAG$,  \ 1 byte ASC   "C" = Closed,
+ 152: 0000:                      \          "D" = Despatched,
+ 153: 0000:                  \          "X" = Cancelled
+ 154: 0000:     CCTMP.ITEM.QTY$,         \ 3 byte ASCII              
+ 155: 0000:     CCTMP.RECALL.TYPE$       ! 1 byte ASCII "B" = Batch Recall              ! 1.1BG
+ 156: 0000:                              !              "N" = Non-batch Recall          ! 1.1BG
+ 157: 0000:                              !              " " = Old Credit Claim          ! 1.1BG
+ 158: 0000:     
+ 159: 0000:                                                  
+ 160: 0000:   INTEGER*2 GLOBAL           \
+ 161: 0000:     CCTMP.SESS.NUM%,         \
+ 162: 0000:     CCTMP.REPORT.NUM%,       \
+ 163: 0000:                      \
+ 164: 0000:     CCTMP.NUM.OF.ITEMS%,     \
+ 165: 0000:     CCTMP.NUM.ITEMS.UPDATED%,\ 
+ 166: 0000:     CCTMP.TOTAL.QTY.IN.UOD%  !
+ 167: 0000:                          
+ 168: 0000:                  
+ 169: 0000:                                                                      
+ 170: 0000:   
+ 171: 0000:   FUNCTION CCTMP.SET PUBLIC
+ 172: 0014:     INTEGER*2 CCTMP.SET
+ 173: 0014:     
+ 174: 0014:     CCTMP.SET = 1
+ 175: 0019: 
+ 176: 0019:       CCTMP.REPORT.NUM%  = 325
+ 177: 0022:       CCTMP.FILE.NAME$ = "CCTMP"
+ 178: 0031:     
+ 179: 0031:     CCTMP.SET = 0
+ 180: 0036: 
+ 181: 0036:   END FUNCTION
+ 182: 0045: 
+ 183: 0045: 
+ 184: 0045: 
+ 185: 0045:   FUNCTION READ.CCTMP PUBLIC
+ 186: 0059:     INTEGER*2 READ.CCTMP 
+ 187: 0059:     
+ 188: 0059:     READ.CCTMP = 1
+ 189: 005e:     
+ 190: 005e:        IF END #CCTMP.SESS.NUM% THEN READ.ERROR
+ 191: 0072:        READ #CCTMP.SESS.NUM%; LINE CCTMP.RECORD$
+ 192: 008b:        CCTMP.TRANS.TYPE$ = UNPACK$(MID$(CCTMP.RECORD$,2,1))
+ 193: 00af:     
+ 194: 00af:     READ.CCTMP = 0
+ 195: 00b4:     EXIT FUNCTION
+ 196: 00b6:     
+ 197: 00b6:     READ.ERROR:
+ 198: 00b6:     
+ 199: 00b6:        CURRENT.CODE$ = ""
+ 200: 00c5:        FILE.OPERATION$ = "R"
+ 201: 00d4:        CURRENT.REPORT.NUM% = CCTMP.REPORT.NUM%
+ 202: 00e2:        
+ 203: 00e2:        EXIT FUNCTION
+ 204: 00e4:                             
+ 205: 00e4:   END FUNCTION
+ 206: 00f3:   
+ 207: 00f3: 
+ 208: 00f3: 
+ 209: 00f3:   FUNCTION WRITE.CCTMP PUBLIC
+ 210: 0107: 
+ 211: 0107:     INTEGER*2 WRITE.CCTMP
+ 212: 0107:     
+ 213: 0107:     STRING FORMAT$,                                                   \
+ 214: 0107:            STRING.LENGTH$
+ 215: 0107:             
+ 216: 0107:     WRITE.CCTMP = 1  
+ 217: 010c: 
+ 218: 010c:        STRING.LENGTH$ = STR$(LEN(CCTMP.RECORD$))
+ 219: 0133:        FORMAT$ = "C" + STRING.LENGTH$                                      
+ 220: 014b:        IF END #CCTMP.SESS.NUM% THEN WRITE.ERROR
+ 221: 015f:        WRITE FORM FORMAT$; #CCTMP.SESS.NUM%; CCTMP.RECORD$                  
+ 222: 0185:        
+ 223: 0185:     WRITE.CCTMP = 0
+ 224: 018a:     EXIT FUNCTION
+ 225: 018c:     
+ 226: 018c:     WRITE.ERROR:
+ 227: 018c:        CURRENT.CODE$ = CCTMP.RECORD$
+ 228: 01a2:        FILE.OPERATION$= "O"
+ 229: 01b1:        CURRENT.REPORT.NUM% = CCTMP.REPORT.NUM%
+ 230: 01bf:        
+ 231: 01bf:        EXIT FUNCTION    
+ 232: 01c1: 
+ 233: 01c1:   END FUNCTION
+ 234: 01d0: 
+ 235: 01d0:   
+ 236: 01d0: 
+ 237: 01d0:   FUNCTION WRITE.HOLD.CCTMP PUBLIC                                      
+ 238: 01e4: 
+ 239: 01e4:     INTEGER*2 WRITE.HOLD.CCTMP                                          
+ 240: 01e4:     
+ 241: 01e4:     STRING FORMAT$,                                                     \ 
+ 242: 01e4:            STRING.LENGTH$                                               
+ 243: 01e4:             
+ 244: 01e4:     WRITE.HOLD.CCTMP = 1                                                
+ 245: 01e9: 
+ 246: 01e9:        STRING.LENGTH$ = STR$(LEN(CCTMP.RECORD$))                        
+ 247: 0210:        FORMAT$ = "C" + STRING.LENGTH$                                   
+ 248: 0228:        IF END #CCTMP.SESS.NUM% THEN WRITE.HOLD.ERROR                    
+ 249: 023c:        WRITE FORM FORMAT$; HOLD #CCTMP.SESS.NUM%; CCTMP.RECORD$         
+ 250: 0262:        
+ 251: 0262:     WRITE.HOLD.CCTMP = 0                                                
+ 252: 0267:     EXIT FUNCTION                                                       
+ 253: 0269:     
+ 254: 0269:     WRITE.HOLD.ERROR:                                                   
+ 255: 0269:     
+ 256: 0269:        CURRENT.CODE$ = CCTMP.RECORD$                                    
+ 257: 027f:        FILE.OPERATION$= "O"                                             
+ 258: 028e:        CURRENT.REPORT.NUM% = CCTMP.REPORT.NUM%                          
+ 259: 029c:        
+ 260: 029c:        EXIT FUNCTION                                                    
+ 261: 029e: 
+ 262: 029e:   END FUNCTION                                                          
+ 263: 02ad: End of Compilation

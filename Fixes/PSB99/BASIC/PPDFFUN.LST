@@ -1,0 +1,153 @@
+   1: 0000: 
+   2: 0000: \REM
+   3: 0000: \*******************************************************************************
+   4: 0000: \*******************************************************************************
+   5: 0000: \***
+   6: 0000: \***    %INCLUDE FOR PHARMACY PASSWORD DETAILS FILES PUBLIC FUNCTIONS
+   7: 0000: \***
+   8: 0000: \***        REFERENCE   :   PPDFFUN (BAS)
+   9: 0000: \***
+  10: 0000: \***        FILE TYPE   :   Direct
+  11: 0000: \***
+  12: 0000: \***    VERSION A.              ROBERT COWEY.                       21 FEB 1994.
+  13: 0000: \***    Original version.
+  14: 0000: \***
+  15: 0000: \*******************************************************************************
+  16: 0000: \*******************************************************************************
+  17: 0000: 
+  18: 0000: 
+  19: 0000:     %INCLUDE PPDFDEC.J86 ! PPDF variable declarations
+  20: 0000: 
+  21: 0000: \REM
+  22: 0000: \*******************************************************************************
+  23: 0000: \*******************************************************************************
+  24: 0000: \***
+  25: 0000: \***    %INCLUDE FOR PHARMACY PASSWORD DETAILS FILES VARIABLE DECLARATIONS
+  26: 0000: \***
+  27: 0000: \***        REFERENCE   :   PPDFDEC (J86)
+  28: 0000: \***
+  29: 0000: \***        FILE TYPE   :   Direct
+  30: 0000: \***
+  31: 0000: \***    VERSION A.              ROBERT COWEY.                       21 FEB 1994.
+  32: 0000: \***    Original version.
+  33: 0000: \***
+  34: 0000: \*******************************************************************************
+  35: 0000: \*******************************************************************************
+  36: 0000: 
+  37: 0000: 
+  38: 0000: \*******************************************************************************
+  39: 0000: \*******************************************************************************
+  40: 0000: \***
+  41: 0000: \***    PPDF RECORD LAYOUT
+  42: 0000: \***
+  43: 0000: \***     1  3  UPD  DATE.LAST.PSWD$      Date of last password change (YYMMDD)
+  44: 0000: \***     4  1  UPD  PSWD.DURATION$       Password duration (days)
+  45: 0000: \***     5  1  ASC  INTERMEDIATE.FLAG$   "Y" PHRML and ADXCSOUF passwords
+  46: 0000: \***                                         maintained in parallel (identical)
+  47: 0000: \***                                     "N" PHRML and EALAUTH passwords differ
+  48: 0000: \***     6 11  ASC  FILLER$              Spaces
+  49: 0000: \***
+  50: 0000: \***    Record length 16
+  51: 0000: \***
+  52: 0000: \*******************************************************************************
+  53: 0000: \*******************************************************************************
+  54: 0000: 
+  55: 0000:  
+  56: 0000:     STRING GLOBAL \
+  57: 0000:         PPDF.DATE.LAST.PSWD$, \
+  58: 0000:         PPDF.FILE.NAME$, \
+  59: 0000:         PPDF.FILLER$, \
+  60: 0000:         PPDF.INTERMEDIATE.FLAG$, \
+  61: 0000:         PPDF.PSWD.DURATION$
+  62: 0000: 
+  63: 0000: 
+  64: 0000:     INTEGER*2 GLOBAL \
+  65: 0000:         PPDF.RECL%, \
+  66: 0000:         PPDF.REPORT.NUM%, \
+  67: 0000:         PPDF.SESS.NUM%
+  68: 0000: 
+  69: 0000: 
+  70: 0000:     INTEGER*4 GLOBAL \
+  71: 0000:         PPDF.REC.NUM%
+  72: 0000: 
+  73: 0000: 
+  74: 0000:     STRING GLOBAL \
+  75: 0000:         CURRENT.CODE$, \
+  76: 0000:         FILE.OPERATION$
+  77: 0000: 
+  78: 0000:     INTEGER*2 GLOBAL \
+  79: 0000:         CURRENT.REPORT.NUM%
+  80: 0000: 
+  81: 0000: 
+  82: 0000: FUNCTION PPDF.SET PUBLIC
+  83: 0014: 
+  84: 0014:     INTEGER*2 PPDF.SET
+  85: 0014:     PPDF.SET EQ 1
+  86: 0019: 
+  87: 0019:     PPDF.FILE.NAME$  EQ "PPDF"
+  88: 0028:     PPDF.REPORT.NUM% EQ  385
+  89: 0031:     PPDF.RECL%       EQ  16
+  90: 003a: 
+  91: 003a:     PPDF.SET EQ 0
+  92: 003f: 
+  93: 003f: END FUNCTION
+  94: 004e: 
+  95: 004e: 
+  96: 004e: FUNCTION READ.PPDF PUBLIC
+  97: 0062: 
+  98: 0062:     INTEGER*2 READ.PPDF
+  99: 0062:     READ.PPDF EQ 1
+ 100: 0067: 
+ 101: 0067:     IF END # PPDF.SESS.NUM% THEN READ.PPDF.IF.END
+ 102: 007b:     READ FORM "C3,C1,C1,C11"; \
+ 103: 00ce:       # PPDF.SESS.NUM%, \
+ 104: 00ce:         PPDF.REC.NUM%; \
+ 105: 00ce:           PPDF.DATE.LAST.PSWD$, \
+ 106: 00ce:           PPDF.PSWD.DURATION$, \
+ 107: 00ce:           PPDF.INTERMEDIATE.FLAG$, \
+ 108: 00ce:           PPDF.FILLER$
+ 109: 00ce: 
+ 110: 00ce:     READ.PPDF EQ 0
+ 111: 00d3:     EXIT FUNCTION
+ 112: 00d5: 
+ 113: 00d5: READ.PPDF.IF.END:
+ 114: 00d5: 
+ 115: 00d5:     FILE.OPERATION$     EQ "R"
+ 116: 00e4:     CURRENT.REPORT.NUM% EQ  PPDF.REPORT.NUM%
+ 117: 00f2:     CURRENT.CODE$       EQ \
+ 118: 013a:       PACK$(RIGHT$("00000000000000" + STR$(PPDF.REC.NUM%),14))
+ 119: 013a: 
+ 120: 013a:     EXIT FUNCTION
+ 121: 013c: 
+ 122: 013c: END FUNCTION
+ 123: 014b: 
+ 124: 014b: 
+ 125: 014b: FUNCTION WRITE.PPDF PUBLIC
+ 126: 015f: 
+ 127: 015f:     INTEGER*2 WRITE.PPDF
+ 128: 015f:     WRITE.PPDF EQ 1
+ 129: 0164: 
+ 130: 0164:     IF END # PPDF.SESS.NUM% THEN WRITE.PPDF.IF.END
+ 131: 0178:     WRITE FORM "C3,C1,C1,C11"; \
+ 132: 01da:       # PPDF.SESS.NUM%, \
+ 133: 01da:         PPDF.REC.NUM%; \
+ 134: 01da:           PPDF.DATE.LAST.PSWD$, \
+ 135: 01da:           PPDF.PSWD.DURATION$, \
+ 136: 01da:           PPDF.INTERMEDIATE.FLAG$, \
+ 137: 01da:           PPDF.FILLER$
+ 138: 01da: 
+ 139: 01da:     WRITE.PPDF EQ 0
+ 140: 01df:     EXIT FUNCTION
+ 141: 01e1: 
+ 142: 01e1: WRITE.PPDF.IF.END:
+ 143: 01e1: 
+ 144: 01e1:     FILE.OPERATION$     EQ "W"
+ 145: 01f0:     CURRENT.REPORT.NUM% EQ  PPDF.REPORT.NUM%
+ 146: 01fe:     CURRENT.CODE$       EQ \
+ 147: 0246:       PACK$(RIGHT$("00000000000000" + STR$(PPDF.REC.NUM%),14))
+ 148: 0246: 
+ 149: 0246:     EXIT FUNCTION
+ 150: 0248: 
+ 151: 0248: END FUNCTION
+ 152: 0257: 
+ 153: 0257: End of Compilation

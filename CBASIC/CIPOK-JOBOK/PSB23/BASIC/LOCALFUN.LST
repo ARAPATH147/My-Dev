@@ -1,0 +1,231 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \***      Local Price Report Data File Functions 
+   3: 0000: \***      Version A           Paul Flanagan         28.06.93
+   4: 0000: \***
+   5: 0000: \***      Version B           Clive Norris          24.11.93
+   6: 0000: \***      AUTH.NUM$, STOCK.FIG$ and RETRIEVAL.FLAG$ replaced filler as
+   7: 0000: \***      part of the RETURNS/AUTOMATIC CREDIT CLAIMING package.
+   8: 0000: \***
+   9: 0000: \.............................................................................
+  10: 0000: 
+  11: 0000:    INTEGER*2 GLOBAL                  \
+  12: 0000:       CURRENT.REPORT.NUM%
+  13: 0000: 
+  14: 0000:    STRING GLOBAL                     \
+  15: 0000:       CURRENT.CODE$,                 \
+  16: 0000:       FILE.OPERATION$
+  17: 0000: 
+  18: 0000:    %INCLUDE LOCALDEC.J86
+  19: 0000: \******************************************************************************
+  20: 0000: \******************************************************************************
+  21: 0000: \***
+  22: 0000: \***   $Workfile:   LOCALDEC.J86  $
+  23: 0000: \***
+  24: 0000: \***   $Revision:   1.1  $
+  25: 0000: \***
+  26: 0000: \******************************************************************************
+  27: 0000: \******************************************************************************
+  28: 0000: \***
+  29: 0000: \***   $Log:   V:\archive\j86\localdec.j8v  $
+  30: 0000: \***   
+  31: 0000: \***      Rev 1.1   06 Dec 1994 17:32:36   DEVMJPS
+  32: 0000: \***    
+  33: 0000: \***   
+  34: 0000: \******************************************************************************
+  35: 0000: \******************************************************************************
+  36: 0000: \*****************************************************************************
+  37: 0000: \***            %INCLUDE FOR LOCAL DATA FILE
+  38: 0000: \***               - FIELD DECLARATIONS
+  39: 0000: \***               - FILE REFERENCE PARAMETERS
+  40: 0000: \***               FILE TYPE    : Keyed
+  41: 0000: \***               REFERENCE    : LOCALDE.J86
+  42: 0000: \***            Version A    Paul Flannagan         1st July 1993
+  43: 0000: \***
+  44: 0000: \***            Version B    Clive Norris           24th November 1993
+  45: 0000: \***       (Replaced filler with AUTH.NUM$, STOCK.FIG%, and RETRIEVAL.FLAG$
+  46: 0000: \***       as part of RETURNS/AUTOMATIC CREDIT CLAIMING project)
+  47: 0000: \***
+  48: 0000: \***            Version C    Mick Bayliss            6 Dec 1994       
+  49: 0000: \***       Add missing field.
+  50: 0000: \*** 
+  51: 0000: \*****************************************************************************
+  52: 0000: 
+  53: 0000:   STRING GLOBAL           \
+  54: 0000:     LOCAL.FILE.NAME$,     \
+  55: 0000:     LOCAL.ITEM.CODE$,     \ 4 bytes UPD (key) Boots code with check digit. 
+  56: 0000:     LOCAL.PRICE$,         \ 5 bytes UPD.
+  57: 0000:     LOCAL.START.DATE$,    \ 3 bytes UPD yymmdd. 
+  58: 0000:     LOCAL.START.TIME$,    \ 2 bytes UPD hhmm .
+  59: 0000:     LOCAL.END.DATE$,      \ 3 bytes UPD yymmdd.
+  60: 0000:     LOCAL.OPERATOR$,      \ 4 bytes UPD operator id (when set up).
+  61: 0000:     LOCAL.REASON$,        \ 4 byte ASCII 
+  62: 0000:     LOCAL.H.O.PRICE$,     \ 5 byte UPD.
+  63: 0000:     LOCAL.HO.CHANGE$,     \ 3 bytes UPD. Date of head office price change
+  64: 0000:                           \ (this will be zero if no change since local
+  65: 0000:                              \ price was initiated).
+  66: 0000:     LOCAL.AUTH.NUM$,      \ 4 bytes UPD Auth'n number from Business Centre.
+  67: 0000:     LOCAL.RETRIEVAL.FLAG$,\ 1 byte ASC; "Y" or "N"  
+  68: 0000:     LOCAL.SPACE$          !                                            !CMJB
+  69: 0000:         
+  70: 0000:   INTEGER*2 GLOBAL        \
+  71: 0000:     LOCAL.SESS.NUM%,      \
+  72: 0000:     LOCAL.REPORT.NUM%,    \
+  73: 0000:     LOCAL.RECL%,          \
+  74: 0000:     LOCAL.STOCK.FIG%      !  No. of items authorised at the price.  
+  75: 0000: 
+  76: 0000:    FUNCTION LOCAL.SET PUBLIC
+  77: 0014: 
+  78: 0014:     LOCAL.REPORT.NUM%   = 306
+  79: 001d:     LOCAL.RECL%         = 40            
+  80: 0026:     LOCAL.FILE.NAME$    = "LOCAL"
+  81: 0035:     
+  82: 0035:    END FUNCTION
+  83: 0041: 
+  84: 0041: \----------------------------------------------------------------------------
+  85: 0041: 
+  86: 0041:   FUNCTION READ.LOCAL PUBLIC
+  87: 0055: 
+  88: 0055:    INTEGER*2 READ.LOCAL
+  89: 0055: 
+  90: 0055:    READ.LOCAL = 1
+  91: 005a: 
+  92: 005a:    IF END#LOCAL.SESS.NUM% THEN READ.LOCAL.ERROR
+  93: 006e: 
+  94: 006e:     READ FORM "T5,C5,C3,C2,C3,C4,C4,C5,C3,C4,I2,C1"; #LOCAL.SESS.NUM% \ 
+  95: 010e:          KEY LOCAL.ITEM.CODE$;                                  \
+  96: 010e:              LOCAL.PRICE$,                                      \
+  97: 010e:              LOCAL.START.DATE$,                                 \
+  98: 010e:              LOCAL.START.TIME$,                                 \
+  99: 010e:              LOCAL.END.DATE$,                                   \
+ 100: 010e:              LOCAL.OPERATOR$,                                   \
+ 101: 010e:              LOCAL.REASON$,                                     \
+ 102: 010e:              LOCAL.H.O.PRICE$,                                  \
+ 103: 010e:              LOCAL.HO.CHANGE$,                                  \
+ 104: 010e:              LOCAL.AUTH.NUM$,                                   \
+ 105: 010e:              LOCAL.STOCK.FIG%,                                  \
+ 106: 010e:              LOCAL.RETRIEVAL.FLAG$
+ 107: 010e: 
+ 108: 010e:    READ.LOCAL = 0
+ 109: 0113:    EXIT FUNCTION
+ 110: 0115: 
+ 111: 0115:    READ.LOCAL.ERROR:
+ 112: 0115: 
+ 113: 0115:    CURRENT.REPORT.NUM% = LOCAL.REPORT.NUM%
+ 114: 0123:    FILE.OPERATION$ = "R"
+ 115: 0132:    CURRENT.CODE$ = LOCAL.ITEM.CODE$
+ 116: 0148: 
+ 117: 0148:    EXIT FUNCTION
+ 118: 014a:   END FUNCTION
+ 119: 0159: 
+ 120: 0159: \----------------------------------------------------------------------------
+ 121: 0159:   FUNCTION READ.LOCAL.LOCK PUBLIC
+ 122: 016d: 
+ 123: 016d:    INTEGER*2 READ.LOCAL.LOCK
+ 124: 016d: 
+ 125: 016d:    READ.LOCAL.LOCK = 1
+ 126: 0172: 
+ 127: 0172:    IF END#LOCAL.SESS.NUM% THEN READ.LOCAL.LOCK.ERROR
+ 128: 0186: 
+ 129: 0186:     READ FORM "T5,C5,C3,C2,C3,C4,C4,C5,C3,C4,I2,C1"; #LOCAL.SESS.NUM% AUTOLOCK \ 
+ 130: 0226:          KEY LOCAL.ITEM.CODE$;                                  \
+ 131: 0226:              LOCAL.PRICE$,                                      \
+ 132: 0226:              LOCAL.START.DATE$,                                 \
+ 133: 0226:              LOCAL.START.TIME$,                                 \
+ 134: 0226:              LOCAL.END.DATE$,                                   \
+ 135: 0226:              LOCAL.OPERATOR$,                                   \
+ 136: 0226:              LOCAL.REASON$,                                     \
+ 137: 0226:              LOCAL.H.O.PRICE$,                                  \
+ 138: 0226:              LOCAL.HO.CHANGE$,                                  \
+ 139: 0226:              LOCAL.AUTH.NUM$,                                   \
+ 140: 0226:              LOCAL.STOCK.FIG%,                                  \
+ 141: 0226:              LOCAL.RETRIEVAL.FLAG$
+ 142: 0226: 
+ 143: 0226:    READ.LOCAL.LOCK = 0
+ 144: 022b:    EXIT FUNCTION
+ 145: 022d: 
+ 146: 022d:    READ.LOCAL.LOCK.ERROR:
+ 147: 022d: 
+ 148: 022d:    CURRENT.REPORT.NUM% = LOCAL.REPORT.NUM%
+ 149: 023b:    FILE.OPERATION$ = "R"
+ 150: 024a:    CURRENT.CODE$ = LOCAL.ITEM.CODE$
+ 151: 0260: 
+ 152: 0260:    EXIT FUNCTION
+ 153: 0262:   END FUNCTION
+ 154: 0271: 
+ 155: 0271: \----------------------------------------------------------------------------
+ 156: 0271: 
+ 157: 0271:   FUNCTION WRITE.LOCAL PUBLIC
+ 158: 0285: 
+ 159: 0285:    INTEGER*2 WRITE.LOCAL
+ 160: 0285: 
+ 161: 0285:    WRITE.LOCAL = 1
+ 162: 028a: 
+ 163: 028a:    IF END#LOCAL.SESS.NUM% THEN WRITE.LOCAL.ERROR
+ 164: 029e: 
+ 165: 029e:     WRITE FORM "C4,C5,C3,C2,C3,C4,C4,C5,C3,C4,I2,C1"; #LOCAL.SESS.NUM%; \
+ 166: 036c:              LOCAL.ITEM.CODE$,                                    \
+ 167: 036c:              LOCAL.PRICE$,                                        \
+ 168: 036c:              LOCAL.START.DATE$,                                   \
+ 169: 036c:              LOCAL.START.TIME$,                                   \
+ 170: 036c:              LOCAL.END.DATE$,                                     \
+ 171: 036c:              LOCAL.OPERATOR$,                                     \
+ 172: 036c:              LOCAL.REASON$,                                       \
+ 173: 036c:              LOCAL.H.O.PRICE$,                                    \
+ 174: 036c:              LOCAL.HO.CHANGE$,                                    \
+ 175: 036c:              LOCAL.AUTH.NUM$,                                     \
+ 176: 036c:              LOCAL.STOCK.FIG%,                                    \
+ 177: 036c:              LOCAL.RETRIEVAL.FLAG$
+ 178: 036c: 
+ 179: 036c:    WRITE.LOCAL = 0
+ 180: 0371:    EXIT FUNCTION
+ 181: 0373: 
+ 182: 0373:    WRITE.LOCAL.ERROR:
+ 183: 0373: 
+ 184: 0373:    CURRENT.REPORT.NUM% = LOCAL.REPORT.NUM%
+ 185: 0381:    FILE.OPERATION$ = "W"
+ 186: 0390:    CURRENT.CODE$ = ""
+ 187: 039f: 
+ 188: 039f:    EXIT FUNCTION
+ 189: 03a1:   END FUNCTION
+ 190: 03b0: \----------------------------------------------------------------------------
+ 191: 03b0: 
+ 192: 03b0: 
+ 193: 03b0:   FUNCTION WRITE.LOCAL.UNLOCK PUBLIC
+ 194: 03c4: 
+ 195: 03c4:    INTEGER*2 WRITE.LOCAL.UNLOCK
+ 196: 03c4: 
+ 197: 03c4:    WRITE.LOCAL.UNLOCK = 1
+ 198: 03c9: 
+ 199: 03c9:    IF END#LOCAL.SESS.NUM% THEN WRITE.LOCAL.UNLOCK.ERROR
+ 200: 03dd: 
+ 201: 03dd:     WRITE FORM "C4,C5,C3,C2,C3,C4,C4,C5,C3,C4,I2,C1"; #LOCAL.SESS.NUM% \
+ 202: 04ab:          AUTOUNLOCK; \
+ 203: 04ab:              LOCAL.ITEM.CODE$,                                    \
+ 204: 04ab:              LOCAL.PRICE$,                                        \
+ 205: 04ab:              LOCAL.START.DATE$,                                   \
+ 206: 04ab:              LOCAL.START.TIME$,                                   \
+ 207: 04ab:              LOCAL.END.DATE$,                                     \
+ 208: 04ab:              LOCAL.OPERATOR$,                                     \
+ 209: 04ab:              LOCAL.REASON$,                                       \
+ 210: 04ab:              LOCAL.H.O.PRICE$,                                    \
+ 211: 04ab:              LOCAL.HO.CHANGE$,                                    \
+ 212: 04ab:              LOCAL.AUTH.NUM$,                                     \
+ 213: 04ab:              LOCAL.STOCK.FIG%,                                    \
+ 214: 04ab:              LOCAL.RETRIEVAL.FLAG$
+ 215: 04ab: 
+ 216: 04ab:    WRITE.LOCAL.UNLOCK = 0
+ 217: 04b0:    EXIT FUNCTION
+ 218: 04b2: 
+ 219: 04b2:    WRITE.LOCAL.UNLOCK.ERROR:
+ 220: 04b2: 
+ 221: 04b2:    CURRENT.REPORT.NUM% = LOCAL.REPORT.NUM%
+ 222: 04c0:    FILE.OPERATION$ = "W"
+ 223: 04cf:    CURRENT.CODE$ = LOCAL.ITEM.CODE$
+ 224: 04e5: 
+ 225: 04e5:    EXIT FUNCTION
+ 226: 04e7:   END FUNCTION
+ 227: 04f6: 
+ 228: 04f6: 
+ 229: 04f6: 
+ 230: 04f6:     
+ 231: 04f6: End of Compilation

@@ -1,0 +1,940 @@
+   1: 0000: \***********************************************************************/
+   2: 0000: \***********************************************************************/
+   3: 0000: \***
+   4: 0000: \***
+   5: 0000: \***        FUNCTION      : SET.LABEL.TYPE
+   6: 0000: \***        AUTHOR        : Neil Bennett
+   7: 0000: \***
+   8: 0000: \***        DATE WRITTEN  : 18th June 2007
+   9: 0000: \***
+  10: 0000: \***        REFERENCE     : PSBF46
+  11: 0000: \***
+  12: 0000: \***
+  13: 0000: \***********************************************************************/
+  14: 0000: \***********************************************************************/
+  15: 0000: \***
+  16: 0000: \***    VERSION A.            NEIL BENNETT.                 18 Jun 2007.
+  17: 0000: \***    Initial version. - extracted from PSBF19
+  18: 0000: \***
+  19: 0000: \***    VERSION B.            NEIL BENNETT.                 03 Jul 2007.
+  20: 0000: \***    Algorithm for label types modified to CIP2 design from CIP1.
+  21: 0000: \***    Call to SET.PHF added to initialisation for calls from programs
+  22: 0000: \***    that have not setup PHF functions/variables.
+  23: 0000: \***
+  24: 0000: \***    VERSION C.            NEIL BENNETT.                 09 Jul 2007.
+  25: 0000: \***    If new price is equal to phf current price then set globals to
+  26: 0000: \***    existing values in PHF.
+  27: 0000: \***
+  28: 0000: \***********************************************************************/
+  29: 0000: \***********************************************************************/
+  30: 0000: 
+  31: 0000: \***********************************************************************/
+  32: 0000: \***********************************************************************/
+  33: 0000: \***
+  34: 0000: \***
+  35: 0000: \***                   FUNCTION OVERVIEW
+  36: 0000: \***                   -----------------
+  37: 0000: \***
+  38: 0000: \***     This function handles operations for computing the new label
+  39: 0000: \***     type and optionally the update of the PHF.
+  40: 0000: \***
+  41: 0000: \***     Globals are set up to hold the new label type together with the
+  42: 0000: \***     was/now and was/was/now prices if applicable.
+  43: 0000: \***
+  44: 0000: \***     The code assumes that the IRF and IDF records have been read
+  45: 0000: \***     before calling the function, and that SRITL file is opened.
+  46: 0000: \***
+  47: 0000: \***********************************************************************/
+  48: 0000: \***********************************************************************/
+  49: 0000: \***
+  50: 0000: \-----------------------------------------------------------------------/
+  51: 0000: 
+  52: 0000:       %INCLUDE PSBF02G.J86
+  53: 0000: REM\
+  54: 0000: \*******************************************************************************
+  55: 0000: \*******************************************************************************
+  56: 0000: \***
+  57: 0000: \***        INCLUDE       : UPDATE.DATE globals
+  58: 0000: \***
+  59: 0000: \***        REFERENCE     : PSBF02G.J86
+  60: 0000: \***
+  61: 0000: \***        Version A     Bruce Scriver      4th March 1986
+  62: 0000: \*** 
+  63: 0000: \***        Version B     Andrew Wedgeworth   6th July 1992
+  64: 0000: \***        Removal of return code field which no longer required.
+  65: 0000: \***
+  66: 0000: \*******************************************************************************
+  67: 0000: \*******************************************************************************
+  68: 0000: 
+  69: 0000:       STRING   GLOBAL F02.DATE$
+  70: 0000: 
+  71: 0000:       ! 1 line deleted from here                                       ! BAW
+  72: 0000: 
+  73: 0000:       %INCLUDE PSBF18G.J86
+  74: 0000: REM\
+  75: 0000: \*******************************************************************************
+  76: 0000: \*******************************************************************************
+  77: 0000: \***
+  78: 0000: \***        INCLUDE       : CALC.BOOTS.CODE.CHECK.DIGIT globals
+  79: 0000: \***
+  80: 0000: \***        REFERENCE     : PSBF18G.J86
+  81: 0000: \***
+  82: 0000: \***        Version A     Stephen Kelsey                  23rd March 1987
+  83: 0000: \***
+  84: 0000: \***        Version B     Andrew Wedgeworth                 7th July 1992
+  85: 0000: \***        Removal of return code field which no longer required.
+  86: 0000: \***
+  87: 0000: \*******************************************************************************
+  88: 0000: \*******************************************************************************
+  89: 0000: 
+  90: 0000:       STRING   GLOBAL F18.CHECK.DIGIT$
+  91: 0000:     
+  92: 0000:       ! 1 line deleted from here                                       ! BAW    
+  93: 0000: 
+  94: 0000:       %INCLUDE PSBF20G.J86
+  95: 0000: REM\
+  96: 0000: \*******************************************************************************
+  97: 0000: \*******************************************************************************
+  98: 0000: \***
+  99: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 100: 0000: \***
+ 101: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 102: 0000: \*** 
+ 103: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 104: 0000: \*** 
+ 105: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 106: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 107: 0000: \***     to two byte integer.
+ 108: 0000: \***
+ 109: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 110: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 111: 0000: \***
+ 112: 0000: \*******************************************************************************
+ 113: 0000: \*******************************************************************************
+ 114: 0000: 
+ 115: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 116: 0000:                        F20.STRING.FILE.NO$,                            \
+ 117: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 118: 0000:                        SESS.NUM.TABLE$(1)
+ 119: 0000: 
+ 120: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 121: 0000: 
+ 122: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 123: 0000: 
+ 124: 0000:       %INCLUDE PSBF46G.J86
+ 125: 0000: \*******************************************************************************
+ 126: 0000: \*******************************************************************************
+ 127: 0000: \***
+ 128: 0000: \***        INCLUDE       : GET.LABEL.TYPE Globals
+ 129: 0000: \***
+ 130: 0000: \***        REFERENCE     : PSBF46G.J86
+ 131: 0000: \***
+ 132: 0000: \***        Version A     Neil Bennett       18th June 2007
+ 133: 0000: \***
+ 134: 0000: \*******************************************************************************
+ 135: 0000: \*******************************************************************************
+ 136: 0000: 
+ 137: 0000:       STRING    GLOBAL F46.LABEL.TYPE$
+ 138: 0000:       INTEGER*4 GLOBAL F46.WAS.PRICE%
+ 139: 0000:       INTEGER*4 GLOBAL F46.WAS.WAS.PRICE%
+ 140: 0000: 
+ 141: 0000: 
+ 142: 0000:       %INCLUDE IRFDEC.J86
+ 143: 0000: 
+ 144: 0000: \**********************************************************************************
+ 145: 0000: \***
+ 146: 0000: \***       %INCLUDE FOR ITEM RECORD FILE - FIELD DECLARATIONS
+ 147: 0000: \***                                     - FILE REFERENCE PARAMETERS
+ 148: 0000: \***
+ 149: 0000: \***                      FILE TYPE    : Keyed
+ 150: 0000: \***
+ 151: 0000: \***                      REFERENCE    : IRFDEC.J86
+ 152: 0000: \***
+ 153: 0000: \***     Version A               Andrew Wedgeworth            29th June 1992
+ 154: 0000: \***
+ 155: 0000: \***     Version B               Andrew Wedgeworth        14th December 1992
+ 156: 0000: \***     Version letter incremented to match other IRF code.
+ 157: 0000: \***
+ 158: 0000: \***     Version C             Steve Windsor          12.02.93
+ 159: 0000: \***     Version letter incremented to match other IRF code.
+ 160: 0000: \***
+ 161: 0000: \***     Version D             Steve Windsor          12.05.93
+ 162: 0000: \***     Version letter incremented to match other IRF code.
+ 163: 0000: \***
+ 164: 0000: \***     Version E           Steve Perkins       20th September 1993
+ 165: 0000: \***     Deals project : Handling of Converted/Unconverted records
+ 166: 0000: \***     ++   Anything with 'Delete' after initials should be   ++
+ 167: 0000: \***     ++   deleted once the IRF has been converted in all    ++
+ 168: 0000: \***     ++   stores.                                           ++
+ 169: 0000: \***
+ 170: 0000: \***     Version F           Mark Walker            5th January 1994
+ 171: 0000: \***     Version letter incremented to match other IRF code.
+ 172: 0000: \***
+ 173: 0000: \***     Version 96A         Mark Walker               22nd May 1995
+ 174: 0000: \***     Definition for IRF.POINTS% added.
+ 175: 0000: \***
+ 176: 0000: \***                     Stuart McConnachie           12th June 1995
+ 177: 0000: \***     INDICAT3% comments added for discount/loyalty flags.
+ 178: 0000: \***
+ 179: 0000: \***     Version for 96C  Andrew Wedgeworth            22nd May 1996
+ 180: 0000: \***     Removed IRF.FILLER$ field, as this is now redundant.
+ 181: 0000: \***
+ 182: 0000: \***     Version G     Stuart William McConnachie      11th February 2000
+ 183: 0000: \***     Converted IRF.INDICAT2$ to integer flag byte.
+ 184: 0000: \***
+ 185: 0000: \***     REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+ 186: 0000: \***     Major changes for 2002 Deals Rewrite project.
+ 187: 0000: \***     Incorporated up to date record layout to assist development work
+ 188: 0000: \***     (placed in the IRFDEC.J86 to make it visible from ...LST files).
+ 189: 0000: \***     Moved various comments against variables to record layout.
+ 190: 0000: \***     Relisted variables in alphabetical order.
+ 191: 0000: \***     Deleted redundant variables associated with the old deals system ...
+ 192: 0000: \***     DEAL.NUM$, DEAL.SAVING$
+ 193: 0000: \***     Retained variables that are otherwise redundant (to be set to null X'00'
+ 194: 0000: \***     within file functions) ...
+ 195: 0000: \***     INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+ 196: 0000: \***     Defined variables to hold interpreted deals data for new deals system ...
+ 197: 0000: \***     DEAL.NUM$(n) and LIST.ID%(n) (where 'n' represents entry 0, 1 and 2).
+ 198: 0000: \***     These two variables are interpretations of DEAL.DATA% which is defined
+ 199: 0000: \***     locally within IRFFUN.BAS to keep underlying data invisible to programs.
+ 200: 0000: \***
+ 201: 0000: \***     REVISION 1.7                ROBERT COWEY.               5 AUG 2002.
+ 202: 0000: \***     Further changes for 2002 Deals Rewrite project (PSBF19 related).
+ 203: 0000: \***     Defined NEW.IRF.DATA$ as a global variable for use with new functions
+ 204: 0000: \***     CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+ 205: 0000: \***
+ 206: 0000: \***     REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+ 207: 0000: \***     Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+ 208: 0000: \***     No changes to this file other than description.
+ 209: 0000: \***     No changes to IRF file functions.
+ 210: 0000: \***
+ 211: 0000: \***     REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+ 212: 0000: \***     Changes to remove limit of 3 deals per item.
+ 213: 0000: \***     Declaration of new variables for IRF Deal Extension file (IRFDEX).
+ 214: 0000: \***
+ 215: 0000: \***     REVISION 2.0.            ALAN CARR                       9 FEB 2006.
+ 216: 0000: \***     Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+ 217: 0000: \***
+ 218: 0000: \***     REVISION 2.1              TITTOO THOMAS                  01 July 2011
+ 219: 0000: \***     The IRF.UNUSED field is disintegrated to 2 new indicator fields
+ 220: 0000: \***                      IRF.INDICAT9%   1 INT
+ 221: 0000: \***                      IRF.INDICAT10%  1 INT
+ 222: 0000: \***...............................................................................
+ 223: 0000: 
+ 224: 0000: 
+ 225: 0000: \**********************************************************************************
+ 226: 0000: \***
+ 227: 0000: \***    IRF RECORD LAYOUT - REVISION 1.7 - CORRECT FOR 2011 CORE Stores PROJECT
+ 228: 0000: \***
+ 229: 0000: \***     1 11  UPD  BAR.CODE$   Without check digit - File KEY
+ 230: 0000: \***    12  1  INT  INDICAT0%
+ 231: 0000: \***                    X"01" - Contains statins                           ! 2.2 TT
+ 232: 0000: \***                    X"02" - Item not priced (giveaway)
+ 233: 0000: \***                    X"04" - Item not returnable
+ 234: 0000: \***                    X"08" - Item contains alcohol
+ 235: 0000: \***                    X"10" - Blocked from sale                          ! 2.2 TT
+ 236: 0000: \***                    X"20" - Enforced price entry
+ 237: 0000: \***                    X"40" - Enforced quantity entry
+ 238: 0000: \***                    X"80" - Movement kept
+ 239: 0000: \***    13  1  INT  INDICAT1%
+ 240: 0000: \***                    X"01" - Asprin
+ 241: 0000: \***                    X"02" - Paracetamol
+ 242: 0000: \***                    X"04" - TPLU inclusion flag
+ 243: 0000: \***                    X"08" - Giftcard item                              ! 2.2 TT
+ 244: 0000: \***                    X"10" - Withdrawn Block from sale                  ! 2.2 TT
+ 245: 0000: \***                    X"20" - Non-solid dose painkiller                  ! 2.2 TT
+ 246: 0000: \***                    X"40" - Insurance policy item                      ! 2.2 TT
+ 247: 0000: \***                    X"80" - Ibuprofen
+ 248: 0000: \***    14  2  INT  DEAL.DATA%(0)   Interpreted into sub-variables ...
+ 249: 0000: \***                    X'3F' - into DEAL.NUM$(0) "0000" to "9999" (2 byte UPD)
+ 250: 0000: \***                    X'C0' - into LIST.ID%(0) X'00' X
+ 251: 0000: \***                                             X'01' A
+ 252: 0000: \***                                             X'10' B
+ 253: 0000: \***                                             X'11' C                   ! 1.9 RC
+ 254: 0000: \***    16  1  INT  INDICAT8%                                              ! 2.0 AJC
+ 255: 0000: \***                    X"01" - Chlamydia NHS test kit                     ! 2.2 TT
+ 256: 0000: \***                    X"02" - Chlamydia open sell test kit               ! 2.2 TT
+ 257: 0000: \***                    X"04" - Unrestricted group code                    ! 2.2 TT
+ 258: 0000: \***                    X"08" - Nightingale Till prompt                    ! 2.2 TT
+ 259: 0000: \***                    X"10" - Contains Ephedrine                         ! 2.2 TT
+ 260: 0000: \***                    X"60" -  X'00' - If also Blocked From Sale Recall, ! 2.2 TT
+ 261: 0000: \***                                        Emergency                      ! 2.2 TT
+ 262: 0000: \***                             X'00' - If NOT Blocked From Sale Recall,  ! 2.2 TT
+ 263: 0000: \***                                        No recall                      ! 2.2 TT
+ 264: 0000: \***                             X'20' 100% returns                        ! 2.2 TT
+ 265: 0000: \***                             X'40' Withdrawn recall                    ! 2.2 TT
+ 266: 0000: \***                             X'60' Reverse Logistics                   ! 2.2 TT
+ 267: 0000: \***                    X"80" - WEEE item flag                             ! 2.0 AJC
+ 268: 0000: \***    17  1  INT  INDICAT9%
+ 269: 0000: \***                    X'3F' - Disposal special instruction (0-63)
+ 270: 0000: \***                    X"40" - Resaleable Indicator
+ 271: 0000: \***                    X"80" - Boots.com Extended Indicator
+ 272: 0000: \***    18  1  INT  INDICAT10%
+ 273: 0000: \***                    X'07' - Age restrictions
+ 274: 0000: \***                             X'00' - No Age restriction
+ 275: 0000: \***                             X'01' - Age 12 or over
+ 276: 0000: \***                             X'02' - Age 15 or over
+ 277: 0000: \***                             X'03' - Age 16 or over
+ 278: 0000: \***                             X'04' - Age 18 or over
+ 279: 0000: \***                             X'05' - Age 21 or over
+ 280: 0000: \***                             X'06' - Reserved
+ 281: 0000: \***                             X'07' - Reserved
+ 282: 0000: \***                    X'38' - Ethical classification
+ 283: 0000: \***                             X'00' - No ethical classification
+ 284: 0000: \***                             X'08' - Pharmacy medicine (P)
+ 285: 0000: \***                             X'10' - General Sale License (GSL)
+ 286: 0000: \***                             X'18' - Prescription Only Medicine (POM)
+ 287: 0000: \***                             X'20' - Reserved
+ 288: 0000: \***                             X'28' - Reserved
+ 289: 0000: \***                             X'30' - Reserved
+ 290: 0000: \***                             X'38' - Reserved
+ 291: 0000: \***                    X'C0' - Returns route
+ 292: 0000: \***                             X'00' - Not Returnable (Destroy)
+ 293: 0000: \***                             X'40' - Returns & Recovery
+ 294: 0000: \***                             X'80' - Direct
+ 295: 0000: \***                             X'C0' - Semi-centralised
+ 296: 0000: \***    19  5  UPD  SALEPRIC$   Current price in pence
+ 297: 0000: \***    24  1  INT  INDICAT5%   Guarantee duration
+ 298: 0000: \***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+ 299: 0000: \***                    X'40' - Contains Pseudoephedrine                   ! 2.2 TT
+ 300: 0000: \***                    X'80' - Guarantee Duration Type                    ! 2.2 TT
+ 301: 0000: \***                              (1 = Months, 0 = Years)                  ! 2.2 TT
+ 302: 0000: \***    25 18  ASC  ITEMNAME$   Description used by till
+ 303: 0000: \***    43  3  UPD  BOOTS.CODE$ Without check digit
+ 304: 0000: \***    46  2  INT  DEAL.DATA%(1)   Similar structure to DEAL.DATA%(0)
+ 305: 0000: \***    48  2  INT  DEAL.DATA%(2)   Similar structure to DEAL.DATA%(0)
+ 306: 0000: \***    50  1  INT  INDICAT3%
+ 307: 0000: \***                    X"01" - Discountexempt (item exempt from discount)
+ 308: 0000: \***                    X"02" - Boots brand item
+ 309: 0000: \***                    X"04" - Item redeemable for loyalty
+ 310: 0000: \***                    X"08" - Loyalty exempt (item exempt from loyalty)
+ 311: 0000: \***                    X"10" - **Redundant                                ! 2.2 TT
+ 312: 0000: \***                    X"20" - Local Price active
+ 313: 0000: \***                    X"40" - Stock system item
+ 314: 0000: \***                    X"80" - **Redundant                                ! 2.2 TT
+ 315: 0000: \***
+ 316: 0000: \***    Record Length 50
+ 317: 0000: \***
+ 318: 0000: \***
+ 319: 0000: \***    IRF DEAL EXTENSION RECORD LAYOUT ! 1.9 RC
+ 320: 0000: \***
+ 321: 0000: \***     1  3  UPD  BOOTS.CODE$
+ 322: 0000: \***     4  2  INT  IRF.DEAL.DATA%(3)   Similar structure to DEAL.DATA%(0)
+ 323: 0000: \***     6  2  INT  IRF.DEAL.DATA%(4)   Similar structure to DEAL.DATA%(0)
+ 324: 0000: \***     8  2  INT  IRF.DEAL.DATA%(5)   Similar structure to DEAL.DATA%(0)
+ 325: 0000: \***    10  2  INT  IRF.DEAL.DATA%(6)   Similar structure to DEAL.DATA%(0)
+ 326: 0000: \***    12  2  INT  IRF.DEAL.DATA%(7)   Similar structure to DEAL.DATA%(0)
+ 327: 0000: \***    14  2  INT  IRF.DEAL.DATA%(8)   Similar structure to DEAL.DATA%(0)
+ 328: 0000: \***    16  2  INT  IRF.DEAL.DATA%(9)   Similar structure to DEAL.DATA%(0)
+ 329: 0000: \***
+ 330: 0000: \***    Record Length 17
+ 331: 0000: \***
+ 332: 0000: \**********************************************************************************
+ 333: 0000: 
+ 334: 0000: 
+ 335: 0000:     STRING GLOBAL            \
+ 336: 0000:         IRF.ALT.FILE.NAME$,  \
+ 337: 0000:         IRF.BAR.CODE$,       \
+ 338: 0000:         IRF.BOOTS.CODE$,     \
+ 339: 0000:         IRF.DEAL.SAVING$,    \ 2 byte - deal saving amount (0 - œ99.99) ! ESP
+ 340: 0000:         IRF.DEPARTME$,       \ 3 byte UPD. Department number          ! ESP Delete
+ 341: 0000:         IRF.FILE.NAME$,      \
+ 342: 0000:         IRF.HOLDING.PRICE$,  \ 4 byte UPD. Current H.O. price in pence if a local
+ 343: 0000:                              \ price is in effect, zero otherwise.     ! ESP Delete
+ 344: 0000:         IRF.ITEMNAME$,       \
+ 345: 0000: \       IRF.MPGROUP$,        \ Removed SBH 31/1/96
+ 346: 0000:         IRF.RECORD$,         \                                         ! ESP Delete
+ 347: 0000:         IRF.SALEPRIC$,       \
+ 348: 0000:         IRF.SALEQUAN$,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 349: 0000:         IRF.UNUSED$,         \                                                        ! 1.6 RC
+ 350: 0000:         NEW.IRF.DATA$        !                                             ! 1.7 RC
+ 351: 0000: 
+ 352: 0000:     STRING GLOBAL            \                                             ! 1.6 RC
+ 353: 0000:         IRF.DEAL.NUM$(1)                                                   ! 1.6 RC
+ 354: 0000: 
+ 355: 0000:     INTEGER*1 GLOBAL         \
+ 356: 0000:         IRF.DD.SUB%,         \ IRF.DEAL.DATA% subscript                    ! 1.6 RC
+ 357: 0000:         IRF.INDICAT0%,       \
+ 358: 0000:         IRF.INDICAT1%,       \
+ 359: 0000:         IRF.INDICAT2%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 360: 0000:         IRF.INDICAT3%,       \
+ 361: 0000:         IRF.INDICAT4%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 362: 0000:         IRF.INDICAT5%,       \                                             ! 2.0 AJC
+ 363: 0000:         IRF.INDICAT8%,       \                                             ! 2.0 AJC
+ 364: 0000:         IRF.INDICAT9%,       \                                             ! 2.2 TT
+ 365: 0000:         IRF.INDICAT10%                                                     ! 2.2 TT
+ 366: 0000: 
+ 367: 0000:     INTEGER*1 GLOBAL         \                                             ! 1.6 RC
+ 368: 0000:         IRF.LIST.ID%(1)                                                    ! 1.6 RC
+ 369: 0000: 
+ 370: 0000:     INTEGER*2 GLOBAL         \
+ 371: 0000:         IRF.ALT.REPORT.NUM%, \
+ 372: 0000:         IRF.ALT.SESS.NUM%,   \
+ 373: 0000:         IRF.POINTS%,         \ Redundant (set to null within functions)    ! 1.6 RC
+ 374: 0000:         IRF.RECL%,           \
+ 375: 0000:         IRF.REPORT.NUM%,     \
+ 376: 0000:         IRF.SESS.NUM%,       \
+ 377: 0000:         IRF.MAX.DEALS%       !                                             ! 1.9 SM
+ 378: 0000: 
+ 379: 0000:     STRING GLOBAL IRFDEX.FILE.NAME$                                        ! 1.9 SM
+ 380: 0000: 
+ 381: 0000:     INTEGER*2 GLOBAL IRFDEX.SESS.NUM%                                      ! 1.9 SM
+ 382: 0000:     INTEGER*2 GLOBAL IRFDEX.REPORT.NUM%                                    ! 1.9 SM
+ 383: 0000:     INTEGER*2 GLOBAL IRFDEX.RECL%                                          ! 1.9 SM
+ 384: 0000: 
+ 385: 0000: 
+ 386: 0000: !   INTEGER*2 GLOBAL      \ IRF.DEAL.DATA%(n) variables are defined locally  1.6 RC
+ 387: 0000: !       IRF.DEAL.DATA%(1) \ within IRFFUN.BAS to keep invisible to programs  1.6 RC
+ 388: 0000: 
+ 389: 0000:       %INCLUDE IDFDEC.J86
+ 390: 0000: REM \
+ 391: 0000: \******************************************************************************
+ 392: 0000: \******************************************************************************
+ 393: 0000: \***
+ 394: 0000: \***         %INCLUDE FOR ITEM DATA FILE - FIELD DECLARATIONS
+ 395: 0000: \***                                       FILE REFERENCE PARAMETERS
+ 396: 0000: \***
+ 397: 0000: \***                  FILE TYPE    : Keyed
+ 398: 0000: \***
+ 399: 0000: \***                  REFERENCE    : IDFDEC.J86
+ 400: 0000: \***
+ 401: 0000: \***         VERSION A : Andrew Wedgeworth  29th June 1992    
+ 402: 0000: \***
+ 403: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 404: 0000: \***    Replaced un-used RANK$ with BSNS.CNTR$ and FILLER$.
+ 405: 0000: \***
+ 406: 0000: \***    VERSION D.              Andrew Wedgeworth               15th March 1995
+ 407: 0000: \***    Comments updated to reflect the fact that some bits on the file are
+ 408: 0000: \***    no longer used.
+ 409: 0000: \***
+ 410: 0000: \*******************************************************************************
+ 411: 0000: \*******************************************************************************
+ 412: 0000: 
+ 413: 0000:   STRING GLOBAL           \
+ 414: 0000:     IDF.FILE.NAME$,       \  
+ 415: 0000:     IDF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+ 416: 0000:     IDF.FIRST.BAR.CODE$,  \ 6 byte UPD without check digit
+ 417: 0000:     IDF.SECOND.BAR.CODE$, \ 6 byte UPD without check digit
+ 418: 0000:     IDF.NO.OF.BAR.CODES$, \ 2 byte UPD. Total number of bar codes for this item
+ 419: 0000:     IDF.PRODUCT.GRP$,     \ 3 byte UPD. The first two digits are the concept
+ 420: 0000:                           \ group and the last four the concept sequence
+ 421: 0000:     IDF.STNDRD.DESC$,     \ 24 bytes
+ 422: 0000:     IDF.STATUS.1$,        \ 1 byte, values B,C,D,P,X,Z and blank
+ 423: 0000:     IDF.INTRO.DATE$,      \ 3 byte UPD YYMMDD. Date first added to this file
+ 424: 0000:     IDF.BSNS.CNTR$,       \ 1 byte ASC. Business Centre ID letter      ! CRC
+ 425: 0000:     IDF.FILLER$,          \ 1 byte un-used                             ! CRC
+ 426: 0000:     IDF.PARENT.CODE$,     \ 4 byte UPD with check digit ; may be zero if no
+ 427: 0000:                           \ flashpacks, current IDF.BOOTS.CODE$ if parent line
+ 428: 0000:                           \ or Boots Code of parent line if a flashpack.
+ 429: 0000:     IDF.DATE.OF.LAST.SALE$! 3 byte UPD. Date of last sale.
+ 430: 0000: 
+ 431: 0000:   INTEGER*1 GLOBAL        \
+ 432: 0000:     IDF.BIT.FLAGS.1%,     \ 1 byte - bit values
+ 433: 0000:                           \ X"80"  - Group code flag
+ 434: 0000:                           \ X"40"  - Keylines flag
+ 435: 0000:                           \ X"20"  - Markdown flag
+ 436: 0000:                           \ X"10"  - Warehouse flag
+ 437: 0000:                           \ X"08"  - CSR flag
+ 438: 0000:                           \ X"04"  - Directs A flag
+ 439: 0000:                           \ X"02"  - Directs B flag
+ 440: 0000:                           \ X"01"  - Directs C flag
+ 441: 0000:     IDF.BIT.FLAGS.2%      \ 1 byte - bit values
+ 442: 0000:                           \ X"80"  - Own brand line flag
+ 443: 0000:                           \ X"40"  - Exclusive line flag
+ 444: 0000:                           \ X"20"  - Unused 
+ 445: 0000:                           \ X"10"  - Unused
+ 446: 0000:                           \ X"08"  - Stock system flag
+ 447: 0000:                           \ X"04"  - Pending count flag
+ 448: 0000:                           \ X"02"  - Reserved
+ 449: 0000:                           ! X"01"  - Reserved
+ 450: 0000: 
+ 451: 0000:   INTEGER*2 GLOBAL        \
+ 452: 0000:     IDF.RECL%,            \  
+ 453: 0000:     IDF.REPORT.NUM%,      \ 
+ 454: 0000:     IDF.SESS.NUM%
+ 455: 0000:       %INCLUDE PHFDEC.J86
+ 456: 0000: \/******************************************************************/
+ 457: 0000: \/*                                                                */
+ 458: 0000: \/* PRICE HISTORY FILE GLOBAl VARIABLE DECLARATIONS                */
+ 459: 0000: \/*                                                                */
+ 460: 0000: \/* REFERENCE   : PHFDEC.J86                                       */
+ 461: 0000: \/*                                                                */
+ 462: 0000: \/* VERSION A.          Neil Bennett.           23 OCTOBER 2006    */
+ 463: 0000: \/*                                                                */
+ 464: 0000: \/******************************************************************/
+ 465: 0000: 
+ 466: 0000:    STRING GLOBAL                \
+ 467: 0000:       PHF.FILE.NAME$,           \
+ 468: 0000:                                 \
+ 469: 0000:       PHF.BAR.CODE$,            \ PD  6 Barcode
+ 470: 0000:       PHF.CURR.TYPE$,           \ ASC 1 L/R/E (Local/Rpd/Emergency)
+ 471: 0000:       PHF.CURR.DATE$,           \ PD  3 YYMMDD
+ 472: 0000:       PHF.CURR.LABL$,           \ ASC 1 0,1,2,3 for current label type
+ 473: 0000:       PHF.HIST1.DATE$,          \ PD  3 YYMMDD
+ 474: 0000:       PHF.HIST1.TYPE$,          \ ASC 1 L/R/E (Local/Rpd/Emergency)
+ 475: 0000:       PHF.HIST2.DATE$,          \ PD  3 YYMMDD
+ 476: 0000:       PHF.HIST2.TYPE$,          \ ASC 1 L/R/E (Local/Rpd/Emergency)
+ 477: 0000:       PHF.LAST.INC.DATE$,       \ PD  3 YYMMDD
+ 478: 0000:       PHF.PEND.DATE$,           \ PD  3 YYMMDD
+ 479: 0000:       PHF.PEND.TYPE$,           \ ASC 1 L/R/E (Local/Rpd/Emergency)
+ 480: 0000:       PHF.FILLER$               ! ASC 2 Not Used
+ 481: 0000: 
+ 482: 0000:    INTEGER*2 GLOBAL             \
+ 483: 0000:       PHF.RECL%,                \
+ 484: 0000:       PHF.REPORT.NUM%,          \
+ 485: 0000:       PHF.SESS.NUM%             !
+ 486: 0000: 
+ 487: 0000:    INTEGER*4 GLOBAL             \
+ 488: 0000:       PHF.CURR.PRICE%,          \ INT 4 Price in pence
+ 489: 0000:       PHF.HIST1.PRICE%,         \ INT 4 Price in pence
+ 490: 0000:       PHF.HIST2.PRICE%,         \ INT 4 Price in pence
+ 491: 0000:       PHF.PEND.PRICE%           ! INT 4 Price in pence
+ 492: 0000: 
+ 493: 0000: \/******************************************************************/
+ 494: 0000:       %INCLUDE SRITLDEC.J86
+ 495: 0000: \********************************************************************
+ 496: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRITL FILE
+ 497: 0000: \***      REFERENCE : SRITLDEC.J86
+ 498: 0000: \***      Version A           Neil Bennett            5th June 2006
+ 499: 0000: \***
+ 500: 0000: \********************************************************************
+ 501: 0000: 
+ 502: 0000:   INTEGER*1 GLOBAL        \
+ 503: 0000:     SRITL.RECORD.CHAIN%,  \ Chain Sequence
+ 504: 0000:     SRITL.MODULE.COUNT%,  \ Family hierarchy key level
+ 505: 0000:     SRITL.MODULE.SEQ%(1), \ Module sequence
+ 506: 0000:     SRITL.REPEAT.CNT%(1)  ! Repeat count
+ 507: 0000: 
+ 508: 0000:   INTEGER*2 GLOBAL        \
+ 509: 0000:     SRITL.CORE.COUNT%,    \ Sum of repeat count for core items
+ 510: 0000:     SRITL.MAX.MOD.KEYS%,  \ Maximum number of modules
+ 511: 0000:     SRITL.NON.CORE.CNT%,  \ Sum of repeat count for non core items
+ 512: 0000:     SRITL.SESS.NUM%,      \
+ 513: 0000:     SRITL.REPORT.NUM%,    \
+ 514: 0000:     SRITL.RECL%           !
+ 515: 0000: 
+ 516: 0000:   INTEGER*4 GLOBAL        \
+ 517: 0000:     SRITL.POGDB%(1)       ! Unique POG Database key
+ 518: 0000: 
+ 519: 0000:   STRING GLOBAL           \
+ 520: 0000:     SRITL.FILE.NAME$,     \ File name
+ 521: 0000:     SRITL.COPY.NAME$,     \ File name
+ 522: 0000:     SRITL.ITEM.CODE$,     \ Boots Item Code
+ 523: 0000:     SRITL.CORE.FLAG$(1),  \ Core/Non Core flag Y/N
+ 524: 0000:     SRITL.FILLER$         !
+ 525: 0000: 
+ 526: 0000: 
+ 527: 0000: 
+ 528: 0000:       INTEGER*2 F46.PHF.SESS.NUM%
+ 529: 0000:       INTEGER*2 SAV.SESS.NUM%
+ 530: 0000: 
+ 531: 0000:       %INCLUDE PSBF02E.J86
+ 532: 0000: REM\
+ 533: 0000: \*******************************************************************************
+ 534: 0000: \*******************************************************************************
+ 535: 0000: \***
+ 536: 0000: \***        INCLUDE       : UPDATE.DATE external definition
+ 537: 0000: \***        AUTHOR        : Bruce Scriver (Basic Code)
+ 538: 0000: \***        DATE WRITTEN  : 4th March 1986 (Basic Code)
+ 539: 0000: \***
+ 540: 0000: \***        REFERENCE     : PSBF02E.J86
+ 541: 0000: \***
+ 542: 0000: \***        Version A     Bruce Scriver          4th March 1986
+ 543: 0000: \***
+ 544: 0000: \***        Version B     Andrew Wedgeworth       6th July 1992
+ 545: 0000: \***        Removal of redundant parameters, and inclusion of UPDATE.DATE as
+ 546: 0000: \***        a variable to hold the return code.
+ 547: 0000: \***
+ 548: 0000: \*******************************************************************************
+ 549: 0000: \*******************************************************************************
+ 550: 0000: 
+ 551: 0000:    FUNCTION UPDATE.DATE (INCREMENT%)                                   \
+ 552: 0000:    EXTERNAL
+ 553: 0000:    ! 3 parameters removed from here                                    ! BAW
+ 554: 0000: 
+ 555: 0000:    ! 3 lines deleted from here                                         ! BAW
+ 556: 0000:    
+ 557: 0000:       INTEGER*2 UPDATE.DATE                                            ! BAW
+ 558: 0000: 
+ 559: 0000:       INTEGER*4 INCREMENT%
+ 560: 0000: 
+ 561: 0000:    END FUNCTION
+ 562: 0000: 
+ 563: 0000:       %INCLUDE PSBF18E.J86
+ 564: 0000: REM\
+ 565: 0000: \*******************************************************************************
+ 566: 0000: \*******************************************************************************
+ 567: 0000: \***
+ 568: 0000: \***        INCLUDE       : CALC.BOOTS.CODE.CHECK.DIGIT external definition
+ 569: 0000: \***
+ 570: 0000: \***        REFERENCE     : PSBF18E.J86
+ 571: 0000: \***
+ 572: 0000: \***        Version A      Stephen Kelsey                   23rd March 1987 
+ 573: 0000: \***
+ 574: 0000: \***        Version B      Andrew Wedgeworth                  7th July 1992 
+ 575: 0000: \***        Removal of redundant parameters, and inclusion of function's 
+ 576: 0000: \***        name as a variable to hold the return code.
+ 577: 0000: \***
+ 578: 0000: \*******************************************************************************
+ 579: 0000: \*******************************************************************************
+ 580: 0000: 
+ 581: 0000:    FUNCTION CALC.BOOTS.CODE.CHECK.DIGIT (BOOTS.CODE.6.DIGIT$)          \ 
+ 582: 0000:    EXTERNAL
+ 583: 0000:    ! 3 parameters removed from here                                    ! BAW
+ 584: 0000: 
+ 585: 0000:    STRING BOOTS.CODE.6.DIGIT$
+ 586: 0000:    ! 3 variables deleted from here                                     ! BAW
+ 587: 0000:    
+ 588: 0000:    INTEGER* 2 CALC.BOOTS.CODE.CHECK.DIGIT                              ! BAW
+ 589: 0000:    
+ 590: 0000:    END FUNCTION
+ 591: 0000: 
+ 592: 0000:       %INCLUDE PSBF20E.J86
+ 593: 0000: REM\
+ 594: 0000: \*******************************************************************************
+ 595: 0000: \*******************************************************************************
+ 596: 0000: \***
+ 597: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 598: 0000: \***
+ 599: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 600: 0000: \***
+ 601: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 602: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 603: 0000: \***     128 files.
+ 604: 0000: \***
+ 605: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 606: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 607: 0000: \***     as a variable.  This new variable contains the function's return
+ 608: 0000: \***     code.
+ 609: 0000: \***
+ 610: 0000: \*******************************************************************************
+ 611: 0000: \*******************************************************************************
+ 612: 0000: 
+ 613: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 614: 0000:                               PASSED.INTEGER%,                         \
+ 615: 0000:                               PASSED.STRING$)                          \
+ 616: 0000:    EXTERNAL
+ 617: 0000: 
+ 618: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 619: 0000:              PASSED.STRING$
+ 620: 0000:    ! 3 variables removed from here                                     ! CAW
+ 621: 0000: 
+ 622: 0000: 
+ 623: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 624: 0000:              PASSED.INTEGER%				               ! CJAS
+ 625: 0000: 
+ 626: 0000:    END FUNCTION
+ 627: 0000: 
+ 628: 0000: 
+ 629: 0000:       %INCLUDE PHFEXT.J86
+ 630: 0000: \/******************************************************************/
+ 631: 0000: \/*                                                                */
+ 632: 0000: \/* PRICE HISTORY FILE EXTERNAL FUNCTION DEFINITIONS               */
+ 633: 0000: \/*                                                                */
+ 634: 0000: \/* REFERENCE   : PHFEXT.J86                                       */
+ 635: 0000: \/*                                                                */
+ 636: 0000: \/* VERSION A.          Neil Bennett.           23 OCTOBER 2006    */
+ 637: 0000: \/*                                                                */
+ 638: 0000: \/******************************************************************/
+ 639: 0000: 
+ 640: 0000:    FUNCTION PHF.SET EXTERNAL
+ 641: 0000:       INTEGER*1 PHF.SET
+ 642: 0000:    END FUNCTION
+ 643: 0000: 
+ 644: 0000:    FUNCTION READ.PHF EXTERNAL
+ 645: 0000:       INTEGER*2 READ.PHF
+ 646: 0000:    END FUNCTION
+ 647: 0000: 
+ 648: 0000:    FUNCTION WRITE.PHF EXTERNAL
+ 649: 0000:       INTEGER*2 WRITE.PHF
+ 650: 0000:    END FUNCTION
+ 651: 0000: 
+ 652: 0000: \/******************************************************************/
+ 653: 0000:       %INCLUDE SRITLEXT.J86
+ 654: 0000: \********************************************************************
+ 655: 0000: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRITL FILE
+ 656: 0000: \***      REFERENCE : SRITLEXT.J86
+ 657: 0000: \***      Version A           Neil Bennett            7th July 2006
+ 658: 0000: \***
+ 659: 0000: \********************************************************************
+ 660: 0000: 
+ 661: 0000:        FUNCTION SRITL.SET EXTERNAL
+ 662: 0000:        END FUNCTION
+ 663: 0000: 
+ 664: 0000:        FUNCTION READ.SRITL EXTERNAL
+ 665: 0000:           INTEGER*2 READ.SRITL
+ 666: 0000:        END FUNCTION
+ 667: 0000: 
+ 668: 0000:        FUNCTION WRITE.SRITL EXTERNAL
+ 669: 0000:           INTEGER*2 WRITE.SRITL
+ 670: 0000:        END FUNCTION
+ 671: 0000: 
+ 672: 0000: \***********************************************************************/
+ 673: 0000: \***
+ 674: 0000: \***  FUNCTION GET.LABEL.TYPE(BAR.CODE$,        UPD 6 without check dgt
+ 675: 0000: \***                          OLD.PRICE%,       INT 4 current price
+ 676: 0000: \***                          NEW.PRICE%,       INT 4 new price
+ 677: 0000: \***                          UPDATE.PHF$)      ASC 1 Y/N
+ 678: 0000: \***
+ 679: 0000: \***  Function returns 0 - completed successfully
+ 680: 0000: \***                   1 - Invalid barcode
+ 681: 0000: \***                   2 - Price already set in PHF
+ 682: 0000: \***
+ 683: 0000: \***  Sets GLOBALS     F46.LABEL.TYPE$          ASC
+ 684: 0000: \***                   F46.WAS.PRICE%           INT 4
+ 685: 0000: \***                   F46.WAS.WAS.PRICE%       INT 4
+ 686: 0000: \***
+ 687: 0000: \***********************************************************************/
+ 688: 0000: 
+ 689: 0000: 
+ 690: 0000:    FUNCTION GET.LABEL.TYPE(BAR.CODE$,                  \ UPD 6
+ 691: 0000:                            OLD.PRICE%,                 \ INT 4
+ 692: 0000:                            NEW.PRICE%,                 \ INT 4
+ 693: 0000:                            UPDATE.PHF$) PUBLIC         ! ASC 1
+ 694: 001e: 
+ 695: 001e:       INTEGER*1 GET.LABEL.TYPE
+ 696: 001e:       STRING    BAR.CODE$
+ 697: 001e:       INTEGER*4 NEW.PRICE%
+ 698: 001e:       STRING    NEW.TYPE$
+ 699: 001e:       INTEGER*4 OLD.PRICE%
+ 700: 001e:       STRING    UPDATE.PHF$
+ 701: 001e: 
+ 702: 001e:       INTEGER*2 F46.PHF.SESS.NUM%
+ 703: 001e:       INTEGER*2 F46.SAV.SESS%
+ 704: 001e:       INTEGER*1 ON.LP%
+ 705: 001e:       INTEGER*1 phf.data%
+ 706: 001e:       INTEGER*1 phf.open%
+ 707: 001e:       INTEGER*2 rc%
+ 708: 001e: 
+ 709: 001e:       GET.LABEL.TYPE = 1
+ 710: 0022: 
+ 711: 0022: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 712: 0022: \/*   Set variables
+ 713: 0022: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 714: 0022: 
+ 715: 0022:       F46.LABEL.TYPE$    = "0"
+ 716: 0031:       F46.WAS.PRICE%     = 0
+ 717: 0040:       F46.WAS.WAS.PRICE% = 0
+ 718: 004f: 
+ 719: 004f: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 720: 004f: \/*   If invalid barcode - return
+ 721: 004f: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 722: 004f: 
+ 723: 004f:       IF VAL(UNPACK$(BAR.CODE$)) = 0                                    \
+ 724: 00b5:       OR LEN (BAR.CODE$) <> 6 THEN GOTO EXIT.NOW
+ 725: 00b8: 
+ 726: 00b8: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 727: 00b8: \/*   Check/Allocate/Open files
+ 728: 00b8: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 729: 00b8: 
+ 730: 00b8:       IF NOT phf.open% THEN GOSUB INITIALISE
+ 731: 00c9: 
+ 732: 00c9: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 733: 00c9: \/*   Set up file keys - read PHF
+ 734: 00c9: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 735: 00c9: 
+ 736: 00c9:       PHF.BAR.CODE$ = BAR.CODE$
+ 737: 00da: 
+ 738: 00da:       F46.SAV.SESS% = PHF.SESS.NUM%
+ 739: 00e4:       PHF.SESS.NUM% = F46.PHF.SESS.NUM%
+ 740: 00ef:       phf.data% = -1
+ 741: 00f4:       IF READ.PHF <> 0 THEN BEGIN
+ 742: 0101: 
+ 743: 0101:          phf.data% = 0
+ 744: 0106: 
+ 745: 0106:          PHF.CURR.PRICE%      = 0
+ 746: 0115:          PHF.PEND.PRICE%      = 0
+ 747: 0124:          PHF.HIST1.PRICE%     = 0
+ 748: 0133:          PHF.HIST2.PRICE%     = 0
+ 749: 0142: 
+ 750: 0142:          PHF.CURR.TYPE$       = " "
+ 751: 0151:          PHF.PEND.TYPE$       = " "
+ 752: 0160:          PHF.HIST1.TYPE$      = " "
+ 753: 016f:          PHF.HIST2.TYPE$      = " "
+ 754: 017e: 
+ 755: 017e:          PHF.CURR.DATE$       = PACK$("000000")
+ 756: 0192:          PHF.PEND.DATE$       = PHF.CURR.DATE$
+ 757: 01a8:          PHF.HIST1.DATE$      = PHF.CURR.DATE$
+ 758: 01be:          PHF.HIST2.DATE$      = PHF.CURR.DATE$
+ 759: 01d4:          PHF.LAST.INC.DATE$   = PACK$(DATE$)
+ 760: 01e9: 
+ 761: 01e9:          PHF.CURR.LABL$       = "0"
+ 762: 01f8: 
+ 763: 01f8:          PHF.FILLER$          = "  "
+ 764: 0207: 
+ 765: 0207:       ENDIF
+ 766: 0207:       PHF.SESS.NUM% = F46.SAV.SESS%
+ 767: 0211:       F46.SAV.SESS% = 0
+ 768: 0217: 
+ 769: 0217: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 770: 0217: \/*   Dont proceed if price hasn't changed
+ 771: 0217: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 772: 0217: 
+ 773: 0217:       IF NEW.PRICE% = PHF.CURR.PRICE% THEN BEGIN
+ 774: 022f:          F46.LABEL.TYPE$ = PHF.CURR.LABL$
+ 775: 0245:          IF            F46.LABEL.TYPE$ = "1" THEN BEGIN
+ 776: 025b:             F46.WAS.PRICE%     = PHF.HIST1.PRICE%
+ 777: 026e:          ENDIF ELSE IF F46.LABEL.TYPE$ = "2" THEN BEGIN
+ 778: 0284:             F46.WAS.PRICE%     = PHF.HIST1.PRICE%
+ 779: 0295:             F46.WAS.WAS.PRICE% = PHF.HIST2.PRICE%
+ 780: 02a6:          ENDIF
+ 781: 02a6:          GET.LABEL.TYPE = 2
+ 782: 02aa:          GOTO EXIT.NOW
+ 783: 02ad:       ENDIF
+ 784: 02ad: 
+ 785: 02ad: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 786: 02ad: \/*   Check if item is on live planner (not for file update mode)
+ 787: 02ad: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 788: 02ad: 
+ 789: 02ad:       IF UCASE$(UPDATE.PHF$) <> "Y" THEN BEGIN
+ 790: 02d1:          ON.LP% = 0
+ 791: 02d6:          IF SRITL.SESS.NUM% <> 0 THEN BEGIN
+ 792: 02e0:             SRITL.ITEM.CODE$ = IRF.BOOTS.CODE$
+ 793: 02f6:             SRITL.RECORD.CHAIN% = 0
+ 794: 02fe:             IF READ.SRITL = 0 THEN ON.LP% = -1
+ 795: 030d:          ENDIF
+ 796: 030f:       ENDIF ELSE BEGIN
+ 797: 030f:          ON.LP% = -1
+ 798: 0314:       ENDIF
+ 799: 0314: 
+ 800: 0314: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 801: 0314: \/*   If price increase set the last increase date
+ 802: 0314: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 803: 0314: 
+ 804: 0314:       IF (NEW.PRICE%  > OLD.PRICE%                                      \
+ 805: 0367:           AND OLD.PRICE% > 0      )                                     \
+ 806: 0367:       OR (phf.data% = -1                                                \
+ 807: 0367:           AND NEW.PRICE%  > PHF.CURR.PRICE%) THEN BEGIN
+ 808: 0367:          PHF.LAST.INC.DATE$ = PACK$(DATE$)
+ 809: 037c:       ENDIF
+ 810: 037c: 
+ 811: 037c: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 812: 037c: \/*   Compute Label Type
+ 813: 037c: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 814: 037c: 
+ 815: 037c:       IF (IDF.BIT.FLAGS.1% AND 20H) = 0                                 \
+ 816: 039a:       OR (IRF.INDICAT8% AND 10000000B) THEN BEGIN
+ 817: 039a:          ! Not markdown item
+ 818: 039a:          ! or WEEE item
+ 819: 039a:          F46.LABEL.TYPE$ = "0"
+ 820: 03ac:       ENDIF ELSE IF NEW.PRICE% <> PHF.CURR.PRICE% THEN BEGIN
+ 821: 03c4: 
+ 822: 03c4:          ! Get number of price changes in last 28 days
+ 823: 03c4:          F02.DATE$ = DATE$
+ 824: 03d4:          rc% = UPDATE.DATE(-28)
+ 825: 03e7:          F02.DATE$ = PACK$(F02.DATE$)
+ 826: 0402: 
+ 827: 0402:          IF phf.data% = 0                                               \
+ 828: 04cc:          OR ON.LP% = 0                                                  \
+ 829: 04cc:          OR PHF.CURR.LABL$ = "3"                                        \ BNWB
+ 830: 04cc:          OR ((PHF.CURR.LABL$ = "0") AND (F02.DATE$ <=PHF.CURR.DATE$))   \
+ 831: 04cc:          OR F02.DATE$ <= PHF.LAST.INC.DATE$ THEN BEGIN
+ 832: 04cc:             ! IF no price history available
+ 833: 04cc:             ! OR NOT on Live planner
+ 834: 04cc:             ! OR already set to clearance - stay clearance
+ 835: 04cc:             ! OR NOT already markdown
+ 836: 04cc:             !    AND price change within last 28 days
+ 837: 04cc:             ! OR a price increase within last 28 days
+ 838: 04cc:             F46.LABEL.TYPE$    = "3"                ! Clearance
+ 839: 04dd: \ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 840: 04dd: \        ! Algorithm for label types modified to CIP 2 DD               ! BNWB
+ 841: 04dd: \        ENDIF ELSE IF F02.DATE$ <= PHF.HIST1.DATE$ THEN BEGIN
+ 842: 04dd: \           ! More than 1 change in last 28 days
+ 843: 04dd: \           F46.LABEL.TYPE$    = "2"                ! Was/Was/Now
+ 844: 04dd: \           F46.WAS.PRICE%     = PHF.CURR.PRICE%
+ 845: 04dd: \           F46.WAS.WAS.PRICE% = PHF.HIST1.PRICE%
+ 846: 04dd: \        ENDIF ELSE BEGIN
+ 847: 04dd: \           ! Only change in last 28 days
+ 848: 04dd: \           F46.LABEL.TYPE$    = "1"                ! Was/Now
+ 849: 04dd: \           F46.WAS.PRICE%     = PHF.CURR.PRICE%
+ 850: 04dd: \        ENDIF
+ 851: 04dd: \ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 852: 04dd:          ENDIF ELSE IF PHF.CURR.LABL$ = "0" THEN BEGIN                  ! BNWB
+ 853: 04f3:             ! If NOT already markdown                                   ! BNWB
+ 854: 04f3:             F46.LABEL.TYPE$    = "1"                                    ! BNWB
+ 855: 0502:             F46.WAS.PRICE%     = PHF.CURR.PRICE%                        ! BNWB
+ 856: 0515:          ENDIF ELSE BEGIN                                               ! BNWB
+ 857: 0515:             F46.LABEL.TYPE$    = "2"                ! Was/Was/Now       ! BNWB
+ 858: 0524:             F46.WAS.PRICE%     = PHF.CURR.PRICE%                        ! BNWB
+ 859: 0535:             F46.WAS.WAS.PRICE% = PHF.HIST1.PRICE%                       ! BNWB
+ 860: 0546:          ENDIF                                                          ! BNWB
+ 861: 0546: 
+ 862: 0546:          ! Markdown items to be flagged as new type "C"
+ 863: 0546:          NEW.TYPE$ = "C"
+ 864: 0553: 
+ 865: 0553:       ENDIF
+ 866: 0553: 
+ 867: 0553: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 868: 0553: \/*   Update PHF if required
+ 869: 0553: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 870: 0553: 
+ 871: 0553:       IF UCASE$(UPDATE.PHF$) = "Y" THEN BEGIN
+ 872: 057a: 
+ 873: 057a:          ! Ripple through the price history
+ 874: 057a:          PHF.HIST2.PRICE% = PHF.HIST1.PRICE%
+ 875: 058b:          PHF.HIST1.PRICE% = PHF.CURR.PRICE%
+ 876: 059c:          PHF.CURR.PRICE%  = NEW.PRICE%
+ 877: 05ac: 
+ 878: 05ac:          PHF.HIST2.DATE$  = PHF.HIST1.DATE$
+ 879: 05c2:          PHF.HIST1.DATE$  = PHF.CURR.DATE$
+ 880: 05d8:          PHF.CURR.DATE$   = PACK$(DATE$)
+ 881: 05ed: 
+ 882: 05ed:          PHF.HIST2.TYPE$  = PHF.HIST1.TYPE$
+ 883: 0603:          PHF.HIST1.TYPE$  = PHF.CURR.TYPE$
+ 884: 0619:          PHF.CURR.TYPE$   = NEW.TYPE$
+ 885: 062c: 
+ 886: 062c:          PHF.CURR.LABL$   = F46.LABEL.TYPE$
+ 887: 0642: 
+ 888: 0642:          F46.SAV.SESS% = PHF.SESS.NUM%
+ 889: 064c:          PHF.SESS.NUM% = F46.PHF.SESS.NUM%
+ 890: 0657:          rc% = WRITE.PHF
+ 891: 065f:          PHF.SESS.NUM% = F46.SAV.SESS%
+ 892: 066a:          F46.SAV.SESS% = 0
+ 893: 0670: 
+ 894: 0670:       ENDIF
+ 895: 0670: 
+ 896: 0670: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 897: 0670: \/*   Set Good return
+ 898: 0670: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 899: 0670: 
+ 900: 0670:       GET.LABEL.TYPE = 0
+ 901: 0674: 
+ 902: 0674: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 903: 0674: \/*      Set Globals
+ 904: 0674: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 905: 0674: 
+ 906: 0674: EXIT.NOW:
+ 907: 0674:       IF F46.LABEL.TYPE$ = "0" THEN BEGIN
+ 908: 068a:          F46.LABEL.TYPE$ = "N"
+ 909: 069b:       ENDIF ELSE BEGIN
+ 910: 069b:          F46.LABEL.TYPE$ = "N" + F46.LABEL.TYPE$
+ 911: 06b8:       ENDIF
+ 912: 06b8: 
+ 913: 06b8: EXIT FUNCTION
+ 914: 06ba: 
+ 915: 06ba: \***********************************************************************/
+ 916: 06ba: \***
+ 917: 06ba: \*** ALLOCATE SESSIONS
+ 918: 06ba: \***
+ 919: 06ba: \***********************************************************************/
+ 920: 06ba: 
+ 921: 06ba: INITIALISE:
+ 922: 06ba: 
+ 923: 06ba:       CALL PHF.SET                                                      ! BNWB
+ 924: 06bf:       rc% = SESS.NUM.UTILITY ("O",                                      \
+ 925: 06e0:                                PHF.REPORT.NUM%,                         \
+ 926: 06e0:                                PHF.FILE.NAME$  )
+ 927: 06e0:       F46.PHF.SESS.NUM% = F20.INTEGER.FILE.NO%
+ 928: 06eb: 
+ 929: 06eb:       phf.open% = 0
+ 930: 06f0:       IF END# F46.PHF.SESS.NUM% THEN phf.open.err
+ 931: 06fe:       OPEN PHF.FILE.NAME$ KEYED RECL PHF.RECL% AS F46.PHF.SESS.NUM%                                      ! 1.11 NWB
+ 932: 071f:       phf.open% = -1
+ 933: 0724: phf.open.err:
+ 934: 0724: 
+ 935: 0724: RETURN
+ 936: 072c: 
+ 937: 072c: END FUNCTION
+ 938: 0745: 
+ 939: 0745: \***********************************************************************/
+ 940: 0745: End of Compilation

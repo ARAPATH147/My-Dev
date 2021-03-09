@@ -1,0 +1,253 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***              RETURNS / AUTOMATIC CREDIT CLAIMING SYSTEM
+   5: 0000: \***
+   6: 0000: \***                 EXTERNAL FILE FUNCTION DEFINITIONS
+   7: 0000: \***
+   8: 0000: \***                    REFERENCE    : CCBUFFUN.BAS
+   9: 0000: \***
+  10: 0000: \***    Version A.         Michael Kelsall              30th September 1993
+  11: 0000: \***
+  12: 0000: \*******************************************************************************
+  13: 0000: \*******************************************************************************
+  14: 0000:  
+  15: 0000:   INTEGER*2 GLOBAL              \
+  16: 0000:          CURRENT.REPORT.NUM%
+  17: 0000:          
+  18: 0000:   STRING GLOBAL                 \
+  19: 0000:          CURRENT.CODE$,         \
+  20: 0000:          FILE.OPERATION$
+  21: 0000:          
+  22: 0000:   %INCLUDE CCBUFDEC.J86                                                
+  23: 0000: REM \
+  24: 0000: \******************************************************************************
+  25: 0000: \******************************************************************************
+  26: 0000: \***
+  27: 0000: \***      %INCLUDE FOR CREDIT CLAIMING BUFFER FILE FIELD DECLARATIONS
+  28: 0000: \***                                          FILE REFERENCE PARAMETERS
+  29: 0000: \***
+  30: 0000: \***               FILE TYPE    : Sequential
+  31: 0000: \***
+  32: 0000: \***               REFERENCE    : CCBUFDEC.J86
+  33: 0000: \***
+  34: 0000: \***      Version A.     Michael J. Kelsall           30th September 1993.
+  35: 0000: \***
+  36: 0000: \******************************************************************************
+  37: 0000: \*******************************************************************************
+  38: 0000: \***
+  39: 0000: \***  The length of the records on this file vary depending on the record
+  40: 0000: \***  transaction type, but they all comprise combinations of the fields
+  41: 0000: \***  defined below.
+  42: 0000: \***
+  43: 0000: \***  RETURNS/AUTOMATIC CREDIT CLAIMING RECORD TYPES;
+  44: 0000: \***
+  45: 0000: \***  Transaction type 24 - Whole or Part consignment record
+  46: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, CREDIT CLAIM NUM, 
+  47: 0000: \***     BC LETTER, CLAIM TYPE, SUPPLIER NUM, INVOICE NUM, FOLIO NUM, 
+  48: 0000: \***     BATCH REF NUM, REPAIR CATEGORY, REPAIR NUM, PLAN4 POLICY NUM, 
+  49: 0000: \***     DDDA/DCDR NUM, DELIV NOTE NUM, DELIV DATE, NUM OF CARTONS, ORDER NUM,
+  50: 0000: \***     NUM OF ITEMS, ITEM/BAR CODE FLAG, BOOTS/BAR CODE, QTY, PRICE, 
+  51: 0000: \***     RECORD DELIMITER, END OF RECORD MARKER
+  52: 0000: \***     (ITEM/BAR CODE FLAG to PRICE repeated NUM OF ITEMS times)
+  53: 0000: \***
+  54: 0000: \***  Transaction type 26 - Data from LDT
+  55: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, UOD NUM, UOD STATUS, 
+  56: 0000: \***     CREDIT CLAIM NUM, NUM OF ITEMS UPDATED, TOTAL QTY IN UOD, 
+  57: 0000: \***     ADJUST STOCK FIGURE FLAG, SUPPLY ROUTE, DISP LOCATION, BC LETTER, 
+  58: 0000: \***     RECALL NUM, AUTHORISATION, SUPPLIER, RETURN METHOD, CARRIER, BIRD NUM,
+  59: 0000: \***     REASON, WAREHOUSE ROUTE, UOD TYPE, REASON FOR DAMAGE, RECEIVING STORE,
+  60: 0000: \***     DESTINATION, DATE UOD OPENED, DATE UOD DESPATCHED, TIME UOD 
+  61: 0000: \***     DESPATCHED, ITEM.BAR CODE FLAG, BOOTS/BAR CODE, QTY, ITEM UPDATED 
+  62: 0000: \***     FLAG, RECORD DELIMITER, END OF RECORD MARKER
+  63: 0000: \***     (ITEM/BAR CODE FLAG to ITEM UPDATED FLAG repeated NUM OF ITEMS times)
+  64: 0000: \***
+  65: 0000: \***  Transaction type 28 - Cancelled Credit Claim
+  66: 0000: \***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, CLAIM NUMBER, UOD
+  67: 0000: \***     NUM, NEW STATUS FLAG, RECORD DELIMITER, END OF RECORD MARKER
+  68: 0000: \***
+  69: 0000: \******************************************************************************
+  70: 0000: 
+  71: 0000:   STRING GLOBAL              \
+  72: 0000:     CCBUF.FILE.NAME$,        \
+  73: 0000:     CCBUF.RECORD$,           \ Used to store the whole record which is unstrung
+  74: 0000:                              \ into the fields below
+  75: 0000:     CCBUF.RECORD.DELIMITER$, \ 1 byte ASCII set to " (CHR$(34)) 
+  76: 0000:     CCBUF.TRANS.TYPE$,       \ 1 byte UPD. 24 = Whole/Part consignment (R/ACC)
+  77: 0000: 			     \             25 = NS16 / Misc cont txn (R/ACC)
+  78: 0000: 			     \	           26 = Data from LDT (R/ACC)
+  79: 0000: 			     \             27 = End of LDT session (R/ACC)
+  80: 0000: 			     \		   28 = Canc. Credit Claim (R/ACC)
+  81: 0000:     CCBUF.FIELD.DELIMITER$,  \ 1 byte ASCII set to ; (CHR$(59))
+  82: 0000:     CCBUF.ENDREC.MARKER$,    \ 2 bytes ASCII set to XODOA
+  83: 0000:     CCBUF.BC.LETTER$,        \ 1 byte ASCII
+  84: 0000:     CCBUF.CREDIT.CLAIM.NUM$, \ 4 byte UPD
+  85: 0000:     CCBUF.CLAIM.TYPE$,	     \ 1 byte ASC;  "M" = Missing,
+  86: 0000:     			     \		    "E" = Excess,
+  87: 0000: 			     \              "R" = Repairs
+  88: 0000:     CCBUF.SUPPLIER.NUM$,     \ 3 byte UPD
+  89: 0000:     CCBUF.INVOICE.NUM$,	     \ 3 byte UPD 
+  90: 0000:     CCBUF.FOLIO.NUM$,	     \ 3 byte UPD
+  91: 0000:     CCBUF.BATCH.REF$,	     \ 3 byte UPD
+  92: 0000:     CCBUF.REPAIR.CATEGORY$,  \ 1 byte UPD;   1 = Plan4,
+  93: 0000:    			     \ 		     2 = Estimate,
+  94: 0000: 			     \		     3 = Boots guarantee,
+  95: 0000: 			     \		     4 = Supplier guarantee,
+  96: 0000: 			     \		     5 = Other guarantee,
+  97: 0000:     CCBUF.REPAIR.NUM$,       \ 4 byte UPD
+  98: 0000:     CCBUF.PLAN4.POLICY.NUM$, \ 6 byte UPD; (Only if repair cat is Plan4)
+  99: 0000:     CCBUF.DDDA.DCDR.NUM$,    \ 3 byte UPD
+ 100: 0000:     CCBUF.DELIV.NOTE.NUM$,   \ 3 byte UPD
+ 101: 0000:     CCBUF.NUM.CARTONS.RECEIV$,\1 byte UPD
+ 102: 0000:     CCBUF.ORDER.NUM$,	     \ 3 byte UPD
+ 103: 0000:     CCBUF.ITEM.BARCODE.FLAG$,\ 1 byte ASC;  "I" = Boots item code,
+ 104: 0000:   			     \              "B" = Barcode.
+ 105: 0000:     CCBUF.ITEM.BARCODE$,     \ 7 byte UPD
+ 106: 0000:     CCBUF.ITEM.PRICE$,	     \ 3 byte UPD;  Spaces.
+ 107: 0000:     CCBUF.AUTHORISATION$,    \ 15 byte ASC
+ 108: 0000:     CCBUF.ADJ.STOCK.FIGURE$, \ 1 byte ASC;  "Y" or "N"
+ 109: 0000:     CCBUF.RETURN.REASON$,    \ 1 byte UPD;  (See CCRSN file)
+ 110: 0000:     CCBUF.UOD.NUM$,	     \ 7 byte UPD
+ 111: 0000:     CCBUF.UOD.STATUS$,	     \ 1 byte ASC;  "O" = Open,
+ 112: 0000:     			     \              "C" = Closed,
+ 113: 0000: 			     \              "D" = Despatched
+ 114: 0000:     CCBUF.SUPPLY.ROUTE$,     \ 1 byte ASC
+ 115: 0000:     CCBUF.DISP.LOCATION$,    \ 1 byte ASC   "M" = MDS,
+ 116: 0000:     			     \              "D" = Dispensary
+ 117: 0000:     CCBUF.RECALL.NUM$,       \ 9 byte ASC 
+ 118: 0000:     CCBUF.SUPPLIER$,	     \ 15 byte ASC
+ 119: 0000:     CCBUF.RETURN.METHOD$,    \ 1 byte UPD;   1 = Carrier,
+ 120: 0000:     			     \		     2 = BIRD,
+ 121: 0000: 			     \               3 = Via D6,
+ 122: 0000: 			     \               4 = Representative
+ 123: 0000:     CCBUF.CARRIER$,	     \ 1 byte UPD;   1 = GPO,
+ 124: 0000:     			     \               2 = Parcelforce,
+ 125: 0000: 			     \               3 = Securicor,
+ 126: 0000: 			     \               4 = Other
+ 127: 0000:     CCBUF.BIRD.NUM$,	     \ 8 byte ASC
+ 128: 0000:     CCBUF.WAREHOUSE.ROUTE$,  \ 1 byte ASC   "R" = RDC,
+ 129: 0000:     			     \  	    "C" = CSR
+ 130: 0000:     CCBUF.UOD.TYPE$,         \ 1 byte UPD;   1 = Travel Outer,
+ 131: 0000:     			     \               2 = Town Tray,
+ 132: 0000: 			     \               3 = Roll cage,
+ 133: 0000: 			     \               4 = Other
+ 134: 0000:     CCBUF.DAMAGE.REASON$,    \ 1 byte UPD    1 = Bad packaging,
+ 135: 0000:      			     \               2 = Poor handling
+ 136: 0000:     CCBUF.RECEIVING.STORE$,  \ 2 byte UPD
+ 137: 0000:     CCBUF.DESTINATION$,      \ 1 byte UPD    1 = Business Centre,
+ 138: 0000:     			     \               2 = MTS,
+ 139: 0000: 			     \               3 = Other
+ 140: 0000:     CCBUF.DATE.UOD.OPENED$,  \ 3 byte UPD
+ 141: 0000:     CCBUF.DATE.DESPATCHED$,  \ 3 byte UPD
+ 142: 0000:     CCBUF.TIME.DESPATCHED$,  \ 3 byte UPD
+ 143: 0000:     CCBUF.ITEM.UPDATED$,     \ 1 byte ASC
+ 144: 0000:     CCBUF.NEW.STATUS.FLAG$   \ 1 byte ASC   "C" = Closed,
+ 145: 0000:     			     \   	    "D" = Despatched,
+ 146: 0000: 			     !    	    "X" = Cancelled
+ 147: 0000:     
+ 148: 0000: 			     			     			     
+ 149: 0000:   INTEGER*2 GLOBAL           \
+ 150: 0000:     CCBUF.SESS.NUM%,         \
+ 151: 0000:     CCBUF.REPORT.NUM%,	     \
+ 152: 0000:     			     \
+ 153: 0000:     CCBUF.NUM.OF.ITEMS%,     \
+ 154: 0000:     CCBUF.NUM.ITEMS.UPDATED%,\
+ 155: 0000:     CCBUF.QTY%,		     \
+ 156: 0000:     CCBUF.TOTAL.QTY.IN.UOD%  !
+ 157: 0000:         			     
+ 158: 0000: 			     
+ 159: 0000:                                                                      
+ 160: 0000:   
+ 161: 0000:   FUNCTION CCBUF.SET PUBLIC
+ 162: 0014:     INTEGER*2 CCBUF.SET
+ 163: 0014:     
+ 164: 0014:     CCBUF.SET = 1
+ 165: 0019: 
+ 166: 0019:       CCBUF.REPORT.NUM%  = 326
+ 167: 0022:       CCBUF.FILE.NAME$ = "CCBUF"
+ 168: 0031:     
+ 169: 0031:     CCBUF.SET = 0
+ 170: 0036: 
+ 171: 0036:   END FUNCTION
+ 172: 0045: 
+ 173: 0045: 
+ 174: 0045: 
+ 175: 0045:   FUNCTION READ.CCBUF PUBLIC
+ 176: 0059:     INTEGER*2 READ.CCBUF 
+ 177: 0059:     
+ 178: 0059:     READ.CCBUF = 1
+ 179: 005e:     
+ 180: 005e:        IF END #CCBUF.SESS.NUM% THEN READ.ERROR
+ 181: 0072:        READ #CCBUF.SESS.NUM%; LINE CCBUF.RECORD$
+ 182: 008b:        CCBUF.TRANS.TYPE$ = UNPACK$(MID$(CCBUF.RECORD$,2,1))
+ 183: 00af:     
+ 184: 00af:     READ.CCBUF = 0
+ 185: 00b4:     EXIT FUNCTION
+ 186: 00b6:     
+ 187: 00b6:     READ.ERROR:
+ 188: 00b6:     
+ 189: 00b6:        CURRENT.CODE$ = ""
+ 190: 00c5:        FILE.OPERATION$ = "R"
+ 191: 00d4:        CURRENT.REPORT.NUM% = CCBUF.REPORT.NUM%
+ 192: 00e2:        
+ 193: 00e2:        EXIT FUNCTION
+ 194: 00e4:                             
+ 195: 00e4:   END FUNCTION
+ 196: 00f3:   
+ 197: 00f3: 
+ 198: 00f3: 
+ 199: 00f3:   FUNCTION WRITE.CCBUF PUBLIC
+ 200: 0107: 
+ 201: 0107:     INTEGER*2 WRITE.CCBUF
+ 202: 0107:     
+ 203: 0107:     STRING FORMAT$,                                                   \
+ 204: 0107:            STRING.LENGTH$
+ 205: 0107:             
+ 206: 0107:     WRITE.CCBUF = 1  
+ 207: 010c: 
+ 208: 010c:        STRING.LENGTH$ = STR$(LEN(CCBUF.RECORD$))
+ 209: 0133:        FORMAT$ = "C" + STRING.LENGTH$                                      
+ 210: 014b:        IF END #CCBUF.SESS.NUM% THEN WRITE.ERROR
+ 211: 015f:        WRITE FORM FORMAT$; #CCBUF.SESS.NUM%; CCBUF.RECORD$                  
+ 212: 0185:        
+ 213: 0185:     WRITE.CCBUF = 0
+ 214: 018a:     EXIT FUNCTION
+ 215: 018c:     
+ 216: 018c:     WRITE.ERROR:
+ 217: 018c:        CURRENT.CODE$ = CCBUF.RECORD$
+ 218: 01a2:        FILE.OPERATION$= "O"
+ 219: 01b1:        CURRENT.REPORT.NUM% = CCBUF.REPORT.NUM%
+ 220: 01bf:        
+ 221: 01bf:        EXIT FUNCTION    
+ 222: 01c1: 
+ 223: 01c1:   END FUNCTION
+ 224: 01d0: 
+ 225: 01d0:   
+ 226: 01d0: 
+ 227: 01d0:   FUNCTION WRITE.HOLD.CCBUF PUBLIC                                      
+ 228: 01e4: 
+ 229: 01e4:     INTEGER*2 WRITE.HOLD.CCBUF                                          
+ 230: 01e4:     
+ 231: 01e4:     STRING FORMAT$,                                                     \ 
+ 232: 01e4:            STRING.LENGTH$                                               
+ 233: 01e4:             
+ 234: 01e4:     WRITE.HOLD.CCBUF = 1                                                
+ 235: 01e9: 
+ 236: 01e9:        STRING.LENGTH$ = STR$(LEN(CCBUF.RECORD$))                        
+ 237: 0210:        FORMAT$ = "C" + STRING.LENGTH$                                   
+ 238: 0228:        IF END #CCBUF.SESS.NUM% THEN WRITE.HOLD.ERROR                    
+ 239: 023c:        WRITE FORM FORMAT$; HOLD #CCBUF.SESS.NUM%; CCBUF.RECORD$         
+ 240: 0262:        
+ 241: 0262:     WRITE.HOLD.CCBUF = 0                                                
+ 242: 0267:     EXIT FUNCTION                                                       
+ 243: 0269:     
+ 244: 0269:     WRITE.HOLD.ERROR:                                                   
+ 245: 0269:     
+ 246: 0269:        CURRENT.CODE$ = CCBUF.RECORD$                                    
+ 247: 027f:        FILE.OPERATION$= "O"                                             
+ 248: 028e:        CURRENT.REPORT.NUM% = CCBUF.REPORT.NUM%                          
+ 249: 029c:        
+ 250: 029c:        EXIT FUNCTION                                                    
+ 251: 029e: 
+ 252: 029e:   END FUNCTION                                                          
+ 253: 02ad: End of Compilation

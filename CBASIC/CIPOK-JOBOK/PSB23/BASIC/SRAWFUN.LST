@@ -1,0 +1,114 @@
+   1: 0000: \********************************************************************
+   2: 0000: \***      Space and Range Planogram database (SRMOD)
+   3: 0000: \***      Version A           Neil Bennett          6th June 2006
+   4: 0000: \***
+   5: 0000: \....................................................................
+   6: 0000: 
+   7: 0000: INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+   8: 0000: 
+   9: 0000: STRING GLOBAL CURRENT.CODE$
+  10: 0000: STRING GLOBAL FILE.OPERATION$
+  11: 0000: 
+  12: 0000: 
+  13: 0000: %INCLUDE SRAWDEC.J86
+  14: 0000: \********************************************************************
+  15: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE SELFxxx.RAW FILE
+  16: 0000: \***      REFERENCE : SRAWDEC.J86
+  17: 0000: \***      Version A           Neil Bennett            5th June 2006
+  18: 0000: \***
+  19: 0000: \********************************************************************
+  20: 0000: 
+  21: 0000: INTEGER*2 GLOBAL                \
+  22: 0000:     SRAW.SESS.NUM%,             \
+  23: 0000:     SRAW.REPORT.NUM%            !
+  24: 0000:   
+  25: 0000: STRING GLOBAL                   \
+  26: 0000:     SRAW.FILE.NAME$,            \
+  27: 0000:     SRAW.RECORD$,               \
+  28: 0000:     SRAW.LABEL.TYPE$,           \
+  29: 0000:     SRAW.ITEM.CODE$,            \
+  30: 0000:     SRAW.ITEM.PRICE$            !
+  31: 0000:     
+  32: 0000: 
+  33: 0000: \--------------------------------------------------------------------
+  34: 0000: 
+  35: 0000: SUB SRAW.SPLIT.RECORD PUBLIC
+  36: 0014: 
+  37: 0014:     SRAW.LABEL.TYPE$ = MID$(SRAW.RECORD$, 1, 1)
+  38: 0033:     SRAW.ITEM.CODE$  = MID$(SRAW.RECORD$, 2, 7)
+  39: 0052:     SRAW.ITEM.PRICE$ = MID$(SRAW.RECORD$, 9, 8)
+  40: 0071: 
+  41: 0071: END SUB
+  42: 007d: 
+  43: 007d: \--------------------------------------------------------------------
+  44: 007d: 
+  45: 007d: SUB SRAW.CONCAT.RECORD PUBLIC
+  46: 0091: 
+  47: 0091:     SRAW.RECORD$ = LEFT$(SRAW.LABEL.TYPE$+"?",1) + \
+  48: 012f:                    RIGHT$("0000000"+SRAW.ITEM.CODE$,7) + \
+  49: 012f:                    RIGHT$("00000000"+SRAW.ITEM.PRICE$,8)
+  50: 012f: 
+  51: 012f: END SUB
+  52: 013b: 
+  53: 013b: \--------------------------------------------------------------------
+  54: 013b: 
+  55: 013b: FUNCTION SRAW.SET PUBLIC
+  56: 014f: 
+  57: 014f:     SRAW.REPORT.NUM%   = 728
+  58: 0158:     SRAW.FILE.NAME$    = "SRAW:"
+  59: 0167:     
+  60: 0167: END FUNCTION
+  61: 0173: 
+  62: 0173: \--------------------------------------------------------------------
+  63: 0173: 
+  64: 0173: FUNCTION READ.SRAW PUBLIC
+  65: 0187: 
+  66: 0187:     INTEGER*2 READ.SRAW
+  67: 0187: 
+  68: 0187:     READ.SRAW = 1
+  69: 018c: 
+  70: 018c:     IF END #SRAW.SESS.NUM% THEN FILE.ERROR
+  71: 01a0: 
+  72: 01a0:     READ #SRAW.SESS.NUM%; LINE SRAW.RECORD$
+  73: 01b9:     CALL SRAW.SPLIT.RECORD
+  74: 01bd:     
+  75: 01bd:     READ.SRAW = 0
+  76: 01c2: 
+  77: 01c2: EXIT FUNCTION
+  78: 01c4: 
+  79: 01c4: FILE.ERROR:
+  80: 01c4: 
+  81: 01c4:     FILE.OPERATION$ = "R"
+  82: 01d3:     CURRENT.REPORT.NUM% = SRAW.REPORT.NUM%
+  83: 01e1:     CURRENT.CODE$ = ""
+  84: 01f0:     
+  85: 01f0: END FUNCTION
+  86: 01ff: 
+  87: 01ff: \--------------------------------------------------------------------
+  88: 01ff: 
+  89: 01ff: FUNCTION WRITE.SRAW PUBLIC
+  90: 0213: 
+  91: 0213:     INTEGER*2 WRITE.SRAW
+  92: 0213: 
+  93: 0213:     WRITE.SRAW = 1
+  94: 0218: 
+  95: 0218:     IF END #SRAW.SESS.NUM% THEN FILE.ERROR
+  96: 022c: 
+  97: 022c:     CALL SRAW.CONCAT.RECORD
+  98: 0230:     PRINT USING "&"; #SRAW.SESS.NUM%; SRAW.RECORD$
+  99: 0257:     
+ 100: 0257:     WRITE.SRAW = 0
+ 101: 025c: 
+ 102: 025c: EXIT FUNCTION
+ 103: 025e: 
+ 104: 025e: FILE.ERROR:
+ 105: 025e: 
+ 106: 025e:     FILE.OPERATION$ = "W"
+ 107: 026d:     CURRENT.REPORT.NUM% = SRAW.REPORT.NUM%
+ 108: 027b:     CURRENT.CODE$ = SRAW.RECORD$
+ 109: 0291: 
+ 110: 0291: END FUNCTION
+ 111: 02a0: 
+ 112: 02a0: \--------------------------------------------------------------------
+ 113: 02a0: 
+ 114: 02a0: End of Compilation

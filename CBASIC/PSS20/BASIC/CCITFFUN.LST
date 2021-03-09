@@ -1,0 +1,234 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  KEYED
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  CCITFFUN.BAS
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***                               FILE OF ITEMS PER CREDIT CLAIM
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***      VERSION A : Michael J. Kelsall      14th September 1993
+  16: 0000: \***      
+  17: 0000: \*****************************************************************************
+  18: 0000: \*****************************************************************************
+  19: 0000: 
+  20: 0000:   INTEGER*2 GLOBAL            \
+  21: 0000:          CURRENT.REPORT.NUM% 
+  22: 0000:          
+  23: 0000:   STRING GLOBAL               \
+  24: 0000:          CURRENT.CODE$,       \
+  25: 0000:          FILE.OPERATION$           
+  26: 0000: 
+  27: 0000:   %INCLUDE CCITFDEC.J86
+  28: 0000: 
+  29: 0000: \*****************************************************************************
+  30: 0000: \*****************************************************************************
+  31: 0000: \***
+  32: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  33: 0000: \***
+  34: 0000: \***                   FILE TYPE:  KEYED
+  35: 0000: \***
+  36: 0000: \***                   REFERENCE:  CCITFDEC.J86
+  37: 0000: \***
+  38: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  39: 0000: \***				   FILE OF ITEMS PER CREDIT CLAIMS
+  40: 0000: \***
+  41: 0000: \***
+  42: 0000: \***      VERSION A : Michael J. Kelsall      14th September 1993
+  43: 0000: \***      
+  44: 0000: \*****************************************************************************
+  45: 0000: \*****************************************************************************
+  46: 0000: 
+  47: 0000: STRING GLOBAL			\
+  48: 0000:    CCITF.FILE.NAME$,		\
+  49: 0000:    CCITF.KEY$,			\  Record key (consists of next 2 fields);
+  50: 0000:    CCITF.CREDIT.CLAIM.NUM$,	\  4 byte UPD
+  51: 0000:    CCITF.ITEM.NUM$,		\  2 byte UPD
+  52: 0000: 				\
+  53: 0000:    CCITF.ITEM.BAR.CODE.FLAG$,	\  1 byte ASC;  "I" = Boots Item code,
+  54: 0000:    				\               "B" = Barcode.
+  55: 0000:    CCITF.BOOTS.BAR.CODE$,	\  7 byte UPD
+  56: 0000:    				\  CCITF.QTY% here (I2)
+  57: 0000:    CCITF.PRICE$,		\  3 byte UPD
+  58: 0000:    CCITF.FILLER$ 		!  4 byte ASC;  Spaces
+  59: 0000:    
+  60: 0000: 
+  61: 0000: INTEGER*2 GLOBAL		\
+  62: 0000:    CCITF.RECL%,			\
+  63: 0000:    CCITF.REPORT.NUM%,		\
+  64: 0000:    CCITF.SESS.NUM%,		\
+  65: 0000: 				\
+  66: 0000:    CCITF.QTY%			!  2 byte INT
+  67: 0000: 
+  68: 0000: 
+  69: 0000: 
+  70: 0000: 
+  71: 0000:   FUNCTION CCITF.SET PUBLIC
+  72: 0014: 
+  73: 0014:      INTEGER*2 CCITF.SET
+  74: 0014:      CCITF.SET = 1
+  75: 0019:        CCITF.REPORT.NUM% = 317
+  76: 0022:        CCITF.RECL%       = 23
+  77: 002b:        CCITF.FILE.NAME$  = "CCITF"
+  78: 003a:      CCITF.SET = 0
+  79: 003f: 
+  80: 003f:   END FUNCTION
+  81: 004e: 
+  82: 004e: 
+  83: 004e: 
+  84: 004e:   FUNCTION READ.CCITF PUBLIC
+  85: 0062: 
+  86: 0062:     INTEGER*2 READ.CCITF
+  87: 0062:     READ.CCITF = 1    
+  88: 0067:        IF END #CCITF.SESS.NUM% THEN READ.ERROR   
+  89: 007b:        READ FORM "T7,C1,C7,I2,C3,C4"; #CCITF.SESS.NUM%                  \
+  90: 00d9:           KEY CCITF.KEY$;                                               \
+  91: 00d9:               CCITF.ITEM.BAR.CODE.FLAG$,                                \         
+  92: 00d9:               CCITF.BOOTS.BAR.CODE$,                                    \  
+  93: 00d9:               CCITF.QTY%,                                               \
+  94: 00d9:               CCITF.PRICE$,                                             \  
+  95: 00d9:               CCITF.FILLER$
+  96: 00d9:        READ.CCITF = 0
+  97: 00de:        EXIT FUNCTION     
+  98: 00e0:         
+  99: 00e0:     READ.ERROR:
+ 100: 00e0: 
+ 101: 00e0:         CURRENT.CODE$ = CCITF.CREDIT.CLAIM.NUM$
+ 102: 00f6:         FILE.OPERATION$ = "R"
+ 103: 0105:         CURRENT.REPORT.NUM% = CCITF.REPORT.NUM%
+ 104: 0113:         EXIT FUNCTION
+ 105: 0115: 
+ 106: 0115:   END FUNCTION
+ 107: 0124:   
+ 108: 0124: 
+ 109: 0124: 
+ 110: 0124:   FUNCTION READ.CCITF.LOCKED PUBLIC
+ 111: 0138: 
+ 112: 0138:     INTEGER*2 READ.CCITF.LOCKED
+ 113: 0138:     READ.CCITF.LOCKED = 1    
+ 114: 013d:        IF END #CCITF.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 115: 0151:        READ FORM "T7,C1,C7,I2,C3,C4"; #CCITF.SESS.NUM% AUTOLOCK         \
+ 116: 01af:           KEY  CCITF.KEY$;                                              \
+ 117: 01af:                CCITF.ITEM.BAR.CODE.FLAG$,                               \         
+ 118: 01af:                CCITF.BOOTS.BAR.CODE$,                                   \  
+ 119: 01af:                CCITF.QTY%,                                              \
+ 120: 01af:                CCITF.PRICE$,                                            \  
+ 121: 01af:                CCITF.FILLER$
+ 122: 01af:        READ.CCITF.LOCKED = 0
+ 123: 01b4:        EXIT FUNCTION     
+ 124: 01b6:         
+ 125: 01b6:     READ.LOCKED.ERROR:
+ 126: 01b6:         CURRENT.CODE$ = CCITF.CREDIT.CLAIM.NUM$
+ 127: 01cc:         FILE.OPERATION$ = "R"
+ 128: 01db:         CURRENT.REPORT.NUM% = CCITF.REPORT.NUM%
+ 129: 01e9:         EXIT FUNCTION
+ 130: 01eb: 
+ 131: 01eb:   END FUNCTION  
+ 132: 01fa: 
+ 133: 01fa: 
+ 134: 01fa: 
+ 135: 01fa:   FUNCTION WRITE.HOLD.CCITF PUBLIC
+ 136: 020e: 
+ 137: 020e:     INTEGER*2 WRITE.HOLD.CCITF
+ 138: 020e:     WRITE.HOLD.CCITF = 1
+ 139: 0213:        IF END #CCITF.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 140: 0227:        WRITE FORM "C6,C1,C7,I2,C3,C4"; HOLD #CCITF.SESS.NUM%;                   \        
+ 141: 0295:               CCITF.KEY$,                                               \
+ 142: 0295:               CCITF.ITEM.BAR.CODE.FLAG$,                                \         
+ 143: 0295:               CCITF.BOOTS.BAR.CODE$,                                    \  
+ 144: 0295:               CCITF.QTY%,                                               \
+ 145: 0295:               CCITF.PRICE$,                                             \  
+ 146: 0295:               CCITF.FILLER$
+ 147: 0295:        WRITE.HOLD.CCITF = 0
+ 148: 029a:        EXIT FUNCTION         
+ 149: 029c:      
+ 150: 029c:     WRITE.HOLD.ERROR:
+ 151: 029c:        FILE.OPERATION$ = "W"
+ 152: 02ab:        CURRENT.REPORT.NUM% = CCITF.REPORT.NUM%
+ 153: 02b9:        CURRENT.CODE$ = CCITF.CREDIT.CLAIM.NUM$
+ 154: 02cf:        EXIT FUNCTION    
+ 155: 02d1: 
+ 156: 02d1:   END FUNCTION
+ 157: 02e0: 
+ 158: 02e0: 
+ 159: 02e0: 
+ 160: 02e0:   FUNCTION WRITE.UNLOCK.CCITF PUBLIC
+ 161: 02f4: 
+ 162: 02f4:     INTEGER*2 WRITE.UNLOCK.CCITF
+ 163: 02f4:     WRITE.UNLOCK.CCITF = 1
+ 164: 02f9:        IF END #CCITF.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 165: 030d:        WRITE FORM "C6,I2,C1,C7,I2,C3,C4"; #CCITF.SESS.NUM% AUTOUNLOCK;  \
+ 166: 037b:               CCITF.KEY$,                                               \
+ 167: 037b:               CCITF.ITEM.BAR.CODE.FLAG$,                                \         
+ 168: 037b:               CCITF.BOOTS.BAR.CODE$,                                    \  
+ 169: 037b:               CCITF.QTY%,                                               \
+ 170: 037b:               CCITF.PRICE$,                                             \  
+ 171: 037b:               CCITF.FILLER$
+ 172: 037b:        WRITE.UNLOCK.CCITF = 0
+ 173: 0380:        EXIT FUNCTION         
+ 174: 0382:      
+ 175: 0382:     WRITE.UNLOCK.ERROR:
+ 176: 0382:        FILE.OPERATION$ = "W"
+ 177: 0391:        CURRENT.REPORT.NUM% = CCITF.REPORT.NUM%
+ 178: 039f:        CURRENT.CODE$ = CCITF.CREDIT.CLAIM.NUM$
+ 179: 03b5:        EXIT FUNCTION    
+ 180: 03b7: 
+ 181: 03b7:   END FUNCTION
+ 182: 03c6: 
+ 183: 03c6: 
+ 184: 03c6: 
+ 185: 03c6:   FUNCTION WRITE.HOLD.UNLOCK.CCITF PUBLIC
+ 186: 03da: 
+ 187: 03da:     INTEGER*2 WRITE.HOLD.UNLOCK.CCITF
+ 188: 03da:     WRITE.HOLD.UNLOCK.CCITF = 1
+ 189: 03df:        IF END #CCITF.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 190: 03f3:        WRITE FORM "C6,C1,C7,I2,C3,C4"; HOLD                             \
+ 191: 0461:              #CCITF.SESS.NUM% AUTOUNLOCK;                               \
+ 192: 0461:               CCITF.KEY$,                                               \
+ 193: 0461:               CCITF.ITEM.BAR.CODE.FLAG$,                                \         
+ 194: 0461:               CCITF.BOOTS.BAR.CODE$,                                    \  
+ 195: 0461:               CCITF.QTY%,                                               \
+ 196: 0461:               CCITF.PRICE$,                                             \  
+ 197: 0461:               CCITF.FILLER$
+ 198: 0461:        WRITE.HOLD.UNLOCK.CCITF = 0
+ 199: 0466:        EXIT FUNCTION         
+ 200: 0468:      
+ 201: 0468:     WRITE.HOLD.UNLOCK.ERROR:
+ 202: 0468:        FILE.OPERATION$ = "W"
+ 203: 0477:        CURRENT.REPORT.NUM% = CCITF.REPORT.NUM%
+ 204: 0485:        CURRENT.CODE$ = CCITF.CREDIT.CLAIM.NUM$
+ 205: 049b:        EXIT FUNCTION    
+ 206: 049d: 
+ 207: 049d:   END FUNCTION
+ 208: 04ac: 
+ 209: 04ac: 
+ 210: 04ac: 
+ 211: 04ac:   FUNCTION WRITE.CCITF PUBLIC
+ 212: 04c0: 
+ 213: 04c0:     INTEGER*2 WRITE.CCITF
+ 214: 04c0:     WRITE.CCITF = 1
+ 215: 04c5:        IF END #CCITF.SESS.NUM% THEN WRITE.ERROR
+ 216: 04d9:        WRITE FORM "C6,C1,C7,I2,C3,C4"; #CCITF.SESS.NUM%;                \     
+ 217: 0547:               CCITF.KEY$,                                               \
+ 218: 0547:               CCITF.ITEM.BAR.CODE.FLAG$,                                \         
+ 219: 0547:               CCITF.BOOTS.BAR.CODE$,                                    \  
+ 220: 0547:               CCITF.QTY%,                                               \
+ 221: 0547:               CCITF.PRICE$,                                             \  
+ 222: 0547:               CCITF.FILLER$
+ 223: 0547:        WRITE.CCITF = 0
+ 224: 054c:        EXIT FUNCTION         
+ 225: 054e:      
+ 226: 054e:     WRITE.ERROR:
+ 227: 054e:        FILE.OPERATION$ = "W"
+ 228: 055d:        CURRENT.REPORT.NUM% = CCITF.REPORT.NUM%
+ 229: 056b:        CURRENT.CODE$ = CCITF.CREDIT.CLAIM.NUM$
+ 230: 0581:        EXIT FUNCTION    
+ 231: 0583: 
+ 232: 0583:   END FUNCTION
+ 233: 0592: 
+ 234: 0592: End of Compilation

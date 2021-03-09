@@ -1,0 +1,129 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***               FUNCTIONS FOR THE STORE OPTIONS FILE
+   5: 0000: \***
+   6: 0000: \***                     REFERENCE    : SOPTSFUN.BAS
+   7: 0000: \***
+   8: 0000: \***       Version A      Stuart William McConnachie      19th June 1995
+   9: 0000: \***
+  10: 0000: \******************************************************************************
+  11: 0000: \*******************************************************************************
+  12: 0000: 
+  13: 0000:    %INCLUDE SOPTSDEC.J86
+  14: 0000: REM \
+  15: 0000: \******************************************************************************
+  16: 0000: \******************************************************************************
+  17: 0000: \***
+  18: 0000: \***                 %INCLUDE FOR THE STORE OPTIONS FILE
+  19: 0000: \***   
+  20: 0000: \***                      FILE TYPE  :   Direct
+  21: 0000: \***
+  22: 0000: \***                      REFERENCE  :   SOPTSDEC.J86
+  23: 0000: \***
+  24: 0000: \***    Version A         Stuart William McConnachie      19th June 1995
+  25: 0000: \***
+  26: 0000: \******************************************************************************
+  27: 0000: \*******************************************************************************
+  28: 0000: 
+  29: 0000:   STRING GLOBAL           \
+  30: 0000:     SOPTS.RECORD$,        \           
+  31: 0000:     SOPTS.SPACE$,         \           
+  32: 0000:     SOPTS.FILE.NAME$
+  33: 0000:     
+  34: 0000:   INTEGER*2 GLOBAL        \
+  35: 0000:     SOPTS.RECL%,          \            
+  36: 0000:     SOPTS.REPORT.NUM%,    \      
+  37: 0000:     SOPTS.SESS.NUM%
+  38: 0000: 
+  39: 0000:   INTEGER*4 GLOBAL        \
+  40: 0000:     SOPTS.REC.NUM%
+  41: 0000: 
+  42: 0000: 
+  43: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  44: 0000: 
+  45: 0000:    STRING GLOBAL                                                       \
+  46: 0000:       CURRENT.CODE$,                                                   \
+  47: 0000:       FILE.OPERATION$          
+  48: 0000:    
+  49: 0000: \------------------------------------------------------------------------------   
+  50: 0000: 
+  51: 0000:    FUNCTION SOPTS.SET PUBLIC   
+  52: 0014:  \***************************
+  53: 0014:   
+  54: 0014:       SOPTS.REPORT.NUM% = 34
+  55: 001d:       SOPTS.RECL%       = 102
+  56: 0026:       SOPTS.FILE.NAME$  = "ADXLXAAN::EALSOPTS"
+  57: 0035:   
+  58: 0035:    END FUNCTION
+  59: 0041: 
+  60: 0041: \------------------------------------------------------------------------------
+  61: 0041:   
+  62: 0041:    FUNCTION READ.SOPTS PUBLIC
+  63: 0055:  \****************************   
+  64: 0055: 
+  65: 0055:       INTEGER*2 I%, READ.SOPTS      
+  66: 0055:     
+  67: 0055:       READ.SOPTS = 1
+  68: 005a: 
+  69: 005a:       IF END #SOPTS.SESS.NUM% THEN END.OF.SOPTS    
+  70: 006e:       READ FORM "T1,C102"; #SOPTS.SESS.NUM%,SOPTS.REC.NUM%; SOPTS.RECORD$
+  71: 00a0:     
+  72: 00a0:       I% = 100
+  73: 00a6:       WHILE MID$(SOPTS.RECORD$,I%,1) = " "      \
+  74: 00a8:        AND  I% > 1                           
+  75: 00a8:          I% = I% - 1
+  76: 00ac:       WEND
+  77: 00f6:       SOPTS.RECORD$ = LEFT$(SOPTS.RECORD$,I%)  
+  78: 0117: 
+  79: 0117:       READ.SOPTS = 0     
+  80: 011c:       EXIT FUNCTION      
+  81: 011e:       
+  82: 011e:       
+  83: 011e:       END.OF.SOPTS:
+  84: 011e:       
+  85: 011e:          FILE.OPERATION$     = "R"
+  86: 012d:          CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+  87: 0180:                                       STR$(SOPTS.REC.NUM%)), 8)
+  88: 0180:          CURRENT.REPORT.NUM% = SOPTS.REPORT.NUM%
+  89: 018e: 
+  90: 018e:       EXIT FUNCTION
+  91: 0190:           
+  92: 0190:    END FUNCTION                             
+  93: 019f: 
+  94: 019f: \---------------------------------------------------------------------------- 
+  95: 019f: 
+  96: 019f:    FUNCTION WRITE.SOPTS PUBLIC
+  97: 01b3:  \****************************   
+  98: 01b3: 
+  99: 01b3:       INTEGER*2 I%, WRITE.SOPTS                                                    
+ 100: 01b3:     
+ 101: 01b3:       WRITE.SOPTS = 1      
+ 102: 01b8:   
+ 103: 01b8:       SOPTS.RECORD$ = LEFT$(SOPTS.RECORD$ +                             \
+ 104: 020d:                             STRING$(SOPTS.RECL%, " "),                  \
+ 105: 020d:                             SOPTS.RECL% - 2)
+ 106: 020d:   
+ 107: 020d:       IF END #SOPTS.SESS.NUM% THEN END.OF.WRITE.SOPTS  
+ 108: 0221:       WRITE FORM "C100,C2"; #SOPTS.SESS.NUM%, SOPTS.REC.NUM%;           \
+ 109: 027c:                             SOPTS.RECORD$, CHR$(0DH) + CHR$(0AH)
+ 110: 027c:  
+ 111: 027c:       WRITE.SOPTS = 0     
+ 112: 0281:       EXIT FUNCTION      
+ 113: 0283:       
+ 114: 0283:       
+ 115: 0283:       END.OF.WRITE.SOPTS:
+ 116: 0283:       
+ 117: 0283:          FILE.OPERATION$     = "W"
+ 118: 0292:          CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+ 119: 02e5:                                       STR$(SOPTS.REC.NUM%)), 8)
+ 120: 02e5:          CURRENT.REPORT.NUM% = SOPTS.REPORT.NUM%
+ 121: 02f3: 
+ 122: 02f3:       EXIT FUNCTION
+ 123: 02f5:           
+ 124: 02f5: 
+ 125: 02f5:    END FUNCTION
+ 126: 0304: 
+ 127: 0304: \------------------------------------------------------------------------------
+ 128: 0304: 
+ 129: 0304: End of Compilation

@@ -1,0 +1,255 @@
+
+\REM
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***    %INCLUDE FOR GENERAL DATA PUBLIC VIEW FUNCTIONS
+\***
+\***        REFERENCE   :   VIEWS.J86 (J86)
+\***
+\***        FILE TYPE   :   Keyed
+\***
+\***    The name of this file should be coded within a program immediately after 
+\***    the included code defining external Boots functions.
+\***    It contains functions to view data during development work.
+\***
+\***    REVISION 1.0.           ROBERT COWEY.                     16 JUL 2002.
+\***    Original version created for 2002 Deals Rewrite project
+\***    Defined new functions to view data to assist with development work
+\***    BINARY.VIEW1$, BINARY.VIEW2$ and HEX.VIEW1$
+\***
+\***    REVISION 1.1.           ROBERT COWEY.                     20 NOV 2002.
+\***    Defined new function HEX.VIEWX$.
+\***
+\***    REVISION 1.2.           ROBERT COWEY.                     11 DEC 2002.
+\***    Defined new function HEX.VIEW.MAX$.
+\***
+\***    REVISION 1.3.           ROBERT COWEY.                     28 NOV 2003.
+\***    Defined new function BIT.FLAG$.
+\***
+\*****************************************************************************
+\*****************************************************************************
+
+
+\*******************************************************************************
+\***
+\***    BINARY.VIEW1$
+\***    Creates a binary view of a one byte integer.
+\***    The view consists of two groups (nibbles) of four bits each.
+\***
+\***............................................................................
+
+
+FUNCTION BINARY.VIEW1$(ONE.BYTE.INT%) PUBLIC
+
+    STRING  BINARY.VIEW1$
+    STRING  WRK$
+    INTEGER BIT.NUM%
+    INTEGER ONE.BYTE.INT%
+
+    WRK$ = ""
+    BINARY.VIEW1$ = ""
+    BIT.NUM% = 8 ! Highest order bit on one byte integer
+
+    WHILE BIT.NUM% > 4
+        WRK$ = WRK$ + CHR$((SHIFT(ONE.BYTE.INT%,BIT.NUM%-1) AND 01h) + 48)
+        BIT.NUM% EQ BIT.NUM% - 1
+    WEND
+
+    WRK$ = WRK$ + " "
+    
+    WHILE BIT.NUM% > 0
+        WRK$ = WRK$ + CHR$((SHIFT(ONE.BYTE.INT%,BIT.NUM%-1) AND 01h) + 48)
+        BIT.NUM% EQ BIT.NUM% - 1
+    WEND
+
+    BINARY.VIEW1$ = WRK$
+
+END FUNCTION
+
+
+\*******************************************************************************
+\***
+\***    BINARY.VIEW2$
+\***    Creates a binary view of a two byte integer.
+\***    The view consists of four groups (nibbles) of four bits each.
+\***
+\***............................................................................
+
+
+FUNCTION BINARY.VIEW2$(TWO.BYTE.INT%) PUBLIC
+
+    STRING  BINARY.VIEW2$
+    STRING  WRK$
+    INTEGER BIT.NUM%
+    INTEGER TWO.BYTE.INT%
+
+    WRK$ = ""
+    BINARY.VIEW2$ = ""
+    BIT.NUM% = 16 ! Highest order bit on two byte integer
+
+    WHILE BIT.NUM% > 12
+        WRK$ = WRK$ + CHR$((SHIFT(TWO.BYTE.INT%,BIT.NUM%-1) AND 01h) + 48)
+        BIT.NUM% EQ BIT.NUM% - 1
+    WEND
+
+    WRK$ = WRK$ + " "
+    
+    WHILE BIT.NUM% > 8
+        WRK$ = WRK$ + CHR$((SHIFT(TWO.BYTE.INT%,BIT.NUM%-1) AND 01h) + 48)
+        BIT.NUM% EQ BIT.NUM% - 1
+    WEND
+
+    WRK$ = WRK$ + " "
+    
+    WHILE BIT.NUM% > 4
+        WRK$ = WRK$ + CHR$((SHIFT(TWO.BYTE.INT%,BIT.NUM%-1) AND 01h) + 48)
+        BIT.NUM% EQ BIT.NUM% - 1
+    WEND
+
+    WRK$ = WRK$ + " "
+    
+    WHILE BIT.NUM% > 0
+        WRK$ = WRK$ + CHR$((SHIFT(TWO.BYTE.INT%,BIT.NUM%-1) AND 01h) + 48)
+        BIT.NUM% EQ BIT.NUM% - 1
+    WEND
+    
+    BINARY.VIEW2$ = WRK$
+
+END FUNCTION
+
+
+\*******************************************************************************
+\***
+\***    BIT.FLAG$
+\***    Sets BIT.FLAG$ to "Y" or "-" depending on whether the bit is ON or OFF
+\***
+\***............................................................................
+
+
+FUNCTION BIT.FLAG$(ONE.BYTE.INT%,BIT.PSTN%) PUBLIC
+
+    STRING    BIT.FLAG$
+    INTEGER   ONE.BYTE.INT%
+    INTEGER*2 BIT.PSTN%
+    INTEGER*4 FOUR.BYTE.INT%
+    
+    BIT.FLAG$ EQ "-"
+    FOUR.BYTE.INT% EQ ONE.BYTE.INT%
+
+    IF (SHIFT(FOUR.BYTE.INT%,BIT.PSTN%) AND 00001H) EQ 00001H THEN \ Bit is ON
+        BEGIN
+        BIT.FLAG$ EQ "Y"
+        ENDIF
+
+END FUNCTION
+
+
+\*******************************************************************************
+\***
+\***    HEX.VIEW1$
+\***    Creates a hexadecimal view of a one byte string.
+\***    The view consists of two hexadecimal characters (nibbles).
+\***    The function is based on function ERRNH (from ERRNH.J86).
+\***
+\***............................................................................
+
+
+FUNCTION HEX.VIEW1$(ONE.BYTE.STR$) PUBLIC
+
+    STRING  HEX.VIEW1$
+    STRING  ONE.BYTE.STR$
+    STRING  WRK$
+    
+    WRK$ = ""
+    WRK$ = WRK$ + CHR$((SHIFT(ASC(ONE.BYTE.STR$),4) AND 0Fh) + 48)
+    WRK$ = WRK$ + CHR$((      ASC(ONE.BYTE.STR$)    AND 0Fh) + 48)
+    
+    HEX.VIEW1$ = TRANSLATE$(WRK$,":;<=>?","ABCDEF")
+
+END FUNCTION
+
+
+\*******************************************************************************
+\***
+\***    HEX.VIEWX$
+\***    Creates a hexadecimal view of a single or multiple byte string.
+\***    The view consists of pairs of hexadecimal characters (nibbles).
+\***    The function is based on function HEX.VIEW1$.
+\***
+\***............................................................................
+
+
+FUNCTION HEX.VIEWX$(MULTI.BYTE.STR$) PUBLIC
+
+    STRING    HEX.VIEWX$
+    STRING    MULTI.BYTE.STR$
+    STRING    BYTE$
+    STRING    WRK$
+    INTEGER*2 BYTE.NUM%
+    
+    WRK$ = ""
+    
+    BYTE.NUM% EQ 1
+    
+    WHILE BYTE.NUM% LE LEN(MULTI.BYTE.STR$)
+
+        BYTE$ EQ MID$(MULTI.BYTE.STR$,BYTE.NUM%,1)
+    
+        WRK$ = WRK$ + CHR$((SHIFT(ASC(BYTE$),4) AND 0Fh) + 48)
+        WRK$ = WRK$ + CHR$((      ASC(BYTE$)    AND 0Fh) + 48)
+    
+        BYTE.NUM% EQ BYTE.NUM% + 1
+    
+    WEND
+    
+    HEX.VIEWX$ = TRANSLATE$(WRK$,":;<=>?","ABCDEF")
+
+END FUNCTION
+
+
+\*******************************************************************************
+\***
+\***    HEX.VIEW.MAX$
+\***    Creates a hexadecimal view of a single or multiple byte string.
+\***    The view consists of pairs of hexadecimal characters (nibbles).
+\***    The view is padded with leading dash characters to a maximum length.
+\***    The function is based on function HEX.VIEWX$.
+\***
+\***............................................................................
+
+
+FUNCTION HEX.VIEW.MAX$(MULTI.BYTE.STR$,MAX.LENGTH%) PUBLIC
+
+    STRING    HEX.VIEW.MAX$
+    STRING    MULTI.BYTE.STR$
+    STRING    BYTE$
+    STRING    WRK$
+    INTEGER*2 BYTE.NUM%
+    INTEGER*2 MAX.LENGTH%
+    
+    WRK$ = ""
+    
+    BYTE.NUM% EQ 1
+    
+    WHILE BYTE.NUM% LE LEN(MULTI.BYTE.STR$)
+
+        BYTE$ EQ MID$(MULTI.BYTE.STR$,BYTE.NUM%,1)
+    
+        WRK$ = WRK$ + CHR$((SHIFT(ASC(BYTE$),4) AND 0Fh) + 48)
+        WRK$ = WRK$ + CHR$((      ASC(BYTE$)    AND 0Fh) + 48)
+    
+        BYTE.NUM% EQ BYTE.NUM% + 1
+    
+    WEND
+    
+    MAX.LENGTH% = MAX.LENGTH% * 2
+    
+    WRK$ EQ RIGHT$(STRING$(MAX.LENGTH%,"-") + WRK$, MAX.LENGTH%)
+    
+    HEX.VIEW.MAX$ = TRANSLATE$(WRK$,":;<=>?","ABCDEF")
+    
+END FUNCTION
+
+
+

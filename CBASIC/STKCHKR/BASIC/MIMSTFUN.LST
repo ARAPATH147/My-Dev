@@ -1,0 +1,196 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***********************************************************************
+   3: 0000: \***
+   4: 0000: \***    DESCRIPTION: Item Movement & Stock File (Merged)
+   5: 0000: \***                 File Functions
+   6: 0000: \***
+   7: 0000: \***    FILE TYPE : Keyed
+   8: 0000: \***
+   9: 0000: \***********************************************************************
+  10: 0000: \***
+  11: 0000: \***    Version A.          Mark Walker                  23rd Jan 2014
+  12: 0000: \***    Initial version (moved from IMSTCFUN.BAS)
+  13: 0000: \***
+  14: 0000: \***********************************************************************
+  15: 0000: \***********************************************************************
+  16: 0000: 
+  17: 0000:     INTEGER*2 GLOBAL                                                    \
+  18: 0000:         CURRENT.REPORT.NUM%
+  19: 0000: 
+  20: 0000:     STRING GLOBAL                                                       \
+  21: 0000:         CURRENT.CODE$,                                                  \
+  22: 0000:         FILE.OPERATION$
+  23: 0000: 
+  24: 0000:     %INCLUDE MIMSTDEC.J86
+  25: 0000: \***********************************************************************
+  26: 0000: \***********************************************************************
+  27: 0000: \***
+  28: 0000: \***    DESCRIPTION: Item Movement & Stock File (Merged)
+  29: 0000: \***                 Field Definitions         
+  30: 0000: \***
+  31: 0000: \***    FILE TYPE : Keyed
+  32: 0000: \***
+  33: 0000: \***********************************************************************
+  34: 0000: \***
+  35: 0000: \***    Version A.          Mark Walker                  23rd Jan 2014
+  36: 0000: \***    Initial version (moved from IMSTCDEC.J86)
+  37: 0000: \***
+  38: 0000: \***********************************************************************
+  39: 0000: \***********************************************************************
+  40: 0000: 
+  41: 0000: \***********************************************************************
+  42: 0000: \***********************************************************************
+  43: 0000: \***
+  44: 0000: \***    File Record Layout
+  45: 0000: \***
+  46: 0000: \***    MIMSTC.BAR.CODE$            11 UPD  Barcode (Key)
+  47: 0000: \***    MIMSTC.RESTART%              4 INT  IMSTC Restart pointer
+  48: 0000: \***    MIMSTC.NUMITEMS%             4 INT  Number of items sold
+  49: 0000: \***    MIMSTC.AMTSALE%              4 INT  Amount of items sold
+  50: 0000: \***    MIMSTC.RESERVED%             4 INT  RESERVED by IBM
+  51: 0000: \***    MIMSTC.STKMQ.RESTART%        4 INT  STKMQ Restart pointer
+  52: 0000: \***    MIMSTC.STATUS.FLAG$          1 ASC  Status flags
+  53: 0000: \***    MIMSTC.STOCK.FIGURE%         2 INT  Stock Figure
+  54: 0000: \***    MIMSTC.REASON.ITEM.REMOVED$  1 ASC  Deletion Reason
+  55: 0000: \***    MIMSTC.SID%                  4 INT  Sequence ID
+  56: 0000: \***    MIMSTC.FILLER$               1 UPD  Filler
+  57: 0000: \***
+  58: 0000: \***********************************************************************
+  59: 0000: \***********************************************************************
+  60: 0000: 
+  61: 0000:     INTEGER*2 GLOBAL                                                    \
+  62: 0000:         MIMSTC.SESS.NUM%,                                               \
+  63: 0000:         MIMSTC.RECL%,                                                   \
+  64: 0000:         MIMSTC.REPORT.NUM%,                                             \
+  65: 0000:         MIMSTC.STOCK.FIGURE%
+  66: 0000: 
+  67: 0000:     INTEGER*4 GLOBAL                                                    \
+  68: 0000:         MIMSTC.AMTSALE%,                                                \
+  69: 0000:         MIMSTC.NUMITEMS%,                                               \
+  70: 0000:         MIMSTC.RESERVED%,                                               \
+  71: 0000:         MIMSTC.RESTART%,                                                \
+  72: 0000:         MIMSTC.SID%,                                                    \
+  73: 0000:         MIMSTC.STKMQ.RESTART%
+  74: 0000: 
+  75: 0000:     STRING GLOBAL                                                       \
+  76: 0000:         MIMSTC.BAR.CODE$,                                               \
+  77: 0000:         MIMSTC.FILE.NAME$,                                              \
+  78: 0000:         MIMSTC.FILLER$,                                                 \
+  79: 0000:         MIMSTC.REASON.ITEM.REMOVED$,                                    \
+  80: 0000:         MIMSTC.STATUS.FLAG$
+  81: 0000: 
+  82: 0000: 
+  83: 0000: FUNCTION MIMSTC.SET PUBLIC
+  84: 0014: 
+  85: 0014:     MIMSTC.REPORT.NUM% = 703
+  86: 001d:     MIMSTC.RECL%       = 40
+  87: 0026:     MIMSTC.FILE.NAME$  = "ADXLXACN::C:\ADX_IDT1\MIMSTC.BIN"
+  88: 0035: 
+  89: 0035: END FUNCTION
+  90: 0041: 
+  91: 0041: FUNCTION READ.MIMSTC PUBLIC
+  92: 0055: 
+  93: 0055:     INTEGER*1   READ.MIMSTC
+  94: 0055:     STRING      FORMAT.STRING$
+  95: 0055: 
+  96: 0055:     READ.MIMSTC = 1
+  97: 0059:     
+  98: 0059:     FORMAT.STRING$ = "T12,5I4,C1,I2,C1,I4,C1"
+  99: 0066: 
+ 100: 0066:     IF END #MIMSTC.SESS.NUM% THEN READ.MIMSTC.ERROR
+ 101: 007a:     READ FORM FORMAT.STRING$; #MIMSTC.SESS.NUM%                         \
+ 102: 0113:         KEY MIMSTC.BAR.CODE$;               \ Barcode                   \
+ 103: 0113:             MIMSTC.RESTART%,                \ Restart pointer           \
+ 104: 0113:             MIMSTC.NUMITEMS%,               \ Number of items sold      \
+ 105: 0113:             MIMSTC.AMTSALE%,                \ Amount of items sold      \
+ 106: 0113:             MIMSTC.RESERVED%,               \ RESERVED by IBM           \
+ 107: 0113:             MIMSTC.STKMQ.RESTART%,          \ STKMQ Restart pointer     \
+ 108: 0113:             MIMSTC.STATUS.FLAG$,            \ Status flags              \
+ 109: 0113:             MIMSTC.STOCK.FIGURE%,           \ Stock Figure              \
+ 110: 0113:             MIMSTC.REASON.ITEM.REMOVED$,    \ Deletion Reason           \
+ 111: 0113:             MIMSTC.SID%,                    \ Sequence ID               \
+ 112: 0113:             MIMSTC.FILLER$                  ! Filler
+ 113: 0113:     
+ 114: 0113:     READ.MIMSTC = 0
+ 115: 0117:     
+ 116: 0117:     EXIT FUNCTION
+ 117: 0119: 
+ 118: 0119: READ.MIMSTC.ERROR:
+ 119: 0119: 
+ 120: 0119:     FILE.OPERATION$     = "R"
+ 121: 0128:     CURRENT.REPORT.NUM% = MIMSTC.REPORT.NUM%
+ 122: 0136:     CURRENT.CODE$       = MIMSTC.BAR.CODE$
+ 123: 014c: 
+ 124: 014c: END FUNCTION
+ 125: 015b: 
+ 126: 015b: FUNCTION WRITE.MIMSTC PUBLIC
+ 127: 016f: 
+ 128: 016f:     INTEGER*1   WRITE.MIMSTC
+ 129: 016f:     STRING      FORMAT.STRING$
+ 130: 016f: 
+ 131: 016f:     WRITE.MIMSTC = 1
+ 132: 0173: 
+ 133: 0173:     FORMAT.STRING$ = "C11,5I4,C1,I2,C1,I4,C1"
+ 134: 0180: 
+ 135: 0180:     IF END #MIMSTC.SESS.NUM% THEN WRITE.MIMSTC.ERROR
+ 136: 0194:     WRITE FORM FORMAT.STRING$; #MIMSTC.SESS.NUM%;                       \
+ 137: 0256:         MIMSTC.BAR.CODE$,               \ Barcode                       \
+ 138: 0256:         MIMSTC.RESTART%,                \ Restart pointer               \
+ 139: 0256:         MIMSTC.NUMITEMS%,               \ Number of items sold          \
+ 140: 0256:         MIMSTC.AMTSALE%,                \ Amount of items sold          \
+ 141: 0256:         MIMSTC.RESERVED%,               \ RESERVED by IBM               \
+ 142: 0256:         MIMSTC.STKMQ.RESTART%,          \ STKMQ Restart pointer         \
+ 143: 0256:         MIMSTC.STATUS.FLAG$,            \ Status flags                  \
+ 144: 0256:         MIMSTC.STOCK.FIGURE%,           \ Stock Figure                  \
+ 145: 0256:         MIMSTC.REASON.ITEM.REMOVED$,    \ Deletion Reason               \
+ 146: 0256:         MIMSTC.SID%,                    \ Sequence ID                   \
+ 147: 0256:         MIMSTC.FILLER$                  ! Filler
+ 148: 0256:     
+ 149: 0256:     WRITE.MIMSTC = 0
+ 150: 025a:     
+ 151: 025a:     EXIT FUNCTION
+ 152: 025c: 
+ 153: 025c: WRITE.MIMSTC.ERROR:
+ 154: 025c: 
+ 155: 025c:     FILE.OPERATION$     = "W"
+ 156: 026b:     CURRENT.REPORT.NUM% = MIMSTC.REPORT.NUM%
+ 157: 0279:     CURRENT.CODE$       = MIMSTC.BAR.CODE$
+ 158: 028f: 
+ 159: 028f: END FUNCTION
+ 160: 029e: 
+ 161: 029e: FUNCTION WRITE.MIMSTC.HOLD PUBLIC
+ 162: 02b2: 
+ 163: 02b2:     INTEGER*1   WRITE.MIMSTC.HOLD
+ 164: 02b2:     STRING      FORMAT.STRING$
+ 165: 02b2: 
+ 166: 02b2:     WRITE.MIMSTC.HOLD = 1
+ 167: 02b6:     
+ 168: 02b6:     FORMAT.STRING$ = "C11,5I4,C1,I2,C1,I4,C1"
+ 169: 02c3: 
+ 170: 02c3:     IF END #MIMSTC.SESS.NUM% THEN WRITE.MIMSTC.HOLD.ERROR
+ 171: 02d7:     WRITE FORM FORMAT.STRING$; HOLD #MIMSTC.SESS.NUM%;                  \
+ 172: 0399:         MIMSTC.BAR.CODE$,               \ Barcode                       \
+ 173: 0399:         MIMSTC.RESTART%,                \ Restart pointer               \
+ 174: 0399:         MIMSTC.NUMITEMS%,               \ Number of items sold          \
+ 175: 0399:         MIMSTC.AMTSALE%,                \ Amount of items sold          \
+ 176: 0399:         MIMSTC.RESERVED%,               \ RESERVED by IBM               \
+ 177: 0399:         MIMSTC.STKMQ.RESTART%,          \ STKMQ Restart pointer         \
+ 178: 0399:         MIMSTC.STATUS.FLAG$,            \ Status flags                  \
+ 179: 0399:         MIMSTC.STOCK.FIGURE%,           \ Stock Figure                  \
+ 180: 0399:         MIMSTC.REASON.ITEM.REMOVED$,    \ Deletion Reason               \
+ 181: 0399:         MIMSTC.SID%,                    \ Sequence ID                   \
+ 182: 0399:         MIMSTC.FILLER$                  ! Filler
+ 183: 0399:     
+ 184: 0399:     WRITE.MIMSTC.HOLD = 0
+ 185: 039d:     
+ 186: 039d:     EXIT FUNCTION
+ 187: 039f: 
+ 188: 039f: WRITE.MIMSTC.HOLD.ERROR:
+ 189: 039f: 
+ 190: 039f:     FILE.OPERATION$     = "W"
+ 191: 03ae:     CURRENT.REPORT.NUM% = MIMSTC.REPORT.NUM%
+ 192: 03bc:     CURRENT.CODE$       = MIMSTC.BAR.CODE$
+ 193: 03d2: 
+ 194: 03d2: END FUNCTION
+ 195: 03e1: 
+ 196: 03e1: End of Compilation

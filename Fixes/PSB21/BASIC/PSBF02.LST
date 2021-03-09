@@ -1,0 +1,878 @@
+   1: 0000: rem\
+   2: 0000: \*******************************************************************************
+   3: 0000: \*******************************************************************************
+   4: 0000: \***
+   5: 0000: \***
+   6: 0000: \***        FUNCTION      : UPDATE.DATE
+   7: 0000: \***        AUTHOR        : Stephen Kelsey (Pseudocode)
+   8: 0000: \***                      : Bruce Scriver  (Basic Code)
+   9: 0000: \***        DATE WRITTEN  : 12th February 1986 (Pseudocode)
+  10: 0000: \***                      : 4th March 1986     (Basic Code)
+  11: 0000: \***
+  12: 0000: \***        REFERENCE     : PSBF02
+  13: 0000: \***
+  14: 0000: \***        DATE OF LAST AMENDMENT - 22nd November 1988 (Pseudocode)
+  15: 0000: \***                               - 29th November 1988 (Basic Code)
+  16: 0000: \***
+  17: 0000: \***        DATE OF LAST COMPILATION - 30th November 1988
+  18: 0000: \***                   on controller - 16
+  19: 0000: \***
+  20: 0000: \***
+  21: 0000: \***        VERSION C.    B.A.A.SCRIVER       18th May 1988
+  22: 0000: \***        STOCK SYSTEM CHANGES.
+  23: 0000: \***        Change to set up unique data file session number to 0.
+  24: 0000: \***        New message number 550 replaces message number 551.
+  25: 0000: \***
+  26: 0000: \***        VERSION D.    D.S.O'DARE (Pseudocode)       22nd November, 1988
+  27: 0000: \***                                 (Basic)
+  28: 0000: \***        89A MERGE. (ie. small stores changes added to stocks changes).
+  29: 0000: \***        Replace CHAIN statement with new included code (PSBCHNE.J86).
+  30: 0000: \***        If length of F02.DATE$ > 6 then set F02.RETURN.CODE% to 1.
+  31: 0000: \***        Tidy up code in ERROR.DETECTED section.
+  32: 0000: \***
+  33: 0000: \***        VERSION E.     A. WEDGEWORTH                      7th July 1992 
+  34: 0000: \***        Remove redundant parameters passed to and from functions.
+  35: 0000: \***
+  36: 0000: \***        VERSION F.     LEE ROCKACH                        12th Sept 1997
+  37: 0000: \***        Changed the code to make the year 2000 a leap year.
+  38: 0000: \***
+  39: 0000: \***        Version G.      Stuart William McConnachie     31st Oct 2006
+  40: 0000: \***        Chain back to PSB50.286, instead of xxx50.286 derived from
+  41: 0000: \***        first three letters of MODULE.NUMBER$.  Doesn't work for
+  42: 0000: \***        PSD and SRP applications.
+  43: 0000: \***            
+  44: 0000: \*******************************************************************************
+  45: 0000: \*******************************************************************************
+  46: 0000: 
+  47: 0000: REM pseudocode follows...
+  48: 0000: 
+  49: 0000: \*******************************************************************************
+  50: 0000: \*******************************************************************************
+  51: 0000: \***
+  52: 0000: \***                       FUNCTION OVERVIEW
+  53: 0000: \***                       -----------------
+  54: 0000: \***
+  55: 0000: \***        This function receives a date, which is checked for validity,
+  56: 0000: \***     and a number of days that are to be added to the date or subtracted
+  57: 0000: \***     it. It then processes the date and returns to the calling program.
+  58: 0000: \***     Global data passed includes the string F02.DATE$, which is in YYMMDD
+  59: 0000: \***     format. If F02.DATE$ is found to be invalid in any way then the
+  60: 0000: \***     return code F02.RETURN.CODE% is set to 1.
+  61: 0000: \***
+  62: 0000: \*******************************************************************************
+  63: 0000: \*******************************************************************************
+  64: 0000: \***
+  65: 0000: \***  %INCLUDE of globals for public function UPDATE.DATE
+  66: 0000: \***  %INCLUDE of globals for external function CONV.TO.HEX
+  67: 0000: \***  %INCLUDE of globals for external function CONV.TO.STRING
+  68: 0000: \***  %INCLUDE of globals for screen chaining parameters (PSBUSEG.J86)
+  69: 0000: \***
+  70: 0000: \***  %INCLUDE of statements for external function ADXERROR
+  71: 0000: \***  %INCLUDE of statements for external function APPLICATION.LOG
+  72: 0000: \***  %INCLUDE of statements for external function CONV.TO.HEX
+  73: 0000: \***  %INCLUDE of statements for external function CONV.TO.STRING
+  74: 0000: \***
+  75: 0000: \-------------------------------------------------------------------------------
+  76: 0000: 
+  77: 0000:       ! 1 line deleted from here                                       ! EAW
+  78: 0000:       %INCLUDE PSBF02G.J86
+  79: 0000: REM\
+  80: 0000: \*******************************************************************************
+  81: 0000: \*******************************************************************************
+  82: 0000: \***
+  83: 0000: \***        INCLUDE       : UPDATE.DATE globals
+  84: 0000: \***
+  85: 0000: \***        REFERENCE     : PSBF02G.J86
+  86: 0000: \***
+  87: 0000: \***        Version A     Bruce Scriver      4th March 1986
+  88: 0000: \*** 
+  89: 0000: \***        Version B     Andrew Wedgeworth   6th July 1992
+  90: 0000: \***        Removal of return code field which no longer required.
+  91: 0000: \***
+  92: 0000: \*******************************************************************************
+  93: 0000: \*******************************************************************************
+  94: 0000: 
+  95: 0000:       STRING   GLOBAL F02.DATE$
+  96: 0000: 
+  97: 0000:       ! 1 line deleted from here                                       ! BAW
+  98: 0000: 
+  99: 0000:       %INCLUDE PSBF16G.J86
+ 100: 0000: REM\
+ 101: 0000: \*******************************************************************************
+ 102: 0000: \*******************************************************************************
+ 103: 0000: \***
+ 104: 0000: \***           %INCLUDE GLOBAL DEFINITIONS FOR CONV.TO.HEX FUNCTION
+ 105: 0000: \***
+ 106: 0000: \***                       REFERENCE     : PSBF16G.J86
+ 107: 0000: \*** 
+ 108: 0000: \***       Version A           Bruce Scriver            25th February 1986
+ 109: 0000: \***
+ 110: 0000: \***       Version B         Andrew Wedgeworth               2nd July 1992
+ 111: 0000: \***       Removal of now redundant F16.RETURN.CODE%.
+ 112: 0000: \***
+ 113: 0000: \*******************************************************************************
+ 114: 0000: \*******************************************************************************
+ 115: 0000: 
+ 116: 0000:       STRING   GLOBAL F16.HEX.STRING$
+ 117: 0000: 
+ 118: 0000:       ! 1 line deleted from here                                       ! BAW
+ 119: 0000:       %INCLUDE PSBF17G.J86
+ 120: 0000: REM \
+ 121: 0000: \*******************************************************************************
+ 122: 0000: \*******************************************************************************
+ 123: 0000: \***
+ 124: 0000: \***
+ 125: 0000: \***        %INCLUDE GLOBAL DEFINITIONS FOR CONV.TO.STRING FUNCTION
+ 126: 0000: \***
+ 127: 0000: \***                    REFERENCE     : PSBF17G.J86
+ 128: 0000: \***
+ 129: 0000: \***        Version A         Bruce Scriver      24th February 1986
+ 130: 0000: \***
+ 131: 0000: \***        Version B       Andrew Wedgeworth         2nd July 1992
+ 132: 0000: \***        Removal of now redundant F17.RETURN.CODE%
+ 133: 0000: \***
+ 134: 0000: \*******************************************************************************
+ 135: 0000: \*******************************************************************************
+ 136: 0000: 
+ 137: 0000:       STRING   GLOBAL F17.RETURNED.STRING$
+ 138: 0000: 
+ 139: 0000:       ! 1 line deleted from here                                       ! BAW
+ 140: 0000: 
+ 141: 0000:       %INCLUDE PSBUSEG.J86                                            ! DBCW
+ 142: 0000: \/*********************************************************************/ PSBUSEG
+ 143: 0000: \/*                                                                   */ PSBUSEG
+ 144: 0000: \/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+ 145: 0000: \/* ----------------------------------------------------------------- */ PSBUSEG
+ 146: 0000: \/*                                                                   */ PSBUSEG
+ 147: 0000: \/*********************************************************************/ PSBUSEG
+ 148: 0000:                                                                        ! PSBUSEG
+ 149: 0000:         STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+ 150: 0000:                        PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+ 151: 0000:                        PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+ 152: 0000:                        PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+ 153: 0000:                        PSBCHN.U1,       \ User parameter               ! PSBUSEG
+ 154: 0000:                        PSBCHN.U2,       \ User parameter               ! PSBUSEG
+ 155: 0000:                        PSBCHN.U3        ! User parameter               ! PSBUSEG
+ 156: 0000:                                                                        ! PSBUSEG
+ 157: 0000: 
+ 158: 0000:       STRING GLOBAL                                                    \ EAW
+ 159: 0000:            BATCH.SCREEN.FLAG$,                                         \ EAW
+ 160: 0000:            MODULE.NUMBER$                                              ! EAW             
+ 161: 0000: 
+ 162: 0000:       %INCLUDE ADXERROR.J86
+ 163: 0000: \******************************************************************************
+ 164: 0000: \******************************************************************************
+ 165: 0000: \***                                                                        ***
+ 166: 0000: \***    %INCLUDE FOR FUNCTION ADXERROR (an I.B.M. system function)          ***
+ 167: 0000: \***                                                                        ***
+ 168: 0000: \***         AUTHOR        :  Stephen Kelsey                                ***
+ 169: 0000: \***                                                                        ***
+ 170: 0000: \***         DATE WRITTEN  :  21st February 1986                            ***
+ 171: 0000: \***                                                                        ***
+ 172: 0000: \***         DATE OF LAST REVISION  - 21st February 1986                    ***
+ 173: 0000: \***                                                                        ***
+ 174: 0000: \***         VERSION B     :  Stuart William McConnachie  18th March 1997   ***
+ 175: 0000: \***    Define size of ADXERROR return value from function.  This change    ***
+ 176: 0000: \***    was introduced by IBM in the 4690 Programming Guide.  Not defining  ***
+ 177: 0000: \***    this variable can cause Memory Protection Violations at run time.   ***
+ 178: 0000: \***                                                                        ***
+ 179: 0000: \******************************************************************************
+ 180: 0000: \******************************************************************************
+ 181: 0000: 
+ 182: 0000:    FUNCTION ADXERROR (TERM%,                                                  \
+ 183: 0000:                       MSGGRP%,                                                \
+ 184: 0000:                       MSGNUM%,                                                \
+ 185: 0000:                       SEVERITY%,                                              \
+ 186: 0000:                       EVENT.NUM%,                                             \
+ 187: 0000:                       UNIQUE$) EXTERNAL
+ 188: 0000: 
+ 189: 0000:       INTEGER*2  MSGNUM%,                                                     \
+ 190: 0000:                  TERM%,                                                       \
+ 191: 0000:                  ADXERROR                                                     !BSWM
+ 192: 0000: 
+ 193: 0000:       INTEGER*1 EVENT.NUM%,                                                   \
+ 194: 0000:                 MSGGRP%,                                                      \
+ 195: 0000:                 SEVERITY%
+ 196: 0000: 
+ 197: 0000:       STRING  UNIQUE$
+ 198: 0000: 
+ 199: 0000:    END FUNCTION
+ 200: 0000: 
+ 201: 0000:       %INCLUDE PSBF01E.J86
+ 202: 0000: REM \
+ 203: 0000: \*******************************************************************************
+ 204: 0000: \*******************************************************************************
+ 205: 0000: \***
+ 206: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 207: 0000: \***
+ 208: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 209: 0000: \***
+ 210: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 211: 0000: \*** 
+ 212: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 213: 0000: \***      Three parameters which passed to the function have been removed.
+ 214: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 215: 0000: \***      return code).
+ 216: 0000: \***
+ 217: 0000: \*******************************************************************************
+ 218: 0000: 
+ 219: 0000: 
+ 220: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 221: 0000:                              VAR.STRING.1$,                                   \
+ 222: 0000:                              VAR.STRING.2$,                                   \
+ 223: 0000:                              EVENT.NO%)  EXTERNAL
+ 224: 0000: 
+ 225: 0000:       INTEGER*1 EVENT.NO%
+ 226: 0000: 
+ 227: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 228: 0000:                 MESSAGE.NO%
+ 229: 0000: 
+ 230: 0000:       STRING VAR.STRING.1$,                                            \
+ 231: 0000:              VAR.STRING.2$
+ 232: 0000: 
+ 233: 0000:    END FUNCTION
+ 234: 0000: 
+ 235: 0000: \*******************************************************************************
+ 236: 0000:       %INCLUDE PSBF16E.J86
+ 237: 0000: REM\
+ 238: 0000: \*******************************************************************************
+ 239: 0000: \*******************************************************************************
+ 240: 0000: \***
+ 241: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.HEX FUNCTION
+ 242: 0000: \***
+ 243: 0000: \***                  REFERENCE     : PSBF16E.J86
+ 244: 0000: \***
+ 245: 0000: \***       Version A            Bruce Scriver          25th February 1986
+ 246: 0000: \***
+ 247: 0000: \***       Version B           Andrew Wedgeworth            2nd July 1992
+ 248: 0000: \***       Removal of redundant parameters, and CONV.TO.HEX defined as a 
+ 249: 0000: \***       variable to hold the return code. 
+ 250: 0000: \***
+ 251: 0000: \*******************************************************************************
+ 252: 0000: \*******************************************************************************
+ 253: 0000: 
+ 254: 0000:    FUNCTION CONV.TO.HEX (INTEGER4%)                                            \
+ 255: 0000:    EXTERNAL
+ 256: 0000:    ! 3 parameters removed from here                                    ! BAW
+ 257: 0000: 
+ 258: 0000:    ! 3 lines deleted from here                                         ! BAW
+ 259: 0000:    
+ 260: 0000:       INTEGER*2 CONV.TO.HEX                                            ! BAW
+ 261: 0000: 
+ 262: 0000:       INTEGER*4 INTEGER4%
+ 263: 0000: 
+ 264: 0000:    END FUNCTION
+ 265: 0000: 
+ 266: 0000:       %INCLUDE PSBF17E.J86
+ 267: 0000: REM \
+ 268: 0000: \*******************************************************************************
+ 269: 0000: \*******************************************************************************
+ 270: 0000: \***
+ 271: 0000: \***
+ 272: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.STRING FUNCTION
+ 273: 0000: \***
+ 274: 0000: \***                     REFERENCE     : PSBF17E.J86
+ 275: 0000: \***
+ 276: 0000: \***       Version A            Bruce Scriver       24th February 1986           
+ 277: 0000: \***
+ 278: 0000: \***       Version B          Andrew Wedgeworth          2nd July 1992
+ 279: 0000: \***       Redundant parameters removed, and the function's name is 
+ 280: 0000: \***       is defined as a variable to hold the return code. 
+ 281: 0000: \***
+ 282: 0000: \*******************************************************************************
+ 283: 0000: \*******************************************************************************
+ 284: 0000: 
+ 285: 0000:    FUNCTION CONV.TO.STRING (EVENT.NUMBER%,                                     \
+ 286: 0000:                             INTEGER4%)                                         \
+ 287: 0000:    EXTERNAL
+ 288: 0000: ! 3 parameters removed from here                                       ! BAW
+ 289: 0000: 
+ 290: 0000: ! 3 lines deleted from here                                            ! BAW
+ 291: 0000: 
+ 292: 0000:       INTEGER*1 EVENT.NUMBER%
+ 293: 0000: 
+ 294: 0000:       INTEGER*2 CONV.TO.STRING                                         ! BAW
+ 295: 0000: 
+ 296: 0000:       INTEGER*4 INTEGER4%
+ 297: 0000: 
+ 298: 0000:    END FUNCTION
+ 299: 0000: 
+ 300: 0000: 
+ 301: 0000: \-------------------------------------------------------------------------------
+ 302: 0000: \***
+ 303: 0000: \*******************************************************************************
+ 304: 0000: \***
+ 305: 0000: \***  Define parameters and other variables used in the function.
+ 306: 0000: \***
+ 307: 0000: \-------------------------------------------------------------------------------
+ 308: 0000: 
+ 309: 0000:    FUNCTION UPDATE.DATE (INCREMENT%)                                   \ EAW
+ 310: 0000:    PUBLIC
+ 311: 0014:    ! 3 parameters removed from here                                    ! EAW   
+ 312: 0014: 
+ 313: 0014:       STRING                                                           \
+ 314: 0014: \ 1 line deleted from here                                             \ EAW      
+ 315: 0014:                 CHAIN.MODULE$,                                         \
+ 316: 0014: \ 1 line deleted from here                                             \ CBAAS
+ 317: 0014:                 ERRNUM$,                                               \
+ 318: 0014: \ 1 line deleted from here                                             \ CBAAS
+ 319: 0014:                 MESSAGE$,                                              \
+ 320: 0014: \ 2 lines deleted from here                                            \ EAW
+ 321: 0014:                 PARM.LEN$,                                             \
+ 322: 0014:                 STRING.ERRL$,                                          \
+ 323: 0014:                 UNIQUE$,                                               \
+ 324: 0014:                 VAR.STRING.1$,                                         \
+ 325: 0014:                 VAR.STRING.2$
+ 326: 0014: 
+ 327: 0014:       INTEGER*1 DAY%,                                                  \
+ 328: 0014:                 EVENT.NUM%,                                            \
+ 329: 0014:                 LEAP.DAY%,                                             \
+ 330: 0014:                 MSGGRP%,                                               \
+ 331: 0014:                 MONTH%,                                                \
+ 332: 0014:                 SEVERITY%,                                             \
+ 333: 0014:                 YEAR%
+ 334: 0014: 
+ 335: 0014:       INTEGER*2 EVENT.NO%,                                             \
+ 336: 0014:                 F02.RETURN.CODE%,                                      \ EAW            
+ 337: 0014:                 F17.RETURN.CODE%,                                      \ EAW            
+ 338: 0014:             MESSAGE.NUMBER%,                                       \
+ 339: 0014:                 MSGNUM%,                                               \
+ 340: 0014:                 RET.CODE%,                                             \
+ 341: 0014:                 TERM%,                                                 \ EAW
+ 342: 0014:                 UPDATE.DATE                                            ! EAW
+ 343: 0014: 
+ 344: 0014:       INTEGER*4 COUNT%,                                                \
+ 345: 0014:                 INCREMENT%,                                            \
+ 346: 0014:                 INTEGER4%
+ 347: 0014: 
+ 348: 0014:       REAL      REAL.DATE
+ 349: 0014: 
+ 350: 0014: \-------------------------------------------------------------------------------
+ 351: 0014: \***
+ 352: 0014: \*******************************************************************************
+ 353: 0014: \***
+ 354: 0014: \***   ON ERROR GOTO ERROR.DETECTED
+ 355: 0014: \***
+ 356: 0014: \***   REM set up storage areas for ADXERROR required fields in case of memory
+ 357: 0014: \***   overflow
+ 358: 0014: \***   set variable string 1 to 10 spaces
+ 359: 0014: \***
+ 360: 0014: \***   set F02.RETURN.CODE% to 0
+ 361: 0014: \***   set up PSBCHN.PRG for chaining out in error handling to
+ 362: 0014: \***     "ADX_UPGM:" + leftmost 3 bytes of MODULE.NUMBER$ + "50.286"
+ 363: 0014: \***
+ 364: 0014: \-------------------------------------------------------------------------------
+ 365: 0014: 
+ 366: 0014:       ON ERROR GOTO ERROR.DETECTED
+ 367: 0021: 
+ 368: 0021:       UNIQUE$ = "          "
+ 369: 002e:       ERRNUM$ = "    "
+ 370: 003b: \ 1 line deleted from here                                             \ CBAAS
+ 371: 003b:       STRING.ERRL$ = "      "
+ 372: 0048: 
+ 373: 0048:       F02.RETURN.CODE% = 0
+ 374: 004e:       PSBCHN.PRG = "ADX_UPGM:PSB50.286"                                ! GSWM
+ 375: 005d: 
+ 376: 005d: \-------------------------------------------------------------------------------
+ 377: 005d: \***
+ 378: 005d: \***   check that F02.DATE$ contains all numeric digits, obtaining the real
+ 379: 005d: \***   value of it (VAL(F02.DATE$))
+ 380: 005d: \***
+ 381: 005d: \***   IF the length of F02.DATE$ is greater then 6 characters then
+ 382: 005d: \***      set F02.RETURN.CODE% to 1
+ 383: 005d: \***   ENDIF
+ 384: 005d: \***
+ 385: 005d: \***   destring F02.DATE$ into year, month, days
+ 386: 005d: \***   IF month > 12 THEN
+ 387: 005d: \***      set F02.RETURN.CODE% to 1
+ 388: 005d: \***   ELSE
+ 389: 005d: \***      IF days > 31 THEN
+ 390: 005d: \***         set F02.RETURN.CODE% to 1
+ 391: 005d: \***      ELSE
+ 392: 005d: \***         IF days > 30 AND month = 4, 6, 9, 11 THEN
+ 393: 005d: \***            set F02.RETURN.CODE% to 1
+ 394: 005d: \***         ELSE
+ 395: 005d: \***            IF month = 2 THEN
+ 396: 005d: \***               GOSUB DETERMINE.LEAP.YEAR
+ 397: 005d: \***               IF days > 29 THEN
+ 398: 005d: \***                  set F02.RETURN.CODE% to 1
+ 399: 005d: \***               ELSE
+ 400: 005d: \***                  IF leap year day = 0 AND days > 28 THEN
+ 401: 005d: \***                     set F02.RETURN.CODE% to 1
+ 402: 005d: \***                  ENDIF
+ 403: 005d: \***               ENDIF
+ 404: 005d: \***            ENDIF
+ 405: 005d: \***         ENDIF
+ 406: 005d: \***      ENDIF
+ 407: 005d: \***   ENDIF
+ 408: 005d: \***
+ 409: 005d: \***   IF F02.RETURN.CODE% <> 0 THEN
+ 410: 005d: \***      CALL APPLICATION.LOG function to log event 4, message 706
+ 411: 005d: \***   Set PARM.LEN$ to STR$ of LEN(F02.DATE$)
+ 412: 005d: \***   Set VAR.STRING.1$ to (the rightmost two bytes of F17.RETURNED.STRING$)
+ 413: 005d: \***      + PARM.LEN$ + F02.DATE$.
+ 414: 005d: \***
+ 415: 005d: \-------------------------------------------------------------------------------
+ 416: 005d: 
+ 417: 005d:       REAL.DATE = VAL(F02.DATE$)
+ 418: 007b: 
+ 419: 007b:       IF LEN(F02.DATE$) > 6 THEN                                      \ DBCW
+ 420: 0091:          F02.RETURN.CODE% = 1                                         ! DBCW
+ 421: 0097: 
+ 422: 0097:       YEAR%  = VAL(LEFT$(F02.DATE$,2))
+ 423: 00b8:       MONTH% = VAL(MID$(F02.DATE$,3,2))
+ 424: 00d9:       DAY%   = VAL(RIGHT$(F02.DATE$,2))
+ 425: 00f8: 
+ 426: 00f8:       IF MONTH% > 12 THEN                                              \
+ 427: 00ff:          F02.RETURN.CODE% = 1                                          \
+ 428: 0108:       ELSE                                                             \
+ 429: 0108:          IF DAY% > 31 THEN                                             \
+ 430: 010f:             F02.RETURN.CODE% = 1                                       \
+ 431: 0118:          ELSE                                                          \
+ 432: 0118:             IF DAY% > 30 AND (MONTH% = 4 OR                            \
+ 433: 0152:                               MONTH% = 6 OR                            \
+ 434: 0152:                               MONTH% = 9 OR                            \
+ 435: 0152:                               MONTH% = 11) THEN                        \
+ 436: 0152:                F02.RETURN.CODE% = 1                                    \
+ 437: 015a:             ELSE                                                       \
+ 438: 015a:                IF MONTH% = 2 THEN                                      \
+ 439: 0161:                   GOSUB DETERMINE.LEAP.YEAR                           :\
+ 440: 016b:                   IF DAY% > 29 THEN                                    \
+ 441: 0172:                      F02.RETURN.CODE% = 1                             :\
+ 442: 017a:                   ELSE                                                 \
+ 443: 017a:                      IF LEAP.DAY% = 0 AND DAY% > 28 THEN               \
+ 444: 0196:                         F02.RETURN.CODE% = 1
+ 445: 019c: 
+ 446: 019c:       IF F02.RETURN.CODE% <> 0 THEN                                    \
+ 447: 01a6:          MESSAGE.NUMBER% = 706                                        :\
+ 448: 01ac:          EVENT.NO% = 4                                                :\
+ 449: 01b2:          INTEGER4% = 706                                              :\
+ 450: 01bf:          F17.RETURN.CODE% = CONV.TO.STRING (EVENT.NO%,                 \ EAW
+ 451: 01d7:                                             INTEGER4%)                :\
+ 452: 01d7:          IF F17.RETURN.CODE% = 0 THEN                                  \
+ 453: 01df:             PARM.LEN$     = CHR$(LEN(F02.DATE$))                      :\
+ 454: 01ff:             VAR.STRING.1$ = RIGHT$(F17.RETURNED.STRING$,2) +           \ DBCW
+ 455: 023b:                             PARM.LEN$ + F02.DATE$                     :\
+ 456: 023b:             VAR.STRING.2$ = "02" + PARM.LEN$ + F02.DATE$              :\
+ 457: 025e:             RET.CODE% = APPLICATION.LOG (MESSAGE.NUMBER%,              \ EAW
+ 458: 0282:                                          VAR.STRING.1$,                \
+ 459: 0282:                                          VAR.STRING.2$,                \
+ 460: 0282:                                          EVENT.NO%)
+ 461: 0282: 
+ 462: 0282:       PARM.LEN$     = CHR$(LEN(F02.DATE$))                             ! DBCW
+ 463: 02a2:       VAR.STRING.1$ = (RIGHT$(F17.RETURNED.STRING$,2) + PARM.LEN$      \ DBCW
+ 464: 02de:                        + F02.DATE$)                                    ! DBCW
+ 465: 02de: 
+ 466: 02de: \-------------------------------------------------------------------------------
+ 467: 02de: \***
+ 468: 02de: \***   IF F02.RETURN.CODE% = 0 AND increment <> 0 THEN
+ 469: 02de: \***      GOSUB DETERMINE.LEAP.YEAR
+ 470: 02de: \***      IF increment > 0 THEN
+ 471: 02de: \***         FOR count = 1 to increment step 1
+ 472: 02de: \***            add 1 to days
+ 473: 02de: \***            IF days > 31 THEN
+ 474: 02de: \***               IF month = 12 THEN
+ 475: 02de: \***                  GOSUB CHANGE.YEAR.UP
+ 476: 02de: \***               ELSE
+ 477: 02de: \***                  set days to 1
+ 478: 02de: \***                  add 1 to month
+ 479: 02de: \***               ENDIF
+ 480: 02de: \***            ELSE
+ 481: 02de: \***               IF days > 30 THEN
+ 482: 02de: \***                  IF month = 4,6,9,11 THEN
+ 483: 02de: \***                     set days to 1
+ 484: 02de: \***                     add 1 to month
+ 485: 02de: \***                  ELSE
+ 486: 02de: \***                  ENDIF
+ 487: 02de: \***               ELSE
+ 488: 02de: \***                  IF days > 28 AND month = 2 THEN
+ 489: 02de: \***                     IF leap year day = 1 AND days > 29 THEN
+ 490: 02de: \***                        set days to 1
+ 491: 02de: \***                        add 1 to month
+ 492: 02de: \***                     ELSE
+ 493: 02de: \***                        IF leap year day = 0 THEN
+ 494: 02de: \***                           set days to 1
+ 495: 02de: \***                           add 1 to month
+ 496: 02de: \***                        ENDIF
+ 497: 02de: \***                     ENDIF
+ 498: 02de: \***                  ENDIF
+ 499: 02de: \***               ENDIF
+ 500: 02de: \***            ENDIF
+ 501: 02de: \***         NEXT count
+ 502: 02de: \***      ELSE
+ 503: 02de: \***         FOR count = 1 to ABSolute value of increment step 1
+ 504: 02de: \***            subtract 1 from days
+ 505: 02de: \***            IF days = 0 THEN
+ 506: 02de: \***               IF month = 1 THEN
+ 507: 02de: \***                  GOSUB CHANGE.YEAR.DOWN
+ 508: 02de: \***               ELSE
+ 509: 02de: \***                  IF month = 2,4,6,8,9,11 THEN
+ 510: 02de: \***                     set days to 31
+ 511: 02de: \***                     subtract 1 from month
+ 512: 02de: \***                  ELSE
+ 513: 02de: \***                     IF month = 5,7,10,12 THEN
+ 514: 02de: \***                        subtract 1 from month
+ 515: 02de: \***                        set days to 30
+ 516: 02de: \***                     ELSE
+ 517: 02de: \***                        set days to 28 + leap year day
+ 518: 02de: \***                        subtract 1 from month
+ 519: 02de: \***                     ENDIF
+ 520: 02de: \***                  ENDIF
+ 521: 02de: \***               ENDIF
+ 522: 02de: \***            ENDIF
+ 523: 02de: \***         NEXT count
+ 524: 02de: \***      ENDIF
+ 525: 02de: \***   ENDIF
+ 526: 02de: \***
+ 527: 02de: \***   IF F02.RETURN.CODE% <> 0
+ 528: 02de: \***   AND increment <> 0 THEN
+ 529: 02de: \***      GOSUB SET.UP.DATE
+ 530: 02de: \***   ENDIF
+ 531: 02de: \***
+ 532: 02de: \***   FUNCTION.EXIT:
+ 533: 02de: \***
+ 534: 02de: \***      Set UPDATE.DATE to the value of the return code
+ 535: 02de: \***
+ 536: 02de: \***   EXIT FUNCTION
+ 537: 02de: \***
+ 538: 02de: \-------------------------------------------------------------------------------
+ 539: 02de: 
+ 540: 02de:       IF F02.RETURN.CODE% = 0 AND INCREMENT% <> 0 THEN                 \
+ 541: 0307:          GOSUB DETERMINE.LEAP.YEAR                                    :\
+ 542: 0311:          IF INCREMENT% > 0 THEN                                        \
+ 543: 0323:                                                                        \
+ 544: 0323:             FOR COUNT% = 1 TO INCREMENT% STEP 1                       :\
+ 545: 0333:                                                                        \
+ 546: 0333:                DAY% = DAY% + 1                                        :\
+ 547: 0337:                IF DAY% > 31 THEN                                       \
+ 548: 033e:                   IF MONTH% = 12 THEN                                  \
+ 549: 0345:                      GOSUB CHANGE.YEAR.UP                              \
+ 550: 0351:                   ELSE                                                 \
+ 551: 0351:                      DAY% = 1                                         :\
+ 552: 0356:                      MONTH% = MONTH% + 1                               \
+ 553: 035a:                ELSE                                                    \
+ 554: 035d:                   IF DAY% > 30 THEN                                    \
+ 555: 0364:                      IF MONTH% = 4 OR                                  \
+ 556: 038f:                         MONTH% = 6 OR                                  \
+ 557: 038f:                         MONTH% = 9 OR                                  \
+ 558: 038f:                         MONTH% = 11 THEN                               \
+ 559: 038f:                         DAY% = 1                                      :\
+ 560: 0394:                         MONTH% = MONTH% + 1                            \
+ 561: 039a:                      ELSE                                              \
+ 562: 039a:                   ELSE                                                 \
+ 563: 039c:                      IF DAY% > 28 AND MONTH% = 2 THEN                  \
+ 564: 03b8:                         IF LEAP.DAY% = 1 AND DAY% > 29 THEN            \
+ 565: 03d4:                            DAY% = 1                                   :\
+ 566: 03d9:                            MONTH% = MONTH% + 1                         \
+ 567: 03df:                         ELSE                                           \
+ 568: 03df:                            IF LEAP.DAY% = 0 THEN                       \
+ 569: 03e6:                               DAY% = 1                                :\
+ 570: 03eb:                               MONTH% = MONTH% + 1                     :\
+ 571: 03ef:                                                                        \
+ 572: 03ef:             NEXT COUNT%                                               :\
+ 573: 0416:                                                                        \
+ 574: 0416:          ELSE                                                          \
+ 575: 0416:                                                                        \
+ 576: 0416:             FOR COUNT% = 1 TO ABS(INCREMENT%) STEP 1                  :\
+ 577: 0426:                                                                        \
+ 578: 0426:                DAY% = DAY% - 1                                        :\
+ 579: 042a:                IF DAY% = 0 THEN                                        \
+ 580: 0434:                   IF MONTH% = 1 THEN                                   \
+ 581: 043b:                      GOSUB CHANGE.YEAR.DOWN                            \
+ 582: 0448:                   ELSE                                                 \
+ 583: 0448:                      IF MONTH% = 2 OR                                  \
+ 584: 0487:                         MONTH% = 4 OR                                  \
+ 585: 0487:                         MONTH% = 6 OR                                  \
+ 586: 0487:                         MONTH% = 8 OR                                  \
+ 587: 0487:                         MONTH% = 9 OR                                  \
+ 588: 0487:                         MONTH% = 11 THEN                               \
+ 589: 0487:                         DAY% = 31                                     :\
+ 590: 048c:                         MONTH% = MONTH% - 1                            \
+ 591: 0492:                      ELSE                                              \
+ 592: 0492:                         IF MONTH% = 5 OR                               \
+ 593: 04bd:                            MONTH% = 7 OR                               \
+ 594: 04bd:                            MONTH% = 10 OR                              \
+ 595: 04bd:                            MONTH% = 12 THEN                            \
+ 596: 04bd:                            DAY% = 30                                  :\
+ 597: 04c2:                            MONTH% = MONTH% - 1                         \
+ 598: 04c8:                         ELSE                                           \
+ 599: 04c8:                            DAY% = 28 + LEAP.DAY%                      :\
+ 600: 04d1:                            MONTH% = MONTH% -1                         :\
+ 601: 04d5:                                                                        \
+ 602: 04d5:             NEXT COUNT%
+ 603: 0500: 
+ 604: 0500:       IF F02.RETURN.CODE% = 0 AND INCREMENT% <> 0 THEN                 \
+ 605: 0526:          GOSUB SET.UP.DATE
+ 606: 0530: 
+ 607: 0530:    FUNCTION.EXIT:
+ 608: 0530:    
+ 609: 0530:       UPDATE.DATE = F02.RETURN.CODE%                                   ! EAW   
+ 610: 0536: 
+ 611: 0536:       EXIT FUNCTION
+ 612: 0539: 
+ 613: 0539: \-------------------------------------------------------------------------------
+ 614: 0539: \***
+ 615: 0539: \*******************************************************************************
+ 616: 0539: \************************ subroutines follow ***********************************
+ 617: 0539: \*******************************************************************************
+ 618: 0539: \***
+ 619: 0539: \*** CHANGE.YEAR.UP:
+ 620: 0539: \***
+ 621: 0539: \***   set days to 1
+ 622: 0539: \***   set month to 1
+ 623: 0539: \***   set the year to the remainder of year + 1 divided by 100
+ 624: 0539: \***   GOSUB DETERMINE.LEAP.YEAR
+ 625: 0539: \***
+ 626: 0539: \***   RETURN
+ 627: 0539: \***
+ 628: 0539: \-------------------------------------------------------------------------------
+ 629: 0539: 
+ 630: 0539:    CHANGE.YEAR.UP:
+ 631: 0539: 
+ 632: 0539:       DAY% = 1
+ 633: 053e:       MONTH% = 1
+ 634: 0543:       YEAR% = MOD((YEAR% + 1),100)
+ 635: 055b: 
+ 636: 055b:       GOSUB DETERMINE.LEAP.YEAR
+ 637: 0565: 
+ 638: 0565:       RETURN
+ 639: 056d: 
+ 640: 056d: \-------------------------------------------------------------------------------
+ 641: 056d: \***
+ 642: 056d: \*******************************************************************************
+ 643: 056d: \***
+ 644: 056d: \*** CHANGE.YEAR.DOWN:
+ 645: 056d: \***
+ 646: 056d: \***   set days to 31
+ 647: 056d: \***   set month to 12
+ 648: 056d: \***   subtract 1 from year
+ 649: 056d: \***   IF year < 0 THEN
+ 650: 056d: \***      set year to 99
+ 651: 056d: \***   ENDIF
+ 652: 056d: \***   GOSUB DETERMINE.LEAP.YEAR
+ 653: 056d: \***
+ 654: 056d: \***   RETURN
+ 655: 056d: \***
+ 656: 056d: \-------------------------------------------------------------------------------
+ 657: 056d: 
+ 658: 056d:    CHANGE.YEAR.DOWN:
+ 659: 056d: 
+ 660: 056d:       DAY% = 31
+ 661: 0572:       MONTH% = 12
+ 662: 0577:       YEAR% = YEAR% - 1
+ 663: 057b: 
+ 664: 057b:       IF YEAR% < 0 THEN                                                \
+ 665: 0582:          YEAR% = 99
+ 666: 0587: 
+ 667: 0587:       GOSUB DETERMINE.LEAP.YEAR
+ 668: 0591: 
+ 669: 0591:       RETURN
+ 670: 0599: 
+ 671: 0599: \-------------------------------------------------------------------------------
+ 672: 0599: \***
+ 673: 0599: \*******************************************************************************
+ 674: 0599: \***
+ 675: 0599: \*** DETERMINE.LEAP.YEAR:
+ 676: 0599: \***
+ 677: 0599: \***   IF the remainder of the division by 4 of the year = 0 THEN
+ 678: 0599: \***       set leap year day to 1
+ 679: 0599: \***   ELSE
+ 680: 0599: \***       set leap year day to 0
+ 681: 0599: \***   ENDIF
+ 682: 0599: \***
+ 683: 0599: \***   RETURN
+ 684: 0599: \***
+ 685: 0599: \-------------------------------------------------------------------------------
+ 686: 0599: 
+ 687: 0599:    DETERMINE.LEAP.YEAR:
+ 688: 0599: 
+ 689: 0599:       IF MOD(YEAR%,4) = 0 THEN BEGIN
+ 690: 05b5:          LEAP.DAY% = 1              
+ 691: 05bc:       ENDIF ELSE BEGIN                          
+ 692: 05bc:          LEAP.DAY% = 0              
+ 693: 05c1:       ENDIF
+ 694: 05c1: 
+ 695: 05c1:       RETURN
+ 696: 05c9: 
+ 697: 05c9: \-------------------------------------------------------------------------------
+ 698: 05c9: \***
+ 699: 05c9: \*******************************************************************************
+ 700: 05c9: \***
+ 701: 05c9: \*** SET.UP.DATE:
+ 702: 05c9: \***
+ 703: 05c9: \***   IF year has only one digit THEN
+ 704: 05c9: \***      set F02.DATE$ to "0" and year
+ 705: 05c9: \***   ELSE
+ 706: 05c9: \***      set F02.DATE$ to year
+ 707: 05c9: \***   ENDIF
+ 708: 05c9: \***   IF month has only one digit THEN
+ 709: 05c9: \***      add "0" and month to F02.DATE$
+ 710: 05c9: \***   ELSE
+ 711: 05c9: \***      add month to F02.DATE$
+ 712: 05c9: \***   ENDIF
+ 713: 05c9: \***   IF day has only one digit THEN
+ 714: 05c9: \***      add "0" and day to F02.DATE$
+ 715: 05c9: \***   ELSE
+ 716: 05c9: \***      add day to F02.DATE$
+ 717: 05c9: \***   ENDIF
+ 718: 05c9: \***
+ 719: 05c9: \***   RETURN
+ 720: 05c9: \***
+ 721: 05c9: \-------------------------------------------------------------------------------
+ 722: 05c9: 
+ 723: 05c9:    SET.UP.DATE:
+ 724: 05c9: 
+ 725: 05c9:       IF YEAR% < 10 THEN                                               \
+ 726: 05d0:          F02.DATE$ = "0" + STR$(YEAR%)                                 \
+ 727: 05f0:       ELSE                                                             \
+ 728: 05f0:          F02.DATE$ = STR$(YEAR%)
+ 729: 0607: 
+ 730: 0607:       IF MONTH% < 10 THEN                                              \
+ 731: 060e:          F02.DATE$ = F02.DATE$ + "0" + STR$(MONTH%)                    \
+ 732: 0639:       ELSE                                                             \
+ 733: 0639:          F02.DATE$ = F02.DATE$ + STR$(MONTH%)
+ 734: 065e: 
+ 735: 065e:       IF DAY% < 10 THEN                                                \
+ 736: 0665:          F02.DATE$ = F02.DATE$ + "0" + STR$(DAY%)                      \
+ 737: 0690:       ELSE                                                             \
+ 738: 0690:          F02.DATE$ = F02.DATE$ + STR$(DAY%)
+ 739: 06b5: 
+ 740: 06b5:       RETURN
+ 741: 06bd: 
+ 742: 06bd: \-------------------------------------------------------------------------------
+ 743: 06bd: \***
+ 744: 06bd: \*******************************************************************************
+ 745: 06bd: \***
+ 746: 06bd: \*** ERROR.DETECTED:
+ 747: 06bd: \*** ---------------
+ 748: 06bd: \***   set UPDATE.DATE to 1 to indicate unsuccessful processing
+ 749: 06bd: \***
+ 750: 06bd: \***   IF the value of ERR = "OM" THEN               \REM out of memory
+ 751: 06bd: \***      CALL ADXERROR to log the error
+ 752: 06bd: \***   ELSE
+ 753: 06bd: \***      IF the value of ERR = "IH" THEN            \REM non-numeric data
+ 754: 06bd: \***         Set VAR.STRING.1$ to (rightmost two bytes of "00" + MESSAGE$)
+ 755: 06bd: \****          + (rightmost byte of F17.RETURNED.STRING$) + F02.DATE$
+ 756: 06bd: \***         CALL APPLICATION.LOG to log message number 706
+ 757: 06bd: \***         RESUME processing
+ 758: 06bd: \***      ELSE
+ 759: 06bd: \***         IF the value of ERR = "CM", or "CT" THEN  \REM chain failure
+ 760: 06bd: \***            Set VAR.STRING.1$ to "BF02 " + (the 3rd byte of MODULE.NUMBER$)
+ 761: 06bd: \***                       + "50  "
+ 762: 06bd: \***            Set VAR.STRING.2$ to "PS" + (the 3rd byte of MODULE.NUMBER$) 
+ 763: 06bd: \***                       + "50"
+ 764: 06bd: \***            CALL APPLICATION.LOG to log message number 553
+ 765: 06bd: \***         ELSE
+ 766: 06bd: \***            CALL APPLICATION.LOG to log message number 550
+ 767: 06bd: \***         ENDIF
+ 768: 06bd: \***      ENDIF
+ 769: 06bd: \***   ENDIF
+ 770: 06bd: \***   
+ 771: 06bd: \***   IF program is not a screen program THEN
+ 772: 06bd: \***      STOP
+ 773: 06bd: \***
+ 774: 06bd: \***   %INCLUDE PSBCHNE.J86
+ 775: 06bd: \***
+ 776: 06bd: \*** END FUNCT]ION
+ 777: 06bd: \***
+ 778: 06bd: \-------------------------------------------------------------------------------
+ 779: 06bd: 
+ 780: 06bd:    ERROR.DETECTED:
+ 781: 06bd: 
+ 782: 06bd:       UPDATE.DATE = 1                                                  ! EAW
+ 783: 06c2: 
+ 784: 06c2: \ 3 lines deleted from here                                            ! CBAAS
+ 785: 06c2: 
+ 786: 06c2:       IF ERR <> "IH" AND ERR <> "CM" AND ERR <> "CT" THEN              \
+ 787: 0749:          EVENT.NO% = 1                                                :\
+ 788: 074f:          INTEGER4% = ERRN                                             :\
+ 789: 0761:          F17.RETURN.CODE% = CONV.TO.STRING (EVENT.NO%,                 \ EAW
+ 790: 0779:                                             INTEGER4%)                :\
+ 791: 0779:          IF F17.RETURN.CODE% = 0 THEN                                  \
+ 792: 077e:             ERRNUM$   = F17.RETURNED.STRING$                          :\
+ 793: 0792: \ 8 lines deleted from here                                            \ CBAAS
+ 794: 0792:             STRING.ERRL$ = PACK$(RIGHT$("000000" + STR$(ERRL),6))      ! CBAAS
+ 795: 07d5: \ 4 lines deleted from here                                            ! CBAAS
+ 796: 07d5: 
+ 797: 07d5:       IF ERR = "OM" THEN                                      \REM out of memory
+ 798: 07f6:          IF F17.RETURN.CODE% = 0 THEN                                  \
+ 799: 0800:             TERM%         = 0                                         :\
+ 800: 0806:             MSGGRP%       = ASC("J")                                  :\
+ 801: 0812:             MSGNUM%       = 0                                         :\
+ 802: 0818:             SEVERITY%     = 3                                         :\
+ 803: 081d:             EVENT.NUM%    = 1                                         :\
+ 804: 0822:             UNIQUE$      = ERRNUM$ + CHR$(0) + ERR + STRING.ERRL$     :\ CBAAS
+ 805: 0860:             RET.CODE%    = ADXERROR (TERM%,                            \
+ 806: 088a:                                      MSGGRP%,                          \
+ 807: 088a:                                      MSGNUM%,                          \
+ 808: 088a:                                      SEVERITY%,                        \
+ 809: 088a:                                      EVENT.NUM%,                       \
+ 810: 088a:                                      UNIQUE$)
+ 811: 088a: 
+ 812: 088a:       IF ERR = "IH" THEN                          \REM non-numeric **********
+ 813: 08ab:          MESSAGE.NUMBER% = 706                                        :\
+ 814: 08b1:          EVENT.NO%       = 4                                          :\
+ 815: 08b7:          INTEGER4%       = 706                                        :\
+ 816: 08c4:          F17.RETURN.CODE% = CONV.TO.STRING (EVENT.NO%,                 \ EAW
+ 817: 08dc:                                             INTEGER4%)                :\
+ 818: 08dc:          IF F17.RETURN.CODE% = 0 THEN                                  \
+ 819: 08e4:             MESSAGE$ = F17.RETURNED.STRING$                           :\
+ 820: 08f8:             INTEGER4% = LEN(F02.DATE$)                                :\
+ 821: 091a:             F17.RETURN.CODE% = CONV.TO.STRING (EVENT.NO%,              \ EAW
+ 822: 0932:                                                INTEGER4%)             :\
+ 823: 0932:             IF F17.RETURN.CODE% = 0 THEN                               \
+ 824: 093a:                VAR.STRING.1$ = RIGHT$("00" + MESSAGE$,2)               \ DBCW
+ 825: 099e:                              + RIGHT$(F17.RETURNED.STRING$,1)          \
+ 826: 099e:                              + F02.DATE$                              :\
+ 827: 099e:                VAR.STRING.2$ = "02" + STR$(LEN(F02.DATE$)) +           \
+ 828: 09e2:                                F02.DATE$                              :\
+ 829: 09e2:                RET.CODE% = APPLICATION.LOG (MESSAGE.NUMBER%,           \ EAW
+ 830: 0a06:                                             VAR.STRING.1$,             \
+ 831: 0a06:                                             VAR.STRING.2$,             \
+ 832: 0a06:                                             EVENT.NO%)                :\
+ 833: 0a06:                RESUME FUNCTION.EXIT
+ 834: 0a15: 
+ 835: 0a15:       IF ERR = "CM" OR ERR = "CT" THEN                        \REM chain failure
+ 836: 0a6f:          MESSAGE.NUMBER% = 553                                        :\
+ 837: 0a75:          VAR.STRING.1$  = "BF02 " + MID$(MODULE.NUMBER$,3,1) + "50  " :\ DBCW
+ 838: 0aa8:          VAR.STRING.2$  = "PS" + MID$(MODULE.NUMBER$,3,1) + "50"      :\ DBCW
+ 839: 0adb:          EVENT.NO%      = 18                                          :\
+ 840: 0ae1:          RET.CODE% = APPLICATION.LOG (MESSAGE.NUMBER%,                 \ EAW
+ 841: 0b05:                                       VAR.STRING.1$,                   \
+ 842: 0b05:                                       VAR.STRING.2$,                   \
+ 843: 0b05:                                       EVENT.NO%)
+ 844: 0b05: 
+ 845: 0b05:       IF ERR <> "OM" AND ERR <> "IH" AND                               \
+ 846: 0bb9:          ERR <> "CM" AND ERR <> "CT" THEN                              \
+ 847: 0bb9:          IF F17.RETURN.CODE% = 0 THEN                                  \
+ 848: 0bc3:             MESSAGE.NUMBER% = 550                                     :\ CBAAS
+ 849: 0bc9:             VAR.STRING.1$ = ERRNUM$ + CHR$(0) + ERR + STRING.ERRL$    :\ CBAAS
+ 850: 0c07:             INTEGER4% = ERRN                                          :\
+ 851: 0c19:             RET.CODE% = CONV.TO.HEX (INTEGER4%)                       :\ EAW
+ 852: 0c2c:             IF RET.CODE% = 0 THEN                                      \ EAW
+ 853: 0c31:                VAR.STRING.2$ = ERR + F16.HEX.STRING$                   \
+ 854: 0c69:                              + "  0" + STR$(ERRL)                     :\ CBAAS
+ 855: 0c69:                EVENT.NO%     = 1                                      :\
+ 856: 0c6f:                RET.CODE% = APPLICATION.LOG (MESSAGE.NUMBER%,           \ EAW
+ 857: 0c93:                                             VAR.STRING.1$,             \
+ 858: 0c93:                                             VAR.STRING.2$,             \
+ 859: 0c93:                                             EVENT.NO%)
+ 860: 0c93: 
+ 861: 0c93: \ 5 lines deleted from here                                            ! DBCW
+ 862: 0c93: 
+ 863: 0c93:       IF BATCH.SCREEN.FLAG$ <> "S" THEN STOP                           ! DBCW
+ 864: 0cae:       %INCLUDE PSBCHNE.J86                                            ! DBCW
+ 865: 0cae: \/*********************************************************************/ PSBCHNE
+ 866: 0cae: \/*                                                                   */ PSBCHNE
+ 867: 0cae: \/*      PSBCHNE.J86  -  Chain to PSB Application Program             */ PSBCHNE
+ 868: 0cae: \/*      ------------------------------------------------             */ PSBCHNE
+ 869: 0cae: \/*                                                                   */ PSBCHNE
+ 870: 0cae: \/*********************************************************************/ PSBCHNE
+ 871: 0cae:                                                                        ! PSBCHNE
+ 872: 0cae:         CHAIN  PSBCHN.PRG , PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON ,   \ PSBCHNE
+ 873: 0d26:                             PSBCHN.U1 , PSBCHN.U2  , PSBCHN.U3         ! PSBCHNE
+ 874: 0d26:                                                                        ! PSBCHNE
+ 875: 0d26: 
+ 876: 0d26:    END FUNCTION
+ 877: 0d35: 
+ 878: 0d35: End of Compilation

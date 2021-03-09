@@ -1,0 +1,386 @@
+   1: 0000: %INCLUDE STOCKDEC.J86
+   2: 0000: \***********************************************************************
+   3: 0000: \***********************************************************************
+   4: 0000: \***
+   5: 0000: \***    DESCRIPTION: Stock File
+   6: 0000: \***                 Field Definitions         
+   7: 0000: \***
+   8: 0000: \***    FILE TYPE : Keyed
+   9: 0000: \***
+  10: 0000: \***********************************************************************
+  11: 0000: \***
+  12: 0000: \***    Version B.              Robert Cowey             21st Oct 1993
+  13: 0000: \***    No changes to this file.
+  14: 0000: \***
+  15: 0000: \***    Version C.              Mark Walker              24th Jan 2014
+  16: 0000: \***    F337 Centralised View of Stock
+  17: 0000: \***    - Added sequence ID and item status fields.
+  18: 0000: \***    - Minor formatting changes (uncommented).
+  19: 0000: \***
+  20: 0000: \***    Version D.              Mark Walker              15th Mar 2014
+  21: 0000: \***    F337 Centralised View of Stock
+  22: 0000: \***    Added next sequence ID field.
+  23: 0000: \***
+  24: 0000: \***    Version E.              Mark Walker               7th May 2014
+  25: 0000: \***    F337 Centralised View of Stock
+  26: 0000: \***    Added new 'stock flags' field for future use.
+  27: 0000: \***
+  28: 0000: \***********************************************************************
+  29: 0000: \***********************************************************************
+  30: 0000: 
+  31: 0000: \***********************************************************************
+  32: 0000: \***********************************************************************
+  33: 0000: \***
+  34: 0000: \***    File Record Layout
+  35: 0000: \***
+  36: 0000: \***    STOCK.BOOTS.CODE$            4 UPD  Item Code (Key)
+  37: 0000: \***    STOCK.STOCK.FIG%             2 INT  Stock Figure
+  38: 0000: \***    STOCK.LAST.COUNT%            2 INT  Last Count Quantity
+  39: 0000: \***    STOCK.DATE.LAST.COUNT$       3 UPD  Date of Last Count
+  40: 0000: \***    STOCK.DATE.LAST.MOVE$        3 UPD  Date of Last Movement
+  41: 0000: \***    STOCK.LAST.REC%              2 INT  Last Receipt Quantity
+  42: 0000: \***    STOCK.DATE.LAST.REC$         3 UPD  Date of Last Receipt
+  43: 0000: \***    STOCK.DATE.LAST.GAP$         3 UPD  Date of Last Gap
+  44: 0000: \***    STOCK.SID%                   4 INT  Sequence ID                     !CMW
+  45: 0000: \***    STOCK.STATUS.1$              1 ASC  Item Status                     !CMW
+  46: 0000: \***    STOCK.FLAGS%                 1 INT  Stock flags                     !EMW
+  47: 0000: \***    STOCK.FILLER$                2 UPD  Filler                          !EMW
+  48: 0000: \***
+  49: 0000: \***********************************************************************
+  50: 0000: \***********************************************************************
+  51: 0000: 
+  52: 0000:     INTEGER*1 GLOBAL                                                    \
+  53: 0000:         STOCK.FLAGS%,                                                   \   !EMW
+  54: 0000:         STOCK.RECL%
+  55: 0000: 
+  56: 0000:     INTEGER*2 GLOBAL                                                    \
+  57: 0000:         STOCK.LAST.COUNT%,                                              \
+  58: 0000:         STOCK.LAST.REC%,                                                \
+  59: 0000:         STOCK.REPORT.NUM%,                                              \
+  60: 0000:         STOCK.SESS.NUM%,                                                \
+  61: 0000:         STOCK.STOCK.FIG%
+  62: 0000: 
+  63: 0000:     INTEGER*4 GLOBAL                                                    \   !CMW
+  64: 0000:         STOCK.NEXT.SID%,                                                \   !DMW
+  65: 0000:         STOCK.SID%                                                          !CMW
+  66: 0000: 
+  67: 0000:     STRING GLOBAL                                                       \
+  68: 0000:         STOCK.BOOTS.CODE$,                                              \
+  69: 0000:         STOCK.DATE.LAST.COUNT$,                                         \
+  70: 0000:         STOCK.DATE.LAST.GAP$,                                           \
+  71: 0000:         STOCK.DATE.LAST.MOVE$,                                          \
+  72: 0000:         STOCK.DATE.LAST.REC$,                                           \
+  73: 0000:         STOCK.FILE.NAME$,                                               \
+  74: 0000:         STOCK.FILLER$,                                                  \
+  75: 0000:         STOCK.STATUS.1$                                                     !CMW
+  76: 0000: 
+  77: 0000: %INCLUDE PSBF01G.J86
+  78: 0000: REM \
+  79: 0000: \*******************************************************************************
+  80: 0000: \*******************************************************************************
+  81: 0000: \***
+  82: 0000: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+  83: 0000: \***
+  84: 0000: \***                FUNCTION NUMBER    : PSBF01
+  85: 0000: \***
+  86: 0000: \***                REFERENCE          : PSBF01G.J86
+  87: 0000: \***
+  88: 0000: \***                DATE OF LAST AMENDMENT  - 27/2/86
+  89: 0000: \***
+  90: 0000: \***
+  91: 0000: \*******************************************************************************
+  92: 0000: 
+  93: 0000:       INTEGER GLOBAL  F01.RETURN.CODE%
+  94: 0000: 
+  95: 0000: 
+  96: 0000: %INCLUDE PSBF20G.J86
+  97: 0000: REM\
+  98: 0000: \*******************************************************************************
+  99: 0000: \*******************************************************************************
+ 100: 0000: \***
+ 101: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 102: 0000: \***
+ 103: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 104: 0000: \*** 
+ 105: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 106: 0000: \*** 
+ 107: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 108: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 109: 0000: \***     to two byte integer.
+ 110: 0000: \***
+ 111: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 112: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 113: 0000: \***
+ 114: 0000: \*******************************************************************************
+ 115: 0000: \*******************************************************************************
+ 116: 0000: 
+ 117: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 118: 0000:                        F20.STRING.FILE.NO$,                            \
+ 119: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 120: 0000:                        SESS.NUM.TABLE$(1)
+ 121: 0000: 
+ 122: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 123: 0000: 
+ 124: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 125: 0000: 
+ 126: 0000: 
+ 127: 0000: 
+ 128: 0000:    INTEGER*2 ITEMS.FILE.SESS.NUM%
+ 129: 0000:    INTEGER*2 PASSED.INTEGER%
+ 130: 0000:    INTEGER*2 CURRENT.REPORT.NUM%
+ 131: 0000:    INTEGER*2 RC%
+ 132: 0000:    INTEGER*1 STOCK.EOF%
+ 133: 0000:    INTEGER*1 ITEM.COUNT%
+ 134: 0000:    !INTEGER*4 OFFSET%
+ 135: 0000:    !INTEGER*2 MODE%
+ 136: 0000:    
+ 137: 0000:    STRING NEW.DATE.LAST.REC$
+ 138: 0000:    STRING ITEMS.FILE$
+ 139: 0000:    STRING FUNCTION.FLAG$
+ 140: 0000:    STRING PASSED.STRING$
+ 141: 0000:    STRING FILE.OPERATION$
+ 142: 0000:    STRING LINE.RECORD$
+ 143: 0000:    STRING CMD$
+ 144: 0000:    !STRING STOCK.RECORD$
+ 145: 0000:    !STRING PATTERN$
+ 146: 0000:    
+ 147: 0000: %INCLUDE STOCKEXT.J86
+ 148: 0000: \***********************************************************************
+ 149: 0000: \***********************************************************************
+ 150: 0000: \***
+ 151: 0000: \***    DESCRIPTION: Stock File
+ 152: 0000: \***                 External File Function Definitions
+ 153: 0000: \***
+ 154: 0000: \***    FILE TYPE : Keyed
+ 155: 0000: \***
+ 156: 0000: \***********************************************************************
+ 157: 0000: \***
+ 158: 0000: \***    Version A.          Les Cook                     21st Aug 1992
+ 159: 0000: \***    Initial version.
+ 160: 0000: \***
+ 161: 0000: \***    Version B.          Robert Cowey                 21st Oct 1993
+ 162: 0000: \***    No changes to this file.
+ 163: 0000: \***
+ 164: 0000: \***    Version C.          Nik Sen                      22nd Dec 1994
+ 165: 0000: \***    WRITE.STOCK.HOLD added.
+ 166: 0000: \***
+ 167: 0000: \***    Version D.          Mark Walker                  23rd Jan 2014
+ 168: 0000: \***    F337 Centralised View of Stock
+ 169: 0000: \***    - Minor formatting changes (uncommented).
+ 170: 0000: \***
+ 171: 0000: \***********************************************************************
+ 172: 0000: \***********************************************************************
+ 173: 0000: 
+ 174: 0000: FUNCTION STOCK.SET EXTERNAL
+ 175: 0000: END FUNCTION
+ 176: 0000:    
+ 177: 0000: FUNCTION READ.STOCK EXTERNAL
+ 178: 0000:     INTEGER*2 READ.STOCK
+ 179: 0000: END FUNCTION
+ 180: 0000:    
+ 181: 0000: FUNCTION WRITE.STOCK EXTERNAL
+ 182: 0000:     INTEGER*2 WRITE.STOCK
+ 183: 0000: END FUNCTION
+ 184: 0000:    
+ 185: 0000: FUNCTION WRITE.STOCK.HOLD EXTERNAL
+ 186: 0000:     INTEGER*2 WRITE.STOCK.HOLD
+ 187: 0000: END FUNCTION
+ 188: 0000: 
+ 189: 0000: FUNCTION READ.STOCK.LOCK EXTERNAL
+ 190: 0000:     INTEGER*2 READ.STOCK.LOCK
+ 191: 0000: END FUNCTION
+ 192: 0000:    
+ 193: 0000: FUNCTION WRITE.STOCK.UNLOCK EXTERNAL
+ 194: 0000:     INTEGER*2 WRITE.STOCK.UNLOCK
+ 195: 0000: END FUNCTION
+ 196: 0000:    
+ 197: 0000: FUNCTION WRITE.STOCK.UNLOCK.HOLD EXTERNAL
+ 198: 0000:     INTEGER*2 WRITE.STOCK.UNLOCK.HOLD
+ 199: 0000: END FUNCTION
+ 200: 0000: 
+ 201: 0000: %INCLUDE PSBF01E.J86
+ 202: 0000: REM \
+ 203: 0000: \*******************************************************************************
+ 204: 0000: \*******************************************************************************
+ 205: 0000: \***
+ 206: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 207: 0000: \***
+ 208: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 209: 0000: \***
+ 210: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 211: 0000: \*** 
+ 212: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 213: 0000: \***      Three parameters which passed to the function have been removed.
+ 214: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 215: 0000: \***      return code).
+ 216: 0000: \***
+ 217: 0000: \*******************************************************************************
+ 218: 0000: 
+ 219: 0000: 
+ 220: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 221: 0000:                              VAR.STRING.1$,                                   \
+ 222: 0000:                              VAR.STRING.2$,                                   \
+ 223: 0000:                              EVENT.NO%)  EXTERNAL
+ 224: 0000: 
+ 225: 0000:       INTEGER*1 EVENT.NO%
+ 226: 0000: 
+ 227: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 228: 0000:                 MESSAGE.NO%
+ 229: 0000: 
+ 230: 0000:       STRING VAR.STRING.1$,                                            \
+ 231: 0000:              VAR.STRING.2$
+ 232: 0000: 
+ 233: 0000:    END FUNCTION
+ 234: 0000: 
+ 235: 0000: \*******************************************************************************
+ 236: 0000: 
+ 237: 0000: %INCLUDE PSBF20E.J86
+ 238: 0000: REM\
+ 239: 0000: \*******************************************************************************
+ 240: 0000: \*******************************************************************************
+ 241: 0000: \***
+ 242: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 243: 0000: \***
+ 244: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 245: 0000: \***
+ 246: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 247: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 248: 0000: \***     128 files.
+ 249: 0000: \***
+ 250: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 251: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 252: 0000: \***     as a variable.  This new variable contains the function's return
+ 253: 0000: \***     code.
+ 254: 0000: \***
+ 255: 0000: \*******************************************************************************
+ 256: 0000: \*******************************************************************************
+ 257: 0000: 
+ 258: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 259: 0000:                               PASSED.INTEGER%,                         \
+ 260: 0000:                               PASSED.STRING$)                          \
+ 261: 0000:    EXTERNAL
+ 262: 0000: 
+ 263: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 264: 0000:              PASSED.STRING$
+ 265: 0000:    ! 3 variables removed from here                                     ! CAW
+ 266: 0000: 
+ 267: 0000: 
+ 268: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 269: 0000:              PASSED.INTEGER%				               ! CJAS
+ 270: 0000: 
+ 271: 0000:    END FUNCTION
+ 272: 0000: 
+ 273: 0000: 
+ 274: 0000: 
+ 275: 0000: 
+ 276: 0000: ON ERROR GOTO ERROR.DETECTED
+ 277: 002f: 
+ 278: 002f: 	GOSUB INITIALIZATION
+ 279: 0041: 	GOSUB MAIN.PROGRAM
+ 280: 0053: 	GOSUB TERMINATION
+ 281: 0065: 
+ 282: 0065: STOP
+ 283: 0072: 
+ 284: 0072: INITIALIZATION:
+ 285: 0082: 
+ 286: 0082: ITEMS.FILE$ = "C:/STOCKITM.DAT"
+ 287: 0097: NEW.DATE.LAST.REC$ = ""
+ 288: 00ac: 
+ 289: 00ac: 	 CALL STOCK.SET
+ 290: 00c7: 
+ 291: 00c7: 	 FUNCTION.FLAG$ EQ "O" 
+ 292: 00dc: 
+ 293: 00dc: 	 PASSED.INTEGER% EQ STOCK.REPORT.NUM% 
+ 294: 00ee:      PASSED.STRING$ EQ STOCK.FILE.NAME$
+ 295: 010a:      GOSUB CALL.F20.SESS.NUM.UTILITY
+ 296: 011c:      STOCK.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+ 297: 0132: 	 
+ 298: 0132: 	 PASSED.INTEGER% EQ 456 
+ 299: 0140:      PASSED.STRING$ EQ ITEMS.FILE$
+ 300: 0159:      GOSUB CALL.F20.SESS.NUM.UTILITY
+ 301: 016b:      ITEMS.FILE.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+ 302: 017d: 	 
+ 303: 017d: 	 OPEN ITEMS.FILE$ AS ITEMS.FILE.SESS.NUM% 
+ 304: 019e: 
+ 305: 019e: RETURN
+ 306: 01ae: 
+ 307: 01ae: CALL.F20.SESS.NUM.UTILITY: 
+ 308: 01be:         
+ 309: 01be:          FILE.OPERATION$ = FUNCTION.FLAG$
+ 310: 01d7:          CURRENT.REPORT.NUM% = PASSED.INTEGER%
+ 311: 01e5:          RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+ 312: 020c:                                  PASSED.STRING$)
+ 313: 020c:          IF RC% <> 0 THEN GOTO ERROR.DETECTED
+ 314: 021e: 
+ 315: 021e: RETURN
+ 316: 022e: 
+ 317: 022e: MAIN.PROGRAM:
+ 318: 023e: 
+ 319: 023e: 	IF END #STOCK.SESS.NUM% THEN NO.FILE
+ 320: 025a: 	OPEN STOCK.FILE.NAME$ KEYED RECL STOCK.RECL% AS STOCK.SESS.NUM% NODEL
+ 321: 0289: 
+ 322: 0289: 	INPUT "ENTER THE NEW LAST DELIVERY DATE(YYMMDD)"; NEW.DATE.LAST.REC$
+ 323: 02aa: 	WHILE NOT STOCK.EOF%
+ 324: 02b5: 
+ 325: 02b5:     IF END #ITEMS.FILE.SESS.NUM% THEN NO.FILE
+ 326: 02ce:     READ #ITEMS.FILE.SESS.NUM%;	LINE LINE.RECORD$
+ 327: 02ea: 	
+ 328: 02ea: 	CMD$ = LEFT$(LINE.RECORD$,7) 
+ 329: 030c: 	
+ 330: 030c: 	STOCK.BOOTS.CODE$ = PACK$("0" + CMD$)
+ 331: 0338: 
+ 332: 0338: 	!PRINT  "ITEM NUMBER : " + STOCK.BOOTS.CODE$
+ 333: 0338: 	!INPUT "ENTER THE NEW LAST DELIVERY DATE(MMDDYYY)"; NEW.DATE.LAST.REC$
+ 334: 0338: 	
+ 335: 0338: 	RC% = READ.STOCK
+ 336: 0348: 	  
+ 337: 0348: 	  IF RC% = 0 THEN BEGIN		
+ 338: 035a: 	  
+ 339: 035a: 			PRINT "CURRENT LAST RECEIVED DATE : " + UNPACK$(STOCK.DATE.LAST.REC$)
+ 340: 0386: 		    
+ 341: 0386: 			STOCK.DATE.LAST.REC$ = PACK$(NEW.DATE.LAST.REC$)
+ 342: 03a6: 			
+ 343: 03a6: 			RC% = WRITE.STOCK
+ 344: 03b6: 			
+ 345: 03b6: 			IF RC% = 0 THEN BEGIN
+ 346: 03c5: 			   !PRINT "DATE UPDATED SUCCESSFULLY"
+ 347: 03c5: 			   ITEM.COUNT% = ITEM.COUNT% + 1
+ 348: 03d3: 			ENDIF ELSE BEGIN
+ 349: 03db: 			   PRINT "UPDATE FAILED"
+ 350: 03ec: 			ENDIF
+ 351: 03f4: 			
+ 352: 03f4: 			PRINT "UPDATED LAST RECEIVED DATE : " + UNPACK$(STOCK.DATE.LAST.REC$)
+ 353: 0420: 
+ 354: 0420: 
+ 355: 0420:       ENDIF
+ 356: 0428: 
+ 357: 0428: 	WEND
+ 358: 043a: 
+ 359: 043a: NO.FILE:
+ 360: 044a: 
+ 361: 044a:     STOCK.EOF% = 0
+ 362: 0457: 	!EOF1 = TRUE
+ 363: 0457: 	!EOF = TRUE
+ 364: 0457: 
+ 365: 0457: 	GOTO TERMINATION
+ 366: 0461: 
+ 367: 0461: RETURN
+ 368: 0471: 
+ 369: 0471: TERMINATION:
+ 370: 0481: 
+ 371: 0481:     FUNCTION.FLAG$ EQ "C"
+ 372: 0496:     PASSED.STRING$ EQ STOCK.FILE.NAME$
+ 373: 04b2: 	PASSED.INTEGER% EQ STOCK.REPORT.NUM% 
+ 374: 04c4:     GOSUB CALL.F20.SESS.NUM.UTILITY
+ 375: 04d6:     STOCK.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+ 376: 04ec: 	
+ 377: 04ec: 	CLOSE STOCK.SESS.NUM%
+ 378: 0500: 
+ 379: 0500: RETURN
+ 380: 0510: 
+ 381: 0510: ERROR.DETECTED:
+ 382: 0520: 
+ 383: 0520: PRINT   "An Error Occurred "   + ERR   + STR$(ERRF%)   + STR$(ERRL)
+ 384: 0576: 
+ 385: 0576: END
+ 386: 0576: End of Compilation

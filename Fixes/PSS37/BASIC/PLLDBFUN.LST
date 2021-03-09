@@ -1,0 +1,437 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***              RF PICKING LIST ITEMS IN LISTS FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***               REFERENCE    : PLLDBFUN.BAS
+   8: 0000: \***
+   9: 0000: \***         VERSION A            Julia Stones                  11th August 2004
+  10: 0000: \***
+  11: 0000: \***         VERSION B            Charles Skadorwa            15th February 2005
+  12: 0000: \***               Added WRITE.BRIEF.PLLDB for Shelf Monitor Project.
+  13: 0000: \***
+  14: 0000: \***         VERSION C             Mark Goode                   28th August 2008
+  15: 0000: \***              Add new fields for multi-site project
+  16: 0000: \***
+  17: 0000: \***         VERSION D             Dave Constable             20th November 2008
+  18: 0000: \***              Corrected new fields for multi-site project in PDT Replacement
+  19: 0000: \***
+  20: 0000: \***         VERSION E             Peter Sserunkuma           09th December 2008
+  21: 0000: \***              The format string within the WRITE.BRIEF.PLLDB function now
+  22: 0000: \***              references a record length of 164, it was previously set to 110.
+  23: 0000: \***
+  24: 0000: \***         VERSION F             Neil Bennett                    3rd June 2009
+  25: 0000: \***              Added functions for lock/unlock. Fixed CONCAT.MS.TABLE.DATA
+  26: 0000: \***
+  27: 0000: \***         VERSION G             Wasim AbdulKalam           31st  January  2012
+  28: 0000: \***              Added new fields for backshop and OSSR pending sales plan for
+  29: 0000: \***              Stock file Accuracy project. Also commented out the old FORM
+  30: 0000: \***              statements and variables. PLLDB.CNT.PENDSALES.BACKSHOP$,
+  31: 0000: \***              PLLDB.TIME.PENDSALES.BACKSHOP$,PLLDB.CNT.PENDSALES.OSSR$,
+  32: 0000: \***              PLLDB.TIME.PENDSALES.OSSR$ are the newly introduced variables.
+  33: 0000: \*******************************************************************************
+  34: 0000: \*******************************************************************************
+  35: 0000: 
+  36: 0000:     INTEGER*2 GLOBAL                 \
+  37: 0000:        CURRENT.REPORT.NUM%
+  38: 0000: 
+  39: 0000:     STRING GLOBAL                    \
+  40: 0000:        CURRENT.CODE$,                \
+  41: 0000:        FILE.OPERATION$
+  42: 0000: 
+  43: 0000:     %INCLUDE PLLDBDEC.J86
+  44: 0000: 
+  45: 0000: \******************************************************************************
+  46: 0000: \******************************************************************************
+  47: 0000: \***
+  48: 0000: \***         %INCLUDE FOR RF PICKING LIST ITEMS IN LISTS FILE FIELD DECLARATIONS
+  49: 0000: \***
+  50: 0000: \***               FILE TYPE    : KEYED
+  51: 0000: \***
+  52: 0000: \***               REFERENCE    : PLLDBDEC.J86
+  53: 0000: \***
+  54: 0000: \***    VERSION A.              Julia Stones.                   11th August 2004
+  55: 0000: \***    New file for RF system. Holds picking list items in lists information.
+  56: 0000: \***
+  57: 0000: \***    VERSION B.              Mark Goode                     17th january 2005
+  58: 0000: \***    Changes for OSSR WAN
+  59: 0000: \***
+  60: 0000: \***    VERSION C.              Charlies Skadorwa
+  61: 0000: \***    Add Stock fig to filler space for PST47
+  62: 0000: \***
+  63: 0000: \***    VERSION D.              Mark Goode                      29th August 2008
+  64: 0000: \***    Add new fields for Multi-site project
+  65: 0000: \***
+  66: 0000: \***    VERSION E.              Wasim Abdulkalam              11th November 2011
+  67: 0000: \***    Added new fields for backshop and OSSR pending sales plan for Stock
+  68: 0000: \***    file accuracy project
+  69: 0000: \*******************************************************************************
+  70: 0000: \*******************************************************************************
+  71: 0000: 
+  72: 0000: STRING GLOBAL                          \
+  73: 0000:        PLLDB.FILE.NAME$,               \
+  74: 0000:        PLLDB.KEY$,                     \ 6 bytes unpacked LISTID + ITEMSEQ
+  75: 0000:        PLLDB.LISTID$,                  \ 3 bytes unpacked List Number
+  76: 0000:        PLLDB.ITEMSEQ$,                 \ 3 bytes unpacked Item Sequence Number
+  77: 0000:        PLLDB.BOOTSCODE$,               \ 4 bytes packed Boots item code including check digit
+  78: 0000:        PLLDB.QTY.ONSHELF$,             \ 4 bytes unpacked Quantity on shelf
+  79: 0000:        PLLDB.FILL.QTY$,                \ 4 bytes unpacked Fill quantity
+  80: 0000:        PLLDB.GAPFILL.MRK$,             \ 1 byte ASC Gap/Fill marker "Y" = Gap created from Shelf monitor
+  81: 0000:                                        \                            "N" = Fast Fill no TSF update
+  82: 0000:        PLLDB.ITEM.STATUS$,             \ 1 byte ASC Item Status "U" = Unpicked, "P" = picked
+  83: 0000:        PLLDB.STOCKROOM.CNT$,           \ 4 bytes unpacked Stock Room Count
+  84: 0000:        PLLDB.SHELFMON.SALE.FIG$,       \ 4 bytes unpacked Sales figure at Shelf Monitoring
+  85: 0000:        PLLDB.OSSR.FLAG$,               \ 1 bytes item OSSR flag   ! BMG
+  86: 0000:      \!PLLDB.FILLER$,                  \ 7 byte filler            ! BMG !EWA
+  87: 0000:        PLLDB.CNT.PENDSALES.BACKSHOP$,  \ 2 bytes packed backshop pending sales plan count      ! EWA
+  88: 0000:        PLLDB.TIME.PENDSALES.BACKSHOP$, \ 2 bytes packed backshop pending sales plan count time ! EWA
+  89: 0000:        PLLDB.CNT.PENDSALES.OSSR$,      \ 2 bytes packed OSSR pending sales plan count          ! EWA
+  90: 0000:        PLLDB.TIME.PENDSALES.OSSR$,     \ 2 bytes packed OSSR pending sales plan count time     ! EWA
+  91: 0000:        PLLDB.STKFIG.STOCKROOM$,        \ 4 bytes unpacked Sales figure at Shelf Monitoring
+  92: 0000:                                        \ progam submitted for pint out
+  93: 0000:        PLLDB.OSSR.CNT$,                \ 4 bytes unpacked OSSR item stock count figure
+  94: 0000:        PLLDB.TIME.SHELFMON$,           \ 2 bytes packed Time of stock floor count hh:mm
+  95: 0000:        PLLDB.TIME.BACKSHOP$,           \ 2 bytes packed Time of back shop count hh:mm
+  96: 0000:        PLLDB.TIME.OSSR$,               \ 2 bytes packed Time of OSSR count hh:mm
+  97: 0000:        PLLDB.BACKSHOP.SALE$,           \ 4 bytes unpacked Sale at time of backshop count
+  98: 0000:        PLLDB.OSSR.SALE$,               \ 4 bytes unpacked Sale at time of OSSR count
+  99: 0000:        PLLDB.MS.TABLE$,                \                                           ! DMG
+ 100: 0000:        PLLDB.MS.LOCATION.CNT$(1),      \ 2 byte packed multi-site location count   ! DMG
+ 101: 0000:        PLLDB.MS.SALES.FIG$(1),         \ 2 byte packed multi-site sales figure     ! DMG                                             ! CMG
+ 102: 0000:        PLLDB.MS.TIME.CNT$(1),          \ 2 byte packed multi-site time of count    ! DMG                                             ! CMG
+ 103: 0000:        PLLDB.MS.FILL.QTY$(1),          \ 2 byte packed multi-site fill quantity    ! DMG                                                        ! CMG
+ 104: 0000:        PLLDB.FILLER2$(1)               ! 2 byte filler                             ! DMG
+ 105: 0000: 
+ 106: 0000: INTEGER*2 GLOBAL                       \
+ 107: 0000:    PLLDB.REPORT.NUM%,                  \
+ 108: 0000:    PLLDB.SESS.NUM%
+ 109: 0000: 
+ 110: 0000: INTEGER*2 GLOBAL                       \
+ 111: 0000:    PLLDB.RECL%
+ 112: 0000: 
+ 113: 0000: 
+ 114: 0000: 
+ 115: 0000: 
+ 116: 0000: \***********************************************************
+ 117: 0000:                                                                                     ! CMG
+ 118: 0000:   SUB SPLIT.MS.TABLE.DATA
+ 119: 0014: 
+ 120: 0014:    INTEGER*2 LOOP%                                                                  ! CMG
+ 121: 0014: 
+ 122: 0014:    FOR LOOP% = 0 TO 32                                                              ! CMG ! GWA
+ 123: 001d: 
+ 124: 001d:       PLLDB.MS.LOCATION.CNT$(LOOP%) = MID$(PLLDB.MS.TABLE$,1 + (LOOP%*10),2)        ! DDC
+ 125: 0053:       PLLDB.MS.SALES.FIG$(LOOP%)    = MID$(PLLDB.MS.TABLE$,3 + (LOOP%*10),2)        ! DDC
+ 126: 0089:       PLLDB.MS.TIME.CNT$(LOOP%)     = MID$(PLLDB.MS.TABLE$,5 + (LOOP%*10),2)        ! DDC
+ 127: 00bf:       PLLDB.MS.FILL.QTY$(LOOP%)     = MID$(PLLDB.MS.TABLE$,7 + (LOOP%*10),2)        ! DDC
+ 128: 00f5:       PLLDB.FILLER2$(LOOP%)         = MID$(PLLDB.MS.TABLE$,9 + (LOOP%*10),2)        ! DDC
+ 129: 012b: 
+ 130: 012b:    NEXT LOOP%                                                                       ! CMG ! WWA
+ 131: 013c: 
+ 132: 013c:   END SUB                                                                           ! CMG
+ 133: 0148: 
+ 134: 0148: \***************************************************************
+ 135: 0148: 
+ 136: 0148:   SUB CONCAT.MS.TABLE.DATA                                                          ! CMG
+ 137: 015c: 
+ 138: 015c:    INTEGER*2 LOOP%                                                                  ! CMG
+ 139: 015c: 
+ 140: 015c:    PLLDB.MS.TABLE$ = ""                                                             ! CMG
+ 141: 016b: 
+ 142: 016b:    FOR LOOP% = 0 TO 32                                                              ! CMG ! GWA
+ 143: 0174: 
+ 144: 0174:        PLLDB.MS.TABLE$ = PLLDB.MS.TABLE$ + PLLDB.MS.LOCATION.CNT$(LOOP%)            \ FNB
+ 145: 020a:                                          + PLLDB.MS.SALES.FIG$(LOOP%)               \ FNB
+ 146: 020a:                                          + PLLDB.MS.TIME.CNT$(LOOP%)                \ FNB
+ 147: 020a:                                          + PLLDB.MS.FILL.QTY$(LOOP%)                \ FNB
+ 148: 020a:                                          + PLLDB.FILLER2$(LOOP%)                    ! FNB
+ 149: 020a: 
+ 150: 020a:    NEXT LOOP%                                                                       ! CMG ! WWA
+ 151: 021b: 
+ 152: 021b:   END SUB                                                                           ! CMG
+ 153: 0227: 
+ 154: 0227: \***************************************************************
+ 155: 0227: 
+ 156: 0227:   FUNCTION PLLDB.SET PUBLIC
+ 157: 023b: \***************************
+ 158: 023b: 
+ 159: 023b:     PLLDB.REPORT.NUM% = 511
+ 160: 0244:     PLLDB.RECL%       = 384                                                          ! CMG !GWA
+ 161: 024d:     PLLDB.FILE.NAME$  = "PLLDB"
+ 162: 025c: 
+ 163: 025c:     DIM PLLDB.MS.LOCATION.CNT$(32)                                                   ! CMG !GWA
+ 164: 0283:     DIM PLLDB.MS.SALES.FIG$(32)                                                      ! CMG !GWA
+ 165: 02aa:     DIM PLLDB.MS.TIME.CNT$(32)                                                       ! CMG !GWA
+ 166: 02d1:     DIM PLLDB.MS.FILL.QTY$(32)                                                       ! CMG !GWA
+ 167: 02f8:     DIM PLLDB.FILLER2$(32)                                                           ! CMG !GWA
+ 168: 031f: 
+ 169: 031f:   END FUNCTION
+ 170: 032b: 
+ 171: 032b: \-----------------------------------------------------------------------------
+ 172: 032b: 
+ 173: 032b: FUNCTION READ.PLLDB PUBLIC
+ 174: 033f: \****************************
+ 175: 033f: 
+ 176: 033f:     INTEGER*2 READ.PLLDB
+ 177: 033f: 
+ 178: 033f:     READ.PLLDB = 1
+ 179: 0344: 
+ 180: 0344:     PLLDB.KEY$ = PLLDB.LISTID$ + PLLDB.ITEMSEQ$
+ 181: 0368: 
+ 182: 0368:     IF END #PLLDB.SESS.NUM% THEN READ.PLLDB.ERROR
+ 183: 037c:    !Instead of filler pending sales plan fields are introduced.          ! GWA
+ 184: 037c:    !So record length changes in the FORM statement.                      ! GWA
+ 185: 037c:     READ FORM "T7,3C4,2C1,2C4,4C2,C4,3C2,2C4,C330"; #PLLDB.SESS.NUM%   \ ! GWA
+ 186: 0469:        KEY PLLDB.KEY$;                                                 \
+ 187: 0469:        PLLDB.BOOTSCODE$,                                               \
+ 188: 0469:        PLLDB.QTY.ONSHELF$,                                             \
+ 189: 0469:        PLLDB.FILL.QTY$,                                                \
+ 190: 0469:        PLLDB.GAPFILL.MRK$,                                             \
+ 191: 0469:        PLLDB.ITEM.STATUS$,                                             \
+ 192: 0469:        PLLDB.STOCKROOM.CNT$,                                           \
+ 193: 0469:        PLLDB.SHELFMON.SALE.FIG$,                                       \
+ 194: 0469:      \!PLLDB.FILLER$,                                                  \ ! BMG !GWA
+ 195: 0469:        PLLDB.CNT.PENDSALES.BACKSHOP$,                                  \ ! GWA
+ 196: 0469:        PLLDB.TIME.PENDSALES.BACKSHOP$,                                 \ ! GWA
+ 197: 0469:        PLLDB.CNT.PENDSALES.OSSR$,                                      \ ! GWA
+ 198: 0469:        PLLDB.TIME.PENDSALES.OSSR$,                                     \ ! GWA
+ 199: 0469:        PLLDB.OSSR.CNT$,                                                \
+ 200: 0469:        PLLDB.TIME.SHELFMON$,                                           \
+ 201: 0469:        PLLDB.TIME.BACKSHOP$,                                           \
+ 202: 0469:        PLLDB.TIME.OSSR$,                                               \
+ 203: 0469:        PLLDB.BACKSHOP.SALE$,                                           \
+ 204: 0469:        PLLDB.OSSR.SALE$,                                               \
+ 205: 0469:        PLLDB.MS.TABLE$                                                   ! CMG
+ 206: 0469: 
+ 207: 0469:     CALL SPLIT.MS.TABLE.DATA                                             ! CMG
+ 208: 046d: 
+ 209: 046d:     READ.PLLDB = 0
+ 210: 0472:     EXIT FUNCTION
+ 211: 0474: 
+ 212: 0474: READ.PLLDB.ERROR:
+ 213: 0474: 
+ 214: 0474: 
+ 215: 0474:        FILE.OPERATION$ = "R"
+ 216: 0483:        CURRENT.REPORT.NUM% = PLLDB.REPORT.NUM%
+ 217: 0491: 
+ 218: 0491:        EXIT FUNCTION
+ 219: 0493: 
+ 220: 0493: END FUNCTION
+ 221: 04a2: 
+ 222: 04a2: \-----------------------------------------------------------------------------
+ 223: 04a2: 
+ 224: 04a2: FUNCTION READ.PLLDB.LOCK PUBLIC                                            ! FNB
+ 225: 04b6: \******************************                                            ! FNB
+ 226: 04b6: 
+ 227: 04b6:     INTEGER*2 READ.PLLDB.LOCK                                              ! FNB
+ 228: 04b6: 
+ 229: 04b6:     READ.PLLDB.LOCK = 1                                                    ! FNB
+ 230: 04bb: 
+ 231: 04bb:     PLLDB.KEY$ = PLLDB.LISTID$ + PLLDB.ITEMSEQ$                            ! FNB
+ 232: 04df: 
+ 233: 04df:     IF END #PLLDB.SESS.NUM% THEN READ.PLLDB.LOCK.ERROR
+ 234: 04f3:    !Instead of filler pending sales plan fields are introduced.            ! GWA
+ 235: 04f3:    !So record length changes in the FORM statement.                        ! GWA
+ 236: 04f3:     READ FORM "T7,3C4,2C1,2C4,4C2,C4,3C2,2C4,C330";                    \   ! GWA
+ 237: 05e0:               #PLLDB.SESS.NUM% AUTOLOCK                                \   ! GWA
+ 238: 05e0:        KEY PLLDB.KEY$;                                                 \   ! FNB
+ 239: 05e0:        PLLDB.BOOTSCODE$,                                               \   ! FNB
+ 240: 05e0:        PLLDB.QTY.ONSHELF$,                                             \   ! FNB
+ 241: 05e0:        PLLDB.FILL.QTY$,                                                \   ! FNB
+ 242: 05e0:        PLLDB.GAPFILL.MRK$,                                             \   ! FNB
+ 243: 05e0:        PLLDB.ITEM.STATUS$,                                             \   ! FNB
+ 244: 05e0:        PLLDB.STOCKROOM.CNT$,                                           \   ! FNB
+ 245: 05e0:        PLLDB.SHELFMON.SALE.FIG$,                                       \   ! FNB
+ 246: 05e0:      \!PLLDB.FILLER$,                                                  \   ! FNB ! GWA
+ 247: 05e0:        PLLDB.CNT.PENDSALES.BACKSHOP$,                                  \   ! GWA
+ 248: 05e0:        PLLDB.TIME.PENDSALES.BACKSHOP$,                                 \   ! GWA
+ 249: 05e0:        PLLDB.CNT.PENDSALES.OSSR$,                                      \   ! GWA
+ 250: 05e0:        PLLDB.TIME.PENDSALES.OSSR$,                                     \   ! GWA
+ 251: 05e0:        PLLDB.OSSR.CNT$,                                                \   ! FNB
+ 252: 05e0:        PLLDB.TIME.SHELFMON$,                                           \   ! FNB
+ 253: 05e0:        PLLDB.TIME.BACKSHOP$,                                           \   ! FNB
+ 254: 05e0:        PLLDB.TIME.OSSR$,                                               \   ! FNB
+ 255: 05e0:        PLLDB.BACKSHOP.SALE$,                                           \   ! FNB
+ 256: 05e0:        PLLDB.OSSR.SALE$,                                               \   ! FNB
+ 257: 05e0:        PLLDB.MS.TABLE$                                                     ! FNB
+ 258: 05e0: 
+ 259: 05e0:        CALL SPLIT.MS.TABLE.DATA                                            ! FNB
+ 260: 05e4: 
+ 261: 05e4:     READ.PLLDB.LOCK = 0                                                    ! FNB
+ 262: 05e9:     EXIT FUNCTION                                                          ! FNB
+ 263: 05eb: 
+ 264: 05eb: READ.PLLDB.LOCK.ERROR:                                                     ! FNB
+ 265: 05eb: 
+ 266: 05eb: 
+ 267: 05eb:        FILE.OPERATION$ = "R"                                               ! FNB
+ 268: 05fa:        CURRENT.REPORT.NUM% = PLLDB.REPORT.NUM%                             ! FNB
+ 269: 0608: 
+ 270: 0608:        EXIT FUNCTION                                                       ! FNB
+ 271: 060a: 
+ 272: 060a: END FUNCTION                                                               ! FNB
+ 273: 0619: 
+ 274: 0619: \-----------------------------------------------------------------------------
+ 275: 0619: 
+ 276: 0619: FUNCTION WRITE.PLLDB PUBLIC
+ 277: 062d: \****************************
+ 278: 062d: 
+ 279: 062d:     INTEGER*2 WRITE.PLLDB
+ 280: 062d: 
+ 281: 062d:     WRITE.PLLDB = 1
+ 282: 0632: 
+ 283: 0632:     PLLDB.KEY$ = PLLDB.LISTID$ + PLLDB.ITEMSEQ$
+ 284: 0656: 
+ 285: 0656:     CALL CONCAT.MS.TABLE.DATA
+ 286: 065a: 
+ 287: 065a:     IF END #PLLDB.SESS.NUM% THEN WRITE.PLLDB.ERROR
+ 288: 066e:    !Instead of filler pending sales plan fields are introduced.          ! GWA
+ 289: 066e:    !So record length changes in the FORM statement.                      ! GWA
+ 290: 066e:     WRITE FORM "C6,3C4,2C1,2C4,4C2,C4,3C2,2C4,C330"; #PLLDB.SESS.NUM%; \ ! GWA
+ 291: 07b0:        PLLDB.KEY$,                                                     \
+ 292: 07b0:        PLLDB.BOOTSCODE$,                                               \
+ 293: 07b0:        PLLDB.QTY.ONSHELF$,                                             \
+ 294: 07b0:        PLLDB.FILL.QTY$,                                                \
+ 295: 07b0:        PLLDB.GAPFILL.MRK$,                                             \
+ 296: 07b0:        PLLDB.ITEM.STATUS$,                                             \
+ 297: 07b0:        PLLDB.STOCKROOM.CNT$,                                           \
+ 298: 07b0:        PLLDB.SHELFMON.SALE.FIG$,                                       \
+ 299: 07b0:      \!PLLDB.FILLER$,                                                  \ BMG ! GWA
+ 300: 07b0:        PLLDB.CNT.PENDSALES.BACKSHOP$,                                  \ ! GWA
+ 301: 07b0:        PLLDB.TIME.PENDSALES.BACKSHOP$,                                 \ ! GWA
+ 302: 07b0:        PLLDB.CNT.PENDSALES.OSSR$,                                      \ ! GWA
+ 303: 07b0:        PLLDB.TIME.PENDSALES.OSSR$,                                     \ ! GWA
+ 304: 07b0:        PLLDB.OSSR.CNT$,                                                \
+ 305: 07b0:        PLLDB.TIME.SHELFMON$,                                           \
+ 306: 07b0:        PLLDB.TIME.BACKSHOP$,                                           \
+ 307: 07b0:        PLLDB.TIME.OSSR$,                                               \
+ 308: 07b0:        PLLDB.BACKSHOP.SALE$,                                           \
+ 309: 07b0:        PLLDB.OSSR.SALE$,                                               \ CMG
+ 310: 07b0:        PLLDB.MS.TABLE$                                                 ! CMG
+ 311: 07b0: 
+ 312: 07b0:     WRITE.PLLDB = 0
+ 313: 07b5:     EXIT FUNCTION
+ 314: 07b7: 
+ 315: 07b7: WRITE.PLLDB.ERROR:
+ 316: 07b7: 
+ 317: 07b7: 
+ 318: 07b7:        FILE.OPERATION$ = "W"
+ 319: 07c6:        CURRENT.REPORT.NUM% = PLLDB.REPORT.NUM%
+ 320: 07d4: 
+ 321: 07d4:        EXIT FUNCTION
+ 322: 07d6: 
+ 323: 07d6: END FUNCTION
+ 324: 07e5: 
+ 325: 07e5: 
+ 326: 07e5: \-----------------------------------------------------------------------------
+ 327: 07e5: 
+ 328: 07e5: FUNCTION WRITE.PLLDB.UNLOCK PUBLIC                                        ! FNB
+ 329: 07f9: \*********************************                                        ! FNB
+ 330: 07f9: 
+ 331: 07f9:     INTEGER*2 WRITE.PLLDB.UNLOCK                                          ! FNB
+ 332: 07f9: 
+ 333: 07f9:     WRITE.PLLDB.UNLOCK = 1                                                ! FNB
+ 334: 07fe: 
+ 335: 07fe:     PLLDB.KEY$ = PLLDB.LISTID$ + PLLDB.ITEMSEQ$                           ! FNB
+ 336: 0822: 
+ 337: 0822:     CALL CONCAT.MS.TABLE.DATA                                             ! FNB
+ 338: 0826: 
+ 339: 0826:     IF END #PLLDB.SESS.NUM% THEN WRITE.PLLDB.UNLOCK.ERROR                 ! FNB
+ 340: 083a:    !Instead of filler pending sales plan fields are introduced.           ! GWA
+ 341: 083a:    !So record length changes in the FORM statement.                       ! GWA
+ 342: 083a:     WRITE FORM "C6,3C4,2C1,2C4,4C2,C4,3C2,2C4,C330";                   \  ! GWA
+ 343: 097c:                #PLLDB.SESS.NUM% AUTOUNLOCK;                            \  ! GWA
+ 344: 097c:        PLLDB.KEY$,                                                     \  ! FNB
+ 345: 097c:        PLLDB.BOOTSCODE$,                                               \  ! FNB
+ 346: 097c:        PLLDB.QTY.ONSHELF$,                                             \  ! FNB
+ 347: 097c:        PLLDB.FILL.QTY$,                                                \  ! FNB
+ 348: 097c:        PLLDB.GAPFILL.MRK$,                                             \  ! FNB
+ 349: 097c:        PLLDB.ITEM.STATUS$,                                             \  ! FNB
+ 350: 097c:        PLLDB.STOCKROOM.CNT$,                                           \  ! FNB
+ 351: 097c:        PLLDB.SHELFMON.SALE.FIG$,                                       \  ! FNB
+ 352: 097c:      \!PLLDB.FILLER$,                                                  \  ! FNB !GWA
+ 353: 097c:        PLLDB.CNT.PENDSALES.BACKSHOP$,                                  \  ! GWA
+ 354: 097c:        PLLDB.TIME.PENDSALES.BACKSHOP$,                                 \  ! GWA
+ 355: 097c:        PLLDB.CNT.PENDSALES.OSSR$,                                      \  ! GWA
+ 356: 097c:        PLLDB.TIME.PENDSALES.OSSR$,                                     \  ! GWA
+ 357: 097c:        PLLDB.OSSR.CNT$,                                                \  ! FNB
+ 358: 097c:        PLLDB.TIME.SHELFMON$,                                           \  ! FNB
+ 359: 097c:        PLLDB.TIME.BACKSHOP$,                                           \  ! FNB
+ 360: 097c:        PLLDB.TIME.OSSR$,                                               \  ! FNB
+ 361: 097c:        PLLDB.BACKSHOP.SALE$,                                           \  ! FNB
+ 362: 097c:        PLLDB.OSSR.SALE$,                                               \  ! FNB
+ 363: 097c:        PLLDB.MS.TABLE$                                                    ! FNB
+ 364: 097c: 
+ 365: 097c:     WRITE.PLLDB.UNLOCK = 0                                                ! FNB
+ 366: 0981:     EXIT FUNCTION                                                         ! FNB
+ 367: 0983: 
+ 368: 0983: WRITE.PLLDB.UNLOCK.ERROR:                                                 ! FNB
+ 369: 0983: 
+ 370: 0983: 
+ 371: 0983:        FILE.OPERATION$ = "W"                                              ! FNB
+ 372: 0992:        CURRENT.REPORT.NUM% = PLLDB.REPORT.NUM%                            ! FNB
+ 373: 09a0: 
+ 374: 09a0:        EXIT FUNCTION                                                      ! FNB
+ 375: 09a2: 
+ 376: 09a2: END FUNCTION                                                              ! FNB
+ 377: 09b1: 
+ 378: 09b1: 
+ 379: 09b1: \-----------------------------------------------------------------------------
+ 380: 09b1: 
+ 381: 09b1: FUNCTION DELREC.PLLDB PUBLIC
+ 382: 09c5: \****************************
+ 383: 09c5: 
+ 384: 09c5:     INTEGER*2 DELREC.PLLDB
+ 385: 09c5: 
+ 386: 09c5:     DELREC.PLLDB = 1
+ 387: 09ca: 
+ 388: 09ca:     PLLDB.KEY$ = PLLDB.LISTID$ + PLLDB.ITEMSEQ$
+ 389: 09ee: 
+ 390: 09ee:     IF END #PLLDB.SESS.NUM% THEN DELREC.PLLDB.ERROR
+ 391: 0a02:     DELREC PLLDB.SESS.NUM%; PLLDB.KEY$
+ 392: 0a19: 
+ 393: 0a19:     DELREC.PLLDB = 0
+ 394: 0a1e:     EXIT FUNCTION
+ 395: 0a20: 
+ 396: 0a20: DELREC.PLLDB.ERROR:
+ 397: 0a20: 
+ 398: 0a20: 
+ 399: 0a20:        FILE.OPERATION$ = "D"
+ 400: 0a2f:        CURRENT.REPORT.NUM% = PLLDB.REPORT.NUM%
+ 401: 0a3d: 
+ 402: 0a3d:        EXIT FUNCTION
+ 403: 0a3f: 
+ 404: 0a3f: END FUNCTION
+ 405: 0a4e: 
+ 406: 0a4e: 
+ 407: 0a4e: \-----------------------------------------------------------------------------
+ 408: 0a4e: 
+ 409: 0a4e: FUNCTION WRITE.BRIEF.PLLDB PUBLIC                                         !BCS
+ 410: 0a62: \****************************
+ 411: 0a62: 
+ 412: 0a62:     INTEGER*2 WRITE.BRIEF.PLLDB
+ 413: 0a62: 
+ 414: 0a62:     WRITE.BRIEF.PLLDB = 1
+ 415: 0a67: 
+ 416: 0a67:     !PLLDB.KEY$ = PLLDB.LISTID$ + PLLDB.ITEMSEQ$ !
+ 417: 0a67: 
+ 418: 0a67:     IF END #PLLDB.SESS.NUM% THEN WRITE.PLLDB.ERROR
+ 419: 0a7b:     !Instead of filler pending sales plan fields are introduced.
+ 420: 0a7b:     !So record length changes in the FORM statement.                 !GWA
+ 421: 0a7b:     WRITE FORM "C384"; #PLLDB.SESS.NUM%; PLLDB.KEY$      ! CMG ! EPS !GWA
+ 422: 0a9d: 
+ 423: 0a9d:     WRITE.BRIEF.PLLDB = 0
+ 424: 0aa2:     EXIT FUNCTION
+ 425: 0aa4: 
+ 426: 0aa4: WRITE.PLLDB.ERROR:
+ 427: 0aa4: 
+ 428: 0aa4: 
+ 429: 0aa4:        FILE.OPERATION$ = "W"
+ 430: 0ab3:        CURRENT.REPORT.NUM% = PLLDB.REPORT.NUM%
+ 431: 0ac1: 
+ 432: 0ac1:        EXIT FUNCTION
+ 433: 0ac3: 
+ 434: 0ac3: END FUNCTION
+ 435: 0ad2: 
+ 436: 0ad2: 
+ 437: 0ad2: End of Compilation

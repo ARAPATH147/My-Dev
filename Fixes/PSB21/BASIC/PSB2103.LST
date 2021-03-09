@@ -1,0 +1,3079 @@
+   1: 0000: 
+   2: 0000: \*******************************************************************************
+   3: 0000: \*******************************************************************************
+   4: 0000: \***
+   5: 0000: \***
+   6: 0000: \***            PROGRAM         :       PSB21
+   7: 0000: \***            MODULE          :       PSB2103
+   8: 0000: \***            AUTHOR          :       Mark Walker / Mark Goode
+   9: 0000: \***            DATE WRITTEN    :       Sept 2011
+  10: 0000: \***
+  11: 0000: \*******************************************************************************
+  12: 0000: \***
+  13: 0000: \***    VERSION 1.0           Mark Walker / Mark Goode        30 Jun 2011
+  14: 0000: \***    Initial version.
+  15: 0000: \***
+  16: 0000: \***    VERSION 1.1.                ROBERT COWEY.                06 FEB 2012.
+  17: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+  18: 0000: \***
+  19: 0000: \***    Defect 2678
+  20: 0000: \***    Ensured a new-format-IUF vs IRF price mis-match creates an emergency RPD
+  21: 0000: \***    on the PPFI and this is not prevented by any existing PPFI price change.
+  22: 0000: \***
+  23: 0000: \***    VERSION 1.2.                ROBERT COWEY.                22 FEB 2012.
+  24: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.6.
+  25: 0000: \***
+  26: 0000: \***    Defect 50 - Commented 1.2 RC (50).
+  27: 0000: \***    Shortened message text to fit 46 character background display.
+  28: 0000: \***
+  29: 0000: \***    VERSION 1.3.                ROBERT COWEY.                28 FEB 2012.
+  30: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.7.
+  31: 0000: \***
+  32: 0000: \***    Defect 53 - Commented 1.3 RC (53).                       28 FEB 2012.
+  33: 0000: \***    Major changes to simplify and correct sub-routine PROCESS.PPFK.ITEM
+  34: 0000: \***    which merges IUF price changes into PPFI data (held on the PPFK).
+  35: 0000: \***
+  36: 0000: \***    VERSION 1.4.                ROBERT COWEY.                08 MAR 2012.
+  37: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.8.
+  38: 0000: \***    Removed setting of PPFK.INC.DEC.FLAG$ as this is done by PSB23.
+  39: 0000: \***    Modified PROCESS.PPFK.ITEM to retain expired RPD price changes
+  40: 0000: \***    for both legacy and Core R2 format IUF's (with all future and
+  41: 0000: \***    any todays price changes coming from the IUF).
+  42: 0000: \***
+  43: 0000: \***    VERSION 1.5.                ROBERT COWEY.                14 MAR 2012.
+  44: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.9.
+  45: 0000: \***
+  46: 0000: \***    Defect 105 - Commented 1.5 RC (105)
+  47: 0000: \***    No corrective code changes however various clarifications made ...
+  48: 0000: \***    Wrote comment within CHECK.ITEM.FOR.MARKDOWN.PROCESSING function.
+  49: 0000: \***    Corrected comments within ITEM.ON.MARKDOWN function.
+  50: 0000: \***    Commented out superceded MARKDOWN.ITEM.CHECK function and removed
+  51: 0000: \***    associated redundant variables.
+  52: 0000: \***
+  53: 0000: \***    VERSION 1.6.                ROBERT COWEY.                19 MAR 2012.
+  54: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.9.
+  55: 0000: \***
+  56: 0000: \***    Defect 109 - Commented 1.6 RC (109)
+  57: 0000: \***    Modified CHECK.ITEM.FOR.EMERGENCY.RPD to ensure emergency 99999 RPD
+  58: 0000: \***    is not created when item on Local Price or CIP-Markdown (since in
+  59: 0000: \***    these cases UPDATE.LOCAL or UPDATE.CIPPM will already have updated
+  60: 0000: \***    the head office price).
+  61: 0000: \***
+  62: 0000: \***    VERSION 1.7.                ROBERT COWEY.                21 MAR 2012.
+  63: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.10.
+  64: 0000: \***
+  65: 0000: \***    Defect 113 - Commented 1.7 RC (113)
+  66: 0000: \***
+  67: 0000: \***    Modified STORE.PPFI.PRICE.CHANGE(N%) to set PPFK.SORT.NEEDED flag
+  68: 0000: \***    to TRUE when underlying data (from PPFI) is not in sequence.
+  69: 0000: \***    Modified PROCESS.OLD.PPFI to call new procedure SORT.PPFK.TABLES
+  70: 0000: \***    to sort PPFK data tables (and reset PPFK.SORT.NEEDED to FALSE).
+  71: 0000: \***
+  72: 0000: \***    Modified PROCESS.PPFK.ITEM to place emergency 99999 RPD onto
+  73: 0000: \***    CURR data tables when required (see program comment for detail)
+  74: 0000: \***    Called SORT.CURR.TABLES to sort CURR data tables if needed
+  75: 0000: \***    (and reset CURR.SORT.NEEDED to FALSE).
+  76: 0000: \***    Reset PRICE.CHANGE.TODAY flag used to prevent unwanted emergency
+  77: 0000: \***    99999 RPD's.
+  78: 0000: \***
+  79: 0000: \***    Modified user exit function PROCESS.BTREE.RECORD$ to detect CIP
+  80: 0000: \***    Markdown items and apply any price change for today (or next most
+  81: 0000: \***    recent price change found) and prevent applied or superceded data
+  82: 0000: \***    being passed to the PPFO.
+  83: 0000: \***
+  84: 0000: \***    Deleted superceded procedures now redundant ...
+  85: 0000: \***    SUB      PREPARE.EMERGENCY.RPD.FOR.PPFK
+  86: 0000: \***    FUNCTION CHECK.ITEM.FOR.EMERGENCY.RPD(DUE$,RDATE$)
+  87: 0000: \***    FUNCTION CHECK.ITEM.FOR.MARKDOWN.PROCESSING
+  88: 0000: \***    FUNCTION ITEM.ON.MARKDOWN
+  89: 0000: \***
+  90: 0000: \***    VERSION 1.8.                ROBERT COWEY.                05 APR 2012.
+  91: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.11.
+  92: 0000: \***
+  93: 0000: \***    Defect 172 - Commented 1.8 RC (172)
+  94: 0000: \***    Corrected call to UPDATE.CIPPM to pass item code as well as price.
+  95: 0000: \***
+  96: 0000: \***    VERSION 1.9.               ROBERT COWEY.                17 APR 2012.
+  97: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.12.
+  98: 0000: \***
+  99: 0000: \***    Renamed IRF.PRICE.MISMATCH to PRICE.MISMATCH to more properly
+ 100: 0000: \***    reflect its wider usage.
+ 101: 0000: \***    Modified code to use this flag for all discrepancies between
+ 102: 0000: \***    definitive price on IUF item record and Head Office price
+ 103: 0000: \***    whether present on IRF, LOCAL, or on CIPPMR (as Reversals Price).
+ 104: 0000: \***
+ 105: 0000: \***    Defect 177 - Commented 1.9 RC (177)
+ 106: 0000: \***    Correction to place RPD data on the output PPFI in ascending date
+ 107: 0000: \***    order (latest last) as needed by PSB72 Effect Price Change program.
+ 108: 0000: \***    Associated changes to programs internal sort of PPFI and IUF data.
+ 109: 0000: \***
+ 110: 0000: \***    VERSION 1.10.               ROBERT COWEY.                24 APR 2012.
+ 111: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.13.
+ 112: 0000: \***
+ 113: 0000: \***    Defect 190 - Commented 1.10 RC (190)
+ 114: 0000: \***    Delete any temporary OS files from RAM (eg, previous failed copies).
+ 115: 0000: \***
+ 116: 0000: \***    VERSION 1.11.               ROBERT COWEY.                30 APR 2012.
+ 117: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.14.
+ 118: 0000: \***
+ 119: 0000: \***    Defect 211 - Commented 1.11 RC (211)
+ 120: 0000: \***    Modified SET.PPFK.FROM.CURR to check PPFK.STATUS.FLAG$ is non-blank
+ 121: 0000: \***    to identify SEL-actioned emergency 99999 RPD and prevent duplication
+ 122: 0000: \***    (instead of checking for "S" - and missing "L" Local price so no SEL).
+ 123: 0000: \***
+ 124: 0000: \***    VERSION 1.12                CHARLES SKADORWA.            04 MAY 2012.
+ 125: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.15.
+ 126: 0000: \***    Set PHASE$ correctly.
+ 127: 0000: \***
+ 128: 0000: \***    VERSION 1.13                CHARLES SKADORWA.            20 JUN 2012.
+ 129: 0000: \***    Defect 243 - Commented 1.13 CS (243)
+ 130: 0000: \***                 CIP Markdown items now written to PPFO instead of being
+ 131: 0000: \***                 rejected in order that SEL's can be produced by PSB23.
+ 132: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.22.
+ 133: 0000: \***
+ 134: 0000: \***    VERSION A                   Mark Walker                23rd May 2014
+ 135: 0000: \***    F337 Centralised View of Stock
+ 136: 0000: \***    Includes the following enhancements:
+ 137: 0000: \***    Modified READKF interface to include the new 'mode' parameter.
+ 138: 0000: \***
+ 139: 0000: \***    VERSION B                   Ranjith Gopalankutty       10th May 2016
+ 140: 0000: \***    INV10004090 - Defect Fix
+ 141: 0000: \***    Module has a defect - While processing the CIPPM records from PPFK
+ 142: 0000: \***    it adds extra entry in PPFO and the line gets duplicated. Over the 
+ 143: 0000: \***    the period of time duplicate limit exceeds allowed limit of 120 
+ 144: 0000: \***    and JOBOK suite fails. 
+ 145: 0000: \***    This issue fails CIPOK mark down removal, due to duplicated entries
+ 146: 0000: \***    CIP removal some time doesn't works. 
+ 147: 0000: \***
+ 148: 0000: \***--------------------------------------------------------------------------------
+ 149: 0000: \***  IMPORTANT: When you change PSB21, please search for the line containing
+ 150: 0000: \***------------        CALL DO.MESSAGE("PSB21 PROGRAM START
+ 151: 0000: \***             in Module PSB2100 and wind the date and version on.
+ 152: 0000: \***
+ 153: 0000: \*******************************************************************************
+ 154: 0000: \*******************************************************************************
+ 155: 0000: 
+ 156: 0000: \*******************************************************************************
+ 157: 0000: \*******************************************************************************
+ 158: 0000: \***
+ 159: 0000: \***    Module Overview
+ 160: 0000: \***    ---------------
+ 161: 0000: \***
+ 162: 0000: \***    The purpose of this module is to perform price change processing.
+ 163: 0000: \***
+ 164: 0000: \*******************************************************************************
+ 165: 0000: \*******************************************************************************
+ 166: 0000:     INTEGER*1 GLOBAL                        \
+ 167: 0000:         CIPPMR.PRESENT,                     \                     ! 1.16 RC (226)
+ 168: 0000:         TRUE,                               \
+ 169: 0000:         FALSE,                              \
+ 170: 0000: \       STOP.CHECK,                         \                     ! 1.6 RC (106)
+ 171: 0000:         CURR.SORT.NEEDED,                   \                     ! 1.7 RC (113)
+ 172: 0000:         PRICE.MISMATCH,                     \                     ! 1.9 RC
+ 173: 0000:         PPFK.SORT.NEEDED,                   \                     ! 1.7 RC (113)
+ 174: 0000:         PRICE.CHANGE.TODAY,                 \                     ! 1.7 RC (113)
+ 175: 0000:         EMERGENCY.RPD                       !
+ 176: 0000: 
+ 177: 0000:     INTEGER*2 GLOBAL                        \
+ 178: 0000:         CURRENT.REPORT.NUM%,                \
+ 179: 0000:         CURR.PCR.COUNT%,                    \
+ 180: 0000:         CURR%,                              \ 1.3 RC (53)
+ 181: 0000:         PREV%,                              \ 1.3 RC (53)
+ 182: 0000:         PPFK%,                              \ 1.3 RC (53)
+ 183: 0000:         PREV.PCR.COUNT%                     !
+ 184: 0000: 
+ 185: 0000:     STRING GLOBAL                           \
+ 186: 0000: \       CIP.ITEM.UPDATED$,                  \                     ! 1.9 RC (177)
+ 187: 0000:         CURR.BOOTS.CODE$,                   \
+ 188: 0000:         FILE.OPERATION$                     !
+ 189: 0000: 
+ 190: 0000:     STRING GLOBAL                           \
+ 191: 0000:         CURR.RPD.NO$(1),                    \
+ 192: 0000:         CURR.DATE.DUE$(1),                  \
+ 193: 0000:         CURR.PRICE$(1),                     \
+ 194: 0000:         CURR.INC.DEC.FLAG$(1),              \
+ 195: 0000:         CURR.STATUS.FLAG$(1),               \
+ 196: 0000:         CURR.MARKDOWN$(1)                   !
+ 197: 0000: 
+ 198: 0000:     STRING GLOBAL                           \
+ 199: 0000:         PREV.RPD.NO$(1),                    \
+ 200: 0000:         PREV.DATE.DUE$(1),                  \
+ 201: 0000:         PREV.PRICE$(1),                     \
+ 202: 0000:         PREV.INC.DEC.FLAG$(1),              \
+ 203: 0000:         PREV.STATUS.FLAG$(1),               \
+ 204: 0000:         PREV.MARKDOWN$(1)                   !
+ 205: 0000: 
+ 206: 0000:     STRING GLOBAL                           \
+ 207: 0000:         CURR.CURRENT.PRICE$,                \
+ 208: 0000:         PHASE$,                             \                   ! 1.12 CSk
+ 209: 0000:         PROCESSING.DATE$                    !
+ 210: 0000: 
+ 211: 0000:     STRING GLOBAL \                                             ! 1.6 RC (113)
+ 212: 0000:         SORT.TABLE$(1)                                          ! 1.6 RC (113)
+ 213: 0000: 
+ 214: 0000: !   Remo ved redundant variables                                 ! 1.5 RC (105)
+ 215: 0000: 
+ 216: 0000:     INTEGER*4                               \
+ 217: 0000:         PPFO.REC.COUNT%                     !
+ 218: 0000: 
+ 219: 0000: %INCLUDE IRFDEC.J86                                              ! 1.6 RC (109)
+ 220: 0000: 
+ 221: 0000: \**********************************************************************************
+ 222: 0000: \***
+ 223: 0000: \***       %INCLUDE FOR ITEM RECORD FILE - FIELD DECLARATIONS
+ 224: 0000: \***                                     - FILE REFERENCE PARAMETERS
+ 225: 0000: \***
+ 226: 0000: \***                      FILE TYPE    : Keyed
+ 227: 0000: \***
+ 228: 0000: \***                      REFERENCE    : IRFDEC.J86
+ 229: 0000: \***
+ 230: 0000: \***     Version A               Andrew Wedgeworth            29th June 1992
+ 231: 0000: \***
+ 232: 0000: \***     Version B               Andrew Wedgeworth        14th December 1992
+ 233: 0000: \***     Version letter incremented to match other IRF code.
+ 234: 0000: \***
+ 235: 0000: \***     Version C             Steve Windsor          12.02.93
+ 236: 0000: \***     Version letter incremented to match other IRF code.
+ 237: 0000: \***
+ 238: 0000: \***     Version D             Steve Windsor          12.05.93
+ 239: 0000: \***     Version letter incremented to match other IRF code.
+ 240: 0000: \***
+ 241: 0000: \***     Version E           Steve Perkins       20th September 1993
+ 242: 0000: \***     Deals project : Handling of Converted/Unconverted records
+ 243: 0000: \***     ++   Anything with 'Delete' after initials should be   ++
+ 244: 0000: \***     ++   deleted once the IRF has been converted in all    ++
+ 245: 0000: \***     ++   stores.                                           ++
+ 246: 0000: \***
+ 247: 0000: \***     Version F           Mark Walker            5th January 1994
+ 248: 0000: \***     Version letter incremented to match other IRF code.
+ 249: 0000: \***
+ 250: 0000: \***     Version 96A         Mark Walker               22nd May 1995
+ 251: 0000: \***     Definition for IRF.POINTS% added.
+ 252: 0000: \***
+ 253: 0000: \***                     Stuart McConnachie           12th June 1995
+ 254: 0000: \***     INDICAT3% comments added for discount/loyalty flags.
+ 255: 0000: \***
+ 256: 0000: \***     Version for 96C  Andrew Wedgeworth            22nd May 1996
+ 257: 0000: \***     Removed IRF.FILLER$ field, as this is now redundant.
+ 258: 0000: \***
+ 259: 0000: \***     Version G     Stuart William McConnachie      11th February 2000
+ 260: 0000: \***     Converted IRF.INDICAT2$ to integer flag byte.
+ 261: 0000: \***
+ 262: 0000: \***     REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+ 263: 0000: \***     Major changes for 2002 Deals Rewrite project.
+ 264: 0000: \***     Incorporated up to date record layout to assist development work
+ 265: 0000: \***     (placed in the IRFDEC.J86 to make it visible from ...LST files).
+ 266: 0000: \***     Moved various comments against variables to record layout.
+ 267: 0000: \***     Relisted variables in alphabetical order.
+ 268: 0000: \***     Deleted redundant variables associated with the old deals system ...
+ 269: 0000: \***     DEAL.NUM$, DEAL.SAVING$
+ 270: 0000: \***     Retained variables that are otherwise redundant (to be set to null X'00'
+ 271: 0000: \***     within file functions) ...
+ 272: 0000: \***     INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+ 273: 0000: \***     Defined variables to hold interpreted deals data for new deals system ...
+ 274: 0000: \***     DEAL.NUM$(n) and LIST.ID%(n) (where 'n' represents entry 0, 1 and 2).
+ 275: 0000: \***     These two variables are interpretations of DEAL.DATA% which is defined
+ 276: 0000: \***     locally within IRFFUN.BAS to keep underlying data invisible to programs.
+ 277: 0000: \***
+ 278: 0000: \***     REVISION 1.7                ROBERT COWEY.               5 AUG 2002.
+ 279: 0000: \***     Further changes for 2002 Deals Rewrite project (PSBF19 related).
+ 280: 0000: \***     Defined NEW.IRF.DATA$ as a global variable for use with new functions
+ 281: 0000: \***     CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+ 282: 0000: \***
+ 283: 0000: \***     REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+ 284: 0000: \***     Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+ 285: 0000: \***     No changes to this file other than description.
+ 286: 0000: \***     No changes to IRF file functions.
+ 287: 0000: \***
+ 288: 0000: \***     REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+ 289: 0000: \***     Changes to remove limit of 3 deals per item.
+ 290: 0000: \***     Declaration of new variables for IRF Deal Extension file (IRFDEX).
+ 291: 0000: \***
+ 292: 0000: \***     REVISION 2.0.            ALAN CARR                       9 FEB 2006.
+ 293: 0000: \***     Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+ 294: 0000: \***
+ 295: 0000: \***     REVISION 2.1              TITTOO THOMAS                  01 July 2011
+ 296: 0000: \***     The IRF.UNUSED field is disintegrated to 2 new indicator fields
+ 297: 0000: \***                      IRF.INDICAT9%   1 INT
+ 298: 0000: \***                      IRF.INDICAT10%  1 INT
+ 299: 0000: \***...............................................................................
+ 300: 0000: 
+ 301: 0000: 
+ 302: 0000: \**********************************************************************************
+ 303: 0000: \***
+ 304: 0000: \***    IRF RECORD LAYOUT - REVISION 1.7 - CORRECT FOR 2011 CORE Stores PROJECT
+ 305: 0000: \***
+ 306: 0000: \***     1 11  UPD  BAR.CODE$   Without check digit - File KEY
+ 307: 0000: \***    12  1  INT  INDICAT0%
+ 308: 0000: \***                    X"01" - Contains statins                           ! 2.2 TT
+ 309: 0000: \***                    X"02" - Item not priced (giveaway)
+ 310: 0000: \***                    X"04" - Item not returnable
+ 311: 0000: \***                    X"08" - Item contains alcohol
+ 312: 0000: \***                    X"10" - Blocked from sale                          ! 2.2 TT
+ 313: 0000: \***                    X"20" - Enforced price entry
+ 314: 0000: \***                    X"40" - Enforced quantity entry
+ 315: 0000: \***                    X"80" - Movement kept
+ 316: 0000: \***    13  1  INT  INDICAT1%
+ 317: 0000: \***                    X"01" - Asprin
+ 318: 0000: \***                    X"02" - Paracetamol
+ 319: 0000: \***                    X"04" - TPLU inclusion flag
+ 320: 0000: \***                    X"08" - Giftcard item                              ! 2.2 TT
+ 321: 0000: \***                    X"10" - Withdrawn Block from sale                  ! 2.2 TT
+ 322: 0000: \***                    X"20" - Non-solid dose painkiller                  ! 2.2 TT
+ 323: 0000: \***                    X"40" - Insurance policy item                      ! 2.2 TT
+ 324: 0000: \***                    X"80" - Ibuprofen
+ 325: 0000: \***    14  2  INT  DEAL.DATA%(0)   Interpreted into sub-variables ...
+ 326: 0000: \***                    X'3F' - into DEAL.NUM$(0) "0000" to "9999" (2 byte UPD)
+ 327: 0000: \***                    X'C0' - into LIST.ID%(0) X'00' X
+ 328: 0000: \***                                             X'01' A
+ 329: 0000: \***                                             X'10' B
+ 330: 0000: \***                                             X'11' C                   ! 1.9 RC
+ 331: 0000: \***    16  1  INT  INDICAT8%                                              ! 2.0 AJC
+ 332: 0000: \***                    X"01" - Chlamydia NHS test kit                     ! 2.2 TT
+ 333: 0000: \***                    X"02" - Chlamydia open sell test kit               ! 2.2 TT
+ 334: 0000: \***                    X"04" - Unrestricted group code                    ! 2.2 TT
+ 335: 0000: \***                    X"08" - Nightingale Till prompt                    ! 2.2 TT
+ 336: 0000: \***                    X"10" - Contains Ephedrine                         ! 2.2 TT
+ 337: 0000: \***                    X"60" -  X'00' - If also Blocked From Sale Recall, ! 2.2 TT
+ 338: 0000: \***                                        Emergency                      ! 2.2 TT
+ 339: 0000: \***                             X'00' - If NOT Blocked From Sale Recall,  ! 2.2 TT
+ 340: 0000: \***                                        No recall                      ! 2.2 TT
+ 341: 0000: \***                             X'20' 100% returns                        ! 2.2 TT
+ 342: 0000: \***                             X'40' Withdrawn recall                    ! 2.2 TT
+ 343: 0000: \***                             X'60' Reverse Logistics                   ! 2.2 TT
+ 344: 0000: \***                    X"80" - WEEE item flag                             ! 2.0 AJC
+ 345: 0000: \***    17  1  INT  INDICAT9%
+ 346: 0000: \***                    X'3F' - Disposal special instruction (0-63)
+ 347: 0000: \***                    X"40" - Resaleable Indicator
+ 348: 0000: \***                    X"80" - Boots.com Extended Indicator
+ 349: 0000: \***    18  1  INT  INDICAT10%
+ 350: 0000: \***                    X'07' - Age restrictions
+ 351: 0000: \***                             X'00' - No Age restriction
+ 352: 0000: \***                             X'01' - Age 12 or over
+ 353: 0000: \***                             X'02' - Age 15 or over
+ 354: 0000: \***                             X'03' - Age 16 or over
+ 355: 0000: \***                             X'04' - Age 18 or over
+ 356: 0000: \***                             X'05' - Age 21 or over
+ 357: 0000: \***                             X'06' - Reserved
+ 358: 0000: \***                             X'07' - Reserved
+ 359: 0000: \***                    X'38' - Ethical classification
+ 360: 0000: \***                             X'00' - No ethical classification
+ 361: 0000: \***                             X'08' - Pharmacy medicine (P)
+ 362: 0000: \***                             X'10' - General Sale License (GSL)
+ 363: 0000: \***                             X'18' - Prescription Only Medicine (POM)
+ 364: 0000: \***                             X'20' - Reserved
+ 365: 0000: \***                             X'28' - Reserved
+ 366: 0000: \***                             X'30' - Reserved
+ 367: 0000: \***                             X'38' - Reserved
+ 368: 0000: \***                    X'C0' - Returns route
+ 369: 0000: \***                             X'00' - Not Returnable (Destroy)
+ 370: 0000: \***                             X'40' - Returns & Recovery
+ 371: 0000: \***                             X'80' - Direct
+ 372: 0000: \***                             X'C0' - Semi-centralised
+ 373: 0000: \***    19  5  UPD  SALEPRIC$   Current price in pence
+ 374: 0000: \***    24  1  INT  INDICAT5%   Guarantee duration
+ 375: 0000: \***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+ 376: 0000: \***                    X'40' - Contains Pseudoephedrine                   ! 2.2 TT
+ 377: 0000: \***                    X'80' - Guarantee Duration Type                    ! 2.2 TT
+ 378: 0000: \***                              (1 = Months, 0 = Years)                  ! 2.2 TT
+ 379: 0000: \***    25 18  ASC  ITEMNAME$   Description used by till
+ 380: 0000: \***    43  3  UPD  BOOTS.CODE$ Without check digit
+ 381: 0000: \***    46  2  INT  DEAL.DATA%(1)   Similar structure to DEAL.DATA%(0)
+ 382: 0000: \***    48  2  INT  DEAL.DATA%(2)   Similar structure to DEAL.DATA%(0)
+ 383: 0000: \***    50  1  INT  INDICAT3%
+ 384: 0000: \***                    X"01" - Discountexempt (item exempt from discount)
+ 385: 0000: \***                    X"02" - Boots brand item
+ 386: 0000: \***                    X"04" - Item redeemable for loyalty
+ 387: 0000: \***                    X"08" - Loyalty exempt (item exempt from loyalty)
+ 388: 0000: \***                    X"10" - **Redundant                                ! 2.2 TT
+ 389: 0000: \***                    X"20" - Local Price active
+ 390: 0000: \***                    X"40" - Stock system item
+ 391: 0000: \***                    X"80" - **Redundant                                ! 2.2 TT
+ 392: 0000: \***
+ 393: 0000: \***    Record Length 50
+ 394: 0000: \***
+ 395: 0000: \***
+ 396: 0000: \***    IRF DEAL EXTENSION RECORD LAYOUT ! 1.9 RC
+ 397: 0000: \***
+ 398: 0000: \***     1  3  UPD  BOOTS.CODE$
+ 399: 0000: \***     4  2  INT  IRF.DEAL.DATA%(3)   Similar structure to DEAL.DATA%(0)
+ 400: 0000: \***     6  2  INT  IRF.DEAL.DATA%(4)   Similar structure to DEAL.DATA%(0)
+ 401: 0000: \***     8  2  INT  IRF.DEAL.DATA%(5)   Similar structure to DEAL.DATA%(0)
+ 402: 0000: \***    10  2  INT  IRF.DEAL.DATA%(6)   Similar structure to DEAL.DATA%(0)
+ 403: 0000: \***    12  2  INT  IRF.DEAL.DATA%(7)   Similar structure to DEAL.DATA%(0)
+ 404: 0000: \***    14  2  INT  IRF.DEAL.DATA%(8)   Similar structure to DEAL.DATA%(0)
+ 405: 0000: \***    16  2  INT  IRF.DEAL.DATA%(9)   Similar structure to DEAL.DATA%(0)
+ 406: 0000: \***
+ 407: 0000: \***    Record Length 17
+ 408: 0000: \***
+ 409: 0000: \**********************************************************************************
+ 410: 0000: 
+ 411: 0000: 
+ 412: 0000:     STRING GLOBAL            \
+ 413: 0000:         IRF.ALT.FILE.NAME$,  \
+ 414: 0000:         IRF.BAR.CODE$,       \
+ 415: 0000:         IRF.BOOTS.CODE$,     \
+ 416: 0000:         IRF.DEAL.SAVING$,    \ 2 byte - deal saving amount (0 - œ99.99) ! ESP
+ 417: 0000:         IRF.DEPARTME$,       \ 3 byte UPD. Department number          ! ESP Delete
+ 418: 0000:         IRF.FILE.NAME$,      \
+ 419: 0000:         IRF.HOLDING.PRICE$,  \ 4 byte UPD. Current H.O. price in pence if a local
+ 420: 0000:                              \ price is in effect, zero otherwise.     ! ESP Delete
+ 421: 0000:         IRF.ITEMNAME$,       \
+ 422: 0000: \       IRF.MPGROUP$,        \ Removed SBH 31/1/96
+ 423: 0000:         IRF.RECORD$,         \                                         ! ESP Delete
+ 424: 0000:         IRF.SALEPRIC$,       \
+ 425: 0000:         IRF.SALEQUAN$,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 426: 0000:         IRF.UNUSED$,         \                                                        ! 1.6 RC
+ 427: 0000:         NEW.IRF.DATA$        !                                             ! 1.7 RC
+ 428: 0000: 
+ 429: 0000:     STRING GLOBAL            \                                             ! 1.6 RC
+ 430: 0000:         IRF.DEAL.NUM$(1)                                                   ! 1.6 RC
+ 431: 0000: 
+ 432: 0000:     INTEGER*1 GLOBAL         \
+ 433: 0000:         IRF.DD.SUB%,         \ IRF.DEAL.DATA% subscript                    ! 1.6 RC
+ 434: 0000:         IRF.INDICAT0%,       \
+ 435: 0000:         IRF.INDICAT1%,       \
+ 436: 0000:         IRF.INDICAT2%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 437: 0000:         IRF.INDICAT3%,       \
+ 438: 0000:         IRF.INDICAT4%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 439: 0000:         IRF.INDICAT5%,       \                                             ! 2.0 AJC
+ 440: 0000:         IRF.INDICAT8%,       \                                             ! 2.0 AJC
+ 441: 0000:         IRF.INDICAT9%,       \                                             ! 2.2 TT
+ 442: 0000:         IRF.INDICAT10%                                                     ! 2.2 TT
+ 443: 0000: 
+ 444: 0000:     INTEGER*1 GLOBAL         \                                             ! 1.6 RC
+ 445: 0000:         IRF.LIST.ID%(1)                                                    ! 1.6 RC
+ 446: 0000: 
+ 447: 0000:     INTEGER*2 GLOBAL         \
+ 448: 0000:         IRF.ALT.REPORT.NUM%, \
+ 449: 0000:         IRF.ALT.SESS.NUM%,   \
+ 450: 0000:         IRF.POINTS%,         \ Redundant (set to null within functions)    ! 1.6 RC
+ 451: 0000:         IRF.RECL%,           \
+ 452: 0000:         IRF.REPORT.NUM%,     \
+ 453: 0000:         IRF.SESS.NUM%,       \
+ 454: 0000:         IRF.MAX.DEALS%       !                                             ! 1.9 SM
+ 455: 0000: 
+ 456: 0000:     STRING GLOBAL IRFDEX.FILE.NAME$                                        ! 1.9 SM
+ 457: 0000: 
+ 458: 0000:     INTEGER*2 GLOBAL IRFDEX.SESS.NUM%                                      ! 1.9 SM
+ 459: 0000:     INTEGER*2 GLOBAL IRFDEX.REPORT.NUM%                                    ! 1.9 SM
+ 460: 0000:     INTEGER*2 GLOBAL IRFDEX.RECL%                                          ! 1.9 SM
+ 461: 0000: 
+ 462: 0000: 
+ 463: 0000: !   INTEGER*2 GLOBAL      \ IRF.DEAL.DATA%(n) variables are defined locally  1.6 RC
+ 464: 0000: !       IRF.DEAL.DATA%(1) \ within IRFFUN.BAS to keep invisible to programs  1.6 RC
+ 465: 0000: 
+ 466: 0000: %INCLUDE PPFDEC.J86
+ 467: 0000: 
+ 468: 0000: \REM
+ 469: 0000: \*******************************************************************************
+ 470: 0000: \*******************************************************************************
+ 471: 0000: \***
+ 472: 0000: \***    %INCLUDE FOR PENDING PRICES FILES VARIABLE DECLARATIONS
+ 473: 0000: \***
+ 474: 0000: \***        REFERENCE   :   PPFDEC (J86)
+ 475: 0000: \***
+ 476: 0000: \***        FILE TYPE   :   Sequential
+ 477: 0000: \***
+ 478: 0000: \***    VERSION D.              ROBERT COWEY.                       23 AUG 1993.
+ 479: 0000: \***    Original version created by combining PPFFLDC, PPFINUMC and PPFONUMC.
+ 480: 0000: \***
+ 481: 0000: \***    VERSION E.              ROBERT COWEY.                       26 OCT 1993.
+ 482: 0000: \***    Removed SPLAN.ID$ from RPD and Deal records.
+ 483: 0000: \***    Defined Link-Save Multi-Buy Deal record.
+ 484: 0000: \***
+ 485: 0000: \***    VERSION F               BRIAN GREENFIELD                    24 JUN 2004.
+ 486: 0000: \***    Added Markdown variables to RPD record.
+ 487: 0000: \***    
+ 488: 0000: \*******************************************************************************
+ 489: 0000: \*******************************************************************************
+ 490: 0000: 
+ 491: 0000: 
+ 492: 0000: \*******************************************************************************
+ 493: 0000: \*******************************************************************************
+ 494: 0000: \***
+ 495: 0000: \***    RECORD LAYOUTS
+ 496: 0000: \***
+ 497: 0000: \***    TRAILER RECORD
+ 498: 0000: \***
+ 499: 0000: \***     1  7  ASC  BOOTS.CODE$     "99999999"
+ 500: 0000: \***     8  1  ASC  REC.TYPE.FLAG$  "T" Trailer
+ 501: 0000: \***     9  5  ASC  REC.COUNT$
+ 502: 0000: \***
+ 503: 0000: \***    RPD RECORD
+ 504: 0000: \***
+ 505: 0000: \***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+ 506: 0000: \***     8  1  ASC  REC.TYPE.FLAG$    "R" RPD
+ 507: 0000: \***     9  6  ASC  DATE.DUE$         YYMMDD
+ 508: 0000: \***    15  5  ASC  RPD.NO$
+ 509: 0000: \***    20  1  ASC  STATUS.FLAG$      "S" label printed but price not effected
+ 510: 0000: \***                                  "L" Locally priced - No label printed
+ 511: 0000: \***                                  "D" Deal priced - No label printed
+ 512: 0000: \***                                  " " Yet to be processed
+ 513: 0000: \***    21  1  ASC  INC.DEC.FLAG$     "D", "I", (" " if no change or deal price)
+ 514: 0000: \***    22  8  ASC  PRICE$
+ 515: 0000: \***    30  1  ASC  MARKDOWN$         Mark-down "Y" or "N"               ! FBG
+ 516: 0000: \***
+ 517: 0000: \***    DEAL PRICE RECORD
+ 518: 0000: \***
+ 519: 0000: \***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+ 520: 0000: \***     8  1  ASC  REC.TYPE.FLAG$    "D" Deal price
+ 521: 0000: \***     9  1  ASC  DEAL.TYPE$        "0", "1", "2", "3"
+ 522: 0000: \***    10  2  ASC  DEAL.QUANTITY$
+ 523: 0000: \***    12  5  ASC  SPECIAL.PRICE$
+ 524: 0000: \***    17  2  ASC  M.P.GROUP$
+ 525: 0000: \***    19  6  ASC  FIRST.DATE$       YYMMDD
+ 526: 0000: \***    25  6  ASC  LAST.DATE$        YYMMDD
+ 527: 0000: \***    31  1  ASC  EFFECT.FLAG$
+ 528: 0000: \***
+ 529: 0000: \***    LINK-SAVE MULTI-BUY DEAL RECORD
+ 530: 0000: \***
+ 531: 0000: \***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+ 532: 0000: \***     8  1  ASC  REC.TYPE.FLAG$    "B" Link-Save Multi-Buy deal record
+ 533: 0000: \***     9  1  ASC  DEAL.ID$          "M", "A", "B", "X"
+ 534: 0000: \***    10  1  ASC  PAIR.TRIP.FLAG$   "P", "T", " "
+ 535: 0000: \***    11  1  ASC  3FOR2.FLAG$       "T", " "
+ 536: 0000: \***    12  2  ASC  DEAL.LIMIT$       1 to 15
+ 537: 0000: \***    14  4  ASC  DEAL.NUM$         1 to 9999
+ 538: 0000: \***    18  4  ASC  SAVED.AMOUNT$     0 to 9999
+ 539: 0000: \***    22  6  ASC  DEAL.DATE.START$  YYMMDD of deal start
+ 540: 0000: \***    28  6  ASC  DEAL.DATE.FINISH$ YYMMDD of deal finish
+ 541: 0000: \***    34  1  ASC  ACTIVE.FLAG$      "Y", "N"
+ 542: 0000: \***
+ 543: 0000: \*******************************************************************************
+ 544: 0000: \*******************************************************************************
+ 545: 0000: \***
+ 546: 0000: \***    OTHER INFORMATION
+ 547: 0000: \***
+ 548: 0000: \***    Prefixes PPFI... and PPFO... are used for variables that are specific
+ 549: 0000: \***    to the INPUT or OUTPUT usage of the file.
+ 550: 0000: \***
+ 551: 0000: \*******************************************************************************
+ 552: 0000: \*******************************************************************************
+ 553: 0000: 
+ 554: 0000:  
+ 555: 0000:     STRING GLOBAL \
+ 556: 0000:         PPF.3FOR2.FLAG$, \                                             ! ERC
+ 557: 0000:         PPF.ACTIVE.FLAG$, \                                            ! ERC
+ 558: 0000:         PPF.BOOTS.CODE$, \
+ 559: 0000:         PPF.DATE.DUE$, \
+ 560: 0000:         PPF.DEAL.DATE.FINISH$, \                                       ! ERC
+ 561: 0000:         PPF.DEAL.DATE.START$, \                                        ! ERC
+ 562: 0000:         PPF.DEAL.ID$, \                                                ! ERC
+ 563: 0000:         PPF.DEAL.LIMIT$, \                                             ! ERC
+ 564: 0000:         PPF.DEAL.NUM$, \                                               ! ERC
+ 565: 0000:         PPF.DEAL.QUANTITY$, \
+ 566: 0000:         PPF.DEAL.TYPE$, \
+ 567: 0000:         PPF.EFFECT.FLAG$, \
+ 568: 0000:         PPF.FIRST.DATE$, \
+ 569: 0000:         PPF.INC.DEC.FLAG$, \
+ 570: 0000:         PPF.LAST.DATE$, \
+ 571: 0000:         PPF.MARKDOWN$, \                                               ! FBG
+ 572: 0000:         PPF.M.P.GROUP$, \
+ 573: 0000:         PPF.PAIR.TRIP.FLAG$, \                                         ! ERC
+ 574: 0000:         PPF.PRICE$, \
+ 575: 0000:         PPF.REC.COUNT$, \
+ 576: 0000:         PPF.REC.TYPE.FLAG$, \
+ 577: 0000:         PPF.RECORD$, \
+ 578: 0000:         PPF.RPD.NO$, \
+ 579: 0000:         PPF.SAVED.AMOUNT$, \                                           ! ERC
+ 580: 0000:         PPF.SPECIAL.PRICE$, \
+ 581: 0000:         PPF.STATUS.FLAG$, \
+ 582: 0000:         PPFI.3FOR2.FLAG$, \                                            ! ERC
+ 583: 0000:         PPFI.ACTIVE.FLAG$, \                                           ! ERC
+ 584: 0000:         PPFI.BOOTS.CODE$, \
+ 585: 0000:         PPFI.DATE.DUE$, \
+ 586: 0000:         PPFI.DEAL.DATE.FINISH$, \                                      ! ERC
+ 587: 0000:         PPFI.DEAL.DATE.START$, \                                       ! ERC
+ 588: 0000:         PPFI.DEAL.ID$, \                                               ! ERC
+ 589: 0000:         PPFI.DEAL.LIMIT$, \                                            ! ERC
+ 590: 0000:         PPFI.DEAL.NUM$, \                                              ! ERC
+ 591: 0000:         PPFI.DEAL.QUANTITY$, \
+ 592: 0000:         PPFI.DEAL.TYPE$, \
+ 593: 0000:         PPFI.EFFECT.FLAG$, \
+ 594: 0000:         PPFI.FILE.NAME$, \
+ 595: 0000:         PPFI.FIRST.DATE$, \
+ 596: 0000:         PPFI.INC.DEC.FLAG$, \
+ 597: 0000:         PPFI.LAST.DATE$, \
+ 598: 0000:         PPFI.MARKDOWN$, \                                               ! FBG
+ 599: 0000:         PPFI.M.P.GROUP$, \
+ 600: 0000:         PPFI.PAIR.TRIP.FLAG$, \                                        ! ERC
+ 601: 0000:         PPFI.PRICE$, \
+ 602: 0000:         PPFI.REC.COUNT$, \
+ 603: 0000:         PPFI.REC.TYPE.FLAG$, \
+ 604: 0000:         PPFI.RECORD$, \
+ 605: 0000:         PPFI.RPD.NO$, \
+ 606: 0000:         PPFI.SAVED.AMOUNT$, \                                          ! ERC
+ 607: 0000:         PPFI.SPECIAL.PRICE$, \
+ 608: 0000:         PPFI.STATUS.FLAG$, \
+ 609: 0000:         PPFO.FILE.NAME$
+ 610: 0000: 
+ 611: 0000:     INTEGER*2 GLOBAL \
+ 612: 0000:         PPFI.REPORT.NUM%, \
+ 613: 0000:         PPFO.REPORT.NUM%, \
+ 614: 0000:         PPFI.SESS.NUM%, \
+ 615: 0000:         PPFO.SESS.NUM%
+ 616: 0000: 
+ 617: 0000: %INCLUDE PPFKDEC.J86
+ 618: 0000: \******************************************************************************
+ 619: 0000: \******************************************************************************
+ 620: 0000: \***
+ 621: 0000: \***    Pending Prices Keyed File (PPFK) variable definitions
+ 622: 0000: \***
+ 623: 0000: \******************************************************************************
+ 624: 0000: \***
+ 625: 0000: \***    Version 1.0             Mark Walker                 13th October 2011
+ 626: 0000: \***    Initial version.
+ 627: 0000: \***
+ 628: 0000: \***    VERSION 1.1.                ROBERT COWEY.                02 FEB 2012.
+ 629: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+ 630: 0000: \***    Defect 2678
+ 631: 0000: \***    Defined variable PPFK.PCR.COUNT.READ% to save total number of price 
+ 632: 0000: \***    changes for an item as found by READ.PPFK
+ 633: 0000: \***
+ 634: 0000: \***    VERSION 1.2.                ROBERT COWEY.                01 MAR 2012.
+ 635: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.7.
+ 636: 0000: \***    Defect 53.
+ 637: 0000: \***    Modified function DELETE.PPFK.
+ 638: 0000: \***    No code changes to this file.
+ 639: 0000: \***
+ 640: 0000: \******************************************************************************
+ 641: 0000: \******************************************************************************
+ 642: 0000: 
+ 643: 0000:     STRING GLOBAL                           \
+ 644: 0000:         PPFK.FILE.NAME$,                    \
+ 645: 0000:         PPFK.BOOTS.CODE$,                   \
+ 646: 0000:         PPFK.DATE.DUE$(1),                  \
+ 647: 0000:         PPFK.RPD.NO$(1),                    \
+ 648: 0000:         PPFK.STATUS.FLAG$(1),               \
+ 649: 0000:         PPFK.INC.DEC.FLAG$(1),              \        
+ 650: 0000:         PPFK.PRICE$(1),                     \
+ 651: 0000:         PPFK.MARKDOWN$(1),                  \
+ 652: 0000:         PPFK.READ.FORM$,                    \
+ 653: 0000:         PPFK.WRITE.FORM$,                   \
+ 654: 0000:         PPFK.PACK01$,                       \
+ 655: 0000:         PPFK.PACK03$,                       \
+ 656: 0000:         PPFK.PACK04$
+ 657: 0000:         
+ 658: 0000:     INTEGER*2 GLOBAL                        \
+ 659: 0000:         PPFK.SESS.NUM%,                     \
+ 660: 0000:         PPFK.REPORT.NUM%,                   \
+ 661: 0000:         PPFK.PCR.MAX%,                      \
+ 662: 0000:         PPFK.PCR.PER.RECORD%,               \
+ 663: 0000:         PPFK.PCR.RECL%,                     \
+ 664: 0000:         PPFK.PCR.COUNT%,                    \
+ 665: 0000:         PPFK.PCR.COUNT.READ%,               \ ! 1.1 RC
+ 666: 0000:         PPFK.RECL%,                         \
+ 667: 0000:         PPFK.KEYL%
+ 668: 0000:         
+ 669: 0000:     INTEGER*4 GLOBAL                        \
+ 670: 0000:         PPFK.MAXR%
+ 671: 0000: 
+ 672: 0000: 
+ 673: 0000: %INCLUDE IDFDEC.J86
+ 674: 0000: REM \
+ 675: 0000: \******************************************************************************
+ 676: 0000: \******************************************************************************
+ 677: 0000: \***
+ 678: 0000: \***         %INCLUDE FOR ITEM DATA FILE - FIELD DECLARATIONS
+ 679: 0000: \***                                       FILE REFERENCE PARAMETERS
+ 680: 0000: \***
+ 681: 0000: \***                  FILE TYPE    : Keyed
+ 682: 0000: \***
+ 683: 0000: \***                  REFERENCE    : IDFDEC.J86
+ 684: 0000: \***
+ 685: 0000: \***         VERSION A : Andrew Wedgeworth  29th June 1992    
+ 686: 0000: \***
+ 687: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 688: 0000: \***    Replaced un-used RANK$ with BSNS.CNTR$ and FILLER$.
+ 689: 0000: \***
+ 690: 0000: \***    VERSION D.              Andrew Wedgeworth               15th March 1995
+ 691: 0000: \***    Comments updated to reflect the fact that some bits on the file are
+ 692: 0000: \***    no longer used.
+ 693: 0000: \***
+ 694: 0000: \*******************************************************************************
+ 695: 0000: \*******************************************************************************
+ 696: 0000: 
+ 697: 0000:   STRING GLOBAL           \
+ 698: 0000:     IDF.FILE.NAME$,       \  
+ 699: 0000:     IDF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+ 700: 0000:     IDF.FIRST.BAR.CODE$,  \ 6 byte UPD without check digit
+ 701: 0000:     IDF.SECOND.BAR.CODE$, \ 6 byte UPD without check digit
+ 702: 0000:     IDF.NO.OF.BAR.CODES$, \ 2 byte UPD. Total number of bar codes for this item
+ 703: 0000:     IDF.PRODUCT.GRP$,     \ 3 byte UPD. The first two digits are the concept
+ 704: 0000:                           \ group and the last four the concept sequence
+ 705: 0000:     IDF.STNDRD.DESC$,     \ 24 bytes
+ 706: 0000:     IDF.STATUS.1$,        \ 1 byte, values B,C,D,P,X,Z and blank
+ 707: 0000:     IDF.INTRO.DATE$,      \ 3 byte UPD YYMMDD. Date first added to this file
+ 708: 0000:     IDF.BSNS.CNTR$,       \ 1 byte ASC. Business Centre ID letter      ! CRC
+ 709: 0000:     IDF.FILLER$,          \ 1 byte un-used                             ! CRC
+ 710: 0000:     IDF.PARENT.CODE$,     \ 4 byte UPD with check digit ; may be zero if no
+ 711: 0000:                           \ flashpacks, current IDF.BOOTS.CODE$ if parent line
+ 712: 0000:                           \ or Boots Code of parent line if a flashpack.
+ 713: 0000:     IDF.DATE.OF.LAST.SALE$! 3 byte UPD. Date of last sale.
+ 714: 0000: 
+ 715: 0000:   INTEGER*1 GLOBAL        \
+ 716: 0000:     IDF.BIT.FLAGS.1%,     \ 1 byte - bit values
+ 717: 0000:                           \ X"80"  - Group code flag
+ 718: 0000:                           \ X"40"  - Keylines flag
+ 719: 0000:                           \ X"20"  - Markdown flag
+ 720: 0000:                           \ X"10"  - Warehouse flag
+ 721: 0000:                           \ X"08"  - CSR flag
+ 722: 0000:                           \ X"04"  - Directs A flag
+ 723: 0000:                           \ X"02"  - Directs B flag
+ 724: 0000:                           \ X"01"  - Directs C flag
+ 725: 0000:     IDF.BIT.FLAGS.2%      \ 1 byte - bit values
+ 726: 0000:                           \ X"80"  - Own brand line flag
+ 727: 0000:                           \ X"40"  - Exclusive line flag
+ 728: 0000:                           \ X"20"  - Unused 
+ 729: 0000:                           \ X"10"  - Unused
+ 730: 0000:                           \ X"08"  - Stock system flag
+ 731: 0000:                           \ X"04"  - Pending count flag
+ 732: 0000:                           \ X"02"  - Reserved
+ 733: 0000:                           ! X"01"  - Reserved
+ 734: 0000: 
+ 735: 0000:   INTEGER*2 GLOBAL        \
+ 736: 0000:     IDF.RECL%,            \  
+ 737: 0000:     IDF.REPORT.NUM%,      \ 
+ 738: 0000:     IDF.SESS.NUM%
+ 739: 0000: %INCLUDE IUFDEC.J86                                              ! 1.3 RC (53)
+ 740: 0000: \REM
+ 741: 0000: \*******************************************************************************
+ 742: 0000: \*******************************************************************************
+ 743: 0000: \***
+ 744: 0000: \***    %INCLUDE FOR ITEM UPDATE FILES VARIABLE DECLARATIONS
+ 745: 0000: \***
+ 746: 0000: \***        REFERENCE   :   IUFDEC (J86)
+ 747: 0000: \***
+ 748: 0000: \***        FILE TYPE   :   Sequential
+ 749: 0000: \***
+ 750: 0000: \***    VERSION H.              ROBERT COWEY.                       24 AUG 1993.
+ 751: 0000: \***    Original version created by combining IUFFLDG and IUFNUMG.
+ 752: 0000: \***
+ 753: 0000: \***    VERSION I.              ROBERT COWEY.                       25 AUG 1993.
+ 754: 0000: \***    Added NEW.DEAL.COUNT$ and BC.LETTER$ to record type "001" (Item
+ 755: 0000: \***    reference).
+ 756: 0000: \***    Removed falconcraft detail variables (SALESPLAN.ID$, BUS.CENTRE$,
+ 757: 0000: \***    START.DATE$, END.DATE$, TICKET.TYPE$, GENOF.NUM$, GENOF.DESC$,
+ 758: 0000: \***    FOOTER.TYPE$) from record types "003" (Deal price) and "004" (Item
+ 759: 0000: \***    pending).
+ 760: 0000: \***    Defined record type "006" (Deals).
+ 761: 0000: \***
+ 762: 0000: \***    VERSION J.              Andrew Wedgeworth                13th March 1995
+ 763: 0000: \***    Focus flag, Price Pledge flag and ASCOTT/COMPASS flag replaced with
+ 764: 0000: \***    fields for the Staff Discount, Customer Loyalty and Give-away systems.
+ 765: 0000: \***
+ 766: 0000: \***    VERSION K               Rebecca Dakin                    28th June 1999
+ 767: 0000: \***
+ 768: 0000: \***    Version L        Andy Cotton & Amy Hoggard     29th Jan 2003
+ 769: 0000: \***    Change use and name of variable IUF.DEAL.PRICE.FLAG$ to IUF.KEYLINES.FLAG$
+ 770: 0000: \***
+ 771: 0000: \***    Version M               Brian Greenfield                 25th June 2004
+ 772: 0000: \***    Added new IUF.MARKDOWN$ tor use with SEL Markdown flagged items.
+ 773: 0000: \***
+ 774: 0000: \***    Version 1.6           Charles Skadorwa                 4th July 2011
+ 775: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+ 776: 0000: \***    Added new globals.
+ 777: 0000: \***
+ 778: 0000: \***    VERSION 1.7.                ROBERT COWEY.                07 FEB 2012.
+ 779: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+ 780: 0000: \***
+ 781: 0000: \***    Defect 21 - Commented 1.9 RC (21).
+ 782: 0000: \***    Commented real meaning of IUF.DISCOUNTABLE$ as Discount Exempt.
+ 783: 0000: \***
+ 784: 0000: \***    VERSION 1.8.                ROBERT COWEY.                20 FEB 2012.
+ 785: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.6.
+ 786: 0000: \***    Correction relating to transformation of legacy IUF data to Core R2 format
+ 787: 0000: \***
+ 788: 0000: \***    Defect 44 - Commented 1.11 RC (44).
+ 789: 0000: \***    Replaced variables HEALTH.CONCEPT.GROUPS$ and HEALTH.GROUP$ with more
+ 790: 0000: \***    meaningfully named single variable INSURE.CONCEPT.GROUPS$.
+ 791: 0000: \***
+ 792: 0000: \***    VERSION B               Rejiya Nair             13th May 2016
+ 793: 0000: \***    PRJ1452 Restricting Item Sales
+ 794: 0000: \***    - Declaration of two new variables (version tagged as !BRN)
+ 795: 0000: \***    - Removed the commented out code
+ 796: 0000: \***
+ 797: 0000: \*******************************************************************************
+ 798: 0000: \*******************************************************************************
+ 799: 0000: 
+ 800: 0000: 
+ 801: 0000: \*******************************************************************************
+ 802: 0000: \*******************************************************************************
+ 803: 0000: \***
+ 804: 0000: \***    RECORD LAYOUTS
+ 805: 0000: \***
+ 806: 0000: \***    HEADER RECORD
+ 807: 0000: \***
+ 808: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 809: 0000: \***     8  3  ASC  TRANS.TYPE$             "000" Header
+ 810: 0000: \***    11  4  ASC  IUF.BRANCH.NO$
+ 811: 0000: \***    15  5  ASC  IUF.SERIAL.NO$
+ 812: 0000: \***
+ 813: 0000: \***    ITEM REFERENCE RECORD
+ 814: 0000: \***
+ 815: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 816: 0000: \***     8  3  ASC  TRANS.TYPE$             "001" Item reference
+ 817: 0000: \***    11  1  ASC  IUF.GRP.CODE.FLAG$
+ 818: 0000: \***    12 24  ASC  IUF.STNDRD.DESC$
+ 819: 0000: \***    36 18  ASC  IUF.TILL.DESC$
+ 820: 0000: \***    54 45  ASC  IUF.S.E.DESC$
+ 821: 0000: \***    99  1  ASC  IUF.SUPPLY.ROUTE$
+ 822: 0000: \***   100  1  ASC  IUF.GIVEAWAY$
+ 823: 0000: \***   101  5  ASC  IUF.PROD.GRP$
+ 824: 0000: \***   106  1  ASC  IUF.GUARANTEE.CAT$          ! SBH CHANGED FROM ENF.QTY 31/1/96
+ 825: 0000: \***   107  1  ASC  IUF.ENF.PRICE.ENTRY$
+ 826: 0000: \***   108  1  ASC  IUF.LOYALTY.FLAG$
+ 827: 0000: \***   109  1  ASC  IUF.DISCOUNT.CAT$
+ 828: 0000: \***   110  1  ASC  IUF.OWN.BRAND$
+ 829: 0000: \***   111  1  ASC  IUF.DIRECT.PROC$
+ 830: 0000: \***   112  1  ASC  IUF.STATUS.1$
+ 831: 0000: \***   113  1  ASC  IUF.EANS.CHANGED$
+ 832: 0000: \***   114  3  ASC  IUF.NO.OF.EANS$
+ 833: 0000: \***   117  8  ASC  IUF.CURRENT.PRICE$      Price in pence
+ 834: 0000: \***   125  1  ASC  IUF.NO.OF.RPD.PRICES$
+ 835: 0000: \***   126  2  ASC  IUF.NO.OF.FLASHPACKS$
+ 836: 0000: \***   128  7  ASC  IUF.ORIGIN.CODE$
+ 837: 0000: \***   135  1  ASC  IUF.DEAL.PRICE.FLAG$    !L CHANGED TO IUF.KEYLINES.FLAG$
+ 838: 0000: \***   136  1  ASC  IUF.STOCK.SYSTEM.FLAG$  "Y" Stock system item
+ 839: 0000: \***                                        "N" Non stock system item
+ 840: 0000: \***   137  2  ASC  NEW.DEAL.COUNT$         Number of type 6 records
+ 841: 0000: \***   139  1  ASC  BC.LETTER$              Business centre letter
+ 842: 0000: \***
+ 843: 0000: \***    FLASHPACK RECORD
+ 844: 0000: \***
+ 845: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 846: 0000: \***     8  3  ASC  TRANS.TYPE$             "002" Flashpack
+ 847: 0000: \***    11  7  ASC  FLASH.PACK.CODE$
+ 848: 0000: \***    18  3  ASC  MULTIPLICATION.FACTOR$
+ 849: 0000: \***
+ 850: 0000: \***    DEAL PRICE RECORD
+ 851: 0000: \***
+ 852: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 853: 0000: \***     8  3  ASC  TRANS.TYPE$             "003" Deal price
+ 854: 0000: \***    11  1  ASC  DEAL.TYPE$
+ 855: 0000: \***    12  2  ASC  DEAL.QUANTITY$
+ 856: 0000: \***    14  5  ASC  SPECIAL.PRICE$          Price in pence
+ 857: 0000: \***    19  2  ASC  M.P.GROUP$
+ 858: 0000: \***    21  6  ASC  FIRST.DATE$             YYMMDD format
+ 859: 0000: \***    27  6  ASC  LAST.DATE$              YYMMDD format
+ 860: 0000: \***
+ 861: 0000: \***    ITEM PENDING PRICE RECORD
+ 862: 0000: \***
+ 863: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 864: 0000: \***     8  3  ASC  TRANS.TYPE$             "004" Item pending price
+ 865: 0000: \***    11  6  ASC  RPD.DATE$               YYMMDD format
+ 866: 0000: \***    17  8  ASC  NEW.PRICE$              Price in pance
+ 867: 0000: \***    25  5  ASC  RPD.NO$
+ 868: 0000: \***    30  1  ASC  MARKDOWN$               Markdown flag of "Y" or "N" !MBG
+ 869: 0000: \***
+ 870: 0000: \***    ITEM BARCODE RECORD
+ 871: 0000: \***
+ 872: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 873: 0000: \***     8  3  ASC  TRANS.TYPE$             "005" Item barcode
+ 874: 0000: \***    11 12  ASC  BAR.CODE$
+ 875: 0000: \***
+ 876: 0000: \***    DEALS RECORD (MULTI-BUY FORMAT)     Sorted by ...
+ 877: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 878: 0000: \***
+ 879: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 880: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 881: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 882: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 883: 0000: \***    23  1  ASC  DEAL.ID$                "M" Multi-Buy
+ 884: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      " " (not used for Multi-Buy)
+ 885: 0000: \***    25  1  ASC  3FOR2.FLAG$             "T" Three-For-Two type Multi-Buy
+ 886: 0000: \***    26  2  ASC  DEAL.LIMIT$             2 to 15 Qualifying purchases
+ 887: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 888: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 889: 0000: \***                                        zero if highest price purchased
+ 890: 0000: \***
+ 891: 0000: \***    DEALS RECORD (LINK-SAVE FORMAT)     Sorted by ...
+ 892: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 893: 0000: \***
+ 894: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 895: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 896: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 897: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 898: 0000: \***    23  1  ASC  DEAL.ID$                "A" "B" "X" Link-Save list ID
+ 899: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      "P" Pair, "T" Triplet
+ 900: 0000: \***    25  1  ASC  3FOR2.FLAG$             " " (not used for Link-Save)
+ 901: 0000: \***    26  2  ASC  DEAL.LIMIT$             1 to 15 Qualifying (list) purchases
+ 902: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 903: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 904: 0000: \***                                        zero if highest price purchased
+ 905: 0000: \***    TRAILER RECORD
+ 906: 0000: \***
+ 907: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 908: 0000: \***    ]8  3  ASC  TRANS.TYPE$             "999" Trailer
+ 909: 0000: \***    11  7  ASC  IUF.ITEM.COUNT$
+ 910: 0000: \***
+ 911: 0000: \*******************************************************************************
+ 912: 0000: \*******************************************************************************
+ 913: 0000: 
+ 914: 0000: 
+ 915: 0000:     STRING GLOBAL                                                       \
+ 916: 0000:         IUF.FILE.NAME$
+ 917: 0000: 
+ 918: 0000:     INTEGER*1 GLOBAL                                                    \ 1.6CSk
+ 919: 0000:         IUF.NEW.FORMAT                                                  ! 1.6CSk
+ 920: 0000: 
+ 921: 0000:     INTEGER*2 GLOBAL                                                    \
+ 922: 0000:         IUF.REPORT.NUM%,                                                \
+ 923: 0000:         IUF.SESS.NUM%,                                                  \ 1.6CSk
+ 924: 0000:         REFPGF.COUNT%,                                                  \ 1.6CSk
+ 925: 0000:         REFPGF.REPORT.NUM%,                                             \ 1.6CSk
+ 926: 0000:         REFPGF.SESS.NUM%                                                ! 1.6CSk
+ 927: 0000: 
+ 928: 0000:   STRING GLOBAL                                                         \
+ 929: 0000:         IUF.3FOR2.FLAG$,                                                \ IRC
+ 930: 0000:         IUF.BAR.CODE$,                                                  \
+ 931: 0000:         IUF.BC.LETTER$,                                                 \ IRC
+ 932: 0000:         IUF.BOOTS.CODE$,                                                \
+ 933: 0000:         IUF.BRANCH.NO$,                                                 \
+ 934: 0000:         IUF.CURRENT.PRICE$,                                             \
+ 935: 0000:         IUF.DEAL.ID$,                                                   \ IRC
+ 936: 0000:         IUF.DEAL.LIMIT$,                                                \ IRC
+ 937: 0000:         IUF.DEAL.NUMBER$,                                               \ IRC
+ 938: 0000:         IUF.KEYLINES.FLAG$,                                             \ LAC/AH
+ 939: 0000:         IUF.DEAL.QUANTITY$,                                             \
+ 940: 0000:         IUF.DEAL.TYPE$,                                                 \
+ 941: 0000:         IUF.DIRECT.PROC$,                                               \
+ 942: 0000:         IUF.DISCOUNT.CAT$,                                              \ JAW
+ 943: 0000:         IUF.EANS.CHANGED$,                                              \
+ 944: 0000:         IUF.END.DATE$,                                                  \
+ 945: 0000:         IUF.ENF.PRICE.ENTRY$,                                           \
+ 946: 0000:         IUF.GUARANTEE.CAT$,                                             \ SBH 31/1/96
+ 947: 0000:         IUF.FIRST.DATE$,                                                \
+ 948: 0000:         IUF.FLASH.PACK.CODE$,                                           \
+ 949: 0000:         IUF.GIVEAWAY$,                                                  \ JAW
+ 950: 0000:         IUF.GRP.NO$,                                                   \!BRN
+ 951: 0000:         IUF.GRP.CODE.FLAG$,                                             \
+ 952: 0000:         IUF.ITEM.COUNT$,                                                \
+ 953: 0000:         IUF.ITEM.QTY$,                                                  \ KRD
+ 954: 0000:         IUF.LAST.DATE$,                                                 \
+ 955: 0000:         IUF.LOYALTY.FLAG$,                                              \ JAW
+ 956: 0000:         IUF.M.P.GROUP$,                                                 \
+ 957: 0000:         IUF.MULTIPLICATION.FACTOR$,                                     \
+ 958: 0000:         IUF.NEW.DEAL.COUNT$,                                            \ IRC
+ 959: 0000:         IUF.NEW.PRICE$,                                                 \
+ 960: 0000:         IUF.NO.OF.EANS$,                                                \
+ 961: 0000:         IUF.NO.OF.RPD.PRICES$,                                          \
+ 962: 0000:         IUF.OWN.BRAND$,                                                 \
+ 963: 0000:         IUF.PAIR.TRIPLET.FLAG$,                                         \ IRC
+ 964: 0000:         IUF.PROD.GRP$,                                                  \
+ 965: 0000:         IUF.RECORD$,                                                    \
+ 966: 0000:         IUF.RESTRICT.SALES.FLAG$,                                      \!BRN
+ 967: 0000:         IUF.RPD.DATE$,                                                  \
+ 968: 0000:         IUF.RPD.NO$,                                                    \
+ 969: 0000:         IUF.S.E.DESC$,                                                  \
+ 970: 0000:         IUF.SAVED.AMOUNT$,                                              \ IRC
+ 971: 0000:         IUF.SERIAL.NO$,                                                 \
+ 972: 0000:         IUF.SPECIAL.PRICE$,                                             \
+ 973: 0000:         IUF.START.DATE$,                                                \ IRC
+ 974: 0000:         IUF.STATUS.1$,                                                  \
+ 975: 0000:         IUF.STNDRD.DESC$,                                               \
+ 976: 0000:         IUF.STOCK.SYSTEM.FLAG$,                                         \
+ 977: 0000:         IUF.SUPPLY.ROUTE$,                                              \
+ 978: 0000:         IUF.TILL.DESC$,                                                 \
+ 979: 0000:         IUF.TRANS.TYPE$,                                                \
+ 980: 0000:         IUF.UNIT.MEASUREMENT$,                                          \ KRD
+ 981: 0000:         IUF.UNIT.NAME$                                                  ! KRD
+ 982: 0000: 
+ 983: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+ 984: 0000:         AGES$(1),                                                       \ 1.6CSk
+ 985: 0000:         GIFTBRCD.TABLE$(1),                                             \ 1.6CSk
+ 986: 0000:         IUF.MATRIX$(1),                                                 \ 1.6CSk
+ 987: 0000:         MEDICINES.TABLE$(1),                                            \ 1.6CSk
+ 988: 0000:         REFPGF.RECORDS$(1)                                              ! 1.6CSk
+ 989: 0000: 
+ 990: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+ 991: 0000:         AGE$,                                                           \ 1.6CSk
+ 992: 0000:         AGE.RESTRICT$,                                                  \ 1.6CSk
+ 993: 0000:         ALCOHOL.PROD.GRP.LIST$,                                         \ 1.6CSk
+ 994: 0000:         ALL.MEDICINES$,                                                 \ 1.6CSk
+ 995: 0000:         ALREADY.IN.TABLE$,                                              \ 1.6CSk
+ 996: 0000:         ASPIRIN.RECORD$,                                                \ 1.6CSk
+ 997: 0000:         DOSAGE$,                                                        \ 1.6CSk
+ 998: 0000:         EPHED.TEMP$,                                                    \ 1.6CSk
+ 999: 0000:         GIFTRECORD$,                                                    \ 1.6CSk
+1000: 0000:         INSURE.CONCEPT.GROUPS$, \ ! From BCF record 2                   \ 1.11 RC (44)
+1001: 0000:         IBRUPROFEN.RECORD$,                                             \ 1.6CSk
+1002: 0000:         IUF.AGE.RESTRICTION$,                                           \ 1.6CSk
+1003: 0000:         IUF.BLOCKED.FROM.SALE$,                                         \ 1.6CSk
+1004: 0000:         IUF.BOOTS.COM.EXTENDED$,                                        \ 1.6CSk
+1005: 0000:         IUF.CONTAINS.ALCOHOL$,                                          \ 1.6CSk
+1006: 0000:         IUF.CONTAINS.ASPIRIN$,                                          \ 1.6CSk
+1007: 0000:         IUF.CONTAINS.EPHEDRINE$,                                        \ 1.6CSk
+1008: 0000:         IUF.CONTAINS.IBUPROFEN$,                                        \ 1.6CSk
+1009: 0000:         IUF.CONTAINS.NONSOLID.PAINKILLER$,                              \ 1.6CSk
+1010: 0000:         IUF.CONTAINS.PARACETAMOL$,                                      \ 1.6CSk
+1011: 0000:         IUF.CONTAINS.PSEUDOEPHEDRINE$,                                  \ 1.6CSk
+1012: 0000:         IUF.DATE.SENSITIVE$,                                            \ 1.6CSk
+1013: 0000:         IUF.DISCOUNTABLE$, \ ! Mis-leading variable name (should be Discount Exempt)  ! 1.9 RC (21)
+1014: 0000:                            \ ! "Y" equates to IRF.INDICAT3% X'01' Discount Exempt ON  ! 1.9 RC (21)
+1015: 0000:         IUF.EARN.POINTS$,                                               \ 1.6CSk
+1016: 0000:         IUF.EFFERVESCENT$,                                              \ 1.6CSk
+1017: 0000:         IUF.ETHICAL.ACTIVE$,                                            \ 1.6CSk
+1018: 0000:         IUF.ETHICAL.CLASS$,                                             \ 1.6CSk
+1019: 0000:         IUF.ETHICAL.DESCRIPTION$,                                       \ 1.6CSk
+1020: 0000:         IUF.ETHICAL.PACK.SIZE$,                                         \ 1.6CSk
+1021: 0000:         IUF.GIFTCARD$,                                                  \ 1.6CSk
+1022: 0000:         IUF.GUARANTEE.LENGTH$,                                          \ 1.6CSk
+1023: 0000:         IUF.INSURANCE$,                                                 \ 1.6CSk
+1024: 0000:         IUF.INITIAL.LOAD$,                                              \ 1.6CSk
+1025: 0000:         IUF.MARKDOWN$,                                                  \ 1.6CSk
+1026: 0000:         IUF.PRIMARY.SUPPLIER$,                                          \ 1.6CSk
+1027: 0000:         IUF.REC.COUNT$,                                                 \ 1.6CSk
+1028: 0000:         IUF.REC.TYPE$,                                                  \ 1.6CSk
+1029: 0000:         IUF.REDEEMABLE$,                                                \ 1.6CSk
+1030: 0000:         IUF.RESALEABLE$,                                                \ 1.6CSk
+1031: 0000:         IUF.RETURN.ROUTE$,                                              \ 1.6CSk
+1032: 0000:         IUF.RETURNABLE$,                                                \ 1.6CSk
+1033: 0000:         IUF.SPECIAL.INSTRUCTION$,                                       \ 1.6CSk
+1034: 0000:         IUF.STORE.NUM$,                                                 \ 1.6CSk
+1035: 0000:         IUF.TIME.STAMP$,                                                \ 1.6CSk
+1036: 0000:         IUF.UNRESTRICTED.GROUP.CODE$,                                   \ 1.6CSk
+1037: 0000:         PARACETAMOL.RECORD$,                                            \ 1.6CSk
+1038: 0000:         PROD.GRP$                                                       ! 1.6CSk
+1039: 0000: 
+1040: 0000: 
+1041: 0000: 
+1042: 0000:   INTEGER*2 GLOBAL                                                      \ 1.6CSk
+1043: 0000:         A%,                                                             \ 1.6CSk
+1044: 0000:         J%,                                                             \ 1.6CSk
+1045: 0000:         ADD.TO.TABLE%,                                                  \ 1.6CSk
+1046: 0000:         AGE.POS%,                                                       \ 1.6CSk
+1047: 0000:         GIFTBRCD.COUNT%,                                                \ 1.6CSk
+1048: 0000:         HEALTH.INDEX%,                                                  \ 1.6CSk
+1049: 0000:         MATCH.COMMA%,                                                   \ 1.6CSk
+1050: 0000:         MATCH.POS1%,                                                    \ 1.6CSk
+1051: 0000:         MATCH.POS2%,                                                    \ 1.6CSk
+1052: 0000:         MEDICINES.IN.TABLE%,                                            \ 1.6CSk
+1053: 0000:         NO.OF.AGES%,                                                    \ 1.6CSk
+1054: 0000:         NO.OF.MEDICINES%,                                               \ 1.6CSk
+1055: 0000:         PROD.GRP.NUM%,                                                  \ 1.6CSk
+1056: 0000:         SPACE%                                                          ! 1.6CSk
+1057: 0000: 
+1058: 0000: 
+1059: 0000: %INCLUDE IDFEXT.J86
+1060: 0000: \*******************************************************************************
+1061: 0000: \***                                                                         ***
+1062: 0000: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM DESCRIPTION FILE        ***
+1063: 0000: \***                                                                         ***
+1064: 0000: \***                       REFERENCE : IDFEXT.J86                            ***
+1065: 0000: \***                                                                         ***
+1066: 0000: \***      Version A           Andrew Wedgeworth         9th July 1992        ***
+1067: 0000: \***
+1068: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+1069: 0000: \***    No changes to this file.
+1070: 0000: \***
+1071: 0000: \***   VERSION D               Nik Sen                 22nd December 1994
+1072: 0000: \***   WRITE.IDF.HOLD added
+1073: 0000: \***
+1074: 0000: \*******************************************************************************
+1075: 0000: 
+1076: 0000:        FUNCTION IDF.SET EXTERNAL                                      
+1077: 0000:        END FUNCTION                                                   
+1078: 0000: 
+1079: 0000: 
+1080: 0000:        FUNCTION READ.IDF EXTERNAL                                     
+1081: 0000:           INTEGER*2 READ.IDF                                          
+1082: 0000:        END FUNCTION                                                   
+1083: 0000: 
+1084: 0000: 
+1085: 0000:        FUNCTION READ.IDF.LOCK EXTERNAL                                
+1086: 0000:           INTEGER*2 READ.IDF.LOCK                                     
+1087: 0000:        END FUNCTION                                                   
+1088: 0000: 
+1089: 0000:        FUNCTION WRITE.IDF EXTERNAL
+1090: 0000:           INTEGER*2 WRITE.IDF
+1091: 0000:        END FUNCTION	       
+1092: 0000: 
+1093: 0000:        FUNCTION WRITE.IDF.HOLD EXTERNAL
+1094: 0000:           INTEGER*2 WRITE.IDF.HOLD
+1095: 0000:        END FUNCTION
+1096: 0000: 
+1097: 0000:        FUNCTION WRITE.IDF.UNLOCK EXTERNAL                                  
+1098: 0000:           INTEGER*2 WRITE.IDF.UNLOCK                                      
+1099: 0000:        END FUNCTION                                                   
+1100: 0000: 
+1101: 0000: %INCLUDE PPFEXT.J86
+1102: 0000: 
+1103: 0000: \REM
+1104: 0000: \*******************************************************************************
+1105: 0000: \*******************************************************************************
+1106: 0000: \***
+1107: 0000: \***    %INCLUDE FOR PENDING PRICES FILES EXTERNAL FUNCTIONS
+1108: 0000: \***
+1109: 0000: \***        REFERENCE   :   PPFEXT (J86)
+1110: 0000: \***
+1111: 0000: \***        FILE TYPE   :   Sequential
+1112: 0000: \***
+1113: 0000: \***    VERSION D.              ROBERT COWEY.                       23 AUG 1993.
+1114: 0000: \***    Original version created from PPFFUND.
+1115: 0000: \***
+1116: 0000: \***    VERSION E.              STEVE PERKINS.                      22 OCT 1993.
+1117: 0000: \***    Defined functions READ.PPFI.SHORT and PPFI.LOAD.FIELDS(RECORD$).
+1118: 0000: \***
+1119: 0000: \*******************************************************************************
+1120: 0000: \*******************************************************************************
+1121: 0000: 
+1122: 0000: 
+1123: 0000: FUNCTION PPFI.SET EXTERNAL
+1124: 0000:     INTEGER*2 PPFI.SET
+1125: 0000: END FUNCTION
+1126: 0000: 
+1127: 0000: FUNCTION PPFO.SET EXTERNAL
+1128: 0000:     INTEGER*2 PPFO.SET
+1129: 0000: END FUNCTION
+1130: 0000: 
+1131: 0000: FUNCTION READ.PPFI EXTERNAL
+1132: 0000:     INTEGER*2 READ.PPFI
+1133: 0000: END FUNCTION
+1134: 0000: 
+1135: 0000: FUNCTION READ.PPFI.SHORT EXTERNAL                                      ! ESP
+1136: 0000:     INTEGER*2 READ.PPFI.SHORT                                          ! ESP
+1137: 0000: END FUNCTION                                                           ! ESP
+1138: 0000: 
+1139: 0000: FUNCTION WRITE.PPFO EXTERNAL
+1140: 0000:     INTEGER*2 WRITE.PPFO
+1141: 0000: END FUNCTION
+1142: 0000: 
+1143: 0000: FUNCTION PPFI.LOAD.FIELDS(RECORD$) EXTERNAL                            ! ESP
+1144: 0000:     STRING    RECORD$                                                  ! ESP
+1145: 0000:     INTEGER*2 PPFI.LOAD.FIELDS                                         ! ESP
+1146: 0000: END FUNCTION                                                           ! ESP
+1147: 0000:  
+1148: 0000: %INCLUDE PPFKEXT.J86
+1149: 0000: \******************************************************************************
+1150: 0000: \******************************************************************************
+1151: 0000: \***
+1152: 0000: \***    Pending Prices Keyed File (PPFK) external function definitions
+1153: 0000: \***
+1154: 0000: \******************************************************************************
+1155: 0000: \***
+1156: 0000: \***    Version 1.0             Mark Walker                 13th October 2011
+1157: 0000: \***    Initial version.
+1158: 0000: \***
+1159: 0000: \***    VERSION 1.1.                ROBERT COWEY.                02 FEB 2012.
+1160: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+1161: 0000: \***    Defect 2678
+1162: 0000: \***    Modified functions READ.PPFK and WRITE.PPFK.
+1163: 0000: \***    No code changes to this file.
+1164: 0000: \***
+1165: 0000: \***    VERSION 1.2.                ROBERT COWEY.                01 MAR 2012.
+1166: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.7.
+1167: 0000: \***    Defect 53.
+1168: 0000: \***    Modified function DELETE.PPFK.
+1169: 0000: \***    No code changes to this file.
+1170: 0000: \***
+1171: 0000: \******************************************************************************
+1172: 0000: \******************************************************************************
+1173: 0000:     
+1174: 0000:     FUNCTION PPFK.SET EXTERNAL
+1175: 0000:     END FUNCTION
+1176: 0000:     
+1177: 0000:     FUNCTION READ.PPFK EXTERNAL
+1178: 0000:     INTEGER*1 READ.PPFK
+1179: 0000:     END FUNCTION
+1180: 0000:     
+1181: 0000:     FUNCTION WRITE.PPFK EXTERNAL
+1182: 0000:     INTEGER*1 WRITE.PPFK
+1183: 0000:     END FUNCTION
+1184: 0000:     
+1185: 0000:     FUNCTION DELETE.PPFK EXTERNAL
+1186: 0000:     INTEGER*1 DELETE.PPFK
+1187: 0000:     END FUNCTION
+1188: 0000: 
+1189: 0000: 
+1190: 0000: 
+1191: 0000: %INCLUDE KFASMEXT.J86 ! Keyed file assembler external functions
+1192: 0000: \*******************************************************************************
+1193: 0000: \*******************************************************************************
+1194: 0000: \***
+1195: 0000: \***   EXTERNAL FUNCTION DEFINITIONS FOR KEYED FILE ASSEMBLER FUNCTIONS
+1196: 0000: \***
+1197: 0000: \*******************************************************************************
+1198: 0000: \*******************************************************************************
+1199: 0000: 
+1200: 0000: \*******************************************************************************
+1201: 0000: \*******************************************************************************
+1202: 0000: \***
+1203: 0000: \***   Version A.              Mark Walker                       5th Feb 1998
+1204: 0000: \***   Initial version.
+1205: 0000: \***
+1206: 0000: \***   Version B.              Mark Walker                      30th Jan 2014
+1207: 0000: \***   Added new WRITEKF routine.
+1208: 0000: \***
+1209: 0000: \***   Version C.              Mark Walker                      21st May 2014
+1210: 0000: \***   Extended READKF interface to include a mode flag.
+1211: 0000: \***
+1212: 0000: \*******************************************************************************
+1213: 0000: \*******************************************************************************
+1214: 0000: 
+1215: 0000: \*******************************************************************************
+1216: 0000: \***
+1217: 0000: \***   FUNCTION        :       INITKF
+1218: 0000: \***
+1219: 0000: \******************************************************************************* 
+1220: 0000: \***
+1221: 0000: \***   Assembler function that initialises a keyed file for processing
+1222: 0000: \***
+1223: 0000: \******************************************************************************* 
+1224: 0000: 
+1225: 0000:        FUNCTION INITKF(FILE.NAME$, OPTIONS%) EXTERNAL
+1226: 0000:        INTEGER*2       OPTIONS%
+1227: 0000:        INTEGER*4       INITKF
+1228: 0000:        STRING          FILE.NAME$
+1229: 0000:        END FUNCTION      
+1230: 0000: 
+1231: 0000: \*******************************************************************************
+1232: 0000: \***
+1233: 0000: \***   FUNCTION        :       TERMKF
+1234: 0000: \***
+1235: 0000: \******************************************************************************* 
+1236: 0000: \***
+1237: 0000: \***   Assembler function that closes a file
+1238: 0000: \***
+1239: 0000: \******************************************************************************* 
+1240: 0000: 
+1241: 0000:        FUNCTION TERMKF(FID%) EXTERNAL
+1242: 0000:        INTEGER*4       TERMKF
+1243: 0000:        INTEGER*4       FID%
+1244: 0000:        END FUNCTION      
+1245: 0000: 
+1246: 0000: \*******************************************************************************
+1247: 0000: \***
+1248: 0000: \***   FUNCTION        :       READKF
+1249: 0000: \***
+1250: 0000: \******************************************************************************* 
+1251: 0000: \***
+1252: 0000: \***   Assembler function that reads records from a keyed file that contain
+1253: 0000: \***   a pattern string at a specified offset within the record
+1254: 0000: \***
+1255: 0000: \******************************************************************************* 
+1256: 0000: 
+1257: 0000:        FUNCTION READKF(RECORD$,PATTERN$,OFFSET%,MODE%) EXTERNAL             !CMW
+1258: 0000:        INTEGER*2       MODE%                                                !CMW
+1259: 0000:        INTEGER*4       OFFSET%
+1260: 0000:        INTEGER*4       READKF
+1261: 0000:        STRING          RECORD$
+1262: 0000:        STRING          PATTERN$
+1263: 0000:        END FUNCTION       
+1264: 0000: 
+1265: 0000: \*******************************************************************************
+1266: 0000: \***
+1267: 0000: \***   FUNCTION        :       WRITEKF
+1268: 0000: \***
+1269: 0000: \******************************************************************************* 
+1270: 0000: \***
+1271: 0000: \***   Assembler function that updates records in a keyed file.
+1272: 0000: \***
+1273: 0000: \******************************************************************************* 
+1274: 0000: 
+1275: 0000:        FUNCTION WRITEKF(RECORD$) EXTERNAL
+1276: 0000:        INTEGER*4       WRITEKF
+1277: 0000:        STRING          RECORD$
+1278: 0000:        END FUNCTION       
+1279: 0000: 
+1280: 0000: %INCLUDE BTREEEXT.J86 ! Binary tree external functions
+1281: 0000: 
+1282: 0000: FUNCTION BTREE.CREATE.TREE(N%) EXTERNAL
+1283: 0000:     INTEGER*1 BTREE.CREATE.TREE
+1284: 0000:     INTEGER*4 N%
+1285: 0000: END FUNCTION
+1286: 0000: 
+1287: 0000: FUNCTION BTREE.DESTROY.TREE EXTERNAL
+1288: 0000:     INTEGER*1 BTREE.DESTROY.TREE
+1289: 0000: END FUNCTION
+1290: 0000: 
+1291: 0000: FUNCTION BTREE.INSERT.NODE(V%,D$) EXTERNAL
+1292: 0000:     INTEGER*1 BTREE.INSERT.NODE
+1293: 0000:     INTEGER*4 V%
+1294: 0000:     STRING D$
+1295: 0000: END FUNCTION
+1296: 0000: 
+1297: 0000: FUNCTION BTREE.FIND.NODE%(V%) EXTERNAL
+1298: 0000:     INTEGER*1 BTREE.FIND.NODE%
+1299: 0000:     INTEGER*4 V%
+1300: 0000: END FUNCTION
+1301: 0000: 
+1302: 0000: FUNCTION BTREE.DISPLAY.NODE(X%) EXTERNAL
+1303: 0000:     INTEGER*1 BTREE.DISPLAY.NODE
+1304: 0000:     INTEGER*4 X%
+1305: 0000: END FUNCTION
+1306: 0000: FUNCTION BTREE.TRAVERSE.TREE(N%) EXTERNAL
+1307: 0000:     INTEGER*4 N%
+1308: 0000: END FUNCTION
+1309: 0000: 
+1310: 0000: FUNCTION BTREE.ROOT% EXTERNAL
+1311: 0000:     INTEGER*4 BTREE.ROOT%
+1312: 0000: END FUNCTION
+1313: 0000: 
+1314: 0000: FUNCTION BTREE.PRINT.TREE(N%,D%) EXTERNAL
+1315: 0000:     INTEGER*4 N%,D%
+1316: 0000: END FUNCTION
+1317: 0000: FUNCTION BTREE.VALIDATE.TREE EXTERNAL
+1318: 0000:     INTEGER*1 BTREE.VALIDATE.TREE
+1319: 0000: END FUNCTION
+1320: 0000: 
+1321: 0000: %INCLUDE BASROUT.J86  ! OSSHELL function (and others)           ! 1.10 RC (190)
+1322: 0000: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+1323: 0000: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+1324: 0000: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+1325: 0000: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+1326: 0000: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+1327: 0000: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+1328: 0000: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+1329: 0000: !   the BASROUT.OBJ routines.  These routines were written
+1330: 0000: !  using Metaware C and are intended to provide functions which
+1331: 0000: !         are either not available in 4680 CBASIC or which can be more
+1332: 0000: !               efficiently handled by the C language.  Their usage is
+1333: 0000: !  offered on an "AT YOUR OWN RISK" basis.
+1334: 0000: !
+1335: 0000: !               The insert/extract routines usefulness may not be immediately
+1336: 0000: !               apparent.  Their intention is that they be used in conjunction
+1337: 0000: !               with a read/write form command.  They can more efficiently
+1338: 0000: !               parse a string into many different variables than can the
+1339: 0000: !               read form statement.  So instead of a long list of data var's
+1340: 0000: !               it may be more efficient to just read/write one long string
+1341: 0000: !               and then use the insert/extract routines to parse out the
+1342: 0000: !   data.
+1343: 0000: 
+1344: 0000: ! ******************* SUB PROCESS FUNCTIONS *********************************
+1345: 0000: 
+1346: 0000: function osshell(cmd.line$) external   ! routine to start
+1347: 0000:        ! another program.
+1348: 0000:            integer*4    osshell    ! Upon completion of
+1349: 0000:            string       cmd.line$   ! program, control is
+1350: 0000:        ! returned to calling
+1351: 0000: end function      ! program.
+1352: 0000: !
+1353: 0000: ! NOTES:  Program must be a 286 type file.  This does not exclude
+1354: 0000: !         the capability to execute a batch file however.  Simply pass the
+1355: 0000: !         following:
+1356: 0000: !              c:\adx_spgm\command.286 batfile
+1357: 0000: !         where batfile is the name of the batch file to be executed.
+1358: 0000: !
+1359: 0000: ! IMPORTANT: When using osshell to execute a batch file as described above,
+1360: 0000: !            the final command in the batch file must be "exit".  If not,
+1361: 0000: !       control is never given back to the calling program.
+1362: 0000: 
+1363: 0000: ! ************************ MEMORY RELATED FUNCTIONS ************************
+1364: 0000: 
+1365: 0000: function memfree(choice) external   ! routine to que the
+1366: 0000:        ! status of the
+1367: 0000:  integer*4 memfree    ! machine's memory:
+1368: 0000:  integer*2 choice    ! Options:
+1369: 0000:        !    1 - free
+1370: 0000: end function      !    2 - total
+1371: 0000:        !    3 - system
+1372: 0000: 
+1373: 0000: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+1374: 0000: 
+1375: 0000: function timedate(choice) external   ! routine to que the
+1376: 0000:        ! OS's timedate table
+1377: 0000:  integer*4 timedate   ! Choices:
+1378: 0000:  integer*2 choice    !    1 - millisec's
+1379: 0000:        !        since midnight
+1380: 0000: end function      !    2 - minutes from
+1381: 0000:        !  UCT (timezone)
+1382: 0000:        !    3 - day of week
+1383: 0000:        !   0-Sunday
+1384: 0000:        !  6-Saturday
+1385: 0000: 
+1386: 0000: function settime(msecs) external   ! routine to set the
+1387: 0000:        ! time on the controller
+1388: 0000:  integer*4  settime    ! msecs is the desired
+1389: 0000:  integer*4 msecs    ! number of milliseconds
+1390: 0000:        ! since midnight
+1391: 0000: end function      ! Returns negative on
+1392: 0000:        ! error
+1393: 0000: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+1394: 0000: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+1395: 0000: ! At 1 AM the controller broadcasts the new time to all terminals.
+1396: 0000: ! Insure this is taken into consideration when using this routine.
+1397: 0000: 
+1398: 0000: !******************** DISK FILE RELATED FUNCTIONS *************************
+1399: 0000: 
+1400: 0000: function truncate(name,length) external   ! routine to truncate
+1401: 0000:        ! the specified file
+1402: 0000:  integer*4 truncate   ! to a given length.
+1403: 0000:  string  name
+1404: 0000:  integer*4 length
+1405: 0000: 
+1406: 0000: end function
+1407: 0000: 
+1408: 0000: !******************** STRING VALUE RELATED FUNCTIONS **********************
+1409: 0000: 
+1410: 0000: function isalpha(bstrn) external   ! routine to identify
+1411: 0000:        ! if the specified
+1412: 0000:  integer*1 isalpha    ! string contains all
+1413: 0000:  string  bstrn    ! alphabetic char's
+1414: 0000:        ! Returns:
+1415: 0000: end function      !     0 - all alpha
+1416: 0000:        !     X - byte of 1st
+1417: 0000:        !         non-alpha
+1418: 0000:        !   char
+1419: 0000: 
+1420: 0000: function isdigit(bstrn) external   ! routine to identify
+1421: 0000:        ! if the specified
+1422: 0000:  integer*1 isdigit    ! string contains all
+1423: 0000:  string  bstrn    ! numeric char's
+1424: 0000:        ! Returns:
+1425: 0000: end function      !     0 - all numeric
+1426: 0000:        !     X - byte of 1st
+1427: 0000:        !         non-numeric
+1428: 0000:        !   char
+1429: 0000: 
+1430: 0000: function islower(bstrn) external   ! routine to identify
+1431: 0000:        ! if the specified
+1432: 0000:  integer*1 islower    ! string contains all
+1433: 0000:  string  bstrn    ! lower case char's
+1434: 0000:        ! Returns:
+1435: 0000: end function      !     0 - all lowercase
+1436: 0000:        !     X - byte of 1st
+1437: 0000:        !         non-lowercase
+1438: 0000:        !   char
+1439: 0000: 
+1440: 0000: function isupper(bstrn) external   ! routine to identify
+1441: 0000:        ! if the specified
+1442: 0000:  integer*1 isupper    ! string contains all
+1443: 0000:  string  bstrn    ! upper case char's
+1444: 0000:        ! Returns:
+1445: 0000: end function      !     0 - all uppercase
+1446: 0000:        !     X - byte of 1st
+1447: 0000:        !         non-uppercase
+1448: 0000:        !   char
+1449: 0000: 
+1450: 0000: function toalpha(bstrn) external   ! routine to convert
+1451: 0000:        ! non-alpha or non-num
+1452: 0000:    integer*2 toalpha    ! char's to spaces
+1453: 0000:  string  bstrn    ! Returns:
+1454: 0000: end function      !   x - no. of char's
+1455: 0000:        !       changed
+1456: 0000: 
+1457: 0000: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+1458: 0000: 
+1459: 0000: function idlecount(choice) external   ! routine to either
+1460: 0000:        ! set to zero or queue
+1461: 0000:  integer*4 idlecount   ! the value of the
+1462: 0000:  integer*1 choice    ! processor's idlecount
+1463: 0000:        ! Choice:
+1464: 0000: end function      !     0 - set to zero
+1465: 0000: !       !     1 - get value
+1466: 0000: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+1467: 0000: ! TO WORK - This level is not available unless  !     X - idlecount
+1468: 0000: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+1469: 0000: ! is highly unrecommended.
+1470: 0000: 
+1471: 0000: function logical(actname,logname,choice) external ! routine to set a
+1472: 0000:        ! a logical name.
+1473: 0000:  integer*4 logical    ! parms are self
+1474: 0000:         string  logname    ! explanatory except
+1475: 0000:  string  actname    ! for choice:
+1476: 0000:  integer*1 choice    !   0 - set process
+1477: 0000:        !   1 - set system
+1478: 0000: end function      !   2 - get process
+1479: 0000:        !   3 - get system
+1480: 0000: 
+1481: 0000: ! NOTE:  Only the setting of a system level of logical name requires
+1482: 0000: ! user/group zero level of authorization.  Any application may query any
+1483: 0000: ! logical name.  Setting of a system logical name is only applicable until
+1484: 0000: ! the system is IPL'd.  A process logical name is only active when that
+1485: 0000: ! process is active.
+1486: 0000: 
+1487: 0000: !******************** STRING PARSING FUNCTIONS *****************************
+1488: 0000: 
+1489: 0000: function inserts(whole,part,offset) external  ! routine to insert a
+1490: 0000:        ! string (part) into
+1491: 0000:  integer*2 INSERTS    ! another string (whole)
+1492: 0000:  string  whole    ! starting at specified
+1493: 0000:  string  part    ! character (offset)
+1494: 0000:  integer*2 offset
+1495: 0000: 
+1496: 0000: end function
+1497: 0000: 
+1498: 0000: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+1499: 0000:        ! a 4-byte integer into
+1500: 0000:  integer*1 cinsert4   ! a string starting at
+1501: 0000:  integer*4 integer4   ! byte specified by
+1502: 0000:  string  bstring    ! offset (1-based)
+1503: 0000:  integer*2 offset    ! Returns:
+1504: 0000:        !     0 - Success
+1505: 0000: end function      !    -1 - String overrun
+1506: 0000: 
+1507: 0000: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+1508: 0000:        ! a 2-byte integer into
+1509: 0000:  integer*1 cinsert2   ! a string starting at
+1510: 0000:  integer*2 integer2   ! byte specified by
+1511: 0000:  string  bstring    ! offset (1-based)
+1512: 0000:  integer*2 offset    ! Returns:
+1513: 0000:        !     0 - Success
+1514: 0000: end function      !    -1 - String overrun
+1515: 0000: 
+1516: 0000: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+1517: 0000:        ! a 1-byte integer into
+1518: 0000:  integer*1 cinsert1   ! a string starting at
+1519: 0000:  integer*1 integer1   ! byte specified by
+1520: 0000:  string  bstring    ! offset (1-based)
+1521: 0000:  integer*2 offset    ! Returns:
+1522: 0000:        !     0 - Success
+1523: 0000: end function      !    -1 - String overrun
+1524: 0000: 
+1525: 0000: function extracts(whole,part,offset) external  ! routine to extract a
+1526: 0000:        ! string (part) from
+1527: 0000:  integer*2 EXTRACTS   ! another string (whole)
+1528: 0000:  string  whole    ! starting at specified
+1529: 0000:  string  part    ! character (offset)
+1530: 0000:  integer*2 offset
+1531: 0000: 
+1532: 0000: end function
+1533: 0000: 
+1534: 0000: function cextract4(bstring,offset) external  ! routine to extract
+1535: 0000:        ! a 4-byte integer from
+1536: 0000:  integer*4 cextract4   ! a string starting at
+1537: 0000:                        ! byte specified by
+1538: 0000:  string  bstring    ! offset (1-based)
+1539: 0000:  integer*2 offset    ! Returns:
+1540: 0000:        !     X - 4 byte integer
+1541: 0000: end function      !    -1 - String overrun
+1542: 0000: 
+1543: 0000: function cextract2(bstring,offset) external  ! routine to extract
+1544: 0000:        ! a 2-byte integer from
+1545: 0000:  integer*2 cextract2   ! a string starting at
+1546: 0000:                        ! byte specified by
+1547: 0000:  string  bstring    ! offset (1-based)
+1548: 0000:  integer*2 offset    ! Returns:
+1549: 0000:        !     X - 2 byte integer
+1550: 0000: end function      !    -1 - String overrun
+1551: 0000: 
+1552: 0000: function cextract1(bstring,offset) external  ! routine to extract
+1553: 0000:        ! a 1-byte integer from
+1554: 0000:  integer*1 cextract1   ! a string starting at
+1555: 0000:                        ! byte specified by
+1556: 0000:  string  bstring    ! offset (1-based)
+1557: 0000:  integer*2 offset    ! Returns:
+1558: 0000:        !     X - 1 byte integer
+1559: 0000: end function      !    -1 - String overrun
+1560: 0000: 
+1561: 0000: 
+1562: 0000: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+1563: 0000:        ! file names and sizes
+1564: 0000:        ! Return values:
+1565: 0000:        !    -1  no matches
+1566: 0000:        !        found on first
+1567: 0000:        !        call
+1568: 0000:        !    0   no matches
+1569: 0000:        !        found on sub-
+1570: 0000:        !        sequent calls
+1571: 0000:        !    Pos Success
+1572: 0000:        !    Neg OS Rtn Code
+1573: 0000: ! Usage Note:  If searching for all occurences of a particular file name,
+1574: 0000: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+1575: 0000: ! to srchdir.  If any matches are found, a positive value will be returned.
+1576: 0000: ! To see if any more matches exist, just issue another call to srchdir without
+1577: 0000: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+1578: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+1579: 0000: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+1580: 0000: ! of this data is defined below.
+1581: 0000: 
+1582: 0000:  integer*4 srchdir
+1583: 0000: 
+1584: 0000:  string  file.name$   ! file name to start
+1585: 0000:        ! search (18 bytes max)
+1586: 0000:        ! Wild cards and logical
+1587: 0000:        ! names supported.
+1588: 0000: 
+1589: 0000:  string  dtbl.buffer$   ! must be initialized
+1590: 0000:        ! to 48 bytes.  Contains
+1591: 0000:        ! all of directory info
+1592: 0000:        ! Initialize to nulls
+1593: 0000:        ! each time a new file
+1594: 0000:        ! name is used.
+1595: 0000: 
+1596: 0000: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+1597: 0000: !
+1598: 0000: ! Offs  Type                    Description Notes
+1599: 0000: !  0 integer*4  key  use extract4 to access
+1600: 0000: !  4  string (18 bytes) file name
+1601: 0000: ! 22 integer*2  attributes use extract2 to access
+1602: 0000: !      0x01 - Read Only
+1603: 0000: !      0x02 - Hidden
+1604: 0000: !      0x04 - System
+1605: 0000: !      0x08 - Volume Label
+1606: 0000: !      0x10 - Subdirectory
+1607: 0000: !      0x20 - Archive (Files)
+1608: 0000: !      0x40 - Security enabled
+1609: 0000: !      0x80 - Reserved
+1610: 0000: !      0x0000 - Local
+1611: 0000: !      0x4000 - Mirrored/Update
+1612: 0000: !      0xC000 - Mirrored/Close
+1613: 0000: !
+1614: 0000: !      0x6000 - Compound/Update
+1615: 0000: !      0xE000 - Compound/Close
+1616: 0000: ! 24 integer*2  record size use extract2 to access
+1617: 0000: ! 26 integer*1  User ID of Owner
+1618: 0000: ! 27 integer*1  Group ID of Owner
+1619: 0000: ! 28 integer*2  File Security
+1620: 0000: ! 30 string (6 bytes) Reserved
+1621: 0000: ! 36 integer*4  File Size use extract4 to access
+1622: 0000: ! 40 integer*2  Year  use extract2 to access
+1623: 0000: ! 42 integer*1  Month
+1624: 0000: ! 43 integer*1  Day
+1625: 0000: ! 44 integer*1  Hour
+1626: 0000: ! 45 integer*1  Minute
+1627: 0000: ! 46 integer*1  Second
+1628: 0000: ! 47 integer*1  Reserved
+1629: 0000: 
+1630: 0000: end function
+1631: 0000: 
+1632: 0000: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+1633: 0000:        ! process names and
+1634: 0000:        ! status.  Handy to
+1635: 0000:        ! determine if a
+1636: 0000:        ! program is currently
+1637: 0000:        ! running.
+1638: 0000:        ! Return values:
+1639: 0000:        !    -1  no matches
+1640: 0000:        !        found on first
+1641: 0000:        !        call
+1642: 0000:        !    0   no matches
+1643: 0000:        !        found on sub-
+1644: 0000:        !        sequent calls
+1645: 0000:        !    Pos Success
+1646: 0000:        !    Neg Failure
+1647: 0000:        !        OS Rtn Code
+1648: 0000:        ! 80000001h - Insuff
+1649: 0000:         !        ptbl buffer
+1650: 0000:        !        Length
+1651: 0000: ! Usage Note:  If searching for all occurences of a particular process name,
+1652: 0000: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+1653: 0000: ! to srchproc.  If any matches are found, a positive value will be returned.
+1654: 0000: ! To see if any more matches exist, just issue another call to srchproc without
+1655: 0000: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+1656: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+1657: 0000: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+1658: 0000: ! of this data is defined as follows:
+1659: 0000: !
+1660: 0000: !       --------------------------------------------------------
+1661: 0000: !   0   |                         PID                          |
+1662: 0000: !       --------------------------------------------------------
+1663: 0000: !   4   |           FID             |   CID        |   VCID    |
+1664: 0000: !       --------------------------------------------------------
+1665: 0000: !   8   |                         NAME                         |
+1666: 0000: !       --------------------------------------------------------
+1667: 0000: !  12   |                         NAME cont'd                  |
+1668: 0000: !       --------------------------------------------------------
+1669: 0000: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+1670: 0000: !       --------------------------------------------------------
+1671: 0000: !  20   |                         MAXMEM                       |
+1672: 0000: !       --------------------------------------------------------
+1673: 0000: !  24   |       FLAGS               |   USER        |  GROUP   |
+1674: 0000: !       --------------------------------------------------------
+1675: 0000: !  28   |                         PARENT                       |
+1676: 0000: !       --------------------------------------------------------
+1677: 0000: !  32   |                         EVENTS                       |
+1678: 0000: !       --------------------------------------------------------
+1679: 0000: !  36   |                         CODE                         |
+1680: 0000: !       --------------------------------------------------------
+1681: 0000: !  40   |                         CSIZE                        |
+1682: 0000: !       --------------------------------------------------------
+1683: 0000: !  44   |                         DATA                         |
+1684: 0000: !       --------------------------------------------------------
+1685: 0000: !  48   |                         DSIZE                        |
+1686: 0000: !       --------------------------------------------------------
+1687: 0000: !  52   |                         HEAP                         |
+1688: 0000: !       --------------------------------------------------------
+1689: 0000: !  56   |                         HSIZE                        |
+1690: 0000: !       --------------------------------------------------------
+1691: 0000: !
+1692: 0000: !       PID   Process ID
+1693: 0000: !       FID  Process's Family ID
+1694: 0000: !       CID   Physical Console Device Number
+1695: 0000: !       VCID  Process's Virtual Console Number
+1696: 0000: !       NAME  Process Name (Application Running)
+1697: 0000: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+1698: 0000: ! PRIOR    Priority
+1699: 0000: !       MAXMEM  Maximum Memory Allowed
+1700: 0000: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+1701: 0000: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+1702: 0000: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+1703: 0000: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+1704: 0000: ! USER  User Number
+1705: 0000: ! GROUP  Group Number
+1706: 0000: !       PARENT   Parent Process ID
+1707: 0000: !       EVENTS   Bit Map of events that have completed but not retrieved
+1708: 0000: !       CODE  Start of code area in user space
+1709: 0000: ! CSIZE  Size in bytes of code area
+1710: 0000: !       DATA  Start of data area in user space
+1711: 0000: ! DSIZE  Size in bytes of data area
+1712: 0000: !       HEAP  Start of heap area in user space
+1713: 0000: ! HSIZE  Size in bytes of heap area
+1714: 0000: !
+1715: 0000:  integer*4 srchproc
+1716: 0000: 
+1717: 0000:  string  proc.name$   ! process name to start
+1718: 0000:        ! search (10 bytes max)
+1719: 0000:        ! Wild cards and logical
+1720: 0000:        ! names supported.
+1721: 0000: 
+1722: 0000:  string  ptbl.buffer$   ! must be initialized
+1723: 0000:        ! to 60 bytes.  Contains
+1724: 0000:        ! all of process info
+1725: 0000:        ! Initialize to nulls
+1726: 0000:        ! each time a new
+1727: 0000:        ! process name is used.
+1728: 0000: 
+1729: 0000: end function
+1730: 0000: 
+1731: 0000: function cconstat(timeout) external       ! function similar
+1732: 0000:                                               ! to BASIC constat%
+1733: 0000:  integer*2 cconstat   ! waits for either a
+1734: 0000:  integer*4 timeout    ! key being hit or
+1735: 0000:        ! the timer expiring
+1736: 0000:        ! before returning
+1737: 0000:        ! returns:
+1738: 0000:        !   -1 error
+1739: 0000:        !    0 timer expired
+1740: 0000:        !    x scan code of
+1741: 0000:        !      key hit
+1742: 0000: end function
+1743: 0000: 
+1744: 0000: function disksize(disk.name$) external   ! function to find
+1745: 0000:        ! the total size of
+1746: 0000:  integer*4 disksize   ! the specified disk
+1747: 0000:  string  disk.name$   ! name (e.g. "h0:")
+1748: 0000:        ! if return value is
+1749: 0000:        ! negative, error
+1750: 0000: end function      ! was received
+1751: 0000: 
+1752: 0000: 
+1753: 0000: %INCLUDE CSORTDEC.J86 ! Assembler sort routine                  ! 1.7 RC (113)
+1754: 0000: FUNCTION CSORT(ARPTR%, ELEMENTS%) EXTERNAL
+1755: 0000:     INTEGER*4 ARPTR%, ELEMENTS%, CSORT
+1756: 0000: END FUNCTION
+1757: 0000: 
+1758: 0000: 
+1759: 0000: SUB LOG.EVENT(EVENT.NO%) EXTERNAL
+1760: 0000: END SUB
+1761: 0000: 
+1762: 0000: SUB DO.MESSAGE(MSG$, LOG%) EXTERNAL
+1763: 0000: END SUB
+1764: 0000: 
+1765: 0000: SUB SORT.CURR.TABLES EXTERNAL ! PSB2100                         ! 1.7 RC (113)
+1766: 0000: END SUB                                                         ! 1.7 RC (113)
+1767: 0000: 
+1768: 0000: SUB STORE.EMERG.PRICE.CHANGE(N%) EXTERNAL ! PSB2100             ! 1.7 RC (113)
+1769: 0000: END SUB                                                         ! 1.7 RC (113)
+1770: 0000: 
+1771: 0000: FUNCTION UPDATE.CIPPM(CIPPM.ITEM$, REV.PRICE$) EXTERNAL         ! 1.8 RC (172)
+1772: 0000:      INTEGER*1 UPDATE.CIPPM
+1773: 0000: END FUNCTION
+1774: 0000: 
+1775: 0000: ! IBM copy files external subroutine definition
+1776: 0000: SUB ADXCOPYF(RETC,INFILE,OUTFILE,OPT0,OPT1,OPT2) EXTERNAL
+1777: 0000: INTEGER*4 RETC
+1778: 0000: STRING    INFILE, OUTFILE
+1779: 0000: INTEGER*2 OPT0, OPT1, OPT2
+1780: 0000: END SUB
+1781: 0000: 
+1782: 0000: 
+1783: 0000: !   Function CHECK.ITEM.FOR.MARKDOWN.PROCESSING deleted         ! 1.7 RC (113)
+1784: 0000: 
+1785: 0000: !   Function ITEM.ON.MARKDOWN deleted                           ! 1.7 RC (113)
+1786: 0000: 
+1787: 0000: !   Function CHECK.ITEM.FOR.EMERGENCY.RPD(DUE$,RDATE$) deleted  ! 1.7 RC (113)
+1788: 0000: 
+1789: 0000: 
+1790: 0000: \******************************************************************************
+1791: 0000: \***
+1792: 0000: \***    PROCESS.BTREE.RECORDS
+1793: 0000: \***
+1794: 0000: \******************************************************************************
+1795: 0000: \***
+1796: 0000: \***    User exit function to perform processing on binary tree records
+1797: 0000: \***    with key value V and data D
+1798: 0000: \***
+1799: 0000: \******************************************************************************
+1800: 0000: FUNCTION PROCESS.BTREE.RECORD$(V%,D$) PUBLIC
+1801: 0029: 
+1802: 0029:     STRING PROCESS.BTREE.RECORD$,D$
+1803: 0029:     INTEGER*1 RC%
+1804: 0029:     INTEGER*2 I%,PPF.PCR.COUNT%,PPF.PCR.INDEX%
+1805: 0029:     STRING    PPF.DATE.DUE.NEXT$                                ! 1.9 RC (177)
+1806: 0029:     INTEGER*2 PPF.PCR.INDEX.NEXT%                               ! 1.9 RC (177)
+1807: 0029:     INTEGER*4 V%
+1808: 0029: 
+1809: 0029:         ! Extract item code from key value
+1810: 0029:         PPF.BOOTS.CODE$ = LEFT$(RIGHT$("000000" + STR$(V%),9),7)
+1811: 0083: 
+1812: 0083: !       Lines deleted                                           ! 1.9 RC (177)
+1813: 0083: 
+1814: 0083: !       Read IDF to obtain Markdown flag for this item          ! 1.7 RC (113)
+1815: 0083: !       If item not found (albeit very unlikely) then set       ! 1.7 RC (113)
+1816: 0083: !       IDF.BIT.FLAGS.1% to zero to set Markdown flag OFF       ! 1.7 RC (113)
+1817: 0083:         IDF.BOOTS.CODE$ = PACK$("0" + PPF.BOOTS.CODE$)          ! 1.7 RC (113)
+1818: 00b2:         IF READ.IDF <> 0 THEN BEGIN                             ! 1.7 RC (113)
+1819: 00c4:             IDF.BIT.FLAGS.1% = 0                                ! 1.7 RC (113)
+1820: 00d4:         ENDIF                                                   ! 1.7 RC (113)
+1821: 00dc: 
+1822: 00dc:         ! Calculate number of price changes (on this PPFK record)     ! 1.9 RC (177)
+1823: 00dc:         PPF.PCR.COUNT% = LEN(D$) / PPFK.PCR.RECL%
+1824: 00fd: 
+1825: 00fd:         ! FOR each price change record
+1826: 00fd:         FOR I% = 1 TO PPF.PCR.COUNT%
+1827: 010e: 
+1828: 010e:             PPF.PCR.INDEX% = ((I% - 1) * PPFK.PCR.RECL%) + 1
+1829: 0125: 
+1830: 0125: !---------------------------------------------------------------------------- ! 1.9 RC (177)
+1831: 0125: !   Perform CIP Markdown processing                                           ! 1.9 RC (177)
+1832: 0125: !---------------------------------------------------------------------------- ! 1.9 RC (177)
+1833: 0125: !   This section new for Rv 1.9 RC (177)                                      ! 1.9 RC (177)
+1834: 0125: 
+1835: 0125: !           PPFK price changes are in ascending date order
+1836: 0125: 
+1837: 0125:             PPF.DATE.DUE$  = UNPACK$(MID$(D$, PPF.PCR.INDEX%, 3))
+1838: 014e: 
+1839: 014e: !           If item on CIP Markdown
+1840: 014e: !           and current PPFK price change is expired or is for today
+1841: 014e: !               Apply any price change for today (or apply next most
+1842: 014e: !               recent price change found on PPFK record)
+1843: 014e: !               Prevent applied price change (and any earlier price
+1844: 014e: !               changes found on PPFK record) being passed to PPFO
+1845: 014e: 
+1846: 014e:             IF (IDF.BIT.FLAGS.1% AND 20h) = 20h \ ! Markdown ON
+1847: 019b:               AND PPF.DATE.DUE$ <= PROCESSING.DATE$ THEN BEGIN
+1848: 019b: 
+1849: 019b: !               Check whether next price change on PPFK record is for
+1850: 019b: !               today or earlier and if so bypass current price change
+1851: 019b: !               Continue checking each price change on PPFK record until
+1852: 019b: !               most recent price change found (or end of record reached)
+1853: 019b: !               (Price change found may include an emergency 99999 RPD
+1854: 019b: !               created within procedure PROCESS.PPFK.ITEM)
+1855: 019b: 
+1856: 019b:                 IF I% < PPF.PCR.COUNT% THEN BEGIN
+1857: 01ac:                     PPF.PCR.INDEX.NEXT% = ((I%) * PPFK.PCR.RECL%) + 1
+1858: 01c3:                     PPF.DATE.DUE.NEXT$  = UNPACK$(MID$(D$, PPF.PCR.INDEX.NEXT%, 3))
+1859: 01ea:                 ENDIF
+1860: 01f2: 
+1861: 01f2:                 WHILE I% < PPF.PCR.COUNT% \
+1862: 01fd:                   AND PPF.DATE.DUE.NEXT$ <= PROCESSING.DATE$ \
+1863: 01fd: 
+1864: 01fd: !                   Current record is record number: I%                                                      ! 1.13 CS (243)
+1865: 01fd: !                   This is about to be bypassed because the next record is expired or dated for today       ! 1.13 CS (243)
+1866: 01fd: !                   It its Markdown Flag is "Y", then write it to the PPFO                                   ! 1.13 CS (243)
+1867: 01fd: !                                                                                                            ! 1.13 CS (243)
+1868: 01fd: !                   Set Index and Markdown Flag from I%                                                      ! 1.13 CS (243)
+1869: 01fd:                     PPF.PCR.INDEX% = ((I% - 1) * PPFK.PCR.RECL%) + 1                                         ! 1.13 CS (243)
+1870: 0214:                     PPF.MARKDOWN$      = MID$(D$,PPF.PCR.INDEX% + 12,1)                                      ! 1.13 CS (243)
+1871: 023b:                     IF PPF.MARKDOWN$ = "Y" THEN BEGIN                                                        ! 1.13 CS (243)
+1872: 0259:                         GOSUB WRITE.TO.PPFO   ! Past day                                                     ! 1.13 CS (243)
+1873: 026b:                     ENDIF                                                                                    ! 1.13 CS (243)
+1874: 0273: 
+1875: 0273: !                   Bypass current PPFK price change
+1876: 0273:                     I% = I% +1
+1877: 027f: 
+1878: 027f:                     IF I% < PPF.PCR.COUNT% THEN BEGIN
+1879: 0290:                         PPF.PCR.INDEX.NEXT% = ((I%) * PPFK.PCR.RECL%) + 1
+1880: 02a7:                         PPF.DATE.DUE.NEXT$  = UNPACK$(MID$(D$, PPF.PCR.INDEX.NEXT%, 3))
+1881: 02ce:                     ENDIF
+1882: 02d6: 
+1883: 02d6:                 WEND
+1884: 0317: 
+1885: 0317: !               At this point ...
+1886: 0317: !                  There are no further price changes for this item
+1887: 0317: !                   so apply current price change as it is the most recent
+1888: 0317: !               OR Next price change is the first future one encountered
+1889: 0317: !                   so apply current price change as it is the most recent
+1890: 0317: !               OR Next price change is on next PPFK record so may be future
+1891: 0317: !                   so apply current price change in case it is the most recent
+1892: 0317:                 PPF.PCR.INDEX% = ((I% - 1) * PPFK.PCR.RECL%) + 1
+1893: 032e:                 PPF.PRICE$ = UNPACK$(MID$(D$, PPF.PCR.INDEX% + 8, 4))
+1894: 035a: 
+1895: 035a: !               Call UPDATE.CIPPM to update CIPPMR Reversals Price
+1896: 035a: !               On success increment I% to prevent applied price change
+1897: 035a: !               being written to PPFO
+1898: 035a: !               On fail the PPFK price change gets written to the PPFO
+1899: 035a: !               to be re-attempted next run
+1900: 035a: 
+1901: 035a: 
+1902: 035a:                 ! Check whether the current price change has the Markdown Flag set.         ! 1.13 CS (243)
+1903: 035a:                 ! If so, write to the PPFO instead of updating the CIPPM reversals price.   ! 1.13 CS (243)
+1904: 035a:                 PPF.MARKDOWN$      = MID$(D$,PPF.PCR.INDEX% + 12,1)                         ! 1.13 CS (243)
+1905: 0381:                 IF PPF.MARKDOWN$ = "Y" THEN BEGIN                                           ! 1.13 CS (243)
+1906: 039f:                     GOSUB WRITE.TO.PPFO    ! Current day                                    ! 1.13 CS (243)
+1907: 03b3:                 ENDIF ELSE BEGIN                                                            ! 1.13 CS (243)
+1908: 03bb: 
+1909: 03bb:                     IF UPDATE.CIPPM(PPF.BOOTS.CODE$, PPF.PRICE$) = 0 THEN BEGIN
+1910: 03e5:                         I% = I% + 1
+1911: 03f1:                     ENDIF
+1912: 03f9: 
+1913: 03f9:                 ENDIF                                                                       ! 1.13 CS (243)
+1914: 0401: 
+1915: 0401: !               Exit function if no further price changes on this PPFK record
+1916: 0401: 
+1917: 0401: !               Below condition has to be greater than or equal to      ! BRG
+1918: 0401: !               rather  than just greater than. Because greater than    ! BRG
+1919: 0401: !               condition never gets satisfied for PPF.MARKDOWN$ with   ! BRG
+1920: 0401: !               'Y' . As there is no increment happens for the last     ! BRG
+1921: 0401: !               PPFK record for a price change, instead it comes down   ! BRG
+1922: 0401: !               and print one more entry which are designated only for  ! BRG
+1923: 0401: !               Items with no mark down flag set. below fix will remove ! BRG
+1924: 0401: !               Duplicate entry issues in PPFO/PPFI                     ! BRG
+1925: 0401: 
+1926: 0401: !               IF I%>   PPF.PCR.COUNT% THEN BEGIN                      ! BRG
+1927: 0401: 
+1928: 0401:                 IF I% >= PPF.PCR.COUNT% THEN BEGIN                      ! BRG
+1929: 0412:                     EXIT FUNCTION
+1930: 041d:                 ENDIF
+1931: 0425: 
+1932: 0425:             ENDIF
+1933: 042d: 
+1934: 042d: !           Set PPF.PCR.INDEX% again to cater for increases in index value I%
+1935: 042d: !           when bypassing redundant PPFK price changes
+1936: 042d:             PPF.PCR.INDEX% = ((I% - 1) * PPFK.PCR.RECL%) + 1
+1937: 0444: 
+1938: 0444: !---------------------------------------------------------------------------- ! 1.9 RC (177)
+1939: 0444: !   End of CIP Markdown processing                                            ! 1.9 RC (177)
+1940: 0444: !---------------------------------------------------------------------------- ! 1.9 RC (177)
+1941: 0444: 
+1942: 0444:     GOSUB WRITE.TO.PPFO                                                       ! 1.13 CS (243)
+1943: 0456: 
+1944: 0456:         NEXT I%
+1945: 0471: 
+1946: 0471:     EXIT FUNCTION                                                             ! 1.13 CS (243)
+1947: 047c: 
+1948: 047c: 
+1949: 047c: WRITE.TO.PPFO: ! NEW SUBROUTINE CONTAINING WRITE TO PPFO CODE
+1950: 048c: 
+1951: 048c:             PPF.DATE.DUE$      = UNPACK$(MID$(D$,PPF.PCR.INDEX%,3))
+1952: 04b5:             PPF.RPD.NO$        = RIGHT$(UNPACK$(MID$(D$,PPF.PCR.INDEX% + 3,3)),5)
+1953: 04fe:             PPF.STATUS.FLAG$   = MID$(D$,PPF.PCR.INDEX% + 6,1)
+1954: 0525:             PPF.INC.DEC.FLAG$  = MID$(D$,PPF.PCR.INDEX% + 7,1)
+1955: 054c:             PPF.PRICE$         = UNPACK$(MID$(D$,PPF.PCR.INDEX% + 8,4))
+1956: 0578:             PPF.MARKDOWN$      = MID$(D$,PPF.PCR.INDEX% + 12,1)
+1957: 059f: 
+1958: 059f:             ! Write price change record to PPFO
+1959: 059f:             RC% = WRITE.PPFO
+1960: 05af: 
+1961: 05af:             ! IF PPFO write was successful
+1962: 05af:             IF RC% = 0 THEN BEGIN
+1963: 05be: 
+1964: 05be:                 ! Increment number of PPFO records
+1965: 05be:                 PPFO.REC.COUNT% = PPFO.REC.COUNT% + 1
+1966: 05d9: 
+1967: 05d9:             ENDIF ELSE BEGIN
+1968: 05e1:                 ! Handle error - Unable to write to PPFO
+1969: 05e1:                 CALL DO.MESSAGE("PSB21 *** ERROR writing to PPFO", FALSE)
+1970: 0620:                 CALL LOG.EVENT(106)
+1971: 0646:             ENDIF
+1972: 064e: 
+1973: 064e: RETURN ! End of SUB - Nb. LOG.EVENT(106) will ABEND program for a failed write, so safe to do this  ! 1.13 CS (243)
+1974: 065e: 
+1975: 065e: 
+1976: 065e: 
+1977: 065e: END FUNCTION
+1978: 067c: 
+1979: 067c: 
+1980: 067c: FUNCTION HEX4$(H%) PUBLIC
+1981: 06a0: 
+1982: 06a0:     STRING HEX4$,E$
+1983: 06a0:     INTEGER*2 I%
+1984: 06a0:     INTEGER*4 H%
+1985: 06a0: 
+1986: 06a0:     E$ = ""
+1987: 06b5:     FOR I% = 28 TO 0 STEP -4
+1988: 06c5:         E$ = E$ + CHR$((SHIFT(H%,I%) AND 000FH) + 48)
+1989: 071f:     NEXT I%
+1990: 0737:     HEX4$ = TRANSLATE$(E$,":;<=>?","ABCDEF")
+1991: 075e: 
+1992: 075e: END FUNCTION
+1993: 0777: 
+1994: 0777: \******************************************************************************
+1995: 0777: \***
+1996: 0777: \***    STORE.PPFI.PRICE.CHANGE
+1997: 0777: \***
+1998: 0777: \******************************************************************************
+1999: 0777: \***
+2000: 0777: \***    Add existing price change to the price change arrays
+2001: 0777: \***
+2002: 0777: \******************************************************************************
+2003: 0777: SUB STORE.PPFI.PRICE.CHANGE(N%) !PRIVATE
+2004: 079b: 
+2005: 079b:     INTEGER*2 N%
+2006: 079b: 
+2007: 079b:     PPFK.RPD.NO$(N%)       = PACK$("0" + PPF.RPD.NO$)
+2008: 07da:     PPFK.DATE.DUE$(N%)     = PACK$(PPF.DATE.DUE$)
+2009: 080d:     PPFK.PRICE$(N%)        = PACK$(PPF.PRICE$)
+2010: 0840:     PPFK.INC.DEC.FLAG$(N%) = PPF.INC.DEC.FLAG$
+2011: 086e:     PPFK.STATUS.FLAG$(N%)  = PPF.STATUS.FLAG$
+2012: 089c:     PPFK.MARKDOWN$(N%)     = PPF.MARKDOWN$
+2013: 08ca: 
+2014: 08ca: !   No need to sort PPFK tables for single price change         ! 1.7 RC (113)
+2015: 08ca:     IF N% <= 1 THEN BEGIN                                       ! 1.7 RC (113)
+2016: 08db:         EXIT SUB                                                ! 1.7 RC (113)
+2017: 08e6:     ENDIF                                                       ! 1.7 RC (113)
+2018: 08ee: 
+2019: 08ee: !   An items PPFI records need to be in ascending date-RPD order ! 1.9 RC (177)
+2020: 08ee: !   (latest last) and once in this sequence should remain in it. ! 1.9 RC (177)
+2021: 08ee: 
+2022: 08ee: !   When an items current PPFI record date-RPD is earlier than  ! 1.7 RC (113)
+2023: 08ee: !   its previous PPFI record date-RPD then the items PPFI       ! 1.7 RC (113)
+2024: 08ee: !   record data needs to be sorted.                             ! 1.7 RC (113)
+2025: 08ee:     IF  PPFK.DATE.DUE$(N%)    + PPFK.RPD.NO$(N%) \              ! 1.7 RC (113)
+2026: 098a:       < PPFK.DATE.DUE$(N% -1) + PPFK.RPD.NO$(N% -1) THEN BEGIN  ! 1.9 RC (177)
+2027: 098a:         PPFK.SORT.NEEDED = TRUE                                 ! 1.7 RC (113)
+2028: 09a0:     ENDIF                                                       ! 1.7 RC (113)
+2029: 09a8: 
+2030: 09a8: END SUB
+2031: 09bc: 
+2032: 09bc: 
+2033: 09bc: \******************************************************************************
+2034: 09bc: \***
+2035: 09bc: \***    OPEN.PPFI
+2036: 09bc: \***
+2037: 09bc: \******************************************************************************
+2038: 09bc: \***
+2039: 09bc: \***    Opens the PPFI file
+2040: 09bc: \***
+2041: 09bc: \******************************************************************************
+2042: 09bc: FUNCTION OPEN.PPFI !PRIVATE
+2043: 09e0: 
+2044: 09e0:     INTEGER*1 OPEN.PPFI
+2045: 09e0: 
+2046: 09e0:     OPEN.PPFI = 1
+2047: 09ec: 
+2048: 09ec:     CURRENT.REPORT.NUM% = PPFI.REPORT.NUM%
+2049: 0a02:     FILE.OPERATION$ = "O"
+2050: 0a19:     IF END #PPFI.SESS.NUM% THEN OPEN.PPFI.ERROR
+2051: 0a35:     OPEN PPFI.FILE.NAME$ AS PPFI.SESS.NUM% BUFFSIZE 32256 LOCKED NOWRITE NODEL
+2052: 0a5e: 
+2053: 0a5e:     OPEN.PPFI = 0
+2054: 0a6a: 
+2055: 0a6a:     OPEN.PPFI.ERROR:
+2056: 0a7a: 
+2057: 0a7a: END FUNCTION
+2058: 0a91: 
+2059: 0a91: \******************************************************************************
+2060: 0a91: \***
+2061: 0a91: \***    CREATE.PPFO
+2062: 0a91: \***
+2063: 0a91: \******************************************************************************
+2064: 0a91: \***
+2065: 0a91: \***    Creates the PPFO file
+2066: 0a91: \***
+2067: 0a91: \******************************************************************************
+2068: 0a91: FUNCTION CREATE.PPFO !PRIVATE
+2069: 0ab5: 
+2070: 0ab5:     INTEGER*1 CREATE.PPFO
+2071: 0ab5: 
+2072: 0ab5:     CREATE.PPFO = 1
+2073: 0ac1: 
+2074: 0ac1:     CURRENT.REPORT.NUM% = PPFO.REPORT.NUM%
+2075: 0ad7:     FILE.OPERATION$ = "C"
+2076: 0aee:     IF END #PPFO.SESS.NUM% THEN CREATE.PPFO.ERROR
+2077: 0b0a:     CREATE POSFILE PPFO.FILE.NAME$ AS PPFO.SESS.NUM% LOCKED MIRRORED ATCLOSE
+2078: 0b30: 
+2079: 0b30:     CREATE.PPFO = 0
+2080: 0b3c: 
+2081: 0b3c:     CREATE.PPFO.ERROR:
+2082: 0b4c: 
+2083: 0b4c: END FUNCTION
+2084: 0b63: 
+2085: 0b63: \******************************************************************************
+2086: 0b63: \***
+2087: 0b63: \***    CREATE.PPFK
+2088: 0b63: \***
+2089: 0b63: \******************************************************************************
+2090: 0b63: \***
+2091: 0b63: \***    Creates the PPFK file
+2092: 0b63: \***
+2093: 0b63: \******************************************************************************
+2094: 0b63: FUNCTION CREATE.PPFK PUBLIC
+2095: 0b87: 
+2096: 0b87:     INTEGER*1 CREATE.PPFK
+2097: 0b87:     INTEGER*2 RETRY.COUNT%
+2098: 0b87: 
+2099: 0b87:     ON ERROR GOTO CREATE.PPFK.ERROR
+2100: 0b9c: 
+2101: 0b9c: !   Delete any temporary OS files from RAM (eg, previous failed copies)  ! 1.10 RC (190)
+2102: 0b9c:     CALL OSSHELL("IF EXIST W:\%*.* DEL W:\%*.*")                         ! 1.10 RC (190)
+2103: 0bb0: 
+2104: 0bb0:     RETRY.COUNT% = 0
+2105: 0bbe: 
+2106: 0bbe:   OVERRIDE.FILE.NAME:
+2107: 0bce: 
+2108: 0bce: !   Delete PPFK if it already exists from a previous run       ! 1.10 RC (190)
+2109: 0bce:     IF END # PPFK.SESS.NUM% THEN PPFK.NOT.PRESENT              ! 1.10 RC (190)
+2110: 0bea:     OPEN PPFK.FILE.NAME$ AS PPFK.SESS.NUM% LOCKED              ! 1.10 RC (190)
+2111: 0c11:     DELETE PPFK.SESS.NUM%                                      ! 1.10 RC (190)
+2112: 0c25: 
+2113: 0c25: PPFK.NOT.PRESENT:                                              ! 1.10 RC (190)
+2114: 0c35: 
+2115: 0c35:     CREATE.PPFK = 1
+2116: 0c41: 
+2117: 0c41:     CURRENT.REPORT.NUM% = PPFK.REPORT.NUM%
+2118: 0c57:     FILE.OPERATION$ = "C"
+2119: 0c6e:    ! IF END #PPFK.SESS.NUM% THEN CREATE.PPFK.ERROR
+2120: 0c6e:     CREATE POSFILE PPFK.FILE.NAME$          \
+2121: 0cad:         KEYED PPFK.KEYL%,,,PPFK.MAXR%       \
+2122: 0cad:         RECL PPFK.RECL%                     \
+2123: 0cad:         AS PPFK.SESS.NUM%
+2124: 0cad: 
+2125: 0cad:     CREATE.PPFK = 0
+2126: 0cb9: 
+2127: 0cb9:     EXIT FUNCTION
+2128: 0cc3: 
+2129: 0cc3:   CREATE.PPFK.ERROR:
+2130: 0cd3: 
+2131: 0cd3:     RETRY.COUNT% = RETRY.COUNT% + 1
+2132: 0cdf: 
+2133: 0cdf:     IF RETRY.COUNT% > 1 THEN EXIT FUNCTION
+2134: 0cf0: 
+2135: 0cf0:     ! For ANY error, try creating temp file on physical disk
+2136: 0cf0:     PPFK.FILE.NAME$  = "C:\PPFK.BIN"
+2137: 0d07:     RESUME OVERRIDE.FILE.NAME
+2138: 0d1e: 
+2139: 0d1e: END FUNCTION
+2140: 0d35: 
+2141: 0d35: \******************************************************************************
+2142: 0d35: \***
+2143: 0d35: \***    DESTROY.PPFK
+2144: 0d35: \***
+2145: 0d35: \******************************************************************************
+2146: 0d35: \***
+2147: 0d35: \***    Deletes the PPFK file
+2148: 0d35: \***
+2149: 0d35: \******************************************************************************
+2150: 0d35: FUNCTION DESTROY.PPFK PUBLIC
+2151: 0d59: 
+2152: 0d59:     INTEGER*1 DESTROY.PPFK
+2153: 0d59: 
+2154: 0d59:     DESTROY.PPFK = 1
+2155: 0d65: 
+2156: 0d65:     CURRENT.REPORT.NUM% = PPFK.REPORT.NUM%
+2157: 0d7b:     FILE.OPERATION$ = "D"
+2158: 0d92:     IF END #PPFK.SESS.NUM% THEN DESTROY.PPFK.ERROR
+2159: 0dae:     DELETE PPFK.SESS.NUM%
+2160: 0dc2: 
+2161: 0dc2:     DESTROY.PPFK = 0
+2162: 0dce: 
+2163: 0dce:     DESTROY.PPFK.ERROR:
+2164: 0dde: 
+2165: 0dde: END FUNCTION
+2166: 0df5: 
+2167: 0df5: 
+2168: 0df5: ! Sub MARKDOWN.ITEM.CHECK deleted                               ! 1.7 RC (113)
+2169: 0df5: 
+2170: 0df5: 
+2171: 0df5: \******************************************************************************
+2172: 0df5: \***
+2173: 0df5: \***    SORT.PPFK.TABLES
+2174: 0df5: \***    Sorts PPFK data tables into descending date-RPD order
+2175: 0df5: \***
+2176: 0df5: \******************************************************************************
+2177: 0df5: 
+2178: 0df5: SUB SORT.PPFK.TABLES PUBLIC ! Entire procedure new for Rv 1.7 (113)
+2179: 0e19: 
+2180: 0e19:     INTEGER*2 SUB%
+2181: 0e19:     INTEGER*2 SORT.LIMIT.SUB%
+2182: 0e19: 
+2183: 0e19: !   An items PPFI records need to have ascending date-RPD order ! 1.9 RC (177)
+2184: 0e19: !   Once the PPFI is in sequence it should normally remain in it
+2185: 0e19: !   therefore this sort will only be called occassionally
+2186: 0e19: 
+2187: 0e19: !   Combine all PPFK data tables into SORT.TABLE$ ready for sorting
+2188: 0e19: 
+2189: 0e19:     SUB% = 1
+2190: 0e27: 
+2191: 0e27:     WHILE SUB% <= PPFK.PCR.COUNT%
+2192: 0e32:         SORT.TABLE$(SUB% -1) = \
+2193: 0eed:           PPFK.DATE.DUE$(SUB%)     + \ ! Major sort field - YYMMDD
+2194: 0eed:           PPFK.RPD.NO$(SUB%)       + \ ! Minor sort field - 6 digit RPD number
+2195: 0eed:           PPFK.PRICE$(SUB%)        + \
+2196: 0eed:           PPFK.INC.DEC.FLAG$(SUB%) + \
+2197: 0eed:           PPFK.STATUS.FLAG$(SUB%)  + \
+2198: 0eed:           PPFK.MARKDOWN$(SUB%)
+2199: 0eed:         SUB% = SUB% + 1
+2200: 0ef9:     WEND
+2201: 0f11: 
+2202: 0f11:     SORT.LIMIT.SUB% = PPFK.PCR.COUNT% - 1 ! Minus one because table
+2203: 0f24:                                           ! entry zero used by CSORT
+2204: 0f24: 
+2205: 0f24: !   Sort SORT.TABLE by (ascending) date-RPD
+2206: 0f24:     CALL CSORT (VARPTR(SORT.TABLE$(0)), SORT.LIMIT.SUB%)
+2207: 0f50: 
+2208: 0f50: !   Re-populate PPFK tables from SORT.TABLE$ retaining new sort order       ! 1.9 RC (177)
+2209: 0f50: 
+2210: 0f50:     SUB% = 1
+2211: 0f5e: 
+2212: 0f5e:     WHILE SUB% <= PPFK.PCR.COUNT%
+2213: 0f69:         PPFK.DATE.DUE$(SUB%)     = MID$(SORT.TABLE$(SUB% - 1),  1, 3) ! 3 UPD   ! 1.9 RC (177)
+2214: 0fad:         PPFK.RPD.NO$(SUB%)       = MID$(SORT.TABLE$(SUB% - 1),  4, 3) ! 3 UPD   ! 1.9 RC (177)
+2215: 0ff1:         PPFK.PRICE$(SUB%)        = MID$(SORT.TABLE$(SUB% - 1),  7, 4) ! 4 UPD   ! 1.9 RC (177)
+2216: 1035:         PPFK.INC.DEC.FLAG$(SUB%) = MID$(SORT.TABLE$(SUB% - 1), 11, 1) ! 1 ASC   ! 1.9 RC (177)
+2217: 1079:         PPFK.STATUS.FLAG$(SUB%)  = MID$(SORT.TABLE$(SUB% - 1), 12, 1) ! 1 ASC   ! 1.9 RC (177)
+2218: 10bd:         PPFK.MARKDOWN$(SUB%)     = MID$(SORT.TABLE$(SUB% - 1), 13, 1) ! 1 ASC   ! 1.9 RC (177)
+2219: 1101:         SUB% = SUB% + 1
+2220: 110d:     WEND
+2221: 1125: 
+2222: 1125: !   Set flag to indicate sort now done
+2223: 1125:     PPFK.SORT.NEEDED = FALSE
+2224: 113b: 
+2225: 113b: END SUB
+2226: 114f: 
+2227: 114f: 
+2228: 114f: \******************************************************************************
+2229: 114f: \***
+2230: 114f: \***    PROCESS.OLD.PPFI
+2231: 114f: \***
+2232: 114f: \******************************************************************************
+2233: 114f: \***
+2234: 114f: \***    Load all existing PPFI records into new temporary keyed file PPFK
+2235: 114f: \***
+2236: 114f: \******************************************************************************
+2237: 114f: SUB PROCESS.OLD.PPFI PUBLIC
+2238: 1173: 
+2239: 1173:     INTEGER*1   END.OF.PPFI.FILE
+2240: 1173:     INTEGER*1   END.OF.PPFI.ITEM
+2241: 1173:     INTEGER*1   RC%
+2242: 1173: 
+2243: 1173:     PHASE$ = "2.0"                                                  ! 1.12 CSk
+2244: 118a:     CALL DO.MESSAGE("PSB21 PHASE 2", TRUE)
+2245: 11c9:     CALL DO.MESSAGE("PSB21 2.0 - PROCESS.OLD.PPFI", TRUE)
+2246: 1208: 
+2247: 1208:     ! Open the PPFI
+2248: 1208:     RC% = OPEN.PPFI
+2249: 1217: 
+2250: 1217:     ! IF PPFI open was unsuccessful
+2251: 1217:     IF RC% <> 0 THEN BEGIN
+2252: 1226:         ! Handle error - unable to access PPFI
+2253: 1226:         CALL DO.MESSAGE("PSB21 *** UNABLE TO ACCESS PPFI", FALSE)
+2254: 1265:         CALL LOG.EVENT(106)
+2255: 128b:         EXIT SUB
+2256: 1296:     ENDIF
+2257: 129e: 
+2258: 129e:     END.OF.PPFI.FILE = FALSE
+2259: 12b0: 
+2260: 12b0:     ! Read the first PPFI record
+2261: 12b0:     RC% = READ.PPFI
+2262: 12c0: 
+2263: 12c0:     ! IF PPFI read was successful
+2264: 12c0:     IF RC% = 0 THEN BEGIN
+2265: 12d2: 
+2266: 12d2:         ! IF we have an IUF trailer record
+2267: 12d2:         IF PPF.REC.TYPE.FLAG$ = "T" THEN BEGIN
+2268: 12f0: 
+2269: 12f0:             ! End of file has been reached
+2270: 12f0:             END.OF.PPFI.FILE = TRUE
+2271: 1305: 
+2272: 1305:         ! ELSE IF we have NOT got a price change record type (i.e. unknown)
+2273: 1305:         ENDIF ELSE IF PPF.REC.TYPE.FLAG$ <> "R" THEN BEGIN
+2274: 1326:             ! Handle error - Unknown record type
+2275: 1326:             CALL DO.MESSAGE("PSB21 *** ERROR: Unknown record type on PPFI [" + \
+2276: 1377:                   PPF.REC.TYPE.FLAG$ + "]",FALSE)
+2277: 1377:             CALL LOG.EVENT(106)
+2278: 139d:             EXIT SUB
+2279: 13a8:         ENDIF
+2280: 13b3: 
+2281: 13b3:     ENDIF ELSE BEGIN
+2282: 13bb:         ! Handle error - empty file
+2283: 13bb:         CALL DO.MESSAGE("PSB21 *** ERROR: Unable to Read PPFI",FALSE)
+2284: 13fa:         CALL LOG.EVENT(106)
+2285: 1420:         EXIT SUB
+2286: 142b:     ENDIF
+2287: 1433: 
+2288: 1433:     ! WHILE end of the file has NOT been reached
+2289: 1433:     WHILE NOT END.OF.PPFI.FILE
+2290: 143e: 
+2291: 143e:         CURR.BOOTS.CODE$ = PPF.BOOTS.CODE$
+2292: 145c: 
+2293: 145c:         PPFK.PCR.COUNT% = 0
+2294: 146d: 
+2295: 146d:         END.OF.PPFI.ITEM = FALSE
+2296: 147f: 
+2297: 147f:         ! WHILE end of the current item's price changes have NOT been reached
+2298: 147f:         WHILE NOT END.OF.PPFI.ITEM
+2299: 148a: 
+2300: 148a:             PPFK.PCR.COUNT% = PPFK.PCR.COUNT% + 1
+2301: 1499: 
+2302: 1499:             CALL STORE.PPFI.PRICE.CHANGE(PPFK.PCR.COUNT%)
+2303: 14ae: 
+2304: 14ae:             ! Read next PPFI record
+2305: 14ae:             RC% = READ.PPFI
+2306: 14be: 
+2307: 14be:             ! IF PPFI read was successful
+2308: 14be:             IF RC% = 0 THEN BEGIN
+2309: 14d0: 
+2310: 14d0:                 ! IF we have a trailer record
+2311: 14d0:                 IF NOT (PPF.REC.TYPE.FLAG$ = "T" OR \
+2312: 1525:                         PPF.REC.TYPE.FLAG$ = "R") THEN BEGIN
+2313: 1525:                     ! Handle error - Unexpected record type
+2314: 1525:                     CALL DO.MESSAGE("PSB21 *** ERROR: Unknown record type on PPFI [" + \
+2315: 1576:                           PPF.REC.TYPE.FLAG$ + "]",FALSE)
+2316: 1576:                     CALL LOG.EVENT(106)
+2317: 159f:                 ENDIF ELSE BEGIN
+2318: 15a7: 
+2319: 15a7:                     ! IF we have a change of item code
+2320: 15a7:                     IF CURR.BOOTS.CODE$ <> PPF.BOOTS.CODE$ THEN BEGIN
+2321: 15cf: 
+2322: 15cf:                         ! End of current item has been reached
+2323: 15cf:                         END.OF.PPFI.ITEM = TRUE
+2324: 15e1: 
+2325: 15e1:                         ! We now have all price change records for the item
+2326: 15e1:                         PPFK.BOOTS.CODE$ = CURR.BOOTS.CODE$
+2327: 15ff: 
+2328: 15ff: !                       Sort price change data by ascending     ! 1.9 RC (177)
+2329: 15ff: !                       date-RPD if not already in this order   ! 1.7 RC (113)
+2330: 15ff:                         IF PPFK.SORT.NEEDED THEN BEGIN          ! 1.7 RC (113)
+2331: 1611:                             CALL SORT.PPFK.TABLES               ! 1.7 RC (113)
+2332: 161d:                         ENDIF
+2333: 1625: 
+2334: 1625:                         RC% = WRITE.PPFK
+2335: 1635: 
+2336: 1635:                         IF RC% <> 0 THEN BEGIN
+2337: 1644:                             ! Handle error - Unable to write to PPFK
+2338: 1644:                             CALL DO.MESSAGE("PSB21 *** UNABLE TO WRITE TO PPFK", FALSE)
+2339: 1683:                             CALL LOG.EVENT(106)
+2340: 16a9:                         ENDIF
+2341: 16b1: 
+2342: 16b1:                     ENDIF
+2343: 16b9: 
+2344: 16b9:                     ! IF we have a PPFI trailer record
+2345: 16b9:                     IF PPF.REC.TYPE.FLAG$ = "T" THEN BEGIN
+2346: 16d7:                         ! No more items left to process
+2347: 16d7:                         END.OF.PPFI.FILE = TRUE
+2348: 16e9:                         CALL DO.MESSAGE("PSB21      - End of PPFI file found", FALSE)
+2349: 1728:                     ENDIF
+2350: 1730: 
+2351: 1730:                 ENDIF
+2352: 173a: 
+2353: 173a:             ENDIF ELSE BEGIN
+2354: 1742:                 ! Handle error - Unexpected end of file
+2355: 1742:                 CALL DO.MESSAGE("PSB21 *** ERROR: Unexpected end of PPFI file",FALSE)
+2356: 1781:                 CALL LOG.EVENT(106)
+2357: 17a7:             ENDIF
+2358: 17af: 
+2359: 17af:         WEND
+2360: 17c1: 
+2361: 17c1:     WEND
+2362: 17d3: 
+2363: 17d3:     ! Close the PPFI
+2364: 17d3:     CLOSE PPFI.SESS.NUM%
+2365: 17e7: 
+2366: 17e7: END SUB
+2367: 17fb: 
+2368: 17fb: 
+2369: 17fb: \******************************************************************************
+2370: 17fb: \***    SET.PREV.FROM.PPFK                                        ! 1.3 RC (53)
+2371: 17fb: \***
+2372: 17fb: \******************************************************************************
+2373: 17fb: 
+2374: 17fb: SUB SET.PREV.FROM.PPFK PUBLIC ! Entire function new for 1.3 RC (53)
+2375: 181f: 
+2376: 181f:     PREV.DATE.DUE$(PREV%)     = PPFK.DATE.DUE$(PPFK%)
+2377: 185f:     PREV.RPD.NO$(PREV%)       = PPFK.RPD.NO$(PPFK%)
+2378: 189f:     PREV.STATUS.FLAG$(PREV%)  = PPFK.STATUS.FLAG$(PPFK%)
+2379: 18df:     PREV.INC.DEC.FLAG$(PREV%) = PPFK.INC.DEC.FLAG$(PPFK%)
+2380: 191f:     PREV.PRICE$(PREV%)        = PPFK.PRICE$(PPFK%)
+2381: 195f:     PREV.MARKDOWN$(PREV%)     = PPFK.MARKDOWN$(PPFK%)
+2382: 199f: 
+2383: 199f: !   For both legacy and Core R2 system ...                           ! 1.7 RC (113)
+2384: 199f: !   Future and current day price changes are transmitted on the IUF  ! 1.7 RC (113)
+2385: 199f: !   and supercede any such price changes present on the PPFI.        ! 1.7 RC (113)
+2386: 199f: !   Therefore PPFK (PPFI) content does not set PRICE.CHANGE.TODAY    ! 1.7 RC (113)
+2387: 199f: !   as is done within STORE.PRICE.CHANGE(N%)                         ! 1.7 RC (113)
+2388: 199f: !   IF PREV.DATE.DUE$(PREV%) = PROCESSING.DATE$ THEN BEGIN           ! 1.7 RC (113)
+2389: 199f: !       PRICE.CHANGE.TODAY = Unchanged (See preceding comment)       ! 1.7 RC (113)
+2390: 199f: !   ENDIF                                                            ! 1.7 RC (113)
+2391: 199f: 
+2392: 199f: END SUB
+2393: 19b3: 
+2394: 19b3: 
+2395: 19b3: !   SUB PREPARE.EMERGENCY.RPD.FOR.PPFK PUBLIC deleted            ! 1.7 RC (113)
+2396: 19b3: 
+2397: 19b3: 
+2398: 19b3: \******************************************************************************
+2399: 19b3: \***    SET.PPFK.FROM.PREV                                        ! 1.3 RC (53)
+2400: 19b3: \***
+2401: 19b3: \******************************************************************************
+2402: 19b3: 
+2403: 19b3: SUB SET.PPFK.FROM.PREV PUBLIC ! Entire function new for 1.3 RC (53)
+2404: 19d7: 
+2405: 19d7: !   For both legacy and Core R2 system ...                            ! 1.7 RC (113)
+2406: 19d7: !   All future and current day price changes are re-transmitted on    ! 1.7 RC (113)
+2407: 19d7: !   the IUF                                                           ! 1.7 RC (113)
+2408: 19d7: !   Only expired PPFI price change data (on the PPFK) is retained     ! 1.7 RC (113)
+2409: 19d7: !   (unless matched to an IUF price change as dealt with in separate  ! 1.7 RC (113)
+2410: 19d7: !    procedure SET.PPFK.FROM.CURR.PLUS.PREV)                          ! 1.7 RC (113)
+2411: 19d7:     IF UNPACK$(PREV.DATE.DUE$(PREV%)) >= PROCESSING.DATE$ THEN BEGIN  ! 1.7 RC (113)
+2412: 1a20:         EXIT SUB ! Do not write to PPFK tables                        ! 1.7 RC (113)
+2413: 1a2b:     ENDIF                                                             ! 1.7 RC (113)
+2414: 1a33: 
+2415: 1a33: !   If an emergency 99999 RPD on the PPFI has not been actioned       ! 1.7 RC (113)
+2416: 1a33: !   (ie, SEL not yet printed so Status flag not yet set to "S")       ! 1.7 RC (113)
+2417: 1a33: !   do not pass it to the output PPFI.                                ! 1.7 RC (113)
+2418: 1a33: !   When an emergency 99999 RPD is still required it will have been   ! 1.7 RC (113)
+2419: 1a33: !   created via the (IUF) CURR data table within PROCESS.PPFK.ITEM    ! 1.7 RC (113)
+2420: 1a33:     IF PREV.RPD.NO$(PREV%) = PACK$("099999") \      ! Emergency RPD   ! 1.7 RC (113)
+2421: 1aaf:       AND PREV.STATUS.FLAG$(PREV%) = " " THEN BEGIN ! SEL not printed ! 1.7 RC (113)
+2422: 1aaf:         EXIT SUB ! Do not write to PPFK tables                        ! 1.7 RC (113)
+2423: 1aba:     ENDIF                                                             ! 1.7 RC (113)
+2424: 1ac2: 
+2425: 1ac2: !   Lines deleted - CIP Markdown process now in PROCESS.BTREE.RECORD  ! 1.7 RC (113)
+2426: 1ac2: !   (because this needs to be done for the entire PPFI - not just for ! 1.7 RC (113)
+2427: 1ac2: !   those items for which an IUF item is being processed)             ! 1.7 RC (113)
+2428: 1ac2: 
+2429: 1ac2: !   Lines removed                                                      ! 1.4 RC
+2430: 1ac2: !   Lines removed                                                      ! 1.7 rc (113)
+2431: 1ac2: 
+2432: 1ac2:     PPFK% = PPFK% + 1
+2433: 1ad1: 
+2434: 1ad1:     PPFK.DATE.DUE$(PPFK%)     = PREV.DATE.DUE$(PREV%)
+2435: 1b11:     PPFK.RPD.NO$(PPFK%)       = PREV.RPD.NO$(PREV%)
+2436: 1b51:     PPFK.STATUS.FLAG$(PPFK%)  = PREV.STATUS.FLAG$(PREV%)
+2437: 1b91:     PPFK.INC.DEC.FLAG$(PPFK%) = PREV.INC.DEC.FLAG$(PREV%)
+2438: 1bd1:     PPFK.PRICE$(PPFK%)        = PREV.PRICE$(PREV%)
+2439: 1c11:     PPFK.MARKDOWN$(PPFK%)     = PREV.MARKDOWN$(PREV%)
+2440: 1c51: 
+2441: 1c51: END SUB
+2442: 1c65: 
+2443: 1c65: 
+2444: 1c65: \******************************************************************************
+2445: 1c65: \***    SET.PPFK.FROM.CURR                                        ! 1.3 RC (53)
+2446: 1c65: \***
+2447: 1c65: \******************************************************************************
+2448: 1c65: 
+2449: 1c65: SUB SET.PPFK.FROM.CURR PUBLIC ! Entire function new for 1.3 RC (53)
+2450: 1c89: 
+2451: 1c89:     INTEGER*2 I%                                                ! 1.7 RC (113)
+2452: 1c89: 
+2453: 1c89: !   PREVENT DUPLICATION OF (SEL-PRINTED) EMERGENCY 99999 RPD    ! 1.7 RC (113)
+2454: 1c89: !   If CURR price change is an emergency 99999 RPD and there    ! 1.7 RC (113)
+2455: 1c89: !   is at least one price change already on the PPFK table ...  ! 1.9 RC (177)
+2456: 1c89:     IF CURR.RPD.NO$(CURR%) = PACK$("099999") \                  ! 1.7 RC (113)
+2457: 1ce1:       AND PPFK% >= 1 THEN BEGIN                                 ! 1.9 RC (177)
+2458: 1ce1: 
+2459: 1ce1: !       Check whether PPFK table contains an identical          ! 1.9 RC (177)
+2460: 1ce1: !       emergency 99999 RPD which has had its SEL printed and   ! 1.9 RC (177)
+2461: 1ce1: !       if so do not pass CURR emergency 99999 RPD to PPFK      ! 1.9 RC (177)
+2462: 1ce1: !       (because this would duplicate existing PPFK emergency   ! 1.9 RC (177)
+2463: 1ce1: !        99999 RPD already SEL-actioned by store staff)         ! 1.9 RC (177)
+2464: 1ce1:         FOR I% = 1 TO PPFK%                                     ! 1.9 RC (177)
+2465: 1cf2:             IF   PPFK.RPD.NO$(I%) = PACK$("099999") \           ! 1.9 RC (177)
+2466: 1db6:               AND PPFK.PRICE$(I%) = CURR.PRICE$(CURR%) \        ! 1.9 RC (177)
+2467: 1db6:               AND PPFK.STATUS.FLAG$(I%) <> " " THEN BEGIN       ! 1.11 RC (211)
+2468: 1db6:                 EXIT SUB ! Do not write to PPFK tables          ! 1.7 RC (113)
+2469: 1dc1:             ENDIF                                               ! 1.7 RC (113)
+2470: 1dc9:         NEXT I%                                                 ! 1.7 RC (113)
+2471: 1de8: 
+2472: 1de8:     ENDIF                                                       ! 1.7 RC (113)
+2473: 1df0: 
+2474: 1df0: !   Lines deleted - CIP Markdown process now in PROCESS.BTREE.RECORD  ! 1.7 RC (113)
+2475: 1df0: !   (because this needs to be done for the entire PPFI - not just for ! 1.7 RC (113)
+2476: 1df0: !   those items for which an IUF item is being processed)             ! 1.7 RC (113)
+2477: 1df0: 
+2478: 1df0: !   Lines removed                                                      ! 1.4 RC
+2479: 1df0: !   Lines removed                                                      ! 1.7 RC (113)
+2480: 1df0: 
+2481: 1df0:     PPFK% = PPFK% + 1
+2482: 1dff: 
+2483: 1dff:     PPFK.DATE.DUE$(PPFK%)     = CURR.DATE.DUE$(CURR%)
+2484: 1e3f:     PPFK.RPD.NO$(PPFK%)       = CURR.RPD.NO$(CURR%)
+2485: 1e7f:     PPFK.STATUS.FLAG$(PPFK%)  = CURR.STATUS.FLAG$(CURR%)
+2486: 1ebf:     PPFK.INC.DEC.FLAG$(PPFK%) = CURR.INC.DEC.FLAG$(CURR%)
+2487: 1eff:     PPFK.PRICE$(PPFK%)        = CURR.PRICE$(CURR%)
+2488: 1f3f:     PPFK.MARKDOWN$(PPFK%)     = CURR.MARKDOWN$(CURR%)
+2489: 1f7f: 
+2490: 1f7f: END SUB
+2491: 1f93: 
+2492: 1f93: 
+2493: 1f93: \******************************************************************************
+2494: 1f93: \***    SET.PPFK.FROM.CURR.PLUS.PREV                              ! 1.3 RC (53)
+2495: 1f93: \***
+2496: 1f93: \******************************************************************************
+2497: 1f93: 
+2498: 1f93: SUB SET.PPFK.FROM.CURR.PLUS.PREV PUBLIC ! Entire function new for 1.3 RC (53)
+2499: 1fb7: 
+2500: 1fb7:     CALL SET.PPFK.FROM.CURR ! Adjusts K% as needed
+2501: 1fc3: 
+2502: 1fc3: !   When new price change is identical to old price change
+2503: 1fc3:     IF   PREV.RPD.NO$(PREV%) = CURR.RPD.NO$(CURR%) \
+2504: 206a:       AND PREV.PRICE$(PREV%) = CURR.PRICE$(CURR%) THEN BEGIN
+2505: 206a: !       Keep old price change flags
+2506: 206a:         PPFK.STATUS.FLAG$(PPFK%)  = PREV.STATUS.FLAG$(PREV%)
+2507: 20aa:         PPFK.INC.DEC.FLAG$(PPFK%) = PREV.INC.DEC.FLAG$(PREV%)
+2508: 20ea:         PPFK.MARKDOWN$(PPFK%)     = PREV.MARKDOWN$(PREV%)
+2509: 212a:         ENDIF
+2510: 2132: 
+2511: 2132: END SUB
+2512: 2146: 
+2513: 2146: 
+2514: 2146: \******************************************************************************
+2515: 2146: \***
+2516: 2146: \***    PROCESS.PPFK.ITEM
+2517: 2146: \***
+2518: 2146: \******************************************************************************
+2519: 2146: \***
+2520: 2146: \***    Merges old and new price changes on the PPFK
+2521: 2146: \***
+2522: 2146: \******************************************************************************
+2523: 2146: 
+2524: 2146: SUB PROCESS.PPFK.ITEM PUBLIC
+2525: 216a: 
+2526: 216a:     INTEGER*1 RC%
+2527: 216a:     INTEGER*1 END.OF.PRICE.CHANGES
+2528: 216a: 
+2529: 216a: !   STOP.CHECK          = FALSE                                               ! 1.6 RC (109)
+2530: 216a: !   REMOVE.COUNT.CIPPMR = 0                                                   ! 1.5 RC (105)
+2531: 216a: 
+2532: 216a:     PPFK.BOOTS.CODE$ = CURR.BOOTS.CODE$
+2533: 2188: 
+2534: 2188: !---------------------------------------------------------------------------- ! 1.3 RC (53)
+2535: 2188: !   Read PPFK to obtain any PPFI price changes                                ! 1.3 RC (53)
+2536: 2188: !   Pass these from the PPFK tables to the PREV tables                        ! 1.3 RC (53)
+2537: 2188: !---------------------------------------------------------------------------- ! 1.3 RC (53)
+2538: 2188: !   This section re-written for Rv 1.3 RC (53)                                ! 1.3 RC (53)
+2539: 2188: 
+2540: 2188:     PREV.PCR.COUNT% = 0
+2541: 2199: 
+2542: 2199:     ! Read PPFK record to check if price changes already exist for this item
+2543: 2199:     RC% = READ.PPFK ! Sets PPFK.PCR.COUNT%
+2544: 21a9: 
+2545: 21a9:     !IF price changes already exist for this item
+2546: 21a9:     IF RC% = 0 THEN BEGIN
+2547: 21bb: 
+2548: 21bb:         PPFK% = 1 ! Subscript for PPFK tables holding PPFI data
+2549: 21cc:         PREV% = 1 ! Subscript for PREV tables to be populated from PPFK
+2550: 21dd: 
+2551: 21dd: !       For each existing price change
+2552: 21dd:         WHILE PPFK% <= PPFK.PCR.COUNT%
+2553: 21e7: 
+2554: 21e7: !           Move all price changes from PPFK to PREV tables     ! 1.7 RC (113)
+2555: 21e7:             PREV.PCR.COUNT% = PREV.PCR.COUNT% + 1
+2556: 21f6:             CALL SET.PREV.FROM.PPFK
+2557: 2202:             PREV% = PREV% + 1
+2558: 2211: 
+2559: 2211:             PPFK% = PPFK% + 1
+2560: 2220:         WEND
+2561: 2238: 
+2562: 2238:     ENDIF
+2563: 2240: 
+2564: 2240: !   SET UP EMERGENCY 99999 RPD                                                  ! 1.7 RC (113)
+2565: 2240: !   When the price on the IUF item record does not match the IRF sale price     ! 1.9 RC (177)
+2566: 2240: !   (of LOCAL Head Office price, or CIPPMR Reversals Price)                     ! 1.9 RC (177)
+2567: 2240: !     even if the item is locally priced                                        ! 1.7 RC (113)
+2568: 2240: !     even if the item is on CIP markdown                                       ! 1.7 RC (113)
+2569: 2240: !     and there is no price change for today on (IUF) CURR data table           ! 1.7 RC (113)
+2570: 2240: !       Place an emergency 99999 RPD onto the CURR data table                   ! 1.7 RC (113)
+2571: 2240:     IF PRICE.MISMATCH \                            ! Price discrepancy          ! 1.9 RC
+2572: 225c: \     AND (IRF.INDICAT3%    AND 20h) = 0h \        ! Local price flag OFF       ! 1.7 RC (113)
+2573: 225c: \     AND (IDF.BIT.FLAGS.1% AND 20h) = 0h \        ! Markdown flag OFF          ! 1.7 RC (113)
+2574: 225c:       AND NOT PRICE.CHANGE.TODAY  THEN BEGIN       ! No price changes today     ! 1.7 RC (113)
+2575: 225c:         CURR.PCR.COUNT% = CURR.PCR.COUNT% + 1                                   ! 1.7 RC (113)
+2576: 226b:         CALL STORE.EMERG.PRICE.CHANGE(CURR.PCR.COUNT%)                          ! 1.7 RC (113)
+2577: 2281:     ENDIF                                                                       ! 1.7 RC (113)
+2578: 2289: 
+2579: 2289: !   Line deleted                                                                ! 1.7 RC (113)
+2580: 2289: !   PRICE.CHANGE.TODAY now reset at end of PROCESS.IUF.ITEM                     ! 1.7 RC (113)
+2581: 2289: 
+2582: 2289: !   Sort CURR price change data by ascending date-RPD      ! 1.9 RC (177)
+2583: 2289: !   if not already in this order                           ! 1.7 RC (113)
+2584: 2289:     IF CURR.SORT.NEEDED THEN BEGIN                         ! 1.7 RC (113)
+2585: 229b:         CALL SORT.CURR.TABLES                              ! 1.7 RC (113)
+2586: 22a8:     ENDIF
+2587: 22b0: 
+2588: 22b0: !   At this point ...
+2589: 22b0: !   PREV table holds all PPFI price changes for the item   ! 1.7 RC (113)
+2590: 22b0: !   CURR table holds all IUF price changes for the item
+2591: 22b0: !   PPFK table will be used to hold the merge of these
+2592: 22b0: 
+2593: 22b0:     PREV% = 1 ! Subscript for old price changes from PPFI
+2594: 22c1:     CURR% = 1 ! Subscript for new price changes from IUF
+2595: 22d2: 
+2596: 22d2:     PPFK% = 0 ! Subscript for merged price changes for PPFK
+2597: 22e3:               ! This is incremented within sub-routines as needed to cater
+2598: 22e3:               ! for exclusion of markdown items and for emergency RPD's
+2599: 22e3: 
+2600: 22e3: !---------------------------------------------------------------------------- ! 1.3 RC (53)
+2601: 22e3: !   Populate PPFK tables by merge of PREV and CURR tables data (if any)       ! 1.3 RC (53)
+2602: 22e3: !   until either the PREV or CURR tables have been fully processed then       ! 1.3 RC (53)
+2603: 22e3: !   continue populating the PPFK tables from the remaining data               ! 1.3 RC (53)
+2604: 22e3: !---------------------------------------------------------------------------- ! 1.3 RC (53)
+2605: 22e3: !   This section new for Rv 1.3 RC (53)                                       ! 1.3 RC (53)
+2606: 22e3: 
+2607: 22e3: !   Both PPFK and CURR data tables are in ascending date-RPD order (latest last) ! 1.9 RC (177)
+2608: 22e3: !   This merge routine selects the oldest price change(s) first, then the next   ! 1.9 RC (177)
+2609: 22e3: !   oldest price change(s), leaving most future price change(s) until last       ! 1.9 RC (177)
+2610: 22e3: 
+2611: 22e3:     WHILE PREV% <= PREV.PCR.COUNT% \
+2612: 22ee:       AND CURR% <= CURR.PCR.COUNT%
+2613: 22ee: 
+2614: 22ee:         IF   PREV.DATE.DUE$(PREV%) < CURR.DATE.DUE$(CURR%) THEN BEGIN   ! 1.9 RC (177)
+2615: 2335: 
+2616: 2335:                  CALL SET.PPFK.FROM.PREV ! Adjusts PPFK% as needed
+2617: 2341:                  PREV% = PREV% + 1
+2618: 2353: 
+2619: 2353:         ENDIF ELSE BEGIN
+2620: 235b: 
+2621: 235b:          IF  PREV.DATE.DUE$(PREV%) > CURR.DATE.DUE$(CURR%) THEN BEGIN   ! 1.9 RC (177)
+2622: 23a2: 
+2623: 23a2:                  CALL SET.PPFK.FROM.CURR ! Adjusts PPFK% as needed
+2624: 23ae:                  CURR% = CURR% + 1
+2625: 23c0: 
+2626: 23c0:          ENDIF ELSE BEGIN
+2627: 23c8: 
+2628: 23c8:           IF PREV.DATE.DUE$(PREV%) = CURR.DATE.DUE$(CURR%) THEN BEGIN
+2629: 240f: 
+2630: 240f:                  CALL SET.PPFK.FROM.CURR.PLUS.PREV ! Adjusts PPFK% as needed
+2631: 241b:                  PREV% = PREV% + 1
+2632: 242a:                  CURR% = CURR% + 1
+2633: 2439: 
+2634: 2439:           ENDIF
+2635: 2441:          ENDIF
+2636: 2449:         ENDIF
+2637: 2451: 
+2638: 2451:     WEND
+2639: 2488: 
+2640: 2488: !   Populate PPFK tables from any remaining PREV tables data
+2641: 2488:     WHILE PREV% <= PREV.PCR.COUNT%
+2642: 2492:         CALL SET.PPFK.FROM.PREV ! Adjusts PPFK% as needed
+2643: 249e:         PREV% = PREV% + 1
+2644: 24ad:     WEND
+2645: 24c5: 
+2646: 24c5: !   Populate PPFK tables from any remaining CURR table data
+2647: 24c5:     WHILE CURR% <= CURR.PCR.COUNT%
+2648: 24cf:         CALL SET.PPFK.FROM.CURR ! Adjusts PPFK% as needed
+2649: 24db:         CURR% = CURR% + 1
+2650: 24ea:     WEND
+2651: 2502: 
+2652: 2502: !   Section removed                                             ! 1.7 RC (113)
+2653: 2502: 
+2654: 2502: !---------------------------------------------------------------------------- ! 1.3 RC (53)
+2655: 2502: !   Update PPFK file from PPFK tables merged from PREV (PPFI) and CURR (IUF)  ! 1.3 RC (53)
+2656: 2502: !---------------------------------------------------------------------------- ! 1.3 RC (53)
+2657: 2502: !   This section re-structured for Rv 1.3 RC (53)                             ! 1.3 RC (53)
+2658: 2502: 
+2659: 2502: !   Set PPFK file variable PPFK.PCR.COUNT$ to number of PPFK records (if any)
+2660: 2502: !   to be written back to the PPFK (as this controls function WRITE.PPFK)
+2661: 2502:     PPFK.PCR.COUNT% = PPFK%
+2662: 2518: 
+2663: 2518: !   If new price changes on PPFK table write them to the PPFK file            ! 1.1 RC
+2664: 2518:     IF PPFK.PCR.COUNT% <> 0 THEN BEGIN
+2665: 252d: 
+2666: 252d:         RC% = WRITE.PPFK
+2667: 253d: 
+2668: 253d:         IF RC% <> 0 THEN BEGIN
+2669: 254f:             ! Handle error - Write error on PPFK
+2670: 254f:             CALL DO.MESSAGE("PSB21 *** WRITE ERROR ON PPFK", FALSE)
+2671: 258e:             CALL DO.MESSAGE("          PPFK.PCR.COUNT%: " + STR$(PPFK.PCR.COUNT%), FALSE)
+2672: 25df:             CALL LOG.EVENT(106)
+2673: 2605:         ENDIF
+2674: 2610: 
+2675: 2610:     ENDIF ELSE BEGIN                                                          ! 1.3 RC (53)
+2676: 2618: 
+2677: 2618: !       No price changes on PPFK table merged from PREV (PPFI) and CURR (IUF) ! 1.3 RC (53)
+2678: 2618: !       but check if some (from input PPFI) which need to be deleted          ! 1.3 RC (53)
+2679: 2618:         IF PPFK.PCR.COUNT.READ% <> 0 THEN BEGIN                               ! 1.3 RC (53)
+2680: 262d: 
+2681: 262d:             ! Delete old price changes from PPFK
+2682: 262d:             RC% = DELETE.PPFK
+2683: 263d: 
+2684: 263d:             IF RC% <> 0 THEN BEGIN
+2685: 264c:                 ! Handle error - Delete error on PPFK
+2686: 264c:                 CALL DO.MESSAGE("PSB21 *** DELETE ERROR ON PPFK", FALSE)
+2687: 268b:                 CALL LOG.EVENT(106)
+2688: 26b1:             ENDIF
+2689: 26b9: 
+2690: 26b9:         ENDIF                                                                 ! 1.3 RC (53)
+2691: 26c1:     ENDIF                                                                     ! 1.3 RC (53)
+2692: 26c9: 
+2693: 26c9: END SUB
+2694: 26dd: 
+2695: 26dd: 
+2696: 26dd: \******************************************************************************
+2697: 26dd: \***
+2698: 26dd: \***    RENAME.PPFO.TO.PPFI
+2699: 26dd: \***
+2700: 26dd: \******************************************************************************
+2701: 26dd: \***
+2702: 26dd: \***    Replaces the old PPFI with the new PPFO
+2703: 26dd: \***
+2704: 26dd: \******************************************************************************
+2705: 26dd: FUNCTION RENAME.PPFO.TO.PPFI !PRIVATE
+2706: 2701: 
+2707: 2701:     INTEGER*1 RENAME.PPFO.TO.PPFI,RETRY.COUNT%
+2708: 2701:     INTEGER*4 RETC%
+2709: 2701: 
+2710: 2701:     RENAME.PPFO.TO.PPFI = 0
+2711: 270d: 
+2712: 270d:     RETC% = -1
+2713: 2722:     RETRY.COUNT% = 0
+2714: 272f: 
+2715: 272f:     ! While we haven't successfully copied the PPFO file AND
+2716: 272f:     ! we haven't had enough of retrying yet
+2717: 272f:     WHILE (RETC% < 0  AND RETRY.COUNT% < 4)
+2718: 273a: 
+2719: 273a:         ! Replace the PPFI file with the PPFO file
+2720: 273a:         CALL ADXCOPYF(RETC%,PPFO.FILE.NAME$,PPFI.FILE.NAME$,0,1,0)
+2721: 2784: 
+2722: 2784:         RETRY.COUNT% = RETRY.COUNT% + 1
+2723: 2790: 
+2724: 2790:         ! IF the copy failed for some strange reason
+2725: 2790:         IF (RETC% < 0)  THEN BEGIN
+2726: 27a9:             ! Wait for a bit....
+2727: 27a9:             WAIT; 15000
+2728: 27c0:         ENDIF
+2729: 27c8: 
+2730: 27c8:     WEND
+2731: 27f7: 
+2732: 27f7:     ! IF PPFO copy was successful
+2733: 27f7:     IF RETC% = 0 THEN BEGIN
+2734: 2815: 
+2735: 2815:         CURRENT.REPORT.NUM% = PPFO.REPORT.NUM%
+2736: 282b:         ! Open the PPFO file, then delete it
+2737: 282b:         FILE.OPERATION$ = "O"
+2738: 2842:         OPEN PPFO.FILE.NAME$ AS PPFO.SESS.NUM%
+2739: 2869:         FILE.OPERATION$ = "D"
+2740: 2880:         DELETE PPFO.SESS.NUM%
+2741: 2896: 
+2742: 2896:     ! ELSE IF we still couldn't copy the PPFO
+2743: 2896:     ENDIF ELSE IF (RETC% < 0)  THEN BEGIN
+2744: 28af:         RENAME.PPFO.TO.PPFI = 1
+2745: 28bb:     ENDIF
+2746: 28c3: 
+2747: 28c3: END FUNCTION
+2748: 28da: 
+2749: 28da: \******************************************************************************
+2750: 28da: \***
+2751: 28da: \***    CREATE.NEW.PPFI
+2752: 28da: \***
+2753: 28da: \******************************************************************************
+2754: 28da: \***
+2755: 28da: \***    Create a new PPFI from
+2756: 28da: \***
+2757: 28da: \******************************************************************************
+2758: 28da: SUB CREATE.NEW.PPFI PUBLIC
+2759: 28fe: 
+2760: 28fe:     INTEGER*4   RC%
+2761: 28fe:     INTEGER*4   PPFK.FID%
+2762: 28fe:     INTEGER*4   PPFK.RETLEN%
+2763: 28fe:     INTEGER*4   PPFK.OFFSET%
+2764: 28fe:     INTEGER*4   PPFK.COUNT%
+2765: 28fe:     INTEGER*4   PPFK.KEY%
+2766: 28fe:     INTEGER*2   I%
+2767: 28fe:     INTEGER*2   PPFK.MODE%                                                  !AMW
+2768: 28fe:     INTEGER*2   PPFK.OPTIONS%
+2769: 28fe:     INTEGER*2   PPFK.PCR.INDEX%
+2770: 28fe:     INTEGER*1   PPFK.START.SEQ%
+2771: 28fe:     INTEGER*1   PPFK.END.SEQ%
+2772: 28fe:     INTEGER*1   END.OF.PPFK.RECORDS
+2773: 28fe:     INTEGER*1   END.OF.PRICE.CHANGES
+2774: 28fe:     STRING      PPFK.RECORD$
+2775: 28fe:     STRING      PPFK.DATA$
+2776: 28fe:     STRING      PPFK.PCR$
+2777: 28fe:     STRING      PPFK.PATTERN$
+2778: 28fe: 
+2779: 28fe:     PHASE$ = "4.0"                                                  ! 1.12 CSk
+2780: 2915:     CALL DO.MESSAGE("PSB21 PHASE 4", TRUE)
+2781: 2954:     CALL DO.MESSAGE("PSB21 4.0 - CREATE.NEW.PPFI", TRUE)
+2782: 2993: 
+2783: 2993:     PPFK.RETLEN%  = PPFK.RECL%                    ! Get entire PPFK record
+2784: 29ae:     PPFK.OPTIONS% = 201AH                         ! Opens file with read access only
+2785: 29bc:     PPFK.PATTERN$ = ""                            ! No search pattern required
+2786: 29d1:     PPFK.OFFSET%  = 0                             ! Start from beginning of PPFK record
+2787: 29e6:     PPFK.RECORD$  = STRING$(PPFK.RETLEN%,CHR$(0)) ! Initialise returned string
+2788: 2a0b:     PPFK.MODE%    = 0                             ! Pattern value mode      !AMW
+2789: 2a19: 
+2790: 2a19:     ! Set record type to price change (this will be set to 'R'
+2791: 2a19:     ! for every PPFO record other than the trailer)
+2792: 2a19:     PPF.REC.TYPE.FLAG$ = "R"
+2793: 2a30: 
+2794: 2a30: \------------------------------------------------------------------------------
+2795: 2a30: \---
+2796: 2a30: \---    STEP 1: Create a new empty PPFO file
+2797: 2a30: \---
+2798: 2a30: \------------------------------------------------------------------------------
+2799: 2a30: 
+2800: 2a30:     CALL DO.MESSAGE("PSB21 4.1 - Create Empty PPFI", TRUE)
+2801: 2a6f: 
+2802: 2a6f:     ! Create new empty PPFO file
+2803: 2a6f:     RC% = CREATE.PPFO
+2804: 2a8b: 
+2805: 2a8b:     ! IF new PPFO was successfully created
+2806: 2a8b:     IF RC% = 0 THEN BEGIN
+2807: 2aa6: 
+2808: 2aa6:         ! Initialise the PPFO record count
+2809: 2aa6:         PPFO.REC.COUNT% = 0
+2810: 2abd: 
+2811: 2abd:     ENDIF ELSE BEGIN
+2812: 2ac5:         ! Handle error - Failed creating new PPFO
+2813: 2ac5:         CALL DO.MESSAGE("PSB21 *** ERROR cannot create PPFO", FALSE)
+2814: 2b04:         CALL LOG.EVENT(106)
+2815: 2b2a:     ENDIF
+2816: 2b32: 
+2817: 2b32: \------------------------------------------------------------------------------
+2818: 2b32: \---
+2819: 2b32: \---    STEP 2: Pre-count the number of PPFK records so we know how big
+2820: 2b32: \---            to make our binary tree
+2821: 2b32: \---
+2822: 2b32: \------------------------------------------------------------------------------
+2823: 2b32: 
+2824: 2b32:     CALL DO.MESSAGE("PSB21 4.2 - Pre-count number of PPFK records", TRUE) ! 1.2 RC (50)
+2825: 2b71: 
+2826: 2b71:     ! Open PPFK as a direct file read access only
+2827: 2b71:     PPFK.FID% = INITKF(PPFK.FILE.NAME$,PPFK.OPTIONS%)
+2828: 2b9d: 
+2829: 2b9d:     ! Check for errors opening PPFK
+2830: 2b9d:     IF PPFK.FID% <= 0 THEN BEGIN
+2831: 2bb6:         ! Handle error - open error
+2832: 2bb6:         CALL DO.MESSAGE("PSB21 *** INITKF ERROR = " + HEX4$(PPFK.FID%), FALSE)
+2833: 2c04:         STOP
+2834: 2c11:     ENDIF
+2835: 2c19: 
+2836: 2c19: 
+2837: 2c19:    END.OF.PPFK.RECORDS = FALSE
+2838: 2c2b: 
+2839: 2c2b:     PPFK.COUNT% = 0
+2840: 2c40: 
+2841: 2c40:     ! WHILE there are more PPFK records to process
+2842: 2c40:     WHILE NOT END.OF.PPFK.RECORDS
+2843: 2c4b: 
+2844: 2c4b:         ! Read next PPFK record
+2845: 2c4b:         RC% = READKF(PPFK.RECORD$,PPFK.PATTERN$,PPFK.OFFSET%,PPFK.MODE%)    !AMW
+2846: 2c84: 
+2847: 2c84:         ! Check whether end of file reached
+2848: 2c84:         IF RC% = 0 THEN BEGIN
+2849: 2c9f: 
+2850: 2c9f:             PPFK.COUNT% = PPFK.COUNT% + 1
+2851: 2cbb: 
+2852: 2cbb:         ENDIF ELSE BEGIN
+2853: 2cc3: 
+2854: 2cc3:             ! Check whether an error has been returned
+2855: 2cc3:             IF RC% < -1 THEN BEGIN
+2856: 2cdf:                 CALL DO.MESSAGE("PSB21 *** READKF ERROR = " + HEX4$(RC%), FALSE)
+2857: 2d2d:                 CALL DO.MESSAGE("          PPFK.RECORD$ : " + PPFK.RECORD$, FALSE)
+2858: 2d77:                 CALL DO.MESSAGE("          PPFK.PATTERN$: " + PPFK.PATTERN$, FALSE)
+2859: 2dc1:                 CALL DO.MESSAGE("          PPFK.OFFSET% : " + STR$(PPFK.OFFSET%), FALSE)
+2860: 2e10:             ENDIF
+2861: 2e18: 
+2862: 2e18:             END.OF.PPFK.RECORDS = TRUE
+2863: 2e2a: 
+2864: 2e2a:         ENDIF
+2865: 2e32:     WEND
+2866: 2e44: 
+2867: 2e44:     ! Close PPFK file and deallocate memory
+2868: 2e44:     RC% = TERMKF(PPFK.FID%)
+2869: 2e69: 
+2870: 2e69:     ! IF close of PPFK failed
+2871: 2e69:     IF RC% < 0 THEN BEGIN
+2872: 2e82:         CALL DO.MESSAGE("PSB21 *** TERMKF ERROR = " + HEX4$(RC%), FALSE)
+2873: 2ed0:     ENDIF
+2874: 2ed8: 
+2875: 2ed8: \------------------------------------------------------------------------------
+2876: 2ed8: \---
+2877: 2ed8: \---    STEP 3: Create empty binary tree
+2878: 2ed8: \---
+2879: 2ed8: \------------------------------------------------------------------------------
+2880: 2ed8: 
+2881: 2ed8:     CALL DO.MESSAGE("PSB21 4.3 - Make binary tree for new PPFI recs", TRUE) ! 1.2 RC (50)
+2882: 2f17: 
+2883: 2f17:     ! Create binary tree to store new PPFI records
+2884: 2f17:     RC% = BTREE.CREATE.TREE(PPFK.COUNT%)
+2885: 2f3f: 
+2886: 2f3f:     IF RC% <> 0 THEN BEGIN
+2887: 2f5d:         ! Handle error - maximum possible tree size exceeded
+2888: 2f5d:         CALL DO.MESSAGE("PSB21 *** MAXIMUM POSSIBLE TREE SIZE EXCEEDED", FALSE)
+2889: 2f9c:         CALL DO.MESSAGE("          PPFK.COUNT%: " + STR$(PPFK.COUNT%), FALSE)
+2890: 2feb:         STOP
+2891: 2ff8:     ENDIF
+2892: 3000: 
+2893: 3000: \------------------------------------------------------------------------------
+2894: 3000: \---
+2895: 3000: \---    STEP 4: Process PPFK records and insert them into the binary tree
+2896: 3000: \---
+2897: 3000: \------------------------------------------------------------------------------
+2898: 3000: 
+2899: 3000:     CALL DO.MESSAGE("PSB21 4.4 - Insert PPFK recs into binary tree", TRUE) ! 1.2 RC (50)
+2900: 303f: 
+2901: 303f:     ! Open PPFK as a direct file read access only
+2902: 303f:     PPFK.FID% = INITKF(PPFK.FILE.NAME$,PPFK.OPTIONS%)
+2903: 306b: 
+2904: 306b:     ! Check for errors opening PPFK
+2905: 306b:     IF PPFK.FID% <= 0 THEN BEGIN
+2906: 3087:         ! Handle error - open error
+2907: 3087:         CALL DO.MESSAGE("PSB21 *** INITKF ERROR = " + HEX4$(PPFK.FID%), FALSE)
+2908: 30d5:         CALL DO.MESSAGE("          PPFK.FILE.NAME$: " + PPFK.FILE.NAME$, FALSE)
+2909: 3122:         CALL DO.MESSAGE("          PPFK.OPTIONS%  : " + STR$(PPFK.OPTIONS%), FALSE)
+2910: 316f:         STOP
+2911: 317c:     ENDIF
+2912: 3184: 
+2913: 3184:     END.OF.PPFK.RECORDS = FALSE
+2914: 3196: 
+2915: 3196:     ! WHILE there are more PPFK records to process
+2916: 3196:     WHILE NOT END.OF.PPFK.RECORDS
+2917: 31a1: 
+2918: 31a1:         ! Read next PPFK record
+2919: 31a1:         RC% = READKF(PPFK.RECORD$,PPFK.PATTERN$,PPFK.OFFSET%,PPFK.MODE%)    !AMW
+2920: 31da: 
+2921: 31da:         ! Check whether end of file reached
+2922: 31da:         IF RC% = 0 THEN BEGIN
+2923: 31f8: 
+2924: 31f8:             ! Get key value and data from PPFK record
+2925: 31f8:             PPFK.KEY%       = VAL(UNPACK$(LEFT$(PPFK.RECORD$,5)))
+2926: 322b:             PPFK.DATA$      = RIGHT$(PPFK.RECORD$,78)
+2927: 324b: 
+2928: 324b:             PPFK.START.SEQ% = VAL(UNPACK$(MID$(PPFK.RECORD$,5,1)))
+2929: 3276:             PPFK.END.SEQ%   = VAL(UNPACK$(MID$(PPFK.RECORD$,6,1)))
+2930: 32a1:             PPFK.PCR$       = ""
+2931: 32b6: 
+2932: 32b6:             ! IF this is the last PPFK sequence record (and hence may be only partially full)
+2933: 32b6:             IF PPFK.START.SEQ% = PPFK.END.SEQ% THEN BEGIN
+2934: 32ca: 
+2935: 32ca:                 END.OF.PRICE.CHANGES = FALSE
+2936: 32dc: 
+2937: 32dc:                 I% = 1
+2938: 32ea: 
+2939: 32ea:                 ! WHILE there are still price changes to process
+2940: 32ea:                 WHILE NOT END.OF.PRICE.CHANGES
+2941: 32f5: 
+2942: 32f5:                     ! Calculate the start index position of the next price change record
+2943: 32f5:                     PPFK.PCR.INDEX% = ((I% - 1) * PPFK.PCR.RECL%) + 1
+2944: 330c: 
+2945: 330c:                     ! IF we have an empty price change record
+2946: 330c:                     IF MID$(PPFK.DATA$,PPFK.PCR.INDEX%,3) = PPFK.PACK03$ THEN BEGIN
+2947: 3347:                         END.OF.PRICE.CHANGES = TRUE
+2948: 335b:                     ENDIF ELSE BEGIN
+2949: 3363:                         ! Add price change record
+2950: 3363:                         PPFK.PCR$ = PPFK.PCR$ + MID$(PPFK.DATA$,PPFK.PCR.INDEX%,PPFK.PCR.RECL%)
+2951: 3397:                     ENDIF
+2952: 339f: 
+2953: 339f:                     ! Move to the next price change record
+2954: 339f:                     I% = I% + 1
+2955: 33ab: 
+2956: 33ab:                     ! IF we've just processed the last price change in the sequence record
+2957: 33ab:                     IF I% > PPFK.PCR.PER.RECORD% THEN BEGIN
+2958: 33c0:                         END.OF.PRICE.CHANGES = TRUE
+2959: 33d2:                     ENDIF
+2960: 33da: 
+2961: 33da:                 WEND
+2962: 33ee: 
+2963: 33ee:             ! ELSE the sequence record must be fully populated with price change records
+2964: 33ee:             ENDIF ELSE BEGIN
+2965: 33f6: 
+2966: 33f6:                 PPFK.PCR$ = PPFK.DATA$
+2967: 340f: 
+2968: 340f:             ENDIF
+2969: 3417: 
+2970: 3417:             ! Insert PPFK record into binary tree
+2971: 3417:             RC% = BTREE.INSERT.NODE(PPFK.KEY%,PPFK.PCR$)
+2972: 3447: 
+2973: 3447:             IF RC% <> 0 THEN BEGIN
+2974: 3465:                 ! Handle error - Couldn't insert new node
+2975: 3465:                 CALL DO.MESSAGE("PSB21 *** BTREE INSERT ERROR", FALSE)
+2976: 34a4:                 CALL DO.MESSAGE("          PPFK.KEY%: " + STR$(PPFK.KEY%), FALSE)
+2977: 34f3:                 CALL DO.MESSAGE("          PPFK.PCR$: " + PPFK.PCR$, FALSE)
+2978: 353d:             ENDIF
+2979: 3548: 
+2980: 3548:         ENDIF ELSE BEGIN
+2981: 3550: 
+2982: 3550:             ! Check whether an error has been returned
+2983: 3550:             IF RC% < -1 THEN BEGIN
+2984: 356c:                 ! Handle error - open error
+2985: 356c:                 CALL DO.MESSAGE("PSB21 *** READKF ERROR " + HEX4$(RC%), FALSE)
+2986: 35ba:                 CALL DO.MESSAGE("          PPFK.RECORD$ : " + PPFK.RECORD$, FALSE)
+2987: 3604:                 CALL DO.MESSAGE("          PPFK.PATTERN$: " + PPFK.PATTERN$, FALSE)
+2988: 364e:                 CALL DO.MESSAGE("          PPFK.OFFSET% : " + STR$(PPFK.OFFSET%), FALSE)
+2989: 369d:                 !Create new event
+2990: 369d:                 STOP
+2991: 36aa:             ENDIF
+2992: 36b2: 
+2993: 36b2:             END.OF.PPFK.RECORDS = TRUE
+2994: 36c4: 
+2995: 36c4:         ENDIF
+2996: 36cc:     WEND
+2997: 36de: 
+2998: 36de:     ! Close PPFK file and deallocate memory
+2999: 36de:     RC% = TERMKF(PPFK.FID%)
+3000: 3703: 
+3001: 3703:     ! IF close of PPFK failed
+3002: 3703:     IF RC% < 0 THEN BEGIN
+3003: 371c:         CALL DO.MESSAGE("PSB21 *** TERMKF ERROR = " + HEX4$(RC%), FALSE)
+3004: 376a:     ENDIF
+3005: 3772: 
+3006: 3772: \------------------------------------------------------------------------------
+3007: 3772: \---
+3008: 3772: \---    STEP 5: Traverse binary tree 'inorder' and write records to PPFO
+3009: 3772: \---
+3010: 3772: \------------------------------------------------------------------------------
+3011: 3772: 
+3012: 3772:     CALL DO.MESSAGE("PSB21 4.5 - Process binary tree; Write to PPFO", TRUE) ! 1.2 RC (50)
+3013: 37b1: 
+3014: 37b1:     IF PPFK.COUNT% > 0 THEN BEGIN
+3015: 37ca:         ! Traverse binary tree starting at the root node
+3016: 37ca:         ! CALL BTREE.TRAVERSE.INORDER(BTREE.ROOT%)
+3017: 37ca:         CALL BTREE.TRAVERSE.TREE(BTREE.ROOT%)
+3018: 37f3:     ENDIF ELSE BEGIN
+3019: 37fb:         CALL DO.MESSAGE("PSB21 4.5a- No records found on PPFI", TRUE)
+3020: 383a:     ENDIF
+3021: 3842: 
+3022: 3842: \------------------------------------------------------------------------------
+3023: 3842: \---
+3024: 3842: \---    STEP 6: Add trailer to PPFO
+3025: 3842: \---
+3026: 3842: \------------------------------------------------------------------------------
+3027: 3842: 
+3028: 3842:     CALL DO.MESSAGE("PSB21 4.6 - Add trailer to PPFO", TRUE)
+3029: 3881: 
+3030: 3881:     PPF.BOOTS.CODE$    = "9999999"
+3031: 3898:     PPF.REC.TYPE.FLAG$ = "T"
+3032: 38af: 
+3033: 38af:     ! Calculate PPFO record count (including trailer)
+3034: 38af:     PPF.REC.COUNT$ = RIGHT$("00000" + STR$(PPFO.REC.COUNT% + 1),5)
+3035: 38fe: 
+3036: 38fe:     ! Write trailer record to PPFO
+3037: 38fe:     RC% = WRITE.PPFO
+3038: 3917: 
+3039: 3917:     ! IF write to PPFO failed
+3040: 3917:     IF RC% <> 0 THEN BEGIN
+3041: 3932:         ! Handle error - Failed to write PPFO trailer
+3042: 3932:         CALL DO.MESSAGE("PSB21 *** ERROR writing PPFO trailer", FALSE)
+3043: 3971:         CALL LOG.EVENT(106)
+3044: 3997:     ENDIF
+3045: 399f: 
+3046: 399f:     ! Close the PPFO file
+3047: 399f:     CLOSE PPFO.SESS.NUM%
+3048: 39b3: 
+3049: 39b3: \------------------------------------------------------------------------------
+3050: 39b3: \---
+3051: 39b3: \---    STEP 7: Replace the old PPFI with the new PPFO
+3052: 39b3: \---
+3053: 39b3: \------------------------------------------------------------------------------
+3054: 39b3: 
+3055: 39b3:     CALL DO.MESSAGE("PSB21 4.7 - Replace old PPFI with new PPFO", TRUE) ! 1.2 RC (50)
+3056: 39f2: 
+3057: 39f2:     ! Copy PPFO file to PPFI file, then delete PPFO
+3058: 39f2:     RC% = RENAME.PPFO.TO.PPFI
+3059: 3a0e: 
+3060: 3a0e:     IF RC% <> 0 THEN BEGIN
+3061: 3a29:         ! Handle error - Failed renaming PPFO to PPFI
+3062: 3a29:         CALL DO.MESSAGE("PSB21 *** ERROR copying PPFO", FALSE)
+3063: 3a68:         CALL LOG.EVENT(106)
+3064: 3a8e:     ENDIF
+3065: 3a96: 
+3066: 3a96: \------------------------------------------------------------------------------
+3067: 3a96: \---
+3068: 3a96: \---    STEP 8: Destroy the binary tree
+3069: 3a96: \---
+3070: 3a96: \------------------------------------------------------------------------------
+3071: 3a96: 
+3072: 3a96:     CALL DO.MESSAGE("PSB21 4.8 - Delete binary tree; Free up memory", TRUE) ! 1.2 RC (50)
+3073: 3ad5: 
+3074: 3ad5:     ! Delete binary tree and deallocate memory
+3075: 3ad5:     CALL BTREE.DESTROY.TREE
+3076: 3ae2: 
+3077: 3ae2: END SUB
+3078: 3af6: 
+3079: 3af6: End of Compilation

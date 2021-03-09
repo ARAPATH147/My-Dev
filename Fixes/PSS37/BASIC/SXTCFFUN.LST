@@ -1,0 +1,315 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   SXTCFFUN.BAS  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.2  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: \******************************************************************************\*****************************************************************************
+  10: 0000: \*****************************************************************************
+  11: 0000: \***
+  12: 0000: \***                      SXTCF  FILE FUNCTIONS 
+  13: 0000: \***
+  14: 0000: \***                      REFERENCE    : SXTCFFUN
+  15: 0000: \***
+  16: 0000: \***
+  17: 0000: \***           VERSION A       Nik Sen         3rd July 1997
+  18: 0000: \***
+  19: 0000: \***           VERSION B       Johnnie Chan    6th Jan 1998
+  20: 0000: \***                           Added current location code.
+  21: 0000: \***
+  22: 0000: \*****************************************************************************
+  23: 0000: \*****************************************************************************
+  24: 0000: 
+  25: 0000: 
+  26: 0000:    INTEGER*2 GLOBAL                  \
+  27: 0000:       CURRENT.REPORT.NUM%
+  28: 0000: 
+  29: 0000:    STRING GLOBAL                     \
+  30: 0000:       CURRENT.CODE$,                 \
+  31: 0000:       FILE.OPERATION$
+  32: 0000: 
+  33: 0000:    %INCLUDE SXTCFDEC.J86                                       
+  34: 0000: \******************************************************************************
+  35: 0000: \******************************************************************************
+  36: 0000: \***
+  37: 0000: \***   $Workfile:   SXTCFDEC.J86  $
+  38: 0000: \***
+  39: 0000: \***   $Revision:   1.1  $
+  40: 0000: \***
+  41: 0000: \******************************************************************************
+  42: 0000: \******************************************************************************
+  43: 0000: \***
+  44: 0000: \***   $Log:   V:\archive\j86\sxtcfdec.j8v  $
+  45: 0000: \***   
+  46: 0000: \***      Rev 1.1   07 Jan 1998 10:26:30   DEV69PS
+  47: 0000: \***    
+  48: 0000: \***   
+  49: 0000: \***      Rev 1.0   15 Jul 1997 14:21:06   DEV45PS
+  50: 0000: \***    
+  51: 0000: \***   
+  52: 0000: \***      Rev 1.1   15 Jul 1997 13:44:06   DEV45PS
+  53: 0000: \***    
+  54: 0000: \***   
+  55: 0000: \***      Rev 1.0   09 Jul 1997 11:05:28   DEV45PS
+  56: 0000: \***   Stocktake System New Files
+  57: 0000: \***   
+  58: 0000: \*** 
+  59: 0000: \***   
+  60: 0000: \******************************************************************************
+  61: 0000: \******************************************************************************\*****************************************************************************
+  62: 0000: \*****************************************************************************
+  63: 0000: \***
+  64: 0000: \***               %INCLUDE FOR SXTCF - FIELD DECLARATIONS
+  65: 0000: \***                                    FILE REFERENCE PARAMETERS
+  66: 0000: \***
+  67: 0000: \***                      FILE TYPE    : DIRECT
+  68: 0000: \***
+  69: 0000: \***                      REFERENCE    : SXTCFDEC
+  70: 0000: \***
+  71: 0000: \***           VERSION A : NIK SEN  3rd July 1997
+  72: 0000: \***
+  73: 0000: \***
+  74: 0000: 
+  75: 0000: \*****************************************************************************
+  76: 0000: \*****************************************************************************
+  77: 0000: 
+  78: 0000: 
+  79: 0000:   STRING GLOBAL           \
+  80: 0000:     SXTCF.FILE.NAME$
+  81: 0000: 
+  82: 0000:   INTEGER*1 GLOBAL        \
+  83: 0000:     SXTCF.HEADER.EXPECTED%
+  84: 0000: 
+  85: 0000:   INTEGER*2 GLOBAL        \
+  86: 0000:     SXTCF.SESS.NUM%,      \
+  87: 0000:     SXTCF.REPORT.NUM%,    \
+  88: 0000:     SXTCF.RECL%
+  89: 0000: 
+  90: 0000:   INTEGER*4 GLOBAL        \
+  91: 0000:     SXTCF.REC.NUM%
+  92: 0000: 
+  93: 0000: 
+  94: 0000:   INTEGER*4 GLOBAL                                   \
+  95: 0000:             SXTCF.STKBF.POINTER%,                    \ Pointer to STKBF
+  96: 0000:             SXTCF.ITEM.COUNT%,                       \ No of items processed
+  97: 0000:             SXTCF.CURRENT.COUNT%                     ! Items in current batch
+  98: 0000: 
+  99: 0000: 
+ 100: 0000:   STRING GLOBAL                                 \
+ 101: 0000:        SXTCF.START.DATE$,                       \
+ 102: 0000:        SXTCF.START.TIME$,                       \
+ 103: 0000:        SXTCF.END.DATE$,                         \
+ 104: 0000:        SXTCF.END.TIME$,                         \
+ 105: 0000:        SXTCF.STOCKTAKE.IN.PROGRESS$,            \ Y=Yes; N=No; S=Stop; C=Complete 1 BYTE
+ 106: 0000:        SXTCF.STOCKTAKER$,                       \ Current Stocktaker
+ 107: 0000:        SXTCF.CUR.LOCATION$,                     \ Location code currently be processed ! 1.1
+ 108: 0000:        SXTCF.FILLER$                            \ 
+ 109: 0000: 
+ 110: 0000: 
+ 111: 0000: 
+ 112: 0000: 
+ 113: 0000:    FUNCTION SXTCF.SET PUBLIC
+ 114: 0014: 
+ 115: 0014: 
+ 116: 0014:     SXTCF.REPORT.NUM%  = 533
+ 117: 001d:     SXTCF.RECL%        = 80
+ 118: 0026:     SXTCF.FILE.NAME$   = "SXTCF"
+ 119: 0035:     SXTCF.REC.NUM%     = 1
+ 120: 0044: 
+ 121: 0044: END FUNCTION
+ 122: 0050: 
+ 123: 0050: \----------------------------------------------------------------------------
+ 124: 0050:                                                                      
+ 125: 0050: 
+ 126: 0050: 
+ 127: 0050:   FUNCTION READ.SXTCF.LOCK PUBLIC
+ 128: 0064: 
+ 129: 0064:    INTEGER*1 READ.SXTCF.LOCK
+ 130: 0064: 
+ 131: 0064:    READ.SXTCF.LOCK = 1
+ 132: 0068: 
+ 133: 0068:    IF END#SXTCF.SESS.NUM% THEN READ.SXTCF.LOCK.ERROR
+ 134: 007c: 
+ 135: 007c:     READ FORM "I4,I4,C3,C2,C3,C2,C1,I1,I4,C4,C5,C47";                 \ Ver B
+ 136: 0127:         #SXTCF.SESS.NUM%  AUTOLOCK,             \
+ 137: 0127:                                     SXTCF.REC.NUM%;                         \
+ 138: 0127:                                     SXTCF.STKBF.POINTER%,                   \
+ 139: 0127:                                     SXTCF.ITEM.COUNT%,                      \
+ 140: 0127:                                     SXTCF.START.DATE$,                      \
+ 141: 0127:                                     SXTCF.START.TIME$,                      \
+ 142: 0127:                                     SXTCF.END.DATE$,                        \
+ 143: 0127:                                     SXTCF.END.TIME$,                        \
+ 144: 0127:                                     SXTCF.STOCKTAKE.IN.PROGRESS$,           \
+ 145: 0127:                                     SXTCF.HEADER.EXPECTED%,                 \
+ 146: 0127:                                     SXTCF.CURRENT.COUNT%,                   \
+ 147: 0127:                                     SXTCF.STOCKTAKER$,                      \
+ 148: 0127:                                     SXTCF.CUR.LOCATION$,              \ Ver B
+ 149: 0127:                                     SXTCF.FILLER$
+ 150: 0127:                             
+ 151: 0127:    READ.SXTCF.LOCK = 0
+ 152: 012b:    EXIT FUNCTION
+ 153: 012d: 
+ 154: 012d:    READ.SXTCF.LOCK.ERROR:
+ 155: 012d: 
+ 156: 012d:    CURRENT.REPORT.NUM% = SXTCF.REPORT.NUM%
+ 157: 013b:    FILE.OPERATION$ = "R"
+ 158: 014a:    CURRENT.CODE$ = STR$(SXTCF.REC.NUM%)
+ 159: 0165: 
+ 160: 0165:    EXIT FUNCTION
+ 161: 0167:   END FUNCTION
+ 162: 0176: 
+ 163: 0176: 
+ 164: 0176:   FUNCTION WRITE.SXTCF.UNLOCK PUBLIC
+ 165: 018a: 
+ 166: 018a:    INTEGER*1 WRITE.SXTCF.UNLOCK
+ 167: 018a: 
+ 168: 018a:    WRITE.SXTCF.UNLOCK = 1
+ 169: 018e: 
+ 170: 018e:    IF END#SXTCF.SESS.NUM% THEN WRITE.SXTCF.UNLOCK.ERROR
+ 171: 01a2: 
+ 172: 01a2:     WRITE FORM "I4,I4,C3,C2,C3,C2,C1,I1,I4,C4,C5,C47";                \ Ver B
+ 173: 0282:         #SXTCF.SESS.NUM%  AUTOUNLOCK,             \
+ 174: 0282:                                     SXTCF.REC.NUM%;                         \
+ 175: 0282:                                     SXTCF.STKBF.POINTER%,                   \
+ 176: 0282:                                     SXTCF.ITEM.COUNT%,                      \
+ 177: 0282:                                     SXTCF.START.DATE$,                      \
+ 178: 0282:                                     SXTCF.START.TIME$,                      \
+ 179: 0282:                                     SXTCF.END.DATE$,                        \
+ 180: 0282:                                     SXTCF.END.TIME$,                        \
+ 181: 0282:                                     SXTCF.STOCKTAKE.IN.PROGRESS$,           \
+ 182: 0282:                                     SXTCF.HEADER.EXPECTED%,                 \
+ 183: 0282:                                     SXTCF.CURRENT.COUNT%,                   \
+ 184: 0282:                                     SXTCF.STOCKTAKER$,                      \
+ 185: 0282:                                     SXTCF.CUR.LOCATION$,              \ Ver B
+ 186: 0282:                                     SXTCF.FILLER$
+ 187: 0282: 
+ 188: 0282: 
+ 189: 0282:    WRITE.SXTCF.UNLOCK = 0
+ 190: 0286:    EXIT FUNCTION
+ 191: 0288: 
+ 192: 0288:    WRITE.SXTCF.UNLOCK.ERROR:
+ 193: 0288: 
+ 194: 0288:    CURRENT.REPORT.NUM% = SXTCF.REPORT.NUM%
+ 195: 0296:    FILE.OPERATION$ = "W"
+ 196: 02a5:    CURRENT.CODE$ = STR$(SXTCF.REC.NUM%)
+ 197: 02c0: 
+ 198: 02c0:    EXIT FUNCTION
+ 199: 02c2:   END FUNCTION
+ 200: 02d1: 
+ 201: 02d1: 
+ 202: 02d1:   FUNCTION WRITE.SXTCF.UNLOCK.HOLD PUBLIC
+ 203: 02e5: 
+ 204: 02e5:    INTEGER*1 WRITE.SXTCF.UNLOCK.HOLD
+ 205: 02e5: 
+ 206: 02e5:    WRITE.SXTCF.UNLOCK.HOLD = 1
+ 207: 02e9: 
+ 208: 02e9:    IF END#SXTCF.SESS.NUM% THEN WRITE.SXTCF.UNLOCK.HOLD.ERROR
+ 209: 02fd: 
+ 210: 02fd:     WRITE FORM "I4,I4,C3,C2,C3,C2,C1,I1,I4,C4,C5,C47";                \ Ver B
+ 211: 03dd:        HOLD  #SXTCF.SESS.NUM%  AUTOUNLOCK,             \
+ 212: 03dd:                                     SXTCF.REC.NUM%;                         \
+ 213: 03dd:                                     SXTCF.STKBF.POINTER%,                   \
+ 214: 03dd:                                     SXTCF.ITEM.COUNT%,                      \
+ 215: 03dd:                                     SXTCF.START.DATE$,                      \
+ 216: 03dd:                                     SXTCF.START.TIME$,                      \
+ 217: 03dd:                                     SXTCF.END.DATE$,                        \
+ 218: 03dd:                                     SXTCF.END.TIME$,                        \
+ 219: 03dd:                                     SXTCF.STOCKTAKE.IN.PROGRESS$,           \
+ 220: 03dd:                                     SXTCF.HEADER.EXPECTED%,                 \
+ 221: 03dd:                                     SXTCF.CURRENT.COUNT%,                   \
+ 222: 03dd:                                     SXTCF.STOCKTAKER$,                      \
+ 223: 03dd:                                     SXTCF.CUR.LOCATION$,              \ Ver B
+ 224: 03dd:                                     SXTCF.FILLER$
+ 225: 03dd: 
+ 226: 03dd: 
+ 227: 03dd: 
+ 228: 03dd:    WRITE.SXTCF.UNLOCK.HOLD = 0
+ 229: 03e1:    EXIT FUNCTION
+ 230: 03e3: 
+ 231: 03e3:    WRITE.SXTCF.UNLOCK.HOLD.ERROR:
+ 232: 03e3: 
+ 233: 03e3:    CURRENT.REPORT.NUM% = SXTCF.REPORT.NUM%
+ 234: 03f1:    FILE.OPERATION$ = "W"
+ 235: 0400:    CURRENT.CODE$ = STR$(SXTCF.REC.NUM%)
+ 236: 041b: 
+ 237: 041b:    EXIT FUNCTION
+ 238: 041d:   END FUNCTION
+ 239: 042c: 
+ 240: 042c: 
+ 241: 042c:   FUNCTION READ.SXTCF PUBLIC
+ 242: 0440: 
+ 243: 0440:    INTEGER*1 READ.SXTCF
+ 244: 0440: 
+ 245: 0440:    READ.SXTCF = 1
+ 246: 0444: 
+ 247: 0444:    IF END#SXTCF.SESS.NUM% THEN READ.SXTCF.ERROR
+ 248: 0458: 
+ 249: 0458:     READ FORM "I4,I4,C3,C2,C3,C2,C1,I1,I4,C4,C5,C47";                 \ Ver B
+ 250: 0503:         #SXTCF.SESS.NUM%,             \
+ 251: 0503:                                     SXTCF.REC.NUM%;                         \
+ 252: 0503:                                     SXTCF.STKBF.POINTER%,                   \
+ 253: 0503:                                     SXTCF.ITEM.COUNT%,                      \
+ 254: 0503:                                     SXTCF.START.DATE$,                      \
+ 255: 0503:                                     SXTCF.START.TIME$,                      \
+ 256: 0503:                                     SXTCF.END.DATE$,                        \
+ 257: 0503:                                     SXTCF.END.TIME$,                        \
+ 258: 0503:                                     SXTCF.STOCKTAKE.IN.PROGRESS$,           \
+ 259: 0503:                                     SXTCF.HEADER.EXPECTED%,                 \
+ 260: 0503:                                     SXTCF.CURRENT.COUNT%,                   \
+ 261: 0503:                                     SXTCF.STOCKTAKER$,                      \
+ 262: 0503:                                     SXTCF.CUR.LOCATION$,              \ Ver B
+ 263: 0503:                                     SXTCF.FILLER$
+ 264: 0503: 
+ 265: 0503:    READ.SXTCF = 0
+ 266: 0507:    EXIT FUNCTION
+ 267: 0509: 
+ 268: 0509:    READ.SXTCF.ERROR:
+ 269: 0509: 
+ 270: 0509:    CURRENT.REPORT.NUM% = SXTCF.REPORT.NUM%
+ 271: 0517:    FILE.OPERATION$ = "R"
+ 272: 0526:    CURRENT.CODE$ = STR$(SXTCF.REC.NUM%)
+ 273: 0541: 
+ 274: 0541:    EXIT FUNCTION
+ 275: 0543:   END FUNCTION
+ 276: 0552: 
+ 277: 0552: 
+ 278: 0552:   FUNCTION WRITE.SXTCF PUBLIC
+ 279: 0566: 
+ 280: 0566:    INTEGER*1 WRITE.SXTCF        
+ 281: 0566: 
+ 282: 0566:    WRITE.SXTCF = 1
+ 283: 056a: 
+ 284: 056a:    IF END#SXTCF.SESS.NUM% THEN WRITE.SXTCF.ERROR
+ 285: 057e: 
+ 286: 057e:     WRITE FORM "I4,I4,C3,C2,C3,C2,C1,I1,I4,C4,C5,C47";                \ Ver B
+ 287: 065e:         #SXTCF.SESS.NUM%,             \
+ 288: 065e:                                     SXTCF.REC.NUM%;                         \
+ 289: 065e:                                     SXTCF.STKBF.POINTER%,                   \
+ 290: 065e:                                     SXTCF.ITEM.COUNT%,                      \
+ 291: 065e:                                     SXTCF.START.DATE$,                      \
+ 292: 065e:                                     SXTCF.START.TIME$,                      \
+ 293: 065e:                                     SXTCF.END.DATE$,                        \
+ 294: 065e:                                     SXTCF.END.TIME$,                        \
+ 295: 065e:                                     SXTCF.STOCKTAKE.IN.PROGRESS$,           \
+ 296: 065e:                                     SXTCF.HEADER.EXPECTED%,                 \
+ 297: 065e:                                     SXTCF.CURRENT.COUNT%,                   \
+ 298: 065e:                                     SXTCF.STOCKTAKER$,                      \
+ 299: 065e:                                     SXTCF.CUR.LOCATION$,              \ Ver B
+ 300: 065e:                                     SXTCF.FILLER$
+ 301: 065e: 
+ 302: 065e:    WRITE.SXTCF = 0
+ 303: 0662:    EXIT FUNCTION
+ 304: 0664: 
+ 305: 0664:    WRITE.SXTCF.ERROR:
+ 306: 0664: 
+ 307: 0664:    CURRENT.REPORT.NUM% = SXTCF.REPORT.NUM%
+ 308: 0672:    FILE.OPERATION$ = "W"
+ 309: 0681:    CURRENT.CODE$ = STR$(SXTCF.REC.NUM%)
+ 310: 069c: 
+ 311: 069c:    EXIT FUNCTION
+ 312: 069e:   END FUNCTION
+ 313: 06ad: 
+ 314: 06ad: 
+ 315: 06ad: End of Compilation

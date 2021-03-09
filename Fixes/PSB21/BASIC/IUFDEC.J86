@@ -1,0 +1,318 @@
+\REM
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR ITEM UPDATE FILES VARIABLE DECLARATIONS
+\***
+\***        REFERENCE   :   IUFDEC (J86)
+\***
+\***        FILE TYPE   :   Sequential
+\***
+\***    VERSION H.              ROBERT COWEY.                       24 AUG 1993.
+\***    Original version created by combining IUFFLDG and IUFNUMG.
+\***
+\***    VERSION I.              ROBERT COWEY.                       25 AUG 1993.
+\***    Added NEW.DEAL.COUNT$ and BC.LETTER$ to record type "001" (Item
+\***    reference).
+\***    Removed falconcraft detail variables (SALESPLAN.ID$, BUS.CENTRE$,
+\***    START.DATE$, END.DATE$, TICKET.TYPE$, GENOF.NUM$, GENOF.DESC$,
+\***    FOOTER.TYPE$) from record types "003" (Deal price) and "004" (Item
+\***    pending).
+\***    Defined record type "006" (Deals).
+\***
+\***    VERSION J.              Andrew Wedgeworth                13th March 1995
+\***    Focus flag, Price Pledge flag and ASCOTT/COMPASS flag replaced with
+\***    fields for the Staff Discount, Customer Loyalty and Give-away systems.
+\***
+\***    VERSION K               Rebecca Dakin                    28th June 1999
+\***
+\***    Version L        Andy Cotton & Amy Hoggard     29th Jan 2003
+\***    Change use and name of variable IUF.DEAL.PRICE.FLAG$ to IUF.KEYLINES.FLAG$
+\***
+\***    Version M               Brian Greenfield                 25th June 2004
+\***    Added new IUF.MARKDOWN$ tor use with SEL Markdown flagged items.
+\***
+\***    Version 1.6           Charles Skadorwa                 4th July 2011
+\***    CORE Heritage Stores Release 2 (Outbound) Project.
+\***    Added new globals.
+\***
+\***    VERSION 1.7.                ROBERT COWEY.                07 FEB 2012.
+\***    Changes creating PSB21.286 Core Release 2 version 1.5.
+\***
+\***    Defect 21 - Commented 1.9 RC (21).
+\***    Commented real meaning of IUF.DISCOUNTABLE$ as Discount Exempt.
+\***
+\***    VERSION 1.8.                ROBERT COWEY.                20 FEB 2012.
+\***    Changes creating PSB21.286 Core Release 2 version 1.6.
+\***    Correction relating to transformation of legacy IUF data to Core R2 format
+\***
+\***    Defect 44 - Commented 1.11 RC (44).
+\***    Replaced variables HEALTH.CONCEPT.GROUPS$ and HEALTH.GROUP$ with more
+\***    meaningfully named single variable INSURE.CONCEPT.GROUPS$.
+\***
+\***    VERSION B               Rejiya Nair             13th May 2016
+\***    PRJ1452 Restricting Item Sales
+\***    - Declaration of two new variables (version tagged as !BRN)
+\***    - Removed the commented out code
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    RECORD LAYOUTS
+\***
+\***    HEADER RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$
+\***     8  3  ASC  TRANS.TYPE$             "000" Header
+\***    11  4  ASC  IUF.BRANCH.NO$
+\***    15  5  ASC  IUF.SERIAL.NO$
+\***
+\***    ITEM REFERENCE RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$
+\***     8  3  ASC  TRANS.TYPE$             "001" Item reference
+\***    11  1  ASC  IUF.GRP.CODE.FLAG$
+\***    12 24  ASC  IUF.STNDRD.DESC$
+\***    36 18  ASC  IUF.TILL.DESC$
+\***    54 45  ASC  IUF.S.E.DESC$
+\***    99  1  ASC  IUF.SUPPLY.ROUTE$
+\***   100  1  ASC  IUF.GIVEAWAY$
+\***   101  5  ASC  IUF.PROD.GRP$
+\***   106  1  ASC  IUF.GUARANTEE.CAT$          ! SBH CHANGED FROM ENF.QTY 31/1/96
+\***   107  1  ASC  IUF.ENF.PRICE.ENTRY$
+\***   108  1  ASC  IUF.LOYALTY.FLAG$
+\***   109  1  ASC  IUF.DISCOUNT.CAT$
+\***   110  1  ASC  IUF.OWN.BRAND$
+\***   111  1  ASC  IUF.DIRECT.PROC$
+\***   112  1  ASC  IUF.STATUS.1$
+\***   113  1  ASC  IUF.EANS.CHANGED$
+\***   114  3  ASC  IUF.NO.OF.EANS$
+\***   117  8  ASC  IUF.CURRENT.PRICE$      Price in pence
+\***   125  1  ASC  IUF.NO.OF.RPD.PRICES$
+\***   126  2  ASC  IUF.NO.OF.FLASHPACKS$
+\***   128  7  ASC  IUF.ORIGIN.CODE$
+\***   135  1  ASC  IUF.DEAL.PRICE.FLAG$    !L CHANGED TO IUF.KEYLINES.FLAG$
+\***   136  1  ASC  IUF.STOCK.SYSTEM.FLAG$  "Y" Stock system item
+\***                                        "N" Non stock system item
+\***   137  2  ASC  NEW.DEAL.COUNT$         Number of type 6 records
+\***   139  1  ASC  BC.LETTER$              Business centre letter
+\***
+\***    FLASHPACK RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$
+\***     8  3  ASC  TRANS.TYPE$             "002" Flashpack
+\***    11  7  ASC  FLASH.PACK.CODE$
+\***    18  3  ASC  MULTIPLICATION.FACTOR$
+\***
+\***    DEAL PRICE RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$
+\***     8  3  ASC  TRANS.TYPE$             "003" Deal price
+\***    11  1  ASC  DEAL.TYPE$
+\***    12  2  ASC  DEAL.QUANTITY$
+\***    14  5  ASC  SPECIAL.PRICE$          Price in pence
+\***    19  2  ASC  M.P.GROUP$
+\***    21  6  ASC  FIRST.DATE$             YYMMDD format
+\***    27  6  ASC  LAST.DATE$              YYMMDD format
+\***
+\***    ITEM PENDING PRICE RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$
+\***     8  3  ASC  TRANS.TYPE$             "004" Item pending price
+\***    11  6  ASC  RPD.DATE$               YYMMDD format
+\***    17  8  ASC  NEW.PRICE$              Price in pance
+\***    25  5  ASC  RPD.NO$
+\***    30  1  ASC  MARKDOWN$               Markdown flag of "Y" or "N" !MBG
+\***
+\***    ITEM BARCODE RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$
+\***     8  3  ASC  TRANS.TYPE$             "005" Item barcode
+\***    11 12  ASC  BAR.CODE$
+\***
+\***    DEALS RECORD (MULTI-BUY FORMAT)     Sorted by ...
+\***                                          BOOTS.CODE$ then DEAL.NUMBER$
+\***
+\***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+\***     8  3  ASC  TRANS.TYPE$             "006" Deals
+\***    11  6  ASC  START.DATE$             YYMMDD format
+\***    17  6  ASC  END.DATE$               YYMMDD format
+\***    23  1  ASC  DEAL.ID$                "M" Multi-Buy
+\***    24  1  ASC  PAIR.TRIPLET.FLAG$      " " (not used for Multi-Buy)
+\***    25  1  ASC  3FOR2.FLAG$             "T" Three-For-Two type Multi-Buy
+\***    26  2  ASC  DEAL.LIMIT$             2 to 15 Qualifying purchases
+\***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+\***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+\***                                        zero if highest price purchased
+\***
+\***    DEALS RECORD (LINK-SAVE FORMAT)     Sorted by ...
+\***                                          BOOTS.CODE$ then DEAL.NUMBER$
+\***
+\***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+\***     8  3  ASC  TRANS.TYPE$             "006" Deals
+\***    11  6  ASC  START.DATE$             YYMMDD format
+\***    17  6  ASC  END.DATE$               YYMMDD format
+\***    23  1  ASC  DEAL.ID$                "A" "B" "X" Link-Save list ID
+\***    24  1  ASC  PAIR.TRIPLET.FLAG$      "P" Pair, "T" Triplet
+\***    25  1  ASC  3FOR2.FLAG$             " " (not used for Link-Save)
+\***    26  2  ASC  DEAL.LIMIT$             1 to 15 Qualifying (list) purchases
+\***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+\***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+\***                                        zero if highest price purchased
+\***    TRAILER RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$
+\***    ]8  3  ASC  TRANS.TYPE$             "999" Trailer
+\***    11  7  ASC  IUF.ITEM.COUNT$
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+
+    STRING GLOBAL                                                       \
+        IUF.FILE.NAME$
+
+    INTEGER*1 GLOBAL                                                    \ 1.6CSk
+        IUF.NEW.FORMAT                                                  ! 1.6CSk
+
+    INTEGER*2 GLOBAL                                                    \
+        IUF.REPORT.NUM%,                                                \
+        IUF.SESS.NUM%,                                                  \ 1.6CSk
+        REFPGF.COUNT%,                                                  \ 1.6CSk
+        REFPGF.REPORT.NUM%,                                             \ 1.6CSk
+        REFPGF.SESS.NUM%                                                ! 1.6CSk
+
+  STRING GLOBAL                                                         \
+        IUF.3FOR2.FLAG$,                                                \ IRC
+        IUF.BAR.CODE$,                                                  \
+        IUF.BC.LETTER$,                                                 \ IRC
+        IUF.BOOTS.CODE$,                                                \
+        IUF.BRANCH.NO$,                                                 \
+        IUF.CURRENT.PRICE$,                                             \
+        IUF.DEAL.ID$,                                                   \ IRC
+        IUF.DEAL.LIMIT$,                                                \ IRC
+        IUF.DEAL.NUMBER$,                                               \ IRC
+        IUF.KEYLINES.FLAG$,                                             \ LAC/AH
+        IUF.DEAL.QUANTITY$,                                             \
+        IUF.DEAL.TYPE$,                                                 \
+        IUF.DIRECT.PROC$,                                               \
+        IUF.DISCOUNT.CAT$,                                              \ JAW
+        IUF.EANS.CHANGED$,                                              \
+        IUF.END.DATE$,                                                  \
+        IUF.ENF.PRICE.ENTRY$,                                           \
+        IUF.GUARANTEE.CAT$,                                             \ SBH 31/1/96
+        IUF.FIRST.DATE$,                                                \
+        IUF.FLASH.PACK.CODE$,                                           \
+        IUF.GIVEAWAY$,                                                  \ JAW
+        IUF.GRP.NO$,                                                   \!BRN
+        IUF.GRP.CODE.FLAG$,                                             \
+        IUF.ITEM.COUNT$,                                                \
+        IUF.ITEM.QTY$,                                                  \ KRD
+        IUF.LAST.DATE$,                                                 \
+        IUF.LOYALTY.FLAG$,                                              \ JAW
+        IUF.M.P.GROUP$,                                                 \
+        IUF.MULTIPLICATION.FACTOR$,                                     \
+        IUF.NEW.DEAL.COUNT$,                                            \ IRC
+        IUF.NEW.PRICE$,                                                 \
+        IUF.NO.OF.EANS$,                                                \
+        IUF.NO.OF.RPD.PRICES$,                                          \
+        IUF.OWN.BRAND$,                                                 \
+        IUF.PAIR.TRIPLET.FLAG$,                                         \ IRC
+        IUF.PROD.GRP$,                                                  \
+        IUF.RECORD$,                                                    \
+        IUF.RESTRICT.SALES.FLAG$,                                      \!BRN
+        IUF.RPD.DATE$,                                                  \
+        IUF.RPD.NO$,                                                    \
+        IUF.S.E.DESC$,                                                  \
+        IUF.SAVED.AMOUNT$,                                              \ IRC
+        IUF.SERIAL.NO$,                                                 \
+        IUF.SPECIAL.PRICE$,                                             \
+        IUF.START.DATE$,                                                \ IRC
+        IUF.STATUS.1$,                                                  \
+        IUF.STNDRD.DESC$,                                               \
+        IUF.STOCK.SYSTEM.FLAG$,                                         \
+        IUF.SUPPLY.ROUTE$,                                              \
+        IUF.TILL.DESC$,                                                 \
+        IUF.TRANS.TYPE$,                                                \
+        IUF.UNIT.MEASUREMENT$,                                          \ KRD
+        IUF.UNIT.NAME$                                                  ! KRD
+
+  STRING GLOBAL                                                         \ 1.6CSk
+        AGES$(1),                                                       \ 1.6CSk
+        GIFTBRCD.TABLE$(1),                                             \ 1.6CSk
+        IUF.MATRIX$(1),                                                 \ 1.6CSk
+        MEDICINES.TABLE$(1),                                            \ 1.6CSk
+        REFPGF.RECORDS$(1)                                              ! 1.6CSk
+
+  STRING GLOBAL                                                         \ 1.6CSk
+        AGE$,                                                           \ 1.6CSk
+        AGE.RESTRICT$,                                                  \ 1.6CSk
+        ALCOHOL.PROD.GRP.LIST$,                                         \ 1.6CSk
+        ALL.MEDICINES$,                                                 \ 1.6CSk
+        ALREADY.IN.TABLE$,                                              \ 1.6CSk
+        ASPIRIN.RECORD$,                                                \ 1.6CSk
+        DOSAGE$,                                                        \ 1.6CSk
+        EPHED.TEMP$,                                                    \ 1.6CSk
+        GIFTRECORD$,                                                    \ 1.6CSk
+        INSURE.CONCEPT.GROUPS$, \ ! From BCF record 2                   \ 1.11 RC (44)
+        IBRUPROFEN.RECORD$,                                             \ 1.6CSk
+        IUF.AGE.RESTRICTION$,                                           \ 1.6CSk
+        IUF.BLOCKED.FROM.SALE$,                                         \ 1.6CSk
+        IUF.BOOTS.COM.EXTENDED$,                                        \ 1.6CSk
+        IUF.CONTAINS.ALCOHOL$,                                          \ 1.6CSk
+        IUF.CONTAINS.ASPIRIN$,                                          \ 1.6CSk
+        IUF.CONTAINS.EPHEDRINE$,                                        \ 1.6CSk
+        IUF.CONTAINS.IBUPROFEN$,                                        \ 1.6CSk
+        IUF.CONTAINS.NONSOLID.PAINKILLER$,                              \ 1.6CSk
+        IUF.CONTAINS.PARACETAMOL$,                                      \ 1.6CSk
+        IUF.CONTAINS.PSEUDOEPHEDRINE$,                                  \ 1.6CSk
+        IUF.DATE.SENSITIVE$,                                            \ 1.6CSk
+        IUF.DISCOUNTABLE$, \ ! Mis-leading variable name (should be Discount Exempt)  ! 1.9 RC (21)
+                           \ ! "Y" equates to IRF.INDICAT3% X'01' Discount Exempt ON  ! 1.9 RC (21)
+        IUF.EARN.POINTS$,                                               \ 1.6CSk
+        IUF.EFFERVESCENT$,                                              \ 1.6CSk
+        IUF.ETHICAL.ACTIVE$,                                            \ 1.6CSk
+        IUF.ETHICAL.CLASS$,                                             \ 1.6CSk
+        IUF.ETHICAL.DESCRIPTION$,                                       \ 1.6CSk
+        IUF.ETHICAL.PACK.SIZE$,                                         \ 1.6CSk
+        IUF.GIFTCARD$,                                                  \ 1.6CSk
+        IUF.GUARANTEE.LENGTH$,                                          \ 1.6CSk
+        IUF.INSURANCE$,                                                 \ 1.6CSk
+        IUF.INITIAL.LOAD$,                                              \ 1.6CSk
+        IUF.MARKDOWN$,                                                  \ 1.6CSk
+        IUF.PRIMARY.SUPPLIER$,                                          \ 1.6CSk
+        IUF.REC.COUNT$,                                                 \ 1.6CSk
+        IUF.REC.TYPE$,                                                  \ 1.6CSk
+        IUF.REDEEMABLE$,                                                \ 1.6CSk
+        IUF.RESALEABLE$,                                                \ 1.6CSk
+        IUF.RETURN.ROUTE$,                                              \ 1.6CSk
+        IUF.RETURNABLE$,                                                \ 1.6CSk
+        IUF.SPECIAL.INSTRUCTION$,                                       \ 1.6CSk
+        IUF.STORE.NUM$,                                                 \ 1.6CSk
+        IUF.TIME.STAMP$,                                                \ 1.6CSk
+        IUF.UNRESTRICTED.GROUP.CODE$,                                   \ 1.6CSk
+        PARACETAMOL.RECORD$,                                            \ 1.6CSk
+        PROD.GRP$                                                       ! 1.6CSk
+
+
+
+  INTEGER*2 GLOBAL                                                      \ 1.6CSk
+        A%,                                                             \ 1.6CSk
+        J%,                                                             \ 1.6CSk
+        ADD.TO.TABLE%,                                                  \ 1.6CSk
+        AGE.POS%,                                                       \ 1.6CSk
+        GIFTBRCD.COUNT%,                                                \ 1.6CSk
+        HEALTH.INDEX%,                                                  \ 1.6CSk
+        MATCH.COMMA%,                                                   \ 1.6CSk
+        MATCH.POS1%,                                                    \ 1.6CSk
+        MATCH.POS2%,                                                    \ 1.6CSk
+        MEDICINES.IN.TABLE%,                                            \ 1.6CSk
+        NO.OF.AGES%,                                                    \ 1.6CSk
+        NO.OF.MEDICINES%,                                               \ 1.6CSk
+        PROD.GRP.NUM%,                                                  \ 1.6CSk
+        SPACE%                                                          ! 1.6CSk
+

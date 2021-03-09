@@ -1,0 +1,2767 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***
+   5: 0000: \***            PROGRAM         :       PSB21
+   6: 0000: \***            MODULE          :       PSB2105
+   7: 0000: \***            AUTHOR          :       Charles Skadorwa / Mark Goode
+   8: 0000: \***            DATE WRITTEN    :       Sept 2011
+   9: 0000: \***
+  10: 0000: \*******************************************************************************
+  11: 0000: \***
+  12: 0000: \***    1.0           Charles Skadorwa  / Mark Goode                 30 SEP 2011
+  13: 0000: \***    Initial version.
+  14: 0000: \***
+  15: 0000: \***    1.1   Charles Skadorwa                                       20 JAN 2012
+  16: 0000: \***          Defect 7: No. of skipped records now reported when an event 103
+  17: 0000: \***                    is logged.
+  18: 0000: \***
+  19: 0000: \***    1.2   Charles Skadorwa                                       20 FEB 2012
+  20: 0000: \***          Defect following code WPI - JOBOK last batch processed date needs
+  21: 0000: \***          to be set to the Datetimestamp from the BCF even if no IUF in order
+  22: 0000: \***          to help Service resolve issues.
+  23: 0000: \***
+  24: 0000: \***    VERSION 1.3.               ROBERT COWEY.                 24 APR 2012.
+  25: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.13.
+  26: 0000: \***
+  27: 0000: \***    Defect 190 - Commented 1.3 RC (190)
+  28: 0000: \***    Moved DELETE.PPFK.KEYED.FILE into PROGRAM.EXIT to ensure PPFK is
+  29: 0000: \***    always deleted even when program does not complete successfully.
+  30: 0000: \***
+  31: 0000: \***    VERSION 1.4.                ROBERT COWEY.                30 APR 2012.
+  32: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.4.
+  33: 0000: \***
+  34: 0000: \***    Defect 190 corrrection - Commented 1.4 RC (190)
+  35: 0000: \***    Corrected PROGRAM.EXIT to delete PPFK (via DESTROY.PPFK) when
+  36: 0000: \***    JOBSOK.FLAG$ is "X" (since this is set prior to all unexpected
+  37: 0000: \***    calls to PROGRAM.EXIT).
+  38: 0000: \***
+  39: 0000: \***    VERSION 1.5.                ROBERT COWEY.                04 MAY 2012.
+  40: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.15.
+  41: 0000: \***
+  42: 0000: \***    Defect 223 - Commented 1.5 RC (223)
+  43: 0000: \***    Modified PROGRAM.EXIT to prevent J103 alert for legacy format IUF.
+  44: 0000: \***
+  45: 0000: \***    VERSION 1.5 supplemental    CHARLES SKADORWA.
+  46: 0000: \***    Ensured BCF is only opened when needed (then closed afterwards).
+  47: 0000: \***
+  48: 0000: \***    VERSION 1.6.                ROBERT COWEY.                09 MAY 2012.
+  49: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.16.
+  50: 0000: \***
+  51: 0000: \***    Defect 226 - Commented 1.6 RC (226)
+  52: 0000: \***    Ensured CIPPMR only closed when present.
+  53: 0000: \***
+  54: 0000: \***    VERSION 1.7.                ROBERT COWEY.                24 MAY 2012.
+  55: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.19.
+  56: 0000: \***
+  57: 0000: \***    Pilot defect - Commented 1.7 RC (238)
+  58: 0000: \***    Modified PROGRAM.EXIT to delete any RAM files used by the program
+  59: 0000: \***    that are still present when the program fails.
+  60: 0000: \***
+  61: 0000: \***    VERSION 1.8.                ROBERT COWEY.                28 MAY 2012.
+  62: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.20.
+  63: 0000: \***
+  64: 0000: \***    Pilot defect - Commented 1.8 RC (240)
+  65: 0000: \***    Issued RESTRICT prior to deleting files from RAM.
+  66: 0000: \***    Replaced call to DESTROY.PPFK with OSSHELL delete to make more robust.
+  67: 0000: \***
+  68: 0000: \***    VERSION 1.9.                ROBERT COWEY.                11 JUN 2012.
+  69: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.21.
+  70: 0000: \***    Incremented lab release version text to v1.21.
+  71: 0000: \***
+  72: 0000: \***    Lab test defect - Commented 1.9 RC (242)
+  73: 0000: \***    Corrected NIADF processing to ensure IRFDEX updated when new item is
+  74: 0000: \***    on more than three deals.
+  75: 0000: \***    Allocated IRFDEX session number and opened and closed the file.
+  76: 0000: \***
+  77: 0000: \***    VERSION A                   Mark Walker                 8th Jul 2014
+  78: 0000: \***    F353 Deal Limits Increase
+  79: 0000: \***    Removed DINF and NIADF file processing.
+  80: 0000: \***
+  81: 0000: \***    VERSION B                   Rejiya Nair            16th May 2016
+  82: 0000: \***    PRJ1452 Restricting Item Sales
+  83: 0000: \***    - Close IRFITGRP file.
+  84: 0000: \***    - Removed the previously tagged commented out code
+  85: 0000: \***
+  86: 0000: \***--------------------------------------------------------------------------------
+  87: 0000: \***  IMPORTANT: When you change PSB21, please search for the line containing
+  88: 0000: \***------------        CALL DO.MESSAGE("PSB21 PROGRAM START
+  89: 0000: \***             in Module PSB2100 and wind the date and version on.
+  90: 0000: \***
+  91: 0000: \*******************************************************************************
+  92: 0000: \*******************************************************************************
+  93: 0000: \*******************************************************************************
+  94: 0000: \*******************************************************************************
+  95: 0000: \***
+  96: 0000: \***    Module Overview
+  97: 0000: \***    ---------------
+  98: 0000: \***
+  99: 0000: \***    The purpose of this module is to perform Program Exit processing.
+ 100: 0000: \***
+ 101: 0000: \*******************************************************************************
+ 102: 0000: \*******************************************************************************
+ 103: 0000: 
+ 104: 0000: %INCLUDE BCFDEC.J86     ! Boots Control File
+ 105: 0000: \*****************************************************************************
+ 106: 0000: \*****************************************************************************
+ 107: 0000: \***
+ 108: 0000: \***               %INCLUDE FOR BCF - FIELD DECLARATIONS
+ 109: 0000: \***                                  FILE REFERENCE PARAMETERS
+ 110: 0000: \***
+ 111: 0000: \***                      FILE TYPE    : SEQUENTIAL
+ 112: 0000: \***
+ 113: 0000: \***                      REFERENCE    : BCFDEC.J86
+ 114: 0000: \***
+ 115: 0000: \***      Version A             Steve Windsor          5th Jan 1993
+ 116: 0000: \***
+ 117: 0000: \***      Version B             Michael J. Kelsall    01st Dec 1993
+ 118: 0000: \***      Addition to file of CCMVT serial number as part of
+ 119: 0000: \***      RETURNS/AUTOMATIC CREDIT CLAIMING package.
+ 120: 0000: \***
+ 121: 0000: \***      Version C           Stuart William McConnachie 23rd Jan 1995
+ 122: 0000: \***      Addition of TXR serial number as part of the TRANSACTION RETRIEVAL
+ 123: 0000: \***      project.
+ 124: 0000: \***
+ 125: 0000: \***      Version D           Stuart William McConnachie  7th June 1995
+ 126: 0000: \***      Converted calls to enable more than 1 record on the BCF.
+ 127: 0000: \***      The second record is to be used for the No7 customer card trial.
+ 128: 0000: \***
+ 129: 0000: \***      Version E                 Stuart Highley        7th April 1999
+ 130: 0000: \***      Added new fields for cash accounting.
+ 131: 0000: \***
+ 132: 0000: \***      Version F                 Mark Goode            20th May 2000
+ 133: 0000: \***      Added new fields for Dentistry project.
+ 134: 0000: \***
+ 135: 0000: \***      Version G                 Mark Goode            18th July 2000
+ 136: 0000: \***      Added new fields for Well-Being project.
+ 137: 0000: \***
+ 138: 0000: \***      Version I                 Amy Hoggard           13th Oct 2000
+ 139: 0000: \***      Added new fields for ECO project.
+ 140: 0000: \***
+ 141: 0000: \***      Version K                 Brian Greenfield      1st May 2001
+ 142: 0000: \***      Added new field for Wellbeing Services record 13.
+ 143: 0000: \***
+ 144: 0000: \***      Version L                 Amy Hoggard           4th Jan 2002
+ 145: 0000: \***      Added new field for ETOPUP project.
+ 146: 0000: \***
+ 147: 0000: \***      Version M                 Julia Stones          22nd July 2002
+ 148: 0000: \***      Added new fields for Deals rewrite project record 14.
+ 149: 0000: \***
+ 150: 0000: \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003.
+ 151: 0000: \***    Modifications for All Txn Data To CDAS project.
+ 152: 0000: \***    Removed redundant variables ...
+ 153: 0000: \***      BCF.CTSL1.SERIAL.NUM$, BCF.CTSL2,SERIAL.NUM$
+ 154: 0000: \***    Defined new variable ...
+ 155: 0000: \***      BCF.MTSLQ.DAYS$, BCF.FILLER67$
+ 156: 0000: \***
+ 157: 0000: \***    Revision 4.7           Julia Stones              9th July 2003.
+ 158: 0000: \***    Modifications for New Lines Report project.
+ 159: 0000: \***    Defined new variable
+ 160: 0000: \***    BCF.NEWLINES.WEEKS$
+ 161: 0000: \***
+ 162: 0000: \***    Revision 4.8           Julia Stones              3rd October 2003.
+ 163: 0000: \***    Modifications for New Lines Report project.
+ 164: 0000: \***    Defined new variable
+ 165: 0000: \***    BCF.NEWLINES.LINES$
+ 166: 0000: \***
+ 167: 0000: \***    Version N              Jamie Thorpe             27th June 2006
+ 168: 0000: \***    Added BCF.DVCHR.SERIAL.NUM$
+ 169: 0000: \***
+ 170: 0000: \***    Revision 4.10          Charles Skadorwa            4th July 2011
+ 171: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+ 172: 0000: \***    New variables defined: BCF.ECC.DATETIMESTAMP$
+ 173: 0000: \***                           BCF.IUF.DATETIMESTAMP$
+ 174: 0000: \***
+ 175: 0000: \***    Revision 4.11          Arun Sudhakaran             10th April 2013
+ 176: 0000: \***    Added new variables for including Supplier Number lengths
+ 177: 0000: \***    as part of Automatic Booking In of Chilled Food ASNs project
+ 178: 0000: \***
+ 179: 0000: \***    Revision 4.12          Charles Skadorwa            5th Sept 2013
+ 180: 0000: \***    F261 Gift Card Mall IIN Range Extension Project - Commented !4.12 CSk
+ 181: 0000: \***    Defined new variables for GCM Product Group Number and Record 22
+ 182: 0000: \***    lengths.
+ 183: 0000: \***
+ 184: 0000: \***    Version O              Mark Walker                  3rd Feb 2014
+ 185: 0000: \***    F337 Centralised View of Stock
+ 186: 0000: \***    - Defined variables for record 23 (stock snapshot parameters).
+ 187: 0000: \***    - Minor formatting changes (uncommented).
+ 188: 0000: \***
+ 189: 0000: \***    Revision O             Charles Skadorwa             25th June 2014
+ 190: 0000: \***    F353 Deal Limits Increase Project.
+ 191: 0000: \***    Renamed 3 variables in function BCF.RECORD.14.W -
+ 192: 0000: \***        BCF.DINF.NUM.REC$ becomes BCF.ITMDL.NUM.REC$
+ 193: 0000: \***        BCF.DINF.KEY.LEN$ becomes BCF.ITMDL.KEY.LEN$
+ 194: 0000: \***        BCF.ECC.DATETIMESTAMP$ becomes BCF.FILLER.DATETIMESTAMP$
+ 195: 0000: \*****************************************************************************
+ 196: 0000: \*****************************************************************************
+ 197: 0000: 
+ 198: 0000:     STRING GLOBAL                                                       \
+ 199: 0000:         BCF.FILE.NAME$
+ 200: 0000: 
+ 201: 0000:     INTEGER*2 GLOBAL                                                    \
+ 202: 0000:         BCF.RECL%,                                                      \   !OMW
+ 203: 0000:         BCF.REPORT.NUM%,                                                \
+ 204: 0000:         BCF.SESS.NUM%
+ 205: 0000: 
+ 206: 0000:     STRING GLOBAL                                                       \
+ 207: 0000:     BCF.RECORD$,          \ 80 bytes
+ 208: 0000:     BCF.IUF.SERIAL.NO$,   \ 5 bytes, IUF serial number
+ 209: 0000:     BCF.OPEN.DATE$,       \ 6 bytes, Last store opening date (YYMMDD)
+ 210: 0000:     BCF.FILLER.DATE$,     \ 3 bytes, filler
+ 211: 0000:     BCF.LABEL.DATE$,      \ 6 bytes, label print date (YYMMDD)
+ 212: 0000:     BCF.SALES.SERIAL.NO$ ,\ 5 bytes, sales serial number
+ 213: 0000:     BCF.STMVB.SERIAL.NO$, \ 5 bytes, current serial number          \
+ 214: 0000:                               \     of Stock Movement Backup file       \
+ 215: 0000:     BCF.TOF.DAYS$,        \ 2 bytes, number of days' worth of sales to \
+ 216: 0000:                           \       be held on the TIF at re-build       \
+ 217: 0000:         BCF.EPS.BATCH$,       \ 2 bytes, highest batch number to have   \
+ 218: 0000:                               \     been reported upon by PSE31         \
+ 219: 0000:     BCF.NO.EPF.COPIES$,   \ 2 bytes, no. of copies of EPS payment file \
+ 220: 0000:     BCF.CCMVT.SERIAL.NUM$,\ 5 bytes ASC                                ! BMJK
+ 221: 0000:     BCF.TXR.SERIAL.NUM$,  \ 5 bytes transaction retrieval serial number!SWM
+ 222: 0000:     BCF.CUSTD.SERIAL.NUM$,\ 5 bytes customer data file serial number   !SWM
+ 223: 0000:     BCF.PSB58.DATE$,      \ 6 bytes date of last MTSL/CUSTW cut-off    !SWM
+ 224: 0000:     BCF.CTSL1.SERIAL.NUM$,\ 5 bytes serial number on first MTSLQ (and  ! 4.6 RC
+ 225: 0000:                           \         thereore CTSL1) batch header       ! 4.6 RC
+ 226: 0000:     BCF.MTSLQ.DAYS$,      \ 2 byte MTSLQ data retention period (PSB14) ! 4.6 RC
+ 227: 0000:     BCF.FILLER67$,        \ 8 bytes filler beginning at byte 67        ! 4.6 RC
+ 228: 0000:         BCF.NTIUF.SERIAL.NO$,                                           \   !FMG
+ 229: 0000:         BCF.DENTISTRY.PSAUDIT.SERIAL.NO$,                               \   !FMG
+ 230: 0000:         BCF.WELL.SERIAL.NO$,                                            \   !GMG
+ 231: 0000:         BCF.WELL.PSAUDIT.SERIAL.NO$,                                    \   !GMG
+ 232: 0000:     BCF.ACSAL.SERIAL.NUM$,\ 5 bytes serial number on ACSAL             !ESDH
+ 233: 0000:     BCF.DENTISTRY.PRODUCT.GROUP$,                                      \FMG
+ 234: 0000:     BCF.WELL.PRODUCT.GROUP$,                                           \GMG
+ 235: 0000:     BCF.FILLER$,         \! 1 byte, filler                             !BMJK
+ 236: 0000:     BCF.WELL.SERV.PRODUCT.GROUP$,                                      \KBG
+ 237: 0000:         BCF.ETOPUP.PROD.GRP$,                                           \   !LAH
+ 238: 0000:         BCF.END.FILLER$,                                                \   !LAH
+ 239: 0000:     BCF.TBAG.BATCH.NO$,                                                \IAH
+ 240: 0000:     BCF.TBAG.DAYS.KEPT$,                                               \IAH
+ 241: 0000:     BCF.NEWLINES.WEEKS$,                                               \4.7JAS
+ 242: 0000:     BCF.NEWLINES.LINES$,                                               \4.8JAS
+ 243: 0000:     BCF.TBAG.FILLER$,                                                  \ 79 Bytes filler !IAH 70 Bytes filler 4.7JAS ! 65 Bytes fille 4.8JAS
+ 244: 0000:     BCF.DEALDIR.SERIAL.NUM$, \ 4 bytes serial number                   !MJAS
+ 245: 0000:     BCF.DIDIR.SERIAL.NUM$,   \ 4 bytes serial number                   !MJAS
+ 246: 0000:     BCF.DEAL.NUM.REC$,       \ 6 bytes number of records in deal file  !MJAS
+ 247: 0000:     BCF.ITMDL.NUM.REC$,      \ 6 bytes number of records in ITMDL file !OCS
+ 248: 0000:     BCF.DEAL.KEY.LEN$,       \ 3 bytes key length of deal file         !MJAS
+ 249: 0000:     BCF.ITMDL.KEY.LEN$,      \ 3 bytes bytes ITMDL record key length   !OCS
+ 250: 0000:     BCF.DVCHR.SERIAL.NUM$,   \ 4 bytes serial numbr                    !NJT !4.10CSk
+ 251: 0000:     BCF.FILLER.DATETIMESTAMP$,\17 bytes filler for future use          !OCS
+ 252: 0000:     BCF.IUF.DATETIMESTAMP$, \ !17 bytes timestamp YYYYMMDDHHMMSSsss     !4.10CSk
+ 253: 0000:                             \ !   Last successfully processed IUF from SAP.
+ 254: 0000:         BCF.ITEM.STATUS$(1),     \1 byte array, item status             \   !OMW
+ 255: 0000:         BCF.NEGATIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+ 256: 0000:                                  \   to include items with a negative   \   !OMW
+ 257: 0000:                                  \   stock figure in the initial stock  \   !OMW
+ 258: 0000:                                  \   snapshot messages.                 \   !OMW
+ 259: 0000:         BCF.POSITIVE.STOCK.FLAG$(1), \1 byte array, Flag (Y/N) whether  \   !OMW
+ 260: 0000:                                  \   to include items with a positive   \   !OMW
+ 261: 0000:                                  \   stock figure in the initial stock  \   !OMW
+ 262: 0000:                                  \   snapshot messages.                 \   !OMW
+ 263: 0000:         BCF.ZERO.STOCK.FLAG$(1)  !1 byte array, Flag (Y/N) whether to   \   !OMW
+ 264: 0000:                                  \   include items with a zero          \   !OMW
+ 265: 0000:                                  \   stock figure in the initial stock  \   !OMW
+ 266: 0000:                                  !   snapshot messages.                     !OMW
+ 267: 0000:                 
+ 268: 0000:     INTEGER*1                                                           \
+ 269: 0000:         BCF.NO.CPM.COPIES%
+ 270: 0000: 
+ 271: 0000:     INTEGER*2 GLOBAL                                                    \
+ 272: 0000:     BCF.CC.SERIAL.NO,        \ 1 byte UPD, CC serial number
+ 273: 0000:         BCF.MAX.STATUS.COUNT%,        \ Maximum number of item status   \   !OMW
+ 274: 0000:     BCF.REC21.REC.LEN%,      \ Total Supplier number length            !4.11 AS
+ 275: 0000:     BCF.REC21.SUPPLIER.LEN%, \ Length of the supplier number           !4.11 AS
+ 276: 0000:         BCF.MAX.STOCK.INIT.MESSAGES%, \ Maximum number of initial       \   !OMW
+ 277: 0000:                                       \ stock snapshot message to       \   !OMW
+ 278: 0000:                                       \ send per day.                   \   !OMW
+ 279: 0000:         BCF.MAX.STOCK.INIT.ITEMS%,    \ Maximum number of items to      \   !OMW
+ 280: 0000:                                       \ include in a single initial     \   !OMW
+ 281: 0000:                                       \ stock snapshot message.         \   !OMW
+ 282: 0000:         BCF.NEGATIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+ 283: 0000:                                       \ a negative stock figure to      \   !OMW
+ 284: 0000:                                       \ include in the initial stock    \   !OMW
+ 285: 0000:                                       \ snapshot messages.              \   !OMW
+ 286: 0000:         BCF.POSITIVE.DAYS%(1),        \ Number of days' movements with  \   !OMW
+ 287: 0000:                                       \ a positive stock figure to      \   !OMW
+ 288: 0000:                                       \ include in the initial stock    \   !OMW
+ 289: 0000:                                       \ snapshot messages.              \   !OMW
+ 290: 0000:         BCF.REC22.REC.LEN%,           \                                 \   !4.12 CSk
+ 291: 0000:         BCF.REC22.PROD.GROUP.LEN%,    \ Length of GCM Product Group No  \   !4.12 CSk
+ 292: 0000:         BCF.ZERO.DAYS%(1)             \ Number of days' movements with  \   !OMW
+ 293: 0000:                                       \ a zero stock figure to include  \   !OMW
+ 294: 0000:                                       \ in the initial stock snapshot   \   !OMW
+ 295: 0000:                                       ! messages.                           !OMW
+ 296: 0000: 
+ 297: 0000: 
+ 298: 0000:     INTEGER*4 GLOBAL                                                    \
+ 299: 0000:         BCF.REC.NO%
+ 300: 0000: 
+ 301: 0000: %INCLUDE CIPPMDEC.J86   ! Markdown File
+ 302: 0000: \/******************************************************************/
+ 303: 0000: \/*                                                                */
+ 304: 0000: \/* CIPPM FILE GLOBAl VARIABLE DECLARATIONS                        */
+ 305: 0000: \/*                                                                */
+ 306: 0000: \/* REFERENCE   : CIPPMDEC.J86                                     */
+ 307: 0000: \/*                                                                */
+ 308: 0000: \/* VERSION A.          Neil Bennett.              16 APRIL 2007   */
+ 309: 0000: \/*                                                                */
+ 310: 0000: \/******************************************************************/
+ 311: 0000: 
+ 312: 0000:    STRING GLOBAL                \
+ 313: 0000:       CIPPM.BKUP.NAME$,         \
+ 314: 0000:       CIPPM.FILE.NAME$,         \
+ 315: 0000:                                 \
+ 316: 0000:       CIPPM.RCD$                !
+ 317: 0000: 
+ 318: 0000:    INTEGER*2 GLOBAL             \
+ 319: 0000:       CIPPM.REPORT.NUM%,        \
+ 320: 0000:       CIPPM.SESS.NUM%           !
+ 321: 0000: 
+ 322: 0000: \/******************************************************************/
+ 323: 0000: %INCLUDE DRUGDEC.J86    ! Drug File
+ 324: 0000: REM \
+ 325: 0000: \******************************************************************************
+ 326: 0000: \******************************************************************************
+ 327: 0000: \***
+ 328: 0000: \***         %INCLUDE FOR DRUG FILE - FIELD DECLARATIONS
+ 329: 0000: \***                                  FILE REFERENCE PARAMETERS
+ 330: 0000: \***
+ 331: 0000: \***                  FILE TYPE    : Keyed
+ 332: 0000: \***
+ 333: 0000: \***                  REFERENCE    : DRUGDEC.J86
+ 334: 0000: \***
+ 335: 0000: \***         VERSION A : Nalini Mathusoothanan     12 July 2011
+ 336: 0000: \***
+ 337: 0000: \***    Holds stock counting details for ethical lines.
+ 338: 0000: \*******************************************************************************
+ 339: 0000: \*******************************************************************************
+ 340: 0000: 
+ 341: 0000:   STRING GLOBAL           \
+ 342: 0000:     DRUG.FILE.NAME$,      \ DRUG file name - DRUG.BIN
+ 343: 0000:     DRUG.ITEM.CODE$,      \ 3  byte UPD Boots item code (excluding check digit)
+ 344: 0000:     DRUG.DESCRIPTION$,    \ 40 byte ASC Drug Description
+ 345: 0000:     DRUG.FILLER$          \ Filler - packed zeroes
+ 346: 0000: 
+ 347: 0000:   INTEGER*1 GLOBAL        \
+ 348: 0000:     DRUG.BIT.FLAGS.1%     \ 1 byte - bit values
+ 349: 0000:                           \ X"80"  - Active in store (load into POD)
+ 350: 0000:                           \ X"40"  - Reserved for future use
+ 351: 0000:                           \ X"20"  - Reserved for future use
+ 352: 0000:                           \ X"10"  - Reserved for future use
+ 353: 0000:                           \ X"08"  - Reserved for future use
+ 354: 0000:                           \ X"04"  - Reserved for future use
+ 355: 0000:                           \ X"02"  - Reserved for future use
+ 356: 0000:                           \ X"01"  - Reserved for future use
+ 357: 0000: 
+ 358: 0000:   INTEGER*2 GLOBAL        \
+ 359: 0000:     DRUG.RECL%,           \ Record Length - 56
+ 360: 0000:     DRUG.REPORT.NUM%,     \ Drug File session Report Number
+ 361: 0000:     DRUG.SESS.NUM%        \ Drug File Session Number
+ 362: 0000: 
+ 363: 0000:   INTEGER*4 GLOBAL        \
+ 364: 0000:     DRUG.PACK.SIZE%       ! The number of tablets, or the weight, or the volume
+ 365: 0000: %INCLUDE IDFDEC.J86     ! Item Data File
+ 366: 0000: REM \
+ 367: 0000: \******************************************************************************
+ 368: 0000: \******************************************************************************
+ 369: 0000: \***
+ 370: 0000: \***         %INCLUDE FOR ITEM DATA FILE - FIELD DECLARATIONS
+ 371: 0000: \***                                       FILE REFERENCE PARAMETERS
+ 372: 0000: \***
+ 373: 0000: \***                  FILE TYPE    : Keyed
+ 374: 0000: \***
+ 375: 0000: \***                  REFERENCE    : IDFDEC.J86
+ 376: 0000: \***
+ 377: 0000: \***         VERSION A : Andrew Wedgeworth  29th June 1992    
+ 378: 0000: \***
+ 379: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 380: 0000: \***    Replaced un-used RANK$ with BSNS.CNTR$ and FILLER$.
+ 381: 0000: \***
+ 382: 0000: \***    VERSION D.              Andrew Wedgeworth               15th March 1995
+ 383: 0000: \***    Comments updated to reflect the fact that some bits on the file are
+ 384: 0000: \***    no longer used.
+ 385: 0000: \***
+ 386: 0000: \*******************************************************************************
+ 387: 0000: \*******************************************************************************
+ 388: 0000: 
+ 389: 0000:   STRING GLOBAL           \
+ 390: 0000:     IDF.FILE.NAME$,       \  
+ 391: 0000:     IDF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+ 392: 0000:     IDF.FIRST.BAR.CODE$,  \ 6 byte UPD without check digit
+ 393: 0000:     IDF.SECOND.BAR.CODE$, \ 6 byte UPD without check digit
+ 394: 0000:     IDF.NO.OF.BAR.CODES$, \ 2 byte UPD. Total number of bar codes for this item
+ 395: 0000:     IDF.PRODUCT.GRP$,     \ 3 byte UPD. The first two digits are the concept
+ 396: 0000:                           \ group and the last four the concept sequence
+ 397: 0000:     IDF.STNDRD.DESC$,     \ 24 bytes
+ 398: 0000:     IDF.STATUS.1$,        \ 1 byte, values B,C,D,P,X,Z and blank
+ 399: 0000:     IDF.INTRO.DATE$,      \ 3 byte UPD YYMMDD. Date first added to this file
+ 400: 0000:     IDF.BSNS.CNTR$,       \ 1 byte ASC. Business Centre ID letter      ! CRC
+ 401: 0000:     IDF.FILLER$,          \ 1 byte un-used                             ! CRC
+ 402: 0000:     IDF.PARENT.CODE$,     \ 4 byte UPD with check digit ; may be zero if no
+ 403: 0000:                           \ flashpacks, current IDF.BOOTS.CODE$ if parent line
+ 404: 0000:                           \ or Boots Code of parent line if a flashpack.
+ 405: 0000:     IDF.DATE.OF.LAST.SALE$! 3 byte UPD. Date of last sale.
+ 406: 0000: 
+ 407: 0000:   INTEGER*1 GLOBAL        \
+ 408: 0000:     IDF.BIT.FLAGS.1%,     \ 1 byte - bit values
+ 409: 0000:                           \ X"80"  - Group code flag
+ 410: 0000:                           \ X"40"  - Keylines flag
+ 411: 0000:                           \ X"20"  - Markdown flag
+ 412: 0000:                           \ X"10"  - Warehouse flag
+ 413: 0000:                           \ X"08"  - CSR flag
+ 414: 0000:                           \ X"04"  - Directs A flag
+ 415: 0000:                           \ X"02"  - Directs B flag
+ 416: 0000:                           \ X"01"  - Directs C flag
+ 417: 0000:     IDF.BIT.FLAGS.2%      \ 1 byte - bit values
+ 418: 0000:                           \ X"80"  - Own brand line flag
+ 419: 0000:                           \ X"40"  - Exclusive line flag
+ 420: 0000:                           \ X"20"  - Unused 
+ 421: 0000:                           \ X"10"  - Unused
+ 422: 0000:                           \ X"08"  - Stock system flag
+ 423: 0000:                           \ X"04"  - Pending count flag
+ 424: 0000:                           \ X"02"  - Reserved
+ 425: 0000:                           ! X"01"  - Reserved
+ 426: 0000: 
+ 427: 0000:   INTEGER*2 GLOBAL        \
+ 428: 0000:     IDF.RECL%,            \  
+ 429: 0000:     IDF.REPORT.NUM%,      \ 
+ 430: 0000:     IDF.SESS.NUM%
+ 431: 0000: %INCLUDE IEFDEC.J86     ! Item EAN File
+ 432: 0000: REM \
+ 433: 0000: \******************************************************************************
+ 434: 0000: \******************************************************************************
+ 435: 0000: \***
+ 436: 0000: \***         %INCLUDE FOR ITEM EAN CODES FILE - FIELD DECLARATIONS
+ 437: 0000: \***                                            FILE REFERENCE PARAMETERS
+ 438: 0000: \***
+ 439: 0000: \***               FILE TYPE    : Keyed
+ 440: 0000: \***
+ 441: 0000: \***               REFERENCE    : IEFDEC.J86
+ 442: 0000: \***
+ 443: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+ 444: 0000: \***    No changes to this file.
+ 445: 0000: \***
+ 446: 0000: \*******************************************************************************
+ 447: 0000: \*******************************************************************************
+ 448: 0000: 
+ 449: 0000:   STRING GLOBAL                      \
+ 450: 0000:     IEF.FILE.NAME$,		     \
+ 451: 0000:     IEF.BOOTS.CODE.BAR.CODE$,        \ 9 byte UPD -                        BBAAS
+ 452: 0000:                                      \ 3 bytes UPD boots code              BBAAS   
+ 453: 0000:                                      \ + 6 UPD bar code,                   BBAAS
+ 454: 0000:                                      \ no check digits. (key)              BBAAS
+ 455: 0000:     IEF.NEXT.BAR.CODE$               ! 6 byte UPD without check digit
+ 456: 0000: 
+ 457: 0000:   INTEGER*2 GLOBAL        \
+ 458: 0000:     IEF.REPORT.NUM%,	  \
+ 459: 0000:     IEF.SESS.NUM%,	  \ 
+ 460: 0000:     IEF.RECL%
+ 461: 0000: %INCLUDE IEXDEC.J86     ! Item Extension File
+ 462: 0000: REM \
+ 463: 0000: \******************************************************************************
+ 464: 0000: \******************************************************************************
+ 465: 0000: \***
+ 466: 0000: \***         %INCLUDE FOR Item Extension FILE - FIELD DECLARATIONS
+ 467: 0000: \***                                            FILE REFERENCE PARAMETERS
+ 468: 0000: \***
+ 469: 0000: \***                  FILE TYPE    : Keyed
+ 470: 0000: \***
+ 471: 0000: \***                  REFERENCE    : DRUGDEC.J86
+ 472: 0000: \***
+ 473: 0000: \***         VERSION A :       Nalini Mathusoothanan                12 July 2011
+ 474: 0000: \***
+ 475: 0000: \***    Holds the Stock Supplier Number.
+ 476: 0000: \*******************************************************************************
+ 477: 0000: \*******************************************************************************
+ 478: 0000: 
+ 479: 0000:   STRING GLOBAL               \
+ 480: 0000:     IEX.FILE.NAME$,           \ IEX file name - IEX.BIN
+ 481: 0000:     IEX.ITEM.CODE$,           \ 3  byte UPD Boots Item Code (no check digit)
+ 482: 0000:     IEX.ACTUAL.SUPPLIER.NUM$, \ 4  byte UPD Actual Last Supplier Number
+ 483: 0000:     IEX.PRIMARY.SUPPLIER$,    \ 4  byte UPD Primary Supplier Number
+ 484: 0000:     IEX.FILLER$               \ 17 byte UPD Filler - packed zeroes
+ 485: 0000: 
+ 486: 0000:   INTEGER*2 GLOBAL        \
+ 487: 0000:     IEX.RECL%,            \ Record Length - 28
+ 488: 0000:     IEX.REPORT.NUM%,      \ Drug File session Report Number
+ 489: 0000:     IEX.SESS.NUM%         \ Drug File Session Number
+ 490: 0000: 
+ 491: 0000: 
+ 492: 0000: %INCLUDE IRFDEC.J86     ! Item Reference File
+ 493: 0000: 
+ 494: 0000: \**********************************************************************************
+ 495: 0000: \***
+ 496: 0000: \***       %INCLUDE FOR ITEM RECORD FILE - FIELD DECLARATIONS
+ 497: 0000: \***                                     - FILE REFERENCE PARAMETERS
+ 498: 0000: \***
+ 499: 0000: \***                      FILE TYPE    : Keyed
+ 500: 0000: \***
+ 501: 0000: \***                      REFERENCE    : IRFDEC.J86
+ 502: 0000: \***
+ 503: 0000: \***     Version A               Andrew Wedgeworth            29th June 1992
+ 504: 0000: \***
+ 505: 0000: \***     Version B               Andrew Wedgeworth        14th December 1992
+ 506: 0000: \***     Version letter incremented to match other IRF code.
+ 507: 0000: \***
+ 508: 0000: \***     Version C             Steve Windsor          12.02.93
+ 509: 0000: \***     Version letter incremented to match other IRF code.
+ 510: 0000: \***
+ 511: 0000: \***     Version D             Steve Windsor          12.05.93
+ 512: 0000: \***     Version letter incremented to match other IRF code.
+ 513: 0000: \***
+ 514: 0000: \***     Version E           Steve Perkins       20th September 1993
+ 515: 0000: \***     Deals project : Handling of Converted/Unconverted records
+ 516: 0000: \***     ++   Anything with 'Delete' after initials should be   ++
+ 517: 0000: \***     ++   deleted once the IRF has been converted in all    ++
+ 518: 0000: \***     ++   stores.                                           ++
+ 519: 0000: \***
+ 520: 0000: \***     Version F           Mark Walker            5th January 1994
+ 521: 0000: \***     Version letter incremented to match other IRF code.
+ 522: 0000: \***
+ 523: 0000: \***     Version 96A         Mark Walker               22nd May 1995
+ 524: 0000: \***     Definition for IRF.POINTS% added.
+ 525: 0000: \***
+ 526: 0000: \***                     Stuart McConnachie           12th June 1995
+ 527: 0000: \***     INDICAT3% comments added for discount/loyalty flags.
+ 528: 0000: \***
+ 529: 0000: \***     Version for 96C  Andrew Wedgeworth            22nd May 1996
+ 530: 0000: \***     Removed IRF.FILLER$ field, as this is now redundant.
+ 531: 0000: \***
+ 532: 0000: \***     Version G     Stuart William McConnachie      11th February 2000
+ 533: 0000: \***     Converted IRF.INDICAT2$ to integer flag byte.
+ 534: 0000: \***
+ 535: 0000: \***     REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+ 536: 0000: \***     Major changes for 2002 Deals Rewrite project.
+ 537: 0000: \***     Incorporated up to date record layout to assist development work
+ 538: 0000: \***     (placed in the IRFDEC.J86 to make it visible from ...LST files).
+ 539: 0000: \***     Moved various comments against variables to record layout.
+ 540: 0000: \***     Relisted variables in alphabetical order.
+ 541: 0000: \***     Deleted redundant variables associated with the old deals system ...
+ 542: 0000: \***     DEAL.NUM$, DEAL.SAVING$
+ 543: 0000: \***     Retained variables that are otherwise redundant (to be set to null X'00'
+ 544: 0000: \***     within file functions) ...
+ 545: 0000: \***     INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+ 546: 0000: \***     Defined variables to hold interpreted deals data for new deals system ...
+ 547: 0000: \***     DEAL.NUM$(n) and LIST.ID%(n) (where 'n' represents entry 0, 1 and 2).
+ 548: 0000: \***     These two variables are interpretations of DEAL.DATA% which is defined
+ 549: 0000: \***     locally within IRFFUN.BAS to keep underlying data invisible to programs.
+ 550: 0000: \***
+ 551: 0000: \***     REVISION 1.7                ROBERT COWEY.               5 AUG 2002.
+ 552: 0000: \***     Further changes for 2002 Deals Rewrite project (PSBF19 related).
+ 553: 0000: \***     Defined NEW.IRF.DATA$ as a global variable for use with new functions
+ 554: 0000: \***     CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+ 555: 0000: \***
+ 556: 0000: \***     REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+ 557: 0000: \***     Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+ 558: 0000: \***     No changes to this file other than description.
+ 559: 0000: \***     No changes to IRF file functions.
+ 560: 0000: \***
+ 561: 0000: \***     REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+ 562: 0000: \***     Changes to remove limit of 3 deals per item.
+ 563: 0000: \***     Declaration of new variables for IRF Deal Extension file (IRFDEX).
+ 564: 0000: \***
+ 565: 0000: \***     REVISION 2.0.            ALAN CARR                       9 FEB 2006.
+ 566: 0000: \***     Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+ 567: 0000: \***
+ 568: 0000: \***     REVISION 2.1              TITTOO THOMAS                  01 July 2011
+ 569: 0000: \***     The IRF.UNUSED field is disintegrated to 2 new indicator fields
+ 570: 0000: \***                      IRF.INDICAT9%   1 INT
+ 571: 0000: \***                      IRF.INDICAT10%  1 INT
+ 572: 0000: \***...............................................................................
+ 573: 0000: 
+ 574: 0000: 
+ 575: 0000: \**********************************************************************************
+ 576: 0000: \***
+ 577: 0000: \***    IRF RECORD LAYOUT - REVISION 1.7 - CORRECT FOR 2011 CORE Stores PROJECT
+ 578: 0000: \***
+ 579: 0000: \***     1 11  UPD  BAR.CODE$   Without check digit - File KEY
+ 580: 0000: \***    12  1  INT  INDICAT0%
+ 581: 0000: \***                    X"01" - Contains statins                           ! 2.2 TT
+ 582: 0000: \***                    X"02" - Item not priced (giveaway)
+ 583: 0000: \***                    X"04" - Item not returnable
+ 584: 0000: \***                    X"08" - Item contains alcohol
+ 585: 0000: \***                    X"10" - Blocked from sale                          ! 2.2 TT
+ 586: 0000: \***                    X"20" - Enforced price entry
+ 587: 0000: \***                    X"40" - Enforced quantity entry
+ 588: 0000: \***                    X"80" - Movement kept
+ 589: 0000: \***    13  1  INT  INDICAT1%
+ 590: 0000: \***                    X"01" - Asprin
+ 591: 0000: \***                    X"02" - Paracetamol
+ 592: 0000: \***                    X"04" - TPLU inclusion flag
+ 593: 0000: \***                    X"08" - Giftcard item                              ! 2.2 TT
+ 594: 0000: \***                    X"10" - Withdrawn Block from sale                  ! 2.2 TT
+ 595: 0000: \***                    X"20" - Non-solid dose painkiller                  ! 2.2 TT
+ 596: 0000: \***                    X"40" - Insurance policy item                      ! 2.2 TT
+ 597: 0000: \***                    X"80" - Ibuprofen
+ 598: 0000: \***    14  2  INT  DEAL.DATA%(0)   Interpreted into sub-variables ...
+ 599: 0000: \***                    X'3F' - into DEAL.NUM$(0) "0000" to "9999" (2 byte UPD)
+ 600: 0000: \***                    X'C0' - into LIST.ID%(0) X'00' X
+ 601: 0000: \***                                             X'01' A
+ 602: 0000: \***                                             X'10' B
+ 603: 0000: \***                                             X'11' C                   ! 1.9 RC
+ 604: 0000: \***    16  1  INT  INDICAT8%                                              ! 2.0 AJC
+ 605: 0000: \***                    X"01" - Chlamydia NHS test kit                     ! 2.2 TT
+ 606: 0000: \***                    X"02" - Chlamydia open sell test kit               ! 2.2 TT
+ 607: 0000: \***                    X"04" - Unrestricted group code                    ! 2.2 TT
+ 608: 0000: \***                    X"08" - Nightingale Till prompt                    ! 2.2 TT
+ 609: 0000: \***                    X"10" - Contains Ephedrine                         ! 2.2 TT
+ 610: 0000: \***                    X"60" -  X'00' - If also Blocked From Sale Recall, ! 2.2 TT
+ 611: 0000: \***                                        Emergency                      ! 2.2 TT
+ 612: 0000: \***                             X'00' - If NOT Blocked From Sale Recall,  ! 2.2 TT
+ 613: 0000: \***                                        No recall                      ! 2.2 TT
+ 614: 0000: \***                             X'20' 100% returns                        ! 2.2 TT
+ 615: 0000: \***                             X'40' Withdrawn recall                    ! 2.2 TT
+ 616: 0000: \***                             X'60' Reverse Logistics                   ! 2.2 TT
+ 617: 0000: \***                    X"80" - WEEE item flag                             ! 2.0 AJC
+ 618: 0000: \***    17  1  INT  INDICAT9%
+ 619: 0000: \***                    X'3F' - Disposal special instruction (0-63)
+ 620: 0000: \***                    X"40" - Resaleable Indicator
+ 621: 0000: \***                    X"80" - Boots.com Extended Indicator
+ 622: 0000: \***    18  1  INT  INDICAT10%
+ 623: 0000: \***                    X'07' - Age restrictions
+ 624: 0000: \***                             X'00' - No Age restriction
+ 625: 0000: \***                             X'01' - Age 12 or over
+ 626: 0000: \***                             X'02' - Age 15 or over
+ 627: 0000: \***                             X'03' - Age 16 or over
+ 628: 0000: \***                             X'04' - Age 18 or over
+ 629: 0000: \***                             X'05' - Age 21 or over
+ 630: 0000: \***                             X'06' - Reserved
+ 631: 0000: \***                             X'07' - Reserved
+ 632: 0000: \***                    X'38' - Ethical classification
+ 633: 0000: \***                             X'00' - No ethical classification
+ 634: 0000: \***                             X'08' - Pharmacy medicine (P)
+ 635: 0000: \***                             X'10' - General Sale License (GSL)
+ 636: 0000: \***                             X'18' - Prescription Only Medicine (POM)
+ 637: 0000: \***                             X'20' - Reserved
+ 638: 0000: \***                             X'28' - Reserved
+ 639: 0000: \***                             X'30' - Reserved
+ 640: 0000: \***                             X'38' - Reserved
+ 641: 0000: \***                    X'C0' - Returns route
+ 642: 0000: \***                             X'00' - Not Returnable (Destroy)
+ 643: 0000: \***                             X'40' - Returns & Recovery
+ 644: 0000: \***                             X'80' - Direct
+ 645: 0000: \***                             X'C0' - Semi-centralised
+ 646: 0000: \***    19  5  UPD  SALEPRIC$   Current price in pence
+ 647: 0000: \***    24  1  INT  INDICAT5%   Guarantee duration
+ 648: 0000: \***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+ 649: 0000: \***                    X'40' - Contains Pseudoephedrine                   ! 2.2 TT
+ 650: 0000: \***                    X'80' - Guarantee Duration Type                    ! 2.2 TT
+ 651: 0000: \***                              (1 = Months, 0 = Years)                  ! 2.2 TT
+ 652: 0000: \***    25 18  ASC  ITEMNAME$   Description used by till
+ 653: 0000: \***    43  3  UPD  BOOTS.CODE$ Without check digit
+ 654: 0000: \***    46  2  INT  DEAL.DATA%(1)   Similar structure to DEAL.DATA%(0)
+ 655: 0000: \***    48  2  INT  DEAL.DATA%(2)   Similar structure to DEAL.DATA%(0)
+ 656: 0000: \***    50  1  INT  INDICAT3%
+ 657: 0000: \***                    X"01" - Discountexempt (item exempt from discount)
+ 658: 0000: \***                    X"02" - Boots brand item
+ 659: 0000: \***                    X"04" - Item redeemable for loyalty
+ 660: 0000: \***                    X"08" - Loyalty exempt (item exempt from loyalty)
+ 661: 0000: \***                    X"10" - **Redundant                                ! 2.2 TT
+ 662: 0000: \***                    X"20" - Local Price active
+ 663: 0000: \***                    X"40" - Stock system item
+ 664: 0000: \***                    X"80" - **Redundant                                ! 2.2 TT
+ 665: 0000: \***
+ 666: 0000: \***    Record Length 50
+ 667: 0000: \***
+ 668: 0000: \***
+ 669: 0000: \***    IRF DEAL EXTENSION RECORD LAYOUT ! 1.9 RC
+ 670: 0000: \***
+ 671: 0000: \***     1  3  UPD  BOOTS.CODE$
+ 672: 0000: \***     4  2  INT  IRF.DEAL.DATA%(3)   Similar structure to DEAL.DATA%(0)
+ 673: 0000: \***     6  2  INT  IRF.DEAL.DATA%(4)   Similar structure to DEAL.DATA%(0)
+ 674: 0000: \***     8  2  INT  IRF.DEAL.DATA%(5)   Similar structure to DEAL.DATA%(0)
+ 675: 0000: \***    10  2  INT  IRF.DEAL.DATA%(6)   Similar structure to DEAL.DATA%(0)
+ 676: 0000: \***    12  2  INT  IRF.DEAL.DATA%(7)   Similar structure to DEAL.DATA%(0)
+ 677: 0000: \***    14  2  INT  IRF.DEAL.DATA%(8)   Similar structure to DEAL.DATA%(0)
+ 678: 0000: \***    16  2  INT  IRF.DEAL.DATA%(9)   Similar structure to DEAL.DATA%(0)
+ 679: 0000: \***
+ 680: 0000: \***    Record Length 17
+ 681: 0000: \***
+ 682: 0000: \**********************************************************************************
+ 683: 0000: 
+ 684: 0000: 
+ 685: 0000:     STRING GLOBAL            \
+ 686: 0000:         IRF.ALT.FILE.NAME$,  \
+ 687: 0000:         IRF.BAR.CODE$,       \
+ 688: 0000:         IRF.BOOTS.CODE$,     \
+ 689: 0000:         IRF.DEAL.SAVING$,    \ 2 byte - deal saving amount (0 - œ99.99) ! ESP
+ 690: 0000:         IRF.DEPARTME$,       \ 3 byte UPD. Department number          ! ESP Delete
+ 691: 0000:         IRF.FILE.NAME$,      \
+ 692: 0000:         IRF.HOLDING.PRICE$,  \ 4 byte UPD. Current H.O. price in pence if a local
+ 693: 0000:                              \ price is in effect, zero otherwise.     ! ESP Delete
+ 694: 0000:         IRF.ITEMNAME$,       \
+ 695: 0000: \       IRF.MPGROUP$,        \ Removed SBH 31/1/96
+ 696: 0000:         IRF.RECORD$,         \                                         ! ESP Delete
+ 697: 0000:         IRF.SALEPRIC$,       \
+ 698: 0000:         IRF.SALEQUAN$,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 699: 0000:         IRF.UNUSED$,         \                                                        ! 1.6 RC
+ 700: 0000:         NEW.IRF.DATA$        !                                             ! 1.7 RC
+ 701: 0000: 
+ 702: 0000:     STRING GLOBAL            \                                             ! 1.6 RC
+ 703: 0000:         IRF.DEAL.NUM$(1)                                                   ! 1.6 RC
+ 704: 0000: 
+ 705: 0000:     INTEGER*1 GLOBAL         \
+ 706: 0000:         IRF.DD.SUB%,         \ IRF.DEAL.DATA% subscript                    ! 1.6 RC
+ 707: 0000:         IRF.INDICAT0%,       \
+ 708: 0000:         IRF.INDICAT1%,       \
+ 709: 0000:         IRF.INDICAT2%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 710: 0000:         IRF.INDICAT3%,       \
+ 711: 0000:         IRF.INDICAT4%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 712: 0000:         IRF.INDICAT5%,       \                                             ! 2.0 AJC
+ 713: 0000:         IRF.INDICAT8%,       \                                             ! 2.0 AJC
+ 714: 0000:         IRF.INDICAT9%,       \                                             ! 2.2 TT
+ 715: 0000:         IRF.INDICAT10%                                                     ! 2.2 TT
+ 716: 0000: 
+ 717: 0000:     INTEGER*1 GLOBAL         \                                             ! 1.6 RC
+ 718: 0000:         IRF.LIST.ID%(1)                                                    ! 1.6 RC
+ 719: 0000: 
+ 720: 0000:     INTEGER*2 GLOBAL         \
+ 721: 0000:         IRF.ALT.REPORT.NUM%, \
+ 722: 0000:         IRF.ALT.SESS.NUM%,   \
+ 723: 0000:         IRF.POINTS%,         \ Redundant (set to null within functions)    ! 1.6 RC
+ 724: 0000:         IRF.RECL%,           \
+ 725: 0000:         IRF.REPORT.NUM%,     \
+ 726: 0000:         IRF.SESS.NUM%,       \
+ 727: 0000:         IRF.MAX.DEALS%       !                                             ! 1.9 SM
+ 728: 0000: 
+ 729: 0000:     STRING GLOBAL IRFDEX.FILE.NAME$                                        ! 1.9 SM
+ 730: 0000: 
+ 731: 0000:     INTEGER*2 GLOBAL IRFDEX.SESS.NUM%                                      ! 1.9 SM
+ 732: 0000:     INTEGER*2 GLOBAL IRFDEX.REPORT.NUM%                                    ! 1.9 SM
+ 733: 0000:     INTEGER*2 GLOBAL IRFDEX.RECL%                                          ! 1.9 SM
+ 734: 0000: 
+ 735: 0000: 
+ 736: 0000: !   INTEGER*2 GLOBAL      \ IRF.DEAL.DATA%(n) variables are defined locally  1.6 RC
+ 737: 0000: !       IRF.DEAL.DATA%(1) \ within IRFFUN.BAS to keep invisible to programs  1.6 RC
+ 738: 0000: 
+ 739: 0000: %INCLUDE ITGRPDEC.J86   ! IRF Attribute extension File
+ 740: 0000: \***********************************************************************
+ 741: 0000: \***********************************************************************
+ 742: 0000: \***
+ 743: 0000: \***    DESCRIPTION: IRFITGRP (IRF Attribute Extension File)
+ 744: 0000: \***                 Field Definitions
+ 745: 0000: \***
+ 746: 0000: \***    FILE TYPE : Keyed
+ 747: 0000: \***
+ 748: 0000: \***********************************************************************
+ 749: 0000: \***
+ 750: 0000: \***    Version A.              Rejiya Nair             12th May 2016
+ 751: 0000: \***    PRJ1452 Restricting Item Sales
+ 752: 0000: \***    Initial version.
+ 753: 0000: \***
+ 754: 0000: \***********************************************************************
+ 755: 0000: \***********************************************************************
+ 756: 0000: 
+ 757: 0000: \***********************************************************************
+ 758: 0000: \***********************************************************************
+ 759: 0000: \***
+ 760: 0000: \***    File Record Layout
+ 761: 0000: \***
+ 762: 0000: \***    IRFITGRP.ITEM.CODE$          3 UPD  Item code (Key)
+ 763: 0000: \***    IRFITGRP.GROUP.NO%           1 INT  Group number of the item
+ 764: 0000: \***
+ 765: 0000: \***********************************************************************
+ 766: 0000: \***********************************************************************
+ 767: 0000: 
+ 768: 0000:     INTEGER*2 GLOBAL                                                   \
+ 769: 0000:         IRFITGRP.KEYL%,                                                \
+ 770: 0000:         IRFITGRP.RECL%,                                                \
+ 771: 0000:         IRFITGRP.REPORT.NUM%,                                          \
+ 772: 0000:         IRFITGRP.SESS.NUM%
+ 773: 0000: 
+ 774: 0000:     INTEGER*1 GLOBAL                                                   \
+ 775: 0000:         IRFITGRP.GROUP.NO%,                                            \
+ 776: 0000:         IRFITGRP.OPEN
+ 777: 0000: 
+ 778: 0000:     STRING GLOBAL                                                      \
+ 779: 0000:         IRFITGRP.FILE.NAME$,                                           \
+ 780: 0000:         IRFITGRP.ITEM.CODE$
+ 781: 0000: %INCLUDE ISFDEC.J86     ! Item Shelf Edge Label Description File
+ 782: 0000: REM \
+ 783: 0000: \******************************************************************************
+ 784: 0000: \******************************************************************************
+ 785: 0000: \***
+ 786: 0000: \***         %INCLUDE FOR ITEM SHELF EDGE DESCRIPTION FILE 
+ 787: 0000: \***
+ 788: 0000: \***               - FILE REFERENCE PARAMETERS
+ 789: 0000: \***               - FIELD DECLARATIONS
+ 790: 0000: \***
+ 791: 0000: \***               FILE TYPE    : Keyed  
+ 792: 0000: \***
+ 793: 0000: \***               REFERENCE    : ISFDEC.J86
+ 794: 0000: \***
+ 795: 0000: \******************************************************************************
+ 796: 0000: \******************************************************************************
+ 797: 0000: 
+ 798: 0000:   INTEGER*4 GLOBAL        \
+ 799: 0000:     ISF.INTEGER.4%,       \ BRD
+ 800: 0000:     IUDF.FILE.SIZE%       ! BRD
+ 801: 0000:   
+ 802: 0000:   INTEGER*2 GLOBAL        \
+ 803: 0000:     ISF.SESS.NUM%,        \
+ 804: 0000:     ISF.REPORT.NUM%,      \ 
+ 805: 0000:     ISF.RECL%,            \
+ 806: 0000:     ISF.INTEGER.2%        ! BRD
+ 807: 0000:     
+ 808: 0000:   INTEGER*2               \ BRD
+ 809: 0000:     IUDF.REPORT.NUM%,     \ BRD
+ 810: 0000:     IUDF.SESS.NUM%,       \ BRD
+ 811: 0000:     IUDF.RECL%,           \ BRD
+ 812: 0000:     UNIT.NAME.COUNTER%,   \ BRD
+ 813: 0000:     IUDF.RECORD.POSITION%,\ BRD
+ 814: 0000:     PRINT.FLAG%           ! BRD
+ 815: 0000:     
+ 816: 0000:     
+ 817: 0000:   STRING GLOBAL           \
+ 818: 0000:     ISF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+ 819: 0000:     ISF.S.E.DESC$,        \ 45 bytes. Shelf edge description
+ 820: 0000:     ISF.ITEM.QTY$,        \ 4 byte UPD. Shelf Item Qty
+ 821: 0000:     ISF.UNIT.MEASUREMENT$,\ 2 byte UPD. Unit Measurement
+ 822: 0000:     ISF.UNIT.NAME$,       \ 10 bytes. Unit Name eg. 'ml'
+ 823: 0000:     ISF.SEL.PRINTED.FLAG$,\ 1 byte UPD. Last printed version
+ 824: 0000:     ISF.FILE.NAME$,       \
+ 825: 0000:     IUDF.RECORD$          ! CCS
+ 826: 0000:     
+ 827: 0000:   STRING                  \
+ 828: 0000:     RECORD.FORMAT$,       \ BRD
+ 829: 0000:     IUDF.FILE.NAME$ !,      \ BRD
+ 830: 0000:     ! IUDF.RECORD$          ! BRD
+ 831: 0000: 
+ 832: 0000: %INCLUDE IUFDEC.J86     ! Item Update file
+ 833: 0000: \REM
+ 834: 0000: \*******************************************************************************
+ 835: 0000: \*******************************************************************************
+ 836: 0000: \***
+ 837: 0000: \***    %INCLUDE FOR ITEM UPDATE FILES VARIABLE DECLARATIONS
+ 838: 0000: \***
+ 839: 0000: \***        REFERENCE   :   IUFDEC (J86)
+ 840: 0000: \***
+ 841: 0000: \***        FILE TYPE   :   Sequential
+ 842: 0000: \***
+ 843: 0000: \***    VERSION H.              ROBERT COWEY.                       24 AUG 1993.
+ 844: 0000: \***    Original version created by combining IUFFLDG and IUFNUMG.
+ 845: 0000: \***
+ 846: 0000: \***    VERSION I.              ROBERT COWEY.                       25 AUG 1993.
+ 847: 0000: \***    Added NEW.DEAL.COUNT$ and BC.LETTER$ to record type "001" (Item
+ 848: 0000: \***    reference).
+ 849: 0000: \***    Removed falconcraft detail variables (SALESPLAN.ID$, BUS.CENTRE$,
+ 850: 0000: \***    START.DATE$, END.DATE$, TICKET.TYPE$, GENOF.NUM$, GENOF.DESC$,
+ 851: 0000: \***    FOOTER.TYPE$) from record types "003" (Deal price) and "004" (Item
+ 852: 0000: \***    pending).
+ 853: 0000: \***    Defined record type "006" (Deals).
+ 854: 0000: \***
+ 855: 0000: \***    VERSION J.              Andrew Wedgeworth                13th March 1995
+ 856: 0000: \***    Focus flag, Price Pledge flag and ASCOTT/COMPASS flag replaced with
+ 857: 0000: \***    fields for the Staff Discount, Customer Loyalty and Give-away systems.
+ 858: 0000: \***
+ 859: 0000: \***    VERSION K               Rebecca Dakin                    28th June 1999
+ 860: 0000: \***
+ 861: 0000: \***    Version L        Andy Cotton & Amy Hoggard     29th Jan 2003
+ 862: 0000: \***    Change use and name of variable IUF.DEAL.PRICE.FLAG$ to IUF.KEYLINES.FLAG$
+ 863: 0000: \***
+ 864: 0000: \***    Version M               Brian Greenfield                 25th June 2004
+ 865: 0000: \***    Added new IUF.MARKDOWN$ tor use with SEL Markdown flagged items.
+ 866: 0000: \***
+ 867: 0000: \***    Version 1.6           Charles Skadorwa                 4th July 2011
+ 868: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+ 869: 0000: \***    Added new globals.
+ 870: 0000: \***
+ 871: 0000: \***    VERSION 1.7.                ROBERT COWEY.                07 FEB 2012.
+ 872: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+ 873: 0000: \***
+ 874: 0000: \***    Defect 21 - Commented 1.9 RC (21).
+ 875: 0000: \***    Commented real meaning of IUF.DISCOUNTABLE$ as Discount Exempt.
+ 876: 0000: \***
+ 877: 0000: \***    VERSION 1.8.                ROBERT COWEY.                20 FEB 2012.
+ 878: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.6.
+ 879: 0000: \***    Correction relating to transformation of legacy IUF data to Core R2 format
+ 880: 0000: \***
+ 881: 0000: \***    Defect 44 - Commented 1.11 RC (44).
+ 882: 0000: \***    Replaced variables HEALTH.CONCEPT.GROUPS$ and HEALTH.GROUP$ with more
+ 883: 0000: \***    meaningfully named single variable INSURE.CONCEPT.GROUPS$.
+ 884: 0000: \***
+ 885: 0000: \***    VERSION B               Rejiya Nair             13th May 2016
+ 886: 0000: \***    PRJ1452 Restricting Item Sales
+ 887: 0000: \***    - Declaration of two new variables (version tagged as !BRN)
+ 888: 0000: \***    - Removed the commented out code
+ 889: 0000: \***
+ 890: 0000: \*******************************************************************************
+ 891: 0000: \*******************************************************************************
+ 892: 0000: 
+ 893: 0000: 
+ 894: 0000: \*******************************************************************************
+ 895: 0000: \*******************************************************************************
+ 896: 0000: \***
+ 897: 0000: \***    RECORD LAYOUTS
+ 898: 0000: \***
+ 899: 0000: \***    HEADER RECORD
+ 900: 0000: \***
+ 901: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 902: 0000: \***     8  3  ASC  TRANS.TYPE$             "000" Header
+ 903: 0000: \***    11  4  ASC  IUF.BRANCH.NO$
+ 904: 0000: \***    15  5  ASC  IUF.SERIAL.NO$
+ 905: 0000: \***
+ 906: 0000: \***    ITEM REFERENCE RECORD
+ 907: 0000: \***
+ 908: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 909: 0000: \***     8  3  ASC  TRANS.TYPE$             "001" Item reference
+ 910: 0000: \***    11  1  ASC  IUF.GRP.CODE.FLAG$
+ 911: 0000: \***    12 24  ASC  IUF.STNDRD.DESC$
+ 912: 0000: \***    36 18  ASC  IUF.TILL.DESC$
+ 913: 0000: \***    54 45  ASC  IUF.S.E.DESC$
+ 914: 0000: \***    99  1  ASC  IUF.SUPPLY.ROUTE$
+ 915: 0000: \***   100  1  ASC  IUF.GIVEAWAY$
+ 916: 0000: \***   101  5  ASC  IUF.PROD.GRP$
+ 917: 0000: \***   106  1  ASC  IUF.GUARANTEE.CAT$          ! SBH CHANGED FROM ENF.QTY 31/1/96
+ 918: 0000: \***   107  1  ASC  IUF.ENF.PRICE.ENTRY$
+ 919: 0000: \***   108  1  ASC  IUF.LOYALTY.FLAG$
+ 920: 0000: \***   109  1  ASC  IUF.DISCOUNT.CAT$
+ 921: 0000: \***   110  1  ASC  IUF.OWN.BRAND$
+ 922: 0000: \***   111  1  ASC  IUF.DIRECT.PROC$
+ 923: 0000: \***   112  1  ASC  IUF.STATUS.1$
+ 924: 0000: \***   113  1  ASC  IUF.EANS.CHANGED$
+ 925: 0000: \***   114  3  ASC  IUF.NO.OF.EANS$
+ 926: 0000: \***   117  8  ASC  IUF.CURRENT.PRICE$      Price in pence
+ 927: 0000: \***   125  1  ASC  IUF.NO.OF.RPD.PRICES$
+ 928: 0000: \***   126  2  ASC  IUF.NO.OF.FLASHPACKS$
+ 929: 0000: \***   128  7  ASC  IUF.ORIGIN.CODE$
+ 930: 0000: \***   135  1  ASC  IUF.DEAL.PRICE.FLAG$    !L CHANGED TO IUF.KEYLINES.FLAG$
+ 931: 0000: \***   136  1  ASC  IUF.STOCK.SYSTEM.FLAG$  "Y" Stock system item
+ 932: 0000: \***                                        "N" Non stock system item
+ 933: 0000: \***   137  2  ASC  NEW.DEAL.COUNT$         Number of type 6 records
+ 934: 0000: \***   139  1  ASC  BC.LETTER$              Business centre letter
+ 935: 0000: \***
+ 936: 0000: \***    FLASHPACK RECORD
+ 937: 0000: \***
+ 938: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 939: 0000: \***     8  3  ASC  TRANS.TYPE$             "002" Flashpack
+ 940: 0000: \***    11  7  ASC  FLASH.PACK.CODE$
+ 941: 0000: \***    18  3  ASC  MULTIPLICATION.FACTOR$
+ 942: 0000: \***
+ 943: 0000: \***    DEAL PRICE RECORD
+ 944: 0000: \***
+ 945: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 946: 0000: \***     8  3  ASC  TRANS.TYPE$             "003" Deal price
+ 947: 0000: \***    11  1  ASC  DEAL.TYPE$
+ 948: 0000: \***    12  2  ASC  DEAL.QUANTITY$
+ 949: 0000: \***    14  5  ASC  SPECIAL.PRICE$          Price in pence
+ 950: 0000: \***    19  2  ASC  M.P.GROUP$
+ 951: 0000: \***    21  6  ASC  FIRST.DATE$             YYMMDD format
+ 952: 0000: \***    27  6  ASC  LAST.DATE$              YYMMDD format
+ 953: 0000: \***
+ 954: 0000: \***    ITEM PENDING PRICE RECORD
+ 955: 0000: \***
+ 956: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 957: 0000: \***     8  3  ASC  TRANS.TYPE$             "004" Item pending price
+ 958: 0000: \***    11  6  ASC  RPD.DATE$               YYMMDD format
+ 959: 0000: \***    17  8  ASC  NEW.PRICE$              Price in pance
+ 960: 0000: \***    25  5  ASC  RPD.NO$
+ 961: 0000: \***    30  1  ASC  MARKDOWN$               Markdown flag of "Y" or "N" !MBG
+ 962: 0000: \***
+ 963: 0000: \***    ITEM BARCODE RECORD
+ 964: 0000: \***
+ 965: 0000: \***     1  7  ASC  BOOTS.CODE$
+ 966: 0000: \***     8  3  ASC  TRANS.TYPE$             "005" Item barcode
+ 967: 0000: \***    11 12  ASC  BAR.CODE$
+ 968: 0000: \***
+ 969: 0000: \***    DEALS RECORD (MULTI-BUY FORMAT)     Sorted by ...
+ 970: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 971: 0000: \***
+ 972: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 973: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 974: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 975: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 976: 0000: \***    23  1  ASC  DEAL.ID$                "M" Multi-Buy
+ 977: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      " " (not used for Multi-Buy)
+ 978: 0000: \***    25  1  ASC  3FOR2.FLAG$             "T" Three-For-Two type Multi-Buy
+ 979: 0000: \***    26  2  ASC  DEAL.LIMIT$             2 to 15 Qualifying purchases
+ 980: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 981: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 982: 0000: \***                                        zero if highest price purchased
+ 983: 0000: \***
+ 984: 0000: \***    DEALS RECORD (LINK-SAVE FORMAT)     Sorted by ...
+ 985: 0000: \***                                          BOOTS.CODE$ then DEAL.NUMBER$
+ 986: 0000: \***
+ 987: 0000: \***     1  7  ASC  BOOTS.CODE$             Boots item code with check digit
+ 988: 0000: \***     8  3  ASC  TRANS.TYPE$             "006" Deals
+ 989: 0000: \***    11  6  ASC  START.DATE$             YYMMDD format
+ 990: 0000: \***    17  6  ASC  END.DATE$               YYMMDD format
+ 991: 0000: \***    23  1  ASC  DEAL.ID$                "A" "B" "X" Link-Save list ID
+ 992: 0000: \***    24  1  ASC  PAIR.TRIPLET.FLAG$      "P" Pair, "T" Triplet
+ 993: 0000: \***    25  1  ASC  3FOR2.FLAG$             " " (not used for Link-Save)
+ 994: 0000: \***    26  2  ASC  DEAL.LIMIT$             1 to 15 Qualifying (list) purchases
+ 995: 0000: \***    28  4  ASC  DEAL.NUMBER$            100 to 9999
+ 996: 0000: \***    32  4  ASC  SAVED.AMOUNT$           1 to 9999 if fixed saving
+ 997: 0000: \***                                        zero if highest price purchased
+ 998: 0000: \***    TRAILER RECORD
+ 999: 0000: \***
+1000: 0000: \***     1  7  ASC  BOOTS.CODE$
+1001: 0000: \***    ]8  3  ASC  TRANS.TYPE$             "999" Trailer
+1002: 0000: \***    11  7  ASC  IUF.ITEM.COUNT$
+1003: 0000: \***
+1004: 0000: \*******************************************************************************
+1005: 0000: \*******************************************************************************
+1006: 0000: 
+1007: 0000: 
+1008: 0000:     STRING GLOBAL                                                       \
+1009: 0000:         IUF.FILE.NAME$
+1010: 0000: 
+1011: 0000:     INTEGER*1 GLOBAL                                                    \ 1.6CSk
+1012: 0000:         IUF.NEW.FORMAT                                                  ! 1.6CSk
+1013: 0000: 
+1014: 0000:     INTEGER*2 GLOBAL                                                    \
+1015: 0000:         IUF.REPORT.NUM%,                                                \
+1016: 0000:         IUF.SESS.NUM%,                                                  \ 1.6CSk
+1017: 0000:         REFPGF.COUNT%,                                                  \ 1.6CSk
+1018: 0000:         REFPGF.REPORT.NUM%,                                             \ 1.6CSk
+1019: 0000:         REFPGF.SESS.NUM%                                                ! 1.6CSk
+1020: 0000: 
+1021: 0000:   STRING GLOBAL                                                         \
+1022: 0000:         IUF.3FOR2.FLAG$,                                                \ IRC
+1023: 0000:         IUF.BAR.CODE$,                                                  \
+1024: 0000:         IUF.BC.LETTER$,                                                 \ IRC
+1025: 0000:         IUF.BOOTS.CODE$,                                                \
+1026: 0000:         IUF.BRANCH.NO$,                                                 \
+1027: 0000:         IUF.CURRENT.PRICE$,                                             \
+1028: 0000:         IUF.DEAL.ID$,                                                   \ IRC
+1029: 0000:         IUF.DEAL.LIMIT$,                                                \ IRC
+1030: 0000:         IUF.DEAL.NUMBER$,                                               \ IRC
+1031: 0000:         IUF.KEYLINES.FLAG$,                                             \ LAC/AH
+1032: 0000:         IUF.DEAL.QUANTITY$,                                             \
+1033: 0000:         IUF.DEAL.TYPE$,                                                 \
+1034: 0000:         IUF.DIRECT.PROC$,                                               \
+1035: 0000:         IUF.DISCOUNT.CAT$,                                              \ JAW
+1036: 0000:         IUF.EANS.CHANGED$,                                              \
+1037: 0000:         IUF.END.DATE$,                                                  \
+1038: 0000:         IUF.ENF.PRICE.ENTRY$,                                           \
+1039: 0000:         IUF.GUARANTEE.CAT$,                                             \ SBH 31/1/96
+1040: 0000:         IUF.FIRST.DATE$,                                                \
+1041: 0000:         IUF.FLASH.PACK.CODE$,                                           \
+1042: 0000:         IUF.GIVEAWAY$,                                                  \ JAW
+1043: 0000:         IUF.GRP.NO$,                                                   \!BRN
+1044: 0000:         IUF.GRP.CODE.FLAG$,                                             \
+1045: 0000:         IUF.ITEM.COUNT$,                                                \
+1046: 0000:         IUF.ITEM.QTY$,                                                  \ KRD
+1047: 0000:         IUF.LAST.DATE$,                                                 \
+1048: 0000:         IUF.LOYALTY.FLAG$,                                              \ JAW
+1049: 0000:         IUF.M.P.GROUP$,                                                 \
+1050: 0000:         IUF.MULTIPLICATION.FACTOR$,                                     \
+1051: 0000:         IUF.NEW.DEAL.COUNT$,                                            \ IRC
+1052: 0000:         IUF.NEW.PRICE$,                                                 \
+1053: 0000:         IUF.NO.OF.EANS$,                                                \
+1054: 0000:         IUF.NO.OF.RPD.PRICES$,                                          \
+1055: 0000:         IUF.OWN.BRAND$,                                                 \
+1056: 0000:         IUF.PAIR.TRIPLET.FLAG$,                                         \ IRC
+1057: 0000:         IUF.PROD.GRP$,                                                  \
+1058: 0000:         IUF.RECORD$,                                                    \
+1059: 0000:         IUF.RESTRICT.SALES.FLAG$,                                      \!BRN
+1060: 0000:         IUF.RPD.DATE$,                                                  \
+1061: 0000:         IUF.RPD.NO$,                                                    \
+1062: 0000:         IUF.S.E.DESC$,                                                  \
+1063: 0000:         IUF.SAVED.AMOUNT$,                                              \ IRC
+1064: 0000:         IUF.SERIAL.NO$,                                                 \
+1065: 0000:         IUF.SPECIAL.PRICE$,                                             \
+1066: 0000:         IUF.START.DATE$,                                                \ IRC
+1067: 0000:         IUF.STATUS.1$,                                                  \
+1068: 0000:         IUF.STNDRD.DESC$,                                               \
+1069: 0000:         IUF.STOCK.SYSTEM.FLAG$,                                         \
+1070: 0000:         IUF.SUPPLY.ROUTE$,                                              \
+1071: 0000:         IUF.TILL.DESC$,                                                 \
+1072: 0000:         IUF.TRANS.TYPE$,                                                \
+1073: 0000:         IUF.UNIT.MEASUREMENT$,                                          \ KRD
+1074: 0000:         IUF.UNIT.NAME$                                                  ! KRD
+1075: 0000: 
+1076: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+1077: 0000:         AGES$(1),                                                       \ 1.6CSk
+1078: 0000:         GIFTBRCD.TABLE$(1),                                             \ 1.6CSk
+1079: 0000:         IUF.MATRIX$(1),                                                 \ 1.6CSk
+1080: 0000:         MEDICINES.TABLE$(1),                                            \ 1.6CSk
+1081: 0000:         REFPGF.RECORDS$(1)                                              ! 1.6CSk
+1082: 0000: 
+1083: 0000:   STRING GLOBAL                                                         \ 1.6CSk
+1084: 0000:         AGE$,                                                           \ 1.6CSk
+1085: 0000:         AGE.RESTRICT$,                                                  \ 1.6CSk
+1086: 0000:         ALCOHOL.PROD.GRP.LIST$,                                         \ 1.6CSk
+1087: 0000:         ALL.MEDICINES$,                                                 \ 1.6CSk
+1088: 0000:         ALREADY.IN.TABLE$,                                              \ 1.6CSk
+1089: 0000:         ASPIRIN.RECORD$,                                                \ 1.6CSk
+1090: 0000:         DOSAGE$,                                                        \ 1.6CSk
+1091: 0000:         EPHED.TEMP$,                                                    \ 1.6CSk
+1092: 0000:         GIFTRECORD$,                                                    \ 1.6CSk
+1093: 0000:         INSURE.CONCEPT.GROUPS$, \ ! From BCF record 2                   \ 1.11 RC (44)
+1094: 0000:         IBRUPROFEN.RECORD$,                                             \ 1.6CSk
+1095: 0000:         IUF.AGE.RESTRICTION$,                                           \ 1.6CSk
+1096: 0000:         IUF.BLOCKED.FROM.SALE$,                                         \ 1.6CSk
+1097: 0000:         IUF.BOOTS.COM.EXTENDED$,                                        \ 1.6CSk
+1098: 0000:         IUF.CONTAINS.ALCOHOL$,                                          \ 1.6CSk
+1099: 0000:         IUF.CONTAINS.ASPIRIN$,                                          \ 1.6CSk
+1100: 0000:         IUF.CONTAINS.EPHEDRINE$,                                        \ 1.6CSk
+1101: 0000:         IUF.CONTAINS.IBUPROFEN$,                                        \ 1.6CSk
+1102: 0000:         IUF.CONTAINS.NONSOLID.PAINKILLER$,                              \ 1.6CSk
+1103: 0000:         IUF.CONTAINS.PARACETAMOL$,                                      \ 1.6CSk
+1104: 0000:         IUF.CONTAINS.PSEUDOEPHEDRINE$,                                  \ 1.6CSk
+1105: 0000:         IUF.DATE.SENSITIVE$,                                            \ 1.6CSk
+1106: 0000:         IUF.DISCOUNTABLE$, \ ! Mis-leading variable name (should be Discount Exempt)  ! 1.9 RC (21)
+1107: 0000:                            \ ! "Y" equates to IRF.INDICAT3% X'01' Discount Exempt ON  ! 1.9 RC (21)
+1108: 0000:         IUF.EARN.POINTS$,                                               \ 1.6CSk
+1109: 0000:         IUF.EFFERVESCENT$,                                              \ 1.6CSk
+1110: 0000:         IUF.ETHICAL.ACTIVE$,                                            \ 1.6CSk
+1111: 0000:         IUF.ETHICAL.CLASS$,                                             \ 1.6CSk
+1112: 0000:         IUF.ETHICAL.DESCRIPTION$,                                       \ 1.6CSk
+1113: 0000:         IUF.ETHICAL.PACK.SIZE$,                                         \ 1.6CSk
+1114: 0000:         IUF.GIFTCARD$,                                                  \ 1.6CSk
+1115: 0000:         IUF.GUARANTEE.LENGTH$,                                          \ 1.6CSk
+1116: 0000:         IUF.INSURANCE$,                                                 \ 1.6CSk
+1117: 0000:         IUF.INITIAL.LOAD$,                                              \ 1.6CSk
+1118: 0000:         IUF.MARKDOWN$,                                                  \ 1.6CSk
+1119: 0000:         IUF.PRIMARY.SUPPLIER$,                                          \ 1.6CSk
+1120: 0000:         IUF.REC.COUNT$,                                                 \ 1.6CSk
+1121: 0000:         IUF.REC.TYPE$,                                                  \ 1.6CSk
+1122: 0000:         IUF.REDEEMABLE$,                                                \ 1.6CSk
+1123: 0000:         IUF.RESALEABLE$,                                                \ 1.6CSk
+1124: 0000:         IUF.RETURN.ROUTE$,                                              \ 1.6CSk
+1125: 0000:         IUF.RETURNABLE$,                                                \ 1.6CSk
+1126: 0000:         IUF.SPECIAL.INSTRUCTION$,                                       \ 1.6CSk
+1127: 0000:         IUF.STORE.NUM$,                                                 \ 1.6CSk
+1128: 0000:         IUF.TIME.STAMP$,                                                \ 1.6CSk
+1129: 0000:         IUF.UNRESTRICTED.GROUP.CODE$,                                   \ 1.6CSk
+1130: 0000:         PARACETAMOL.RECORD$,                                            \ 1.6CSk
+1131: 0000:         PROD.GRP$                                                       ! 1.6CSk
+1132: 0000: 
+1133: 0000: 
+1134: 0000: 
+1135: 0000:   INTEGER*2 GLOBAL                                                      \ 1.6CSk
+1136: 0000:         A%,                                                             \ 1.6CSk
+1137: 0000:         J%,                                                             \ 1.6CSk
+1138: 0000:         ADD.TO.TABLE%,                                                  \ 1.6CSk
+1139: 0000:         AGE.POS%,                                                       \ 1.6CSk
+1140: 0000:         GIFTBRCD.COUNT%,                                                \ 1.6CSk
+1141: 0000:         HEALTH.INDEX%,                                                  \ 1.6CSk
+1142: 0000:         MATCH.COMMA%,                                                   \ 1.6CSk
+1143: 0000:         MATCH.POS1%,                                                    \ 1.6CSk
+1144: 0000:         MATCH.POS2%,                                                    \ 1.6CSk
+1145: 0000:         MEDICINES.IN.TABLE%,                                            \ 1.6CSk
+1146: 0000:         NO.OF.AGES%,                                                    \ 1.6CSk
+1147: 0000:         NO.OF.MEDICINES%,                                               \ 1.6CSk
+1148: 0000:         PROD.GRP.NUM%,                                                  \ 1.6CSk
+1149: 0000:         SPACE%                                                          ! 1.6CSk
+1150: 0000: 
+1151: 0000: %INCLUDE JOBOKDEC.J86   ! Jobs OK File
+1152: 0000: \*****************************************************************************
+1153: 0000: \*****************************************************************************
+1154: 0000: \***
+1155: 0000: \***               %INCLUDE FOR XXXXXXXXXXX - FIELD DECLARATIONS
+1156: 0000: \***                                          FILE REFERENCE PARAMETERS
+1157: 0000: \***
+1158: 0000: \***                      FILE TYPE    :
+1159: 0000: \***
+1160: 0000: \***                      REFERENCE    : jobokdea.J86
+1161: 0000: \***
+1162: 0000: \***    Version A               Steve Windsor          ZZZZZZZZZZZZZZZZ
+1163: 0000: \***
+1164: 0000: \***    Version B.              Robert Cowey.          07 OCT 1993.
+1165: 0000: \***    No changes to this file.
+1166: 0000: \***
+1167: 0000: \***    Version C.              Mark Walker            ???
+1168: 0000: \***    ???
+1169: 0000: \***
+1170: 0000: \***    Version D.              Stuart Highley         5th May 2000
+1171: 0000: \***    Added variables for Dentistry (ExACT) and Well-being.
+1172: 0000: \***
+1173: 0000: \***    Version E.              Harpal Matharu        17th Jun 2010
+1174: 0000: \***    Added variable for PSD87
+1175: 0000: \***
+1176: 0000: \***    Version F.              Nalini Mathusoothanan 22nd Jun 2011
+1177: 0000: \***    Added new variables for Core 2 Release
+1178: 0000: \***    JOBSOK.IUF.SOURCE$ 1 byte    - IUF processor [Mainframe or SAP ECC]
+1179: 0000: \***    JOBSOK.LAST.PROCESSED.BATCH$ - Serial number of last successfully
+1180: 0000: \***                                   processed batch.
+1181: 0000: \***
+1182: 0000: \*****************************************************************************
+1183: 0000: \*****************************************************************************
+1184: 0000: 
+1185: 0000: REM \
+1186: 0000: 
+1187: 0000:   STRING GLOBAL           \
+1188: 0000:     JOBSOK.FILE.NAME$
+1189: 0000: 
+1190: 0000:   INTEGER*2 GLOBAL        \
+1191: 0000:     JOBSOK.REPORT.NUM%,   \ BBCW
+1192: 0000:     JOBSOK.SESS.NUM%
+1193: 0000: REM \
+1194: 0000: 
+1195: 0000:   STRING GLOBAL           \
+1196: 0000:     JOBSOK.RECORD$,       \ 80 bytes
+1197: 0000:     JOBSOK.PSB21$,        \ 1 byte, BLANK = not run
+1198: 0000:                           \         S     = program started
+1199: 0000:                           \         E     = program ended OK
+1200: 0000:                           \         X     = program ended in error
+1201: 0000:                           \         Y     = program ended OK after a minor error
+1202: 0000:     JOBSOK.PSB22$,        \ 1 byte, BLANK = not run
+1203: 0000:                           \         S     = program started
+1204: 0000:                           \         E     = program ended OK
+1205: 0000:                           \         X     = program ended in error
+1206: 0000:                           \         Y     = program ended OK after a minor error
+1207: 0000:     JOBSOK.PSB23$,        \ 1 byte, BLANK = not run
+1208: 0000:                           \         S     = program started
+1209: 0000:                           \         E     = program ended OK
+1210: 0000:                           \         X     = program ended in error
+1211: 0000:                           \         Y     = program ended OK after a minor error
+1212: 0000:     JOBSOK.PSB24$,        \ 1 byte, BLANK = not run
+1213: 0000:                           \         S     = program started
+1214: 0000:                           \         E     = program ended OK
+1215: 0000:                           \         X     = program ended in error
+1216: 0000:                           \         Y     = program ended OK after a minor error
+1217: 0000:     JOBSOK.PSB25$,        \ 1 byte, BLANK = not run
+1218: 0000:                           \         S     = program started
+1219: 0000:                           \         E     = program ended OK
+1220: 0000:                           \         X     = program ended in error
+1221: 0000:                           \         Y     = program ended OK after a minor error
+1222: 0000:     JOBSOK.DATE$,         \ 4 bytes MMDD  = processing date
+1223: 0000:     JOBSOK.STATUS$,       \ 1 byte, 0 = everything OK
+1224: 0000:                           \         1 = controller files missing
+1225: 0000:                           \         2 = till files missing
+1226: 0000:                           \         3 = controller and till files missing
+1227: 0000:     JOBSOK.PSB27$,        \ 1 byte, BLANK = not run                  ! CMW
+1228: 0000:                           \         S     = program started          ! CMW
+1229: 0000:                           \         E     = program ended OK         ! CMW
+1230: 0000:                           \         X     = program ended in error   ! CMW
+1231: 0000:     JOBSOK.PSB28$,        \ 1 byte, BLANK = not run                  ! CMW
+1232: 0000:                           \         S     = program started          ! CMW
+1233: 0000:                           \         E     = program ended OK         ! CMW
+1234: 0000:                           \         X     = program ended in error   ! CMW
+1235: 0000:     JOBSOK.DENTIST$,      \ 1  byte, BLANK = not run                 ! DSH
+1236: 0000:                           \         S     = program started          ! DSH
+1237: 0000:                           \         E     = program ended OK         ! DSH
+1238: 0000:                           \         X     = program ended in error   ! DSH
+1239: 0000:     JOBSOK.WBEING$,       \ 1  byte, BLANK = not run                 ! DSH
+1240: 0000:                           \         S     = program started          ! DSH
+1241: 0000:                           \         E     = program ended OK         ! DSH
+1242: 0000:                           \         X     = program ended in error   ! DSH
+1243: 0000:     JOBSOK.PSD87$,        \ 1  byte, BLANK = not run                 ! EHSM
+1244: 0000:                           \         S     = program started          ! EHSM
+1245: 0000:                           \         E     = program ended OK         ! EHSM
+1246: 0000:                           \         X     = program ended in error   ! EHSM
+1247: 0000:     JOBSOK.IUF.SOURCE$,   \ 1  byte, BLANK = No IUF was present.     ! FNM
+1248: 0000:                           \             This is possible when cutover! FNM
+1249: 0000:                           \             to SAP ECC and there are no  ! FNM
+1250: 0000:                           \             item deltas on a night.      ! FNM
+1251: 0000:                           \         M     = Mainframe                ! FNM
+1252: 0000:                           \         E     = SAP ECC                  ! FNM
+1253: 0000:                           \
+1254: 0000:     JOBSOK.LAST.PROCESSED.BATCH$,                                    \ FNM
+1255: 0000:                           \ 17 ASC , Successful Batch Serial Number  ! FNM
+1256: 0000:     JOBSOK.SPACE$         ! 47 bytes                                 ! FNM
+1257: 0000: 
+1258: 0000:   INTEGER*2 GLOBAL        \
+1259: 0000:     JOBSOK.RECL%
+1260: 0000: %INCLUDE LOCALDEC.J86   ! Local Price File
+1261: 0000: \***********************************************************************
+1262: 0000: \***********************************************************************
+1263: 0000: \***
+1264: 0000: \***    DESCRIPTION: Local Price File
+1265: 0000: \***                 Field Definitions
+1266: 0000: \***
+1267: 0000: \***    FILE TYPE : Keyed
+1268: 0000: \***
+1269: 0000: \***********************************************************************
+1270: 0000: \***
+1271: 0000: \***    Version A.          Paul Flanagan                1st Jul 1993
+1272: 0000: \***    Initial version.
+1273: 0000: \***
+1274: 0000: \***    Version B.          Clive Norris                24th Nov 1993
+1275: 0000: \***    AUTH.NUM$, STOCK.FIG$ and RETRIEVAL.FLAG$ replaced filler as
+1276: 0000: \***    part of the RETURNS/AUTOMATIC CREDIT CLAIMING package.
+1277: 0000: \***
+1278: 0000: \***    Version C.          Mick Bayliss                 6th Dec 1994
+1279: 0000: \***    Added missing field.
+1280: 0000: \***
+1281: 0000: \***    Version D.          Mark Walker                  1st Jul 2015
+1282: 0000: \***    F392 Retail Stock 5
+1283: 0000: \***    Added key length field.
+1284: 0000: \***
+1285: 0000: \***********************************************************************
+1286: 0000: \***********************************************************************
+1287: 0000: 
+1288: 0000:     STRING GLOBAL             \
+1289: 0000:         LOCAL.AUTH.NUM$,      \ 4 bytes UPD Auth'n number
+1290: 0000:                               \             from Business Centre.
+1291: 0000:         LOCAL.END.DATE$,      \ 3 bytes UPD yymmdd.
+1292: 0000:         LOCAL.FILE.NAME$,     \
+1293: 0000:         LOCAL.H.O.PRICE$,     \ 5 byte UPD.
+1294: 0000:         LOCAL.HO.CHANGE$,     \ 3 bytes UPD. Date of HO price change
+1295: 0000:                               \ (this will be zero if no change since
+1296: 0000:                               \ local price was initiated).
+1297: 0000:         LOCAL.ITEM.CODE$,     \ 4 bytes UPD (key) Boots code 
+1298: 0000:                               \                   with check digit. 
+1299: 0000:         LOCAL.OPERATOR$,      \ 4 bytes UPD operator id (when set up).
+1300: 0000:         LOCAL.PRICE$,         \ 5 bytes UPD.
+1301: 0000:         LOCAL.REASON$,        \ 4 byte ASCII 
+1302: 0000:         LOCAL.RETRIEVAL.FLAG$,\ 1 byte ASC "Y" or "N"  
+1303: 0000:         LOCAL.SPACE$,         \                                            !CMJB
+1304: 0000:         LOCAL.START.DATE$,    \ 3 bytes UPD yymmdd. 
+1305: 0000:         LOCAL.START.TIME$     ! 2 bytes UPD hhmm.
+1306: 0000:         
+1307: 0000:     INTEGER*2 GLOBAL          \
+1308: 0000:         LOCAL.KEYL%,          \                                             !DMW
+1309: 0000:         LOCAL.RECL%,          \
+1310: 0000:         LOCAL.REPORT.NUM%,    \
+1311: 0000:         LOCAL.SESS.NUM%,      \
+1312: 0000:         LOCAL.STOCK.FIG%      !  No. of items authorised at the price.
+1313: 0000: 
+1314: 0000: %INCLUDE NLINEDEC.J86   ! New Lines File
+1315: 0000: 
+1316: 0000: \*****************************************************************************
+1317: 0000: \*****************************************************************************
+1318: 0000: \***
+1319: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+1320: 0000: \***
+1321: 0000: \***                   FILE TYPE:  KEYED
+1322: 0000: \***
+1323: 0000: \***                   REFERENCE:  NLINEDEC.J86
+1324: 0000: \***
+1325: 0000: \***              DESCRIPTION:  NEWLINES - NEWLINES INFORMATION
+1326: 0000: \***
+1327: 0000: \***
+1328: 0000: \***
+1329: 0000: \***      VERSION 1 : Julia Stones             7th July 2003
+1330: 0000: \***
+1331: 0000: \***      Version 1.1   Julia Stones           6th October 2003
+1332: 0000: \***      Added Newlines count to hold value of last number of existing new
+1333: 0000: \***      lines added.
+1334: 0000: \***
+1335: 0000: \***    REVISION 1.2.                ROBERT COWEY.               05 DEC 2003.
+1336: 0000: \***    Changed NLINE reporting number from 660 to 670.
+1337: 0000: \***    No code changes to this file.
+1338: 0000: \***
+1339: 0000: \*****************************************************************************
+1340: 0000: \*****************************************************************************
+1341: 0000: 
+1342: 0000: STRING GLOBAL   \
+1343: 0000:    NEWLINES.FILE.NAME$,  \
+1344: 0000:    NEWLINES.BOOTS.CODE$,     \  4 byte UPD;  Record key
+1345: 0000:    NEWLINES.DATE.ADDED$,     \  4 byte UPD;  CCYYMMDD
+1346: 0000:    NEWLINES.FILLER$          !  6 bytes
+1347: 0000: 
+1348: 0000: INTEGER*2 GLOBAL  \
+1349: 0000:    NEWLINES.RECL%,   \
+1350: 0000:    NEWLINES.REPORT.NUM%,  \
+1351: 0000:    NEWLINES.COUNT%,       \
+1352: 0000:    NEWLINES.SESS.NUM%   !
+1353: 0000: 
+1354: 0000: 
+1355: 0000: 
+1356: 0000: %INCLUDE RICFDEC.J86    ! Redeem Items Change File
+1357: 0000: \******************************************************************************
+1358: 0000: \******************************************************************************
+1359: 0000: \***
+1360: 0000: \***                     REDEEM ITEMS CHANGE FILE    
+1361: 0000: \***                                                                
+1362: 0000: \***                      REFERENCE : RICFDEC.J86 
+1363: 0000: \***                                                                
+1364: 0000: \***                      FILE TYPE : Sequential                       
+1365: 0000: \***                                                                
+1366: 0000: \***                                                                
+1367: 0000: \***   Version A.              Jamie Thorpe                  1st July 1997
+1368: 0000: \***   Original version.                                                    
+1369: 0000: \***                                                                         
+1370: 0000: \***                                                                       
+1371: 0000: \******************************************************************************
+1372: 0000: \******************************************************************************
+1373: 0000: 
+1374: 0000:  
+1375: 0000: STRING GLOBAL        RICF.FILE.NAME$,       \ 
+1376: 0000:                      RICF.RECORD$,          \          
+1377: 0000:                      RICF.ITEM.CODE$,       \
+1378: 0000:                      RICF.DELIVERY.FLAG$,   \
+1379: 0000:                      RICF.REDEEM.ITEM$,     \
+1380: 0000:                   RICF.ITEM.DESCRIPTION$,   \
+1381: 0000:                      RICF.PRICE$,           \
+1382: 0000:                      RICF.FILLER$,          \ 
+1383: 0000:                      RICF.REC.COUNT$,       \
+1384: 0000:                      RICF.ITEM.QTY$,        \ BRD
+1385: 0000:                      RICF.UNIT.MEASUREMENT$,\ BRD
+1386: 0000:                      RICF.UNIT.NAME$,       \ BRD
+1387: 0000:                      RICF.PRODUCT.GROUP$
+1388: 0000:                    
+1389: 0000:                     
+1390: 0000:     
+1391: 0000: 
+1392: 0000:   INTEGER*2 GLOBAL   RICF.ALT.SESS.NUM%,  \
+1393: 0000:                      RICF.REPORT.NUM%,    \ 
+1394: 0000:                      RICF.ALT.REPORT.NUM%,\ 
+1395: 0000:                      RICF.SESS.NUM%,      \
+1396: 0000:                      RICF.RECL%,         \
+1397: 0000:                      RICF.RECORD.NO%
+1398: 0000:                      
+1399: 0000: %INCLUDE STOCKDEC.J86   ! Stock File
+1400: 0000: \***********************************************************************
+1401: 0000: \***********************************************************************
+1402: 0000: \***
+1403: 0000: \***    DESCRIPTION: Stock File
+1404: 0000: \***                 Field Definitions         
+1405: 0000: \***
+1406: 0000: \***    FILE TYPE : Keyed
+1407: 0000: \***
+1408: 0000: \***********************************************************************
+1409: 0000: \***
+1410: 0000: \***    Version B.              Robert Cowey             21st Oct 1993
+1411: 0000: \***    No changes to this file.
+1412: 0000: \***
+1413: 0000: \***    Version C.              Mark Walker              24th Jan 2014
+1414: 0000: \***    F337 Centralised View of Stock
+1415: 0000: \***    - Added sequence ID and item status fields.
+1416: 0000: \***    - Minor formatting changes (uncommented).
+1417: 0000: \***
+1418: 0000: \***    Version D.              Mark Walker              15th Mar 2014
+1419: 0000: \***    F337 Centralised View of Stock
+1420: 0000: \***    Added next sequence ID field.
+1421: 0000: \***
+1422: 0000: \***    Version E.              Mark Walker               7th May 2014
+1423: 0000: \***    F337 Centralised View of Stock
+1424: 0000: \***    Added new 'stock flags' field for future use.
+1425: 0000: \***
+1426: 0000: \***********************************************************************
+1427: 0000: \***********************************************************************
+1428: 0000: 
+1429: 0000: \***********************************************************************
+1430: 0000: \***********************************************************************
+1431: 0000: \***
+1432: 0000: \***    File Record Layout
+1433: 0000: \***
+1434: 0000: \***    STOCK.BOOTS.CODE$            4 UPD  Item Code (Key)
+1435: 0000: \***    STOCK.STOCK.FIG%             2 INT  Stock Figure
+1436: 0000: \***    STOCK.LAST.COUNT%            2 INT  Last Count Quantity
+1437: 0000: \***    STOCK.DATE.LAST.COUNT$       3 UPD  Date of Last Count
+1438: 0000: \***    STOCK.DATE.LAST.MOVE$        3 UPD  Date of Last Movement
+1439: 0000: \***    STOCK.LAST.REC%              2 INT  Last Receipt Quantity
+1440: 0000: \***    STOCK.DATE.LAST.REC$         3 UPD  Date of Last Receipt
+1441: 0000: \***    STOCK.DATE.LAST.GAP$         3 UPD  Date of Last Gap
+1442: 0000: \***    STOCK.SID%                   4 INT  Sequence ID                     !CMW
+1443: 0000: \***    STOCK.STATUS.1$              1 ASC  Item Status                     !CMW
+1444: 0000: \***    STOCK.FLAGS%                 1 INT  Stock flags                     !EMW
+1445: 0000: \***    STOCK.FILLER$                2 UPD  Filler                          !EMW
+1446: 0000: \***
+1447: 0000: \***********************************************************************
+1448: 0000: \***********************************************************************
+1449: 0000: 
+1450: 0000:     INTEGER*1 GLOBAL                                                    \
+1451: 0000:         STOCK.FLAGS%,                                                   \   !EMW
+1452: 0000:         STOCK.RECL%
+1453: 0000: 
+1454: 0000:     INTEGER*2 GLOBAL                                                    \
+1455: 0000:         STOCK.LAST.COUNT%,                                              \
+1456: 0000:         STOCK.LAST.REC%,                                                \
+1457: 0000:         STOCK.REPORT.NUM%,                                              \
+1458: 0000:         STOCK.SESS.NUM%,                                                \
+1459: 0000:         STOCK.STOCK.FIG%
+1460: 0000: 
+1461: 0000:     INTEGER*4 GLOBAL                                                    \   !CMW
+1462: 0000:         STOCK.NEXT.SID%,                                                \   !DMW
+1463: 0000:         STOCK.SID%                                                          !CMW
+1464: 0000: 
+1465: 0000:     STRING GLOBAL                                                       \
+1466: 0000:         STOCK.BOOTS.CODE$,                                              \
+1467: 0000:         STOCK.DATE.LAST.COUNT$,                                         \
+1468: 0000:         STOCK.DATE.LAST.GAP$,                                           \
+1469: 0000:         STOCK.DATE.LAST.MOVE$,                                          \
+1470: 0000:         STOCK.DATE.LAST.REC$,                                           \
+1471: 0000:         STOCK.FILE.NAME$,                                               \
+1472: 0000:         STOCK.FILLER$,                                                  \
+1473: 0000:         STOCK.STATUS.1$                                                     !CMW
+1474: 0000: 
+1475: 0000: 
+1476: 0000: %INCLUDE PSBF01G.J86    ! APPLICATION.LOG
+1477: 0000: REM \
+1478: 0000: \*******************************************************************************
+1479: 0000: \*******************************************************************************
+1480: 0000: \***
+1481: 0000: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+1482: 0000: \***
+1483: 0000: \***                FUNCTION NUMBER    : PSBF01
+1484: 0000: \***
+1485: 0000: \***                REFERENCE          : PSBF01G.J86
+1486: 0000: \***
+1487: 0000: \***                DATE OF LAST AMENDMENT  - 27/2/86
+1488: 0000: \***
+1489: 0000: \***
+1490: 0000: \*******************************************************************************
+1491: 0000: 
+1492: 0000:       INTEGER GLOBAL  F01.RETURN.CODE%
+1493: 0000: 
+1494: 0000: 
+1495: 0000: %INCLUDE PSBF19G.J86    ! UPDATE IRF GLOBALS
+1496: 0000: REM \
+1497: 0000: \*******************************************************************************
+1498: 0000: \*******************************************************************************
+1499: 0000: \***
+1500: 0000: \***
+1501: 0000: \***            INCLUDE       : UPDATE IRF globals
+1502: 0000: \***
+1503: 0000: \***            REFERENCE     : PSBF19G.J86
+1504: 0000: \***
+1505: 0000: \***      Version A              Richard Hopkinson            16th March 1988
+1506: 0000: \***
+1507: 0000: \***      Version B              Janet Lawrence               12th April 1989
+1508: 0000: \***      Version letter incremented to match that of external defintion of 
+1509: 0000: \***      function 19.  
+1510: 0000: \***
+1511: 0000: \***      Version C              Andrew Wedgeworth             21st July 1992
+1512: 0000: \***      Return code field removed as no longer used.
+1513: 0000: \***
+1514: 0000: \***      Version F              Steve Perkins                 20th October 1993
+1515: 0000: \***      Version letter updated to keep in line with PSBF19.BAS
+1516: 0000: \***
+1517: 0000: \***    REVISION 1.9.                ROBERT COWEY.                08 DEC 2003.
+1518: 0000: \***    Changes for Deal Limit removal project.
+1519: 0000: \***    Revision number updated to keep in step with PSBF19.BAS.
+1520: 0000: \***    Declared variables for IRFDEX and F19.NODE.FILE...
+1521: 0000: \***
+1522: 0000: \*******************************************************************************
+1523: 0000: \*******************************************************************************
+1524: 0000: 
+1525: 0000:       STRING   F19.RETURNED.STRING                                     ! CAW
+1526: 0000:       STRING   F19.NODE.FILE.NAME$                                         ! 1.9 RC
+1527: 0000: 
+1528: 0000:       STRING   GLOBAL NODE.ID$
+1529: 0000:       STRING   GLOBAL TIF.FULL$
+1530: 0000:       STRING   GLOBAL TIF.OPEN.FLAG$
+1531: 0000:       STRING   GLOBAL TMCF.FULL$
+1532: 0000:       STRING   GLOBAL TMCF.OPEN.FLAG$
+1533: 0000:       
+1534: 0000:       INTEGER*2 GLOBAL F19.IRFDEX.SESS.NUM%                                ! 1.9 RC
+1535: 0000:       
+1536: 0000:       INTEGER*2 F19.NODE.REPORT.NUM%                                       ! 1.9 RC
+1537: 0000:       INTEGER*2 F19.NODE.SESS.NUM%                                         ! 1.9 RC
+1538: 0000: 
+1539: 0000: INTEGER*1 GLOBAL                        \
+1540: 0000:     CIPPM.PRESENT,                      \                       ! 1.6 RC (226)
+1541: 0000:     FALSE,                              \
+1542: 0000:     IUF.EXISTS,                         \
+1543: 0000:     TRUE                                !
+1544: 0000: 
+1545: 0000: INTEGER*2 GLOBAL                        \
+1546: 0000:     CURRENT.REPORT.NUM%,                \
+1547: 0000:     MESSAGE.NO%                         !
+1548: 0000: 
+1549: 0000: INTEGER*4 GLOBAL                        \
+1550: 0000:     IUF.ITEM.SKIP%,                     \
+1551: 0000:     IUF.J103.COUNT%,                    \
+1552: 0000:     RC%                                 !
+1553: 0000: 
+1554: 0000: STRING GLOBAL                           \
+1555: 0000:     ACD.FLAG$,                          \
+1556: 0000:     DEC.MESSAGE$,                       \
+1557: 0000:     ERROR$,                             \
+1558: 0000:     EVENT.222.DATA$,                    \
+1559: 0000:     FILE.OPERATION$,                    \
+1560: 0000:     JOBSOK.FLAG$,                       \
+1561: 0000:     MODULE.NUMBER$,                     \
+1562: 0000:     PROCESSING.DATE$,                   \
+1563: 0000:     PSB20.PATH.NAME$,                   \
+1564: 0000:     STORE.NUMBER$,                      \
+1565: 0000:     SUCCESS$,                           \
+1566: 0000:     VAR.STRING.1$,                      \
+1567: 0000:     VAR.STRING.2$                       !
+1568: 0000: 
+1569: 0000: 
+1570: 0000: %INCLUDE ADXERROR.J86
+1571: 0000: \******************************************************************************
+1572: 0000: \******************************************************************************
+1573: 0000: \***                                                                        ***
+1574: 0000: \***    %INCLUDE FOR FUNCTION ADXERROR (an I.B.M. system function)          ***
+1575: 0000: \***                                                                        ***
+1576: 0000: \***         AUTHOR        :  Stephen Kelsey                                ***
+1577: 0000: \***                                                                        ***
+1578: 0000: \***         DATE WRITTEN  :  21st February 1986                            ***
+1579: 0000: \***                                                                        ***
+1580: 0000: \***         DATE OF LAST REVISION  - 21st February 1986                    ***
+1581: 0000: \***                                                                        ***
+1582: 0000: \***         VERSION B     :  Stuart William McConnachie  18th March 1997   ***
+1583: 0000: \***    Define size of ADXERROR return value from function.  This change    ***
+1584: 0000: \***    was introduced by IBM in the 4690 Programming Guide.  Not defining  ***
+1585: 0000: \***    this variable can cause Memory Protection Violations at run time.   ***
+1586: 0000: \***                                                                        ***
+1587: 0000: \******************************************************************************
+1588: 0000: \******************************************************************************
+1589: 0000: 
+1590: 0000:    FUNCTION ADXERROR (TERM%,                                                  \
+1591: 0000:                       MSGGRP%,                                                \
+1592: 0000:                       MSGNUM%,                                                \
+1593: 0000:                       SEVERITY%,                                              \
+1594: 0000:                       EVENT.NUM%,                                             \
+1595: 0000:                       UNIQUE$) EXTERNAL
+1596: 0000: 
+1597: 0000:       INTEGER*2  MSGNUM%,                                                     \
+1598: 0000:                  TERM%,                                                       \
+1599: 0000:                  ADXERROR                                                     !BSWM
+1600: 0000: 
+1601: 0000:       INTEGER*1 EVENT.NUM%,                                                   \
+1602: 0000:                 MSGGRP%,                                                      \
+1603: 0000:                 SEVERITY%
+1604: 0000: 
+1605: 0000:       STRING  UNIQUE$
+1606: 0000: 
+1607: 0000:    END FUNCTION
+1608: 0000: 
+1609: 0000: %INCLUDE BCFEXT.J86     ! Boots Control File
+1610: 0000: \*****************************************************************************
+1611: 0000: \*****************************************************************************
+1612: 0000: \***
+1613: 0000: \***         FUNCTION DEFINITIONS FOR BOOTS CONTROL FILE
+1614: 0000: \***
+1615: 0000: \***                    REFERENCE : BCFEXTA.J86
+1616: 0000: \***
+1617: 0000: \***    Version A           Steve Windsor          5th Jan 1993
+1618: 0000: \***
+1619: 0000: \***    Version B           Michael J. Kelsall    14th Sep 1993
+1620: 0000: \***    Code incremented to maintain consistency with other included code
+1621: 0000: \***    for RETURNS/AUTOMATIC CREDIT CLAIMING system.
+1622: 0000: \***
+1623: 0000: \***    Version C           Stuart William McConnachie 23rd Jan 1995
+1624: 0000: \***    Addition of TXR serial number as part of the TRANSACTION RETRIEVAL
+1625: 0000: \***    project.
+1626: 0000: \***
+1627: 0000: \***    Version D           Stuart William McConnachie  7th June 1995
+1628: 0000: \***    Converted calls to enable more than 1 record on the BCF.
+1629: 0000: \***    The second record is to be used for the No7 customer card trial.
+1630: 0000: \***
+1631: 0000: \***    Revision 4.6            ROBERT COWEY.            19 MAY 2003.
+1632: 0000: \***    Modifications for All Txn Data To CDAS project.
+1633: 0000: \***    No changes to this file.
+1634: 0000: \***
+1635: 0000: \***    Revision 4.7            Julia Stones              9th July 2003
+1636: 0000: \***    Modifications for New Lines Report project.
+1637: 0000: \***    No changes to this file.
+1638: 0000: \***
+1639: 0000: \*****************************************************************************
+1640: 0000: \*****************************************************************************
+1641: 0000: 
+1642: 0000:    FUNCTION BCF.SET EXTERNAL
+1643: 0000:    END FUNCTION
+1644: 0000: 
+1645: 0000:   FUNCTION READ.BCF EXTERNAL
+1646: 0000:    INTEGER*2 READ.BCF
+1647: 0000:   END FUNCTION
+1648: 0000: 
+1649: 0000:   FUNCTION READ.BCF.LOCK EXTERNAL
+1650: 0000:    INTEGER*2 READ.BCF.LOCK
+1651: 0000:   END FUNCTION
+1652: 0000: 
+1653: 0000:   FUNCTION WRITE.BCF EXTERNAL
+1654: 0000:    INTEGER*2 WRITE.BCF
+1655: 0000:   END FUNCTION
+1656: 0000: 
+1657: 0000:   FUNCTION WRITE.BCF.UNLOCK EXTERNAL
+1658: 0000:    INTEGER*2 WRITE.BCF.UNLOCK
+1659: 0000:   END FUNCTION
+1660: 0000: 
+1661: 0000:   FUNCTION WRITE.HOLD.BCF.UNLOCK EXTERNAL
+1662: 0000:    INTEGER*2 WRITE.HOLD.BCF.UNLOCK
+1663: 0000:   END FUNCTION
+1664: 0000: 
+1665: 0000: %INCLUDE IUFEXT.J86
+1666: 0000: 
+1667: 0000: \REM
+1668: 0000: \*******************************************************************************
+1669: 0000: \*******************************************************************************
+1670: 0000: \***
+1671: 0000: \***    %INCLUDE FOR ITEM UPDATE FILES EXTERNAL FUNCTIONS
+1672: 0000: \***
+1673: 0000: \***        REFERENCE   :   IUFEXT (J86)
+1674: 0000: \***
+1675: 0000: \***        FILE TYPE   :   Sequential
+1676: 0000: \***
+1677: 0000: \***    VERSION H.              ROBERT COWEY.                       24 AUG 1993.
+1678: 0000: \***    Original version created from IUFFUNH.
+1679: 0000: \***
+1680: 0000: \***    VERSION I.              ROBERT COWEY.                       25 AUG 1993.
+1681: 0000: \***    No changes to this file.
+1682: 0000: \***
+1683: 0000: \***    Version 1.4             Charles Skadorwa                   4th July 2011
+1684: 0000: \***    CORE Heritage Stores Release 2 (Outbound) Project.
+1685: 0000: \***    Removed WRITE.IUF
+1686: 0000: \***    Added VALIDATE.IUF.HEADER.RECORD
+1687: 0000: \***
+1688: 0000: \***    VERSION 1.5.                ROBERT COWEY.                07 FEB 2012.
+1689: 0000: \***    Changes creating PSB21.286 Core Release 2 version 1.5.
+1690: 0000: \***    Corrected various defects but no code changes to this file.
+1691: 0000: \***
+1692: 0000: \*******************************************************************************
+1693: 0000: \*******************************************************************************
+1694: 0000: 
+1695: 0000: 
+1696: 0000: FUNCTION IUF.SET EXTERNAL
+1697: 0000:     INTEGER*2 IUF.SET
+1698: 0000: END FUNCTION
+1699: 0000: 
+1700: 0000: FUNCTION READ.IUF EXTERNAL
+1701: 0000:     INTEGER*2 READ.IUF
+1702: 0000: END FUNCTION
+1703: 0000: 
+1704: 0000: FUNCTION VALIDATE.IUF.HEADER.RECORD EXTERNAL
+1705: 0000:     STRING VALIDATE.IUF.HEADER.RECORD
+1706: 0000: END FUNCTION
+1707: 0000: 
+1708: 0000: %INCLUDE JOBOKEXT.J86   ! Jobs OK File
+1709: 0000: \*****************************************************************************
+1710: 0000: \*****************************************************************************
+1711: 0000: \***
+1712: 0000: \***         FUNCTION DEFINITIONS FOR JOBSOK
+1713: 0000: \***
+1714: 0000: \***                    REFERENCE : jobokexa.J86
+1715: 0000: \***
+1716: 0000: \***    Version A           Steve Windsor         5.2.93
+1717: 0000: \***
+1718: 0000: \***    Version B.              Robert Cowey.                       07 OCT 1993.
+1719: 0000: \***    Defined JOBSOK.SET integer for use as a return code.
+1720: 0000: \***
+1721: 0000: \*******************************************************************************
+1722: 0000: \*******************************************************************************
+1723: 0000: 
+1724: 0000:   FUNCTION JOBSOK.SET EXTERNAL
+1725: 0000:    INTEGER*2 JOBSOK.SET                                                ! BRC
+1726: 0000:   END FUNCTION
+1727: 0000: 
+1728: 0000:   FUNCTION READ.JOBSOK EXTERNAL
+1729: 0000:    INTEGER*2 READ.JOBSOK
+1730: 0000:   END FUNCTION
+1731: 0000: 
+1732: 0000:   FUNCTION WRITE.JOBSOK EXTERNAL
+1733: 0000:    INTEGER*2 WRITE.JOBSOK
+1734: 0000:   END FUNCTION
+1735: 0000: 
+1736: 0000: 
+1737: 0000: %INCLUDE BASROUT.J86    ! OSSHELL function (and others)         ! 1.7 RC (238)
+1738: 0000: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+1739: 0000: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+1740: 0000: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+1741: 0000: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+1742: 0000: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+1743: 0000: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+1744: 0000: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+1745: 0000: !   the BASROUT.OBJ routines.  These routines were written
+1746: 0000: !  using Metaware C and are intended to provide functions which
+1747: 0000: !         are either not available in 4680 CBASIC or which can be more
+1748: 0000: !               efficiently handled by the C language.  Their usage is
+1749: 0000: !  offered on an "AT YOUR OWN RISK" basis.
+1750: 0000: !
+1751: 0000: !               The insert/extract routines usefulness may not be immediately
+1752: 0000: !               apparent.  Their intention is that they be used in conjunction
+1753: 0000: !               with a read/write form command.  They can more efficiently
+1754: 0000: !               parse a string into many different variables than can the
+1755: 0000: !               read form statement.  So instead of a long list of data var's
+1756: 0000: !               it may be more efficient to just read/write one long string
+1757: 0000: !               and then use the insert/extract routines to parse out the
+1758: 0000: !   data.
+1759: 0000: 
+1760: 0000: ! ******************* SUB PROCESS FUNCTIONS *********************************
+1761: 0000: 
+1762: 0000: function osshell(cmd.line$) external   ! routine to start
+1763: 0000:        ! another program.
+1764: 0000:            integer*4    osshell    ! Upon completion of
+1765: 0000:            string       cmd.line$   ! program, control is
+1766: 0000:        ! returned to calling
+1767: 0000: end function      ! program.
+1768: 0000: !
+1769: 0000: ! NOTES:  Program must be a 286 type file.  This does not exclude
+1770: 0000: !         the capability to execute a batch file however.  Simply pass the
+1771: 0000: !         following:
+1772: 0000: !              c:\adx_spgm\command.286 batfile
+1773: 0000: !         where batfile is the name of the batch file to be executed.
+1774: 0000: !
+1775: 0000: ! IMPORTANT: When using osshell to execute a batch file as described above,
+1776: 0000: !            the final command in the batch file must be "exit".  If not,
+1777: 0000: !       control is never given back to the calling program.
+1778: 0000: 
+1779: 0000: ! ************************ MEMORY RELATED FUNCTIONS ************************
+1780: 0000: 
+1781: 0000: function memfree(choice) external   ! routine to que the
+1782: 0000:        ! status of the
+1783: 0000:  integer*4 memfree    ! machine's memory:
+1784: 0000:  integer*2 choice    ! Options:
+1785: 0000:        !    1 - free
+1786: 0000: end function      !    2 - total
+1787: 0000:        !    3 - system
+1788: 0000: 
+1789: 0000: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+1790: 0000: 
+1791: 0000: function timedate(choice) external   ! routine to que the
+1792: 0000:        ! OS's timedate table
+1793: 0000:  integer*4 timedate   ! Choices:
+1794: 0000:  integer*2 choice    !    1 - millisec's
+1795: 0000:        !        since midnight
+1796: 0000: end function      !    2 - minutes from
+1797: 0000:        !  UCT (timezone)
+1798: 0000:        !    3 - day of week
+1799: 0000:        !   0-Sunday
+1800: 0000:        !  6-Saturday
+1801: 0000: 
+1802: 0000: function settime(msecs) external   ! routine to set the
+1803: 0000:        ! time on the controller
+1804: 0000:  integer*4  settime    ! msecs is the desired
+1805: 0000:  integer*4 msecs    ! number of milliseconds
+1806: 0000:        ! since midnight
+1807: 0000: end function      ! Returns negative on
+1808: 0000:        ! error
+1809: 0000: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+1810: 0000: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+1811: 0000: ! At 1 AM the controller broadcasts the new time to all terminals.
+1812: 0000: ! Insure this is taken into consideration when using this routine.
+1813: 0000: 
+1814: 0000: !******************** DISK FILE RELATED FUNCTIONS *************************
+1815: 0000: 
+1816: 0000: function truncate(name,length) external   ! routine to truncate
+1817: 0000:        ! the specified file
+1818: 0000:  integer*4 truncate   ! to a given length.
+1819: 0000:  string  name
+1820: 0000:  integer*4 length
+1821: 0000: 
+1822: 0000: end function
+1823: 0000: 
+1824: 0000: !******************** STRING VALUE RELATED FUNCTIONS **********************
+1825: 0000: 
+1826: 0000: function isalpha(bstrn) external   ! routine to identify
+1827: 0000:        ! if the specified
+1828: 0000:  integer*1 isalpha    ! string contains all
+1829: 0000:  string  bstrn    ! alphabetic char's
+1830: 0000:        ! Returns:
+1831: 0000: end function      !     0 - all alpha
+1832: 0000:        !     X - byte of 1st
+1833: 0000:        !         non-alpha
+1834: 0000:        !   char
+1835: 0000: 
+1836: 0000: function isdigit(bstrn) external   ! routine to identify
+1837: 0000:        ! if the specified
+1838: 0000:  integer*1 isdigit    ! string contains all
+1839: 0000:  string  bstrn    ! numeric char's
+1840: 0000:        ! Returns:
+1841: 0000: end function      !     0 - all numeric
+1842: 0000:        !     X - byte of 1st
+1843: 0000:        !         non-numeric
+1844: 0000:        !   char
+1845: 0000: 
+1846: 0000: function islower(bstrn) external   ! routine to identify
+1847: 0000:        ! if the specified
+1848: 0000:  integer*1 islower    ! string contains all
+1849: 0000:  string  bstrn    ! lower case char's
+1850: 0000:        ! Returns:
+1851: 0000: end function      !     0 - all lowercase
+1852: 0000:        !     X - byte of 1st
+1853: 0000:        !         non-lowercase
+1854: 0000:        !   char
+1855: 0000: 
+1856: 0000: function isupper(bstrn) external   ! routine to identify
+1857: 0000:        ! if the specified
+1858: 0000:  integer*1 isupper    ! string contains all
+1859: 0000:  string  bstrn    ! upper case char's
+1860: 0000:        ! Returns:
+1861: 0000: end function      !     0 - all uppercase
+1862: 0000:        !     X - byte of 1st
+1863: 0000:        !         non-uppercase
+1864: 0000:        !   char
+1865: 0000: 
+1866: 0000: function toalpha(bstrn) external   ! routine to convert
+1867: 0000:        ! non-alpha or non-num
+1868: 0000:    integer*2 toalpha    ! char's to spaces
+1869: 0000:  string  bstrn    ! Returns:
+1870: 0000: end function      !   x - no. of char's
+1871: 0000:        !       changed
+1872: 0000: 
+1873: 0000: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+1874: 0000: 
+1875: 0000: function idlecount(choice) external   ! routine to either
+1876: 0000:        ! set to zero or queue
+1877: 0000:  integer*4 idlecount   ! the value of the
+1878: 0000:  integer*1 choice    ! processor's idlecount
+1879: 0000:        ! Choice:
+1880: 0000: end function      !     0 - set to zero
+1881: 0000: !       !     1 - get value
+1882: 0000: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+1883: 0000: ! TO WORK - This level is not available unless  !     X - idlecount
+1884: 0000: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+1885: 0000: ! is highly unrecommended.
+1886: 0000: 
+1887: 0000: function logical(actname,logname,choice) external ! routine to set a
+1888: 0000:        ! a logical name.
+1889: 0000:  integer*4 logical    ! parms are self
+1890: 0000:         string  logname    ! explanatory except
+1891: 0000:  string  actname    ! for choice:
+1892: 0000:  integer*1 choice    !   0 - set process
+1893: 0000:        !   1 - set system
+1894: 0000: end function      !   2 - get process
+1895: 0000:        !   3 - get system
+1896: 0000: 
+1897: 0000: ! NOTE:  Only the setting of a system level of logical name requires
+1898: 0000: ! user/group zero level of authorization.  Any application may query any
+1899: 0000: ! logical name.  Setting of a system logical name is only applicable until
+1900: 0000: ! the system is IPL'd.  A process logical name is only active when that
+1901: 0000: ! process is active.
+1902: 0000: 
+1903: 0000: !******************** STRING PARSING FUNCTIONS *****************************
+1904: 0000: 
+1905: 0000: function inserts(whole,part,offset) external  ! routine to insert a
+1906: 0000:        ! string (part) into
+1907: 0000:  integer*2 INSERTS    ! another string (whole)
+1908: 0000:  string  whole    ! starting at specified
+1909: 0000:  string  part    ! character (offset)
+1910: 0000:  integer*2 offset
+1911: 0000: 
+1912: 0000: end function
+1913: 0000: 
+1914: 0000: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+1915: 0000:        ! a 4-byte integer into
+1916: 0000:  integer*1 cinsert4   ! a string starting at
+1917: 0000:  integer*4 integer4   ! byte specified by
+1918: 0000:  string  bstring    ! offset (1-based)
+1919: 0000:  integer*2 offset    ! Returns:
+1920: 0000:        !     0 - Success
+1921: 0000: end function      !    -1 - String overrun
+1922: 0000: 
+1923: 0000: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+1924: 0000:        ! a 2-byte integer into
+1925: 0000:  integer*1 cinsert2   ! a string starting at
+1926: 0000:  integer*2 integer2   ! byte specified by
+1927: 0000:  string  bstring    ! offset (1-based)
+1928: 0000:  integer*2 offset    ! Returns:
+1929: 0000:        !     0 - Success
+1930: 0000: end function      !    -1 - String overrun
+1931: 0000: 
+1932: 0000: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+1933: 0000:        ! a 1-byte integer into
+1934: 0000:  integer*1 cinsert1   ! a string starting at
+1935: 0000:  integer*1 integer1   ! byte specified by
+1936: 0000:  string  bstring    ! offset (1-based)
+1937: 0000:  integer*2 offset    ! Returns:
+1938: 0000:        !     0 - Success
+1939: 0000: end function      !    -1 - String overrun
+1940: 0000: 
+1941: 0000: function extracts(whole,part,offset) external  ! routine to extract a
+1942: 0000:        ! string (part) from
+1943: 0000:  integer*2 EXTRACTS   ! another string (whole)
+1944: 0000:  string  whole    ! starting at specified
+1945: 0000:  string  part    ! character (offset)
+1946: 0000:  integer*2 offset
+1947: 0000: 
+1948: 0000: end function
+1949: 0000: 
+1950: 0000: function cextract4(bstring,offset) external  ! routine to extract
+1951: 0000:        ! a 4-byte integer from
+1952: 0000:  integer*4 cextract4   ! a string starting at
+1953: 0000:                        ! byte specified by
+1954: 0000:  string  bstring    ! offset (1-based)
+1955: 0000:  integer*2 offset    ! Returns:
+1956: 0000:        !     X - 4 byte integer
+1957: 0000: end function      !    -1 - String overrun
+1958: 0000: 
+1959: 0000: function cextract2(bstring,offset) external  ! routine to extract
+1960: 0000:        ! a 2-byte integer from
+1961: 0000:  integer*2 cextract2   ! a string starting at
+1962: 0000:                        ! byte specified by
+1963: 0000:  string  bstring    ! offset (1-based)
+1964: 0000:  integer*2 offset    ! Returns:
+1965: 0000:        !     X - 2 byte integer
+1966: 0000: end function      !    -1 - String overrun
+1967: 0000: 
+1968: 0000: function cextract1(bstring,offset) external  ! routine to extract
+1969: 0000:        ! a 1-byte integer from
+1970: 0000:  integer*1 cextract1   ! a string starting at
+1971: 0000:                        ! byte specified by
+1972: 0000:  string  bstring    ! offset (1-based)
+1973: 0000:  integer*2 offset    ! Returns:
+1974: 0000:        !     X - 1 byte integer
+1975: 0000: end function      !    -1 - String overrun
+1976: 0000: 
+1977: 0000: 
+1978: 0000: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+1979: 0000:        ! file names and sizes
+1980: 0000:        ! Return values:
+1981: 0000:        !    -1  no matches
+1982: 0000:        !        found on first
+1983: 0000:        !        call
+1984: 0000:        !    0   no matches
+1985: 0000:        !        found on sub-
+1986: 0000:        !        sequent calls
+1987: 0000:        !    Pos Success
+1988: 0000:        !    Neg OS Rtn Code
+1989: 0000: ! Usage Note:  If searching for all occurences of a particular file name,
+1990: 0000: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+1991: 0000: ! to srchdir.  If any matches are found, a positive value will be returned.
+1992: 0000: ! To see if any more matches exist, just issue another call to srchdir without
+1993: 0000: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+1994: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+1995: 0000: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+1996: 0000: ! of this data is defined below.
+1997: 0000: 
+1998: 0000:  integer*4 srchdir
+1999: 0000: 
+2000: 0000:  string  file.name$   ! file name to start
+2001: 0000:        ! search (18 bytes max)
+2002: 0000:        ! Wild cards and logical
+2003: 0000:        ! names supported.
+2004: 0000: 
+2005: 0000:  string  dtbl.buffer$   ! must be initialized
+2006: 0000:        ! to 48 bytes.  Contains
+2007: 0000:        ! all of directory info
+2008: 0000:        ! Initialize to nulls
+2009: 0000:        ! each time a new file
+2010: 0000:        ! name is used.
+2011: 0000: 
+2012: 0000: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+2013: 0000: !
+2014: 0000: ! Offs  Type                    Description Notes
+2015: 0000: !  0 integer*4  key  use extract4 to access
+2016: 0000: !  4  string (18 bytes) file name
+2017: 0000: ! 22 integer*2  attributes use extract2 to access
+2018: 0000: !      0x01 - Read Only
+2019: 0000: !      0x02 - Hidden
+2020: 0000: !      0x04 - System
+2021: 0000: !      0x08 - Volume Label
+2022: 0000: !      0x10 - Subdirectory
+2023: 0000: !      0x20 - Archive (Files)
+2024: 0000: !      0x40 - Security enabled
+2025: 0000: !      0x80 - Reserved
+2026: 0000: !      0x0000 - Local
+2027: 0000: !      0x4000 - Mirrored/Update
+2028: 0000: !      0xC000 - Mirrored/Close
+2029: 0000: !
+2030: 0000: !      0x6000 - Compound/Update
+2031: 0000: !      0xE000 - Compound/Close
+2032: 0000: ! 24 integer*2  record size use extract2 to access
+2033: 0000: ! 26 integer*1  User ID of Owner
+2034: 0000: ! 27 integer*1  Group ID of Owner
+2035: 0000: ! 28 integer*2  File Security
+2036: 0000: ! 30 string (6 bytes) Reserved
+2037: 0000: ! 36 integer*4  File Size use extract4 to access
+2038: 0000: ! 40 integer*2  Year  use extract2 to access
+2039: 0000: ! 42 integer*1  Month
+2040: 0000: ! 43 integer*1  Day
+2041: 0000: ! 44 integer*1  Hour
+2042: 0000: ! 45 integer*1  Minute
+2043: 0000: ! 46 integer*1  Second
+2044: 0000: ! 47 integer*1  Reserved
+2045: 0000: 
+2046: 0000: end function
+2047: 0000: 
+2048: 0000: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+2049: 0000:        ! process names and
+2050: 0000:        ! status.  Handy to
+2051: 0000:        ! determine if a
+2052: 0000:        ! program is currently
+2053: 0000:        ! running.
+2054: 0000:        ! Return values:
+2055: 0000:        !    -1  no matches
+2056: 0000:        !        found on first
+2057: 0000:        !        call
+2058: 0000:        !    0   no matches
+2059: 0000:        !        found on sub-
+2060: 0000:        !        sequent calls
+2061: 0000:        !    Pos Success
+2062: 0000:        !    Neg Failure
+2063: 0000:        !        OS Rtn Code
+2064: 0000:        ! 80000001h - Insuff
+2065: 0000:         !        ptbl buffer
+2066: 0000:        !        Length
+2067: 0000: ! Usage Note:  If searching for all occurences of a particular process name,
+2068: 0000: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+2069: 0000: ! to srchproc.  If any matches are found, a positive value will be returned.
+2070: 0000: ! To see if any more matches exist, just issue another call to srchproc without
+2071: 0000: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+2072: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+2073: 0000: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+2074: 0000: ! of this data is defined as follows:
+2075: 0000: !
+2076: 0000: !       --------------------------------------------------------
+2077: 0000: !   0   |                         PID                          |
+2078: 0000: !       --------------------------------------------------------
+2079: 0000: !   4   |           FID             |   CID        |   VCID    |
+2080: 0000: !       --------------------------------------------------------
+2081: 0000: !   8   |                         NAME                         |
+2082: 0000: !       --------------------------------------------------------
+2083: 0000: !  12   |                         NAME cont'd                  |
+2084: 0000: !       --------------------------------------------------------
+2085: 0000: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+2086: 0000: !       --------------------------------------------------------
+2087: 0000: !  20   |                         MAXMEM                       |
+2088: 0000: !       --------------------------------------------------------
+2089: 0000: !  24   |       FLAGS               |   USER        |  GROUP   |
+2090: 0000: !       --------------------------------------------------------
+2091: 0000: !  28   |                         PARENT                       |
+2092: 0000: !       --------------------------------------------------------
+2093: 0000: !  32   |                         EVENTS                       |
+2094: 0000: !       --------------------------------------------------------
+2095: 0000: !  36   |                         CODE                         |
+2096: 0000: !       --------------------------------------------------------
+2097: 0000: !  40   |                         CSIZE                        |
+2098: 0000: !       --------------------------------------------------------
+2099: 0000: !  44   |                         DATA                         |
+2100: 0000: !       --------------------------------------------------------
+2101: 0000: !  48   |                         DSIZE                        |
+2102: 0000: !       --------------------------------------------------------
+2103: 0000: !  52   |                         HEAP                         |
+2104: 0000: !       --------------------------------------------------------
+2105: 0000: !  56   |                         HSIZE                        |
+2106: 0000: !       --------------------------------------------------------
+2107: 0000: !
+2108: 0000: !       PID   Process ID
+2109: 0000: !       FID  Process's Family ID
+2110: 0000: !       CID   Physical Console Device Number
+2111: 0000: !       VCID  Process's Virtual Console Number
+2112: 0000: !       NAME  Process Name (Application Running)
+2113: 0000: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+2114: 0000: ! PRIOR    Priority
+2115: 0000: !       MAXMEM  Maximum Memory Allowed
+2116: 0000: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+2117: 0000: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+2118: 0000: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+2119: 0000: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+2120: 0000: ! USER  User Number
+2121: 0000: ! GROUP  Group Number
+2122: 0000: !       PARENT   Parent Process ID
+2123: 0000: !       EVENTS   Bit Map of events that have completed but not retrieved
+2124: 0000: !       CODE  Start of code area in user space
+2125: 0000: ! CSIZE  Size in bytes of code area
+2126: 0000: !       DATA  Start of data area in user space
+2127: 0000: ! DSIZE  Size in bytes of data area
+2128: 0000: !       HEAP  Start of heap area in user space
+2129: 0000: ! HSIZE  Size in bytes of heap area
+2130: 0000: !
+2131: 0000:  integer*4 srchproc
+2132: 0000: 
+2133: 0000:  string  proc.name$   ! process name to start
+2134: 0000:        ! search (10 bytes max)
+2135: 0000:        ! Wild cards and logical
+2136: 0000:        ! names supported.
+2137: 0000: 
+2138: 0000:  string  ptbl.buffer$   ! must be initialized
+2139: 0000:        ! to 60 bytes.  Contains
+2140: 0000:        ! all of process info
+2141: 0000:        ! Initialize to nulls
+2142: 0000:        ! each time a new
+2143: 0000:        ! process name is used.
+2144: 0000: 
+2145: 0000: end function
+2146: 0000: 
+2147: 0000: function cconstat(timeout) external       ! function similar
+2148: 0000:                                               ! to BASIC constat%
+2149: 0000:  integer*2 cconstat   ! waits for either a
+2150: 0000:  integer*4 timeout    ! key being hit or
+2151: 0000:        ! the timer expiring
+2152: 0000:        ! before returning
+2153: 0000:        ! returns:
+2154: 0000:        !   -1 error
+2155: 0000:        !    0 timer expired
+2156: 0000:        !    x scan code of
+2157: 0000:        !      key hit
+2158: 0000: end function
+2159: 0000: 
+2160: 0000: function disksize(disk.name$) external   ! function to find
+2161: 0000:        ! the total size of
+2162: 0000:  integer*4 disksize   ! the specified disk
+2163: 0000:  string  disk.name$   ! name (e.g. "h0:")
+2164: 0000:        ! if return value is
+2165: 0000:        ! negative, error
+2166: 0000: end function      ! was received
+2167: 0000: 
+2168: 0000: 
+2169: 0000: 
+2170: 0000: %INCLUDE PSBF01E.J86    ! APPLICATION.LOG
+2171: 0000: REM \
+2172: 0000: \*******************************************************************************
+2173: 0000: \*******************************************************************************
+2174: 0000: \***
+2175: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+2176: 0000: \***
+2177: 0000: \***                      FUNCTION NUMBER   : PSBF01
+2178: 0000: \***
+2179: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+2180: 0000: \*** 
+2181: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+2182: 0000: \***      Three parameters which passed to the function have been removed.
+2183: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+2184: 0000: \***      return code).
+2185: 0000: \***
+2186: 0000: \*******************************************************************************
+2187: 0000: 
+2188: 0000: 
+2189: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+2190: 0000:                              VAR.STRING.1$,                                   \
+2191: 0000:                              VAR.STRING.2$,                                   \
+2192: 0000:                              EVENT.NO%)  EXTERNAL
+2193: 0000: 
+2194: 0000:       INTEGER*1 EVENT.NO%
+2195: 0000: 
+2196: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+2197: 0000:                 MESSAGE.NO%
+2198: 0000: 
+2199: 0000:       STRING VAR.STRING.1$,                                            \
+2200: 0000:              VAR.STRING.2$
+2201: 0000: 
+2202: 0000:    END FUNCTION
+2203: 0000: 
+2204: 0000: \*******************************************************************************
+2205: 0000: %INCLUDE PSBF19E.J86    ! UPDATE IRF GLOBALS
+2206: 0000: \*******************************************************************************! GCSk
+2207: 0000: \*******************************************************************************! GCSk
+2208: 0000: \***                                                                            ! GCSk
+2209: 0000: \*** IMPORTANT                                                                  ! GCSk
+2210: 0000: \*** =========                                                                  ! GCSk
+2211: 0000: \***    All references to UPDT.IRF.UPDT have been commented out and replaced    ! GCSk
+2212: 0000: \***    with UPDT.IRF.TIF.UPDT due to the following issue found post MCF:       ! GCSk
+2213: 0000: \***                                                                            ! GCSk
+2214: 0000: \***    Node ID check removed as it is preventing the TIF from being updated in ! GCSk
+2215: 0000: \***    Single MCF controller stores ie. MCF has changed the single DE nodes    ! GCSk
+2216: 0000: \***    to CE. This change should have been done as part of the MCF project,    ! GCSk
+2217: 0000: \***    however, the Business were not willing to pay for the relinking and     ! GCSk
+2218: 0000: \***    testing of some 200+ programs. There is a slight processing overhead    ! GCSk
+2219: 0000: \***    in dual-MCF stores, since the TIF will now be updated in them as well,  ! GCSk
+2220: 0000: \***    however the impact is small and TOF does not run in this environment.   ! GCSk
+2221: 0000: \***                                                                            ! GCSk
+2222: 0000: \***    If you wish to use the old UPDT.IRF.UPDT function then you will need to ! GCSk
+2223: 0000: \***    either:                                                                 ! GCSk
+2224: 0000: \***                                                                            ! GCSk
+2225: 0000: \***          1. Check out the previous OBJs, PSBF19e.J86 and update the .INP   ! GCSk
+2226: 0000: \***             and .MAK to include the functions PSBF19, PSBF41 & PSBF42      ! GCSk
+2227: 0000: \***       or                                                                   ! GCSk
+2228: 0000: \***          2. Check out the previous PSBF19e.J86 and function library:       ! GCSk
+2229: 0000: \***             FUNLIB.L86                                                     ! GCSk
+2230: 0000: \***                                                                            ! GCSk
+2231: 0000: \*******************************************************************************! GCSk
+2232: 0000: \*******************************************************************************! GCSk
+2233: 0000: 
+2234: 0000: REM \
+2235: 0000: \*******************************************************************************
+2236: 0000: \*******************************************************************************
+2237: 0000: \***
+2238: 0000: \***
+2239: 0000: \***            INCLUDE       : IRF.UPDATE external definition
+2240: 0000: \***
+2241: 0000: \***            REFERENCE     : PSBF19E.J86
+2242: 0000: \***
+2243: 0000: \***      Version A      Richard Hopkinson                  16th March 1988
+2244: 0000: \***
+2245: 0000: \***      Version B      Janet Lawrence                     12th April 1989
+2246: 0000: \***      Add extra parameter, IRF.LOCKED.FLAG$, to each function definition.
+2247: 0000: \***
+2248: 0000: \***      Version C      Andrew Wedgeworth                   21st July 1992
+2249: 0000: \***      Redundant parameters removed (ie. BATCH.SCREEN.FLAG$,
+2250: 0000: \***      MODULE.NUMBER$ and OPERATOR.NUMBER$).  Function names defined as
+2251: 0000: \***      variables to hold the return code.
+2252: 0000: \***
+2253: 0000: \***      Version F     Steve Perkins                      20th October 1993
+2254: 0000: \***      Version letter updated to keep in line with PSBF19.BAS
+2255: 0000: \***
+2256: 0000: \***    REVISION 1.9.                ROBERT COWEY.                08 DEC 2003.
+2257: 0000: \***    Changes for Deal Limit removal project.
+2258: 0000: \***    Revision number updated to keep in step with PSBF19.BAS.
+2259: 0000: \***    No actual coding changes to this file.
+2260: 0000: \***
+2261: 0000: \***    Version G       Charles Skadorwa                   25th September 2013
+2262: 0000: \***    F261 Gift Card Mall IIN Range Extension Project - Commented ! GCSk
+2263: 0000: \***
+2264: 0000: \*******************************************************************************
+2265: 0000: \*******************************************************************************
+2266: 0000: 
+2267: 0000:    FUNCTION OPEN.IRF.UPDT (NEW.IRF.DATA$,                                  \
+2268: 0000:                            ACD.FLAG$)                                      \
+2269: 0000:    EXTERNAL
+2270: 0000: 
+2271: 0000:       STRING    ACD.FLAG$,                                                 \
+2272: 0000:                 NEW.IRF.DATA$
+2273: 0000: 
+2274: 0000:       INTEGER*2 OPEN.IRF.UPDT                                          ! CAW
+2275: 0000: 
+2276: 0000:    END FUNCTION
+2277: 0000: 
+2278: 0000: 
+2279: 0000:   !FUNCTION UPDT.IRF.UPDT (NEW.IRF.DATA$,                              ! GCSk
+2280: 0000:    FUNCTION UPDT.IRF.TIF.UPDT (NEW.IRF.DATA$,                          \ ! GCSk
+2281: 0000:                            ACD.FLAG$,                                  \
+2282: 0000:                            IRF.LOCKED.FLAG$)                           \ BJAL
+2283: 0000:    EXTERNAL
+2284: 0000: 
+2285: 0000:       STRING    ACD.FLAG$,                                             \
+2286: 0000:                 IRF.LOCKED.FLAG$,                                      \ BJAL
+2287: 0000:                 NEW.IRF.DATA$
+2288: 0000: 
+2289: 0000:      !INTEGER*2 UPDT.IRF.UPDT                                          ! CAW ! GCSk
+2290: 0000:       INTEGER*2 UPDT.IRF.TIF.UPDT                                      ! GCSk
+2291: 0000: 
+2292: 0000:    END FUNCTION
+2293: 0000: 
+2294: 0000: 
+2295: 0000:    FUNCTION CLOSE.IRF.UPDT (NEW.IRF.DATA$,                                 \
+2296: 0000:                             ACD.FLAG$)                                     \
+2297: 0000:    EXTERNAL
+2298: 0000: 
+2299: 0000:       STRING    ACD.FLAG$,                                                 \
+2300: 0000:                 NEW.IRF.DATA$
+2301: 0000: 
+2302: 0000:       INTEGER*2 CLOSE.IRF.UPDT                                         ! CAW
+2303: 0000: 
+2304: 0000:    END FUNCTION
+2305: 0000: 
+2306: 0000: %INCLUDE PSBF48E.J86    ! DEC API Logging
+2307: 0000: \*******************************************************************************
+2308: 0000: \*******************************************************************************
+2309: 0000: \***
+2310: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF DEC API FUNCTIONS                 ! CMW
+2311: 0000: \***
+2312: 0000: \***                    FUNCTION NUMBER   : PSBF48
+2313: 0000: \***
+2314: 0000: \***                    INCLUDE REFERENCE : PSBF48E.J86
+2315: 0000: \***
+2316: 0000: \***      Version A           Mark Goode          15 Oct 2010
+2317: 0000: \***      Initial version.
+2318: 0000: \***
+2319: 0000: \***      Version B           Mark Goode          18 Feb 2011
+2320: 0000: \***      Change request - CR002
+2321: 0000: \***
+2322: 0000: \***      Version C           Mark Walker         30 Jan 2012
+2323: 0000: \***      Changed header comment to indicate what this code is actually for!
+2324: 0000: \***
+2325: 0000: \*******************************************************************************
+2326: 0000: 
+2327: 0000:     FUNCTION DECAPI.INIT EXTERNAL
+2328: 0000:            INTEGER*2 DECAPI.INIT
+2329: 0000:     END FUNCTION    
+2330: 0000:     
+2331: 0000:     FUNCTION DECAPI.CLOSE EXTERNAL
+2332: 0000:             INTEGER*2 DECAPI.CLOSE
+2333: 0000:     END FUNCTION
+2334: 0000:     
+2335: 0000:     FUNCTION DECAPI.SEND(MESSAGEID$,PAYLOAD$,COMMIT) EXTERNAL
+2336: 0000:         INTEGER*2 DECAPI.SEND
+2337: 0000:         STRING    MESSAGEID$
+2338: 0000:         STRING    PAYLOAD$
+2339: 0000:         STRING    COMMIT ! "" - NO "C" - YES 
+2340: 0000:     END FUNCTION
+2341: 0000: 
+2342: 0000:     FUNCTION DECAPI.RECV EXTERNAL
+2343: 0000:          STRING    DECAPI.RECV 
+2344: 0000:     END FUNCTION
+2345: 0000:      
+2346: 0000:     FUNCTION DECAPI.RECV.RESPONSE.TIME EXTERNAL
+2347: 0000:          STRING    DECAPI.RECV.RESPONSE.TIME
+2348: 0000:     END FUNCTION
+2349: 0000: 
+2350: 0000:     FUNCTION DECAPI.COMMAND$(CMD$,DATA$) EXTERNAL
+2351: 0000:         STRING DECAPI.COMMAND$
+2352: 0000:         STRING CMD$
+2353: 0000:         STRING DATA$
+2354: 0000:     END FUNCTION
+2355: 0000:     
+2356: 0000:     FUNCTION DECAPI.EVENT(MESSAGEID$, DATA$, REASONCODE%) EXTERNAL   ! BMG
+2357: 0000:         STRING    MESSAGEID$                                         ! BMG
+2358: 0000:         STRING    DATA$                                              ! BMG
+2359: 0000:         INTEGER*2 REASONCODE%                                        ! BMG
+2360: 0000:     END FUNCTION                                                     ! BMG
+2361: 0000: 
+2362: 0000: 
+2363: 0000: 
+2364: 0000: \*******************************************************************************
+2365: 0000: 
+2366: 0000: 
+2367: 0000: SUB BACKUP.IUF.FILE EXTERNAL
+2368: 0000: END SUB
+2369: 0000: 
+2370: 0000: SUB DELETE.PPFK.KEYED.FILE EXTERNAL                             ! 1.3 RC (190)
+2371: 0000: END SUB                                                         ! 1.3 RC (190)
+2372: 0000: 
+2373: 0000: SUB DO.MESSAGE(MSG$, LOG%) EXTERNAL
+2374: 0000: END SUB
+2375: 0000: 
+2376: 0000: FUNCTION DESTROY.PPFK EXTERNAL                                  ! 1.4 RC (190)
+2377: 0000: INTEGER*1 DESTROY.PPFK                                          ! 1.4 RC (190)
+2378: 0000: END FUNCTION                                                    ! 1.4 RC (190)
+2379: 0000: 
+2380: 0000: \*******************************************************************************
+2381: 0000: \***
+2382: 0000: \*** MODULE.5.LOG.EVENT
+2383: 0000: \***
+2384: 0000: \*** Log Application Event. This has to be Local otherwise calling the Public
+2385: 0000: \*** Subprogram will cause a loop since the Public one calls PROGRAM.EXIT.
+2386: 0000: \***
+2387: 0000: \*******************************************************************************
+2388: 0000: SUB MODULE.5.LOG.EVENT(EVENT.NO%)
+2389: 0024: 
+2390: 0024:     INTEGER*1 EVENT.NO%
+2391: 0024:     INTEGER*2 REPORT.EVENT.NO%
+2392: 0024: 
+2393: 0024:     MODULE.NUMBER$ = "5"                                                        !1.2CSk
+2394: 003b:     VAR.STRING.2$ = " "
+2395: 0052: 
+2396: 0052:     IF EVENT.NO% = 222 THEN BEGIN
+2397: 0063:         ! Log DEC API Message issue
+2398: 0063:         VAR.STRING.1$ = EVENT.222.DATA$
+2399: 0084: 
+2400: 0084:     ENDIF ELSE IF EVENT.NO% = 106 THEN BEGIN
+2401: 0095:         ! IF END errors: Open/Read/Write/Delete/Create/Size
+2402: 0095:         VAR.STRING.1$ = FILE.OPERATION$                    +  \
+2403: 00f6:                     CHR$(SHIFT(CURRENT.REPORT.NUM%,8)) +  \
+2404: 00f6:                     CHR$(SHIFT(CURRENT.REPORT.NUM%,0))
+2405: 00f6: 
+2406: 00f6:     ENDIF ELSE IF EVENT.NO% = 103 THEN BEGIN
+2407: 010a:         ! Error processing one or more items on the IUF
+2408: 010a:         !Processing date + number of items skipped
+2409: 010a:         VAR.STRING.1$ = PACK$("20" + PROCESSING.DATE$ +                                  \
+2410: 0171:                         RIGHT$("000000" + STR$(IUF.J103.COUNT%),6))
+2411: 0171:         MESSAGE.NO%   = 103
+2412: 0182:         CALL ADXERROR (0, ASC("J"), 103, 3, 1, VAR.STRING.1$)
+2413: 01b4:     ENDIF
+2414: 01bc: 
+2415: 01bc:     IF EVENT.NO% <> 103 THEN BEGIN
+2416: 01cd:         RC% = APPLICATION.LOG (MESSAGE.NO%,     \
+2417: 0210:                                VAR.STRING.1$,   \
+2418: 0210:                                VAR.STRING.2$,   \
+2419: 0210:                                EVENT.NO%)
+2420: 0210:     ENDIF
+2421: 0218: 
+2422: 0218:     REPORT.EVENT.NO% = EVENT.NO%
+2423: 022a:     IF REPORT.EVENT.NO% < 0 THEN REPORT.EVENT.NO% = REPORT.EVENT.NO% + 256
+2424: 023f: 
+2425: 023f:     IF EVENT.NO% = 103 THEN BEGIN                                                         !1.1CSk
+2426: 0253:         CALL DO.MESSAGE("PSB21 *** LOG EVENT: " + STR$(REPORT.EVENT.NO%) + " - "  +  \    !1.1CSk
+2427: 02d0:                           STR$(IUF.J103.COUNT%) + " Record(s) Skipped", FALSE)            !1.1CSk
+2428: 02d0:     ENDIF ELSE BEGIN                                                                      !1.1CSk
+2429: 02d8:         CALL DO.MESSAGE("PSB21 *** LOG EVENT: " + STR$(REPORT.EVENT.NO%) , FALSE)
+2430: 0325:     ENDIF                                                                                 !1.1CSk
+2431: 032d: 
+2432: 032d: END SUB
+2433: 0341: 
+2434: 0341: 
+2435: 0341: 
+2436: 0341: \*******************************************************************************
+2437: 0341: \***
+2438: 0341: \*** UPDATE.BCF
+2439: 0341: \***
+2440: 0341: \***    Updates the BCF record  1 (Old IUF Format - Serial No.) or
+2441: 0341: \***                           20 (New IUF Format - Date Timestamp).
+2442: 0341: \***
+2443: 0341: \*******************************************************************************
+2444: 0341: 
+2445: 0341: SUB UPDATE.BCF PUBLIC
+2446: 0365: 
+2447: 0365:     MODULE.NUMBER$ = "5"                                                        !1.2CSk
+2448: 037c: 
+2449: 037c:     IF JOBSOK.FLAG$ <> "X" THEN BEGIN
+2450: 039d: 
+2451: 039d:         IF IUF.EXISTS THEN BEGIN
+2452: 03b2: 
+2453: 03b2:             FILE.OPERATION$ = "O"                                    ! 1.5 CSk
+2454: 03c9:             CURRENT.REPORT.NUM% = BCF.REPORT.NUM%                    ! 1.5 CSk
+2455: 03df:             IF END # BCF.SESS.NUM% THEN UPDATE.BCF.ERROR             ! 1.5 CSk
+2456: 03fb:             OPEN BCF.FILE.NAME$ RECL BCF.RECL% AS BCF.SESS.NUM%      ! 1.5 CSk
+2457: 0427: 
+2458: 0427:             IF IUF.NEW.FORMAT THEN BEGIN
+2459: 043c: 
+2460: 043c:                 BCF.REC.NO% = 20
+2461: 0453: 
+2462: 0453:                 RC% = READ.BCF.LOCK
+2463: 046e:                 IF RC% <> 0 THEN BEGIN
+2464: 048d:                     CALL MODULE.5.LOG.EVENT(106)
+2465: 04b1:                 ENDIF
+2466: 04b9: 
+2467: 04b9:                 BCF.IUF.DATETIMESTAMP$ = IUF.TIME.STAMP$
+2468: 04d7:                 BCF.FILLER$            = STRING$(63, " ")
+2469: 04f5: 
+2470: 04f5:                 RC% = WRITE.BCF.UNLOCK
+2471: 0510:                 IF RC% <> 0 THEN BEGIN
+2472: 052f:                     CALL MODULE.5.LOG.EVENT(106)
+2473: 0553:                 ENDIF
+2474: 055e: 
+2475: 055e:             ENDIF ELSE BEGIN
+2476: 0566: 
+2477: 0566:                 BCF.REC.NO% = 1
+2478: 057d: 
+2479: 057d:                 RC% = READ.BCF.LOCK
+2480: 0598:                 IF RC% <> 0 THEN BEGIN
+2481: 05b7:                     CALL MODULE.5.LOG.EVENT(106)
+2482: 05db:                 ENDIF
+2483: 05e3:                 BCF.IUF.SERIAL.NO$ = IUF.SERIAL.NO$
+2484: 0601: 
+2485: 0601:                 RC% = WRITE.BCF.UNLOCK
+2486: 061c:                 IF RC% <> 0 THEN BEGIN
+2487: 063b:                     CALL MODULE.5.LOG.EVENT(106)
+2488: 065f:                 ENDIF
+2489: 0667: 
+2490: 0667:             ENDIF
+2491: 066f: 
+2492: 066f:             CLOSE BCF.SESS.NUM%                                      ! 1.5 CSk
+2493: 0683:         ENDIF
+2494: 068b: 
+2495: 068b:     ENDIF
+2496: 0693: 
+2497: 0693:     CALL DO.MESSAGE("PSB21 - BCF Rec  1 Serial No         : [" + BCF.IUF.SERIAL.NO$ + "]", FALSE)
+2498: 06e4:     CALL DO.MESSAGE("PSB21 - BCF Rec 14 ECC Date Timestamp: [" + BCF.FILLER.DATETIMESTAMP$ + "]", FALSE)!AMW
+2499: 0735:     CALL DO.MESSAGE("PSB21 - BCF Rec 20 Batch Timestamp   : [" + BCF.IUF.DATETIMESTAMP$ + "]", FALSE)
+2500: 0786: 
+2501: 0786:     EXIT SUB                                                         ! 1.5 CSk
+2502: 0790: 
+2503: 0790: UPDATE.BCF.ERROR:                                                    ! 1.5 CSk
+2504: 07a0: 
+2505: 07a0:     CALL MODULE.5.LOG.EVENT(106)                                     ! 1.5 CSk
+2506: 07c4: 
+2507: 07c4: END SUB
+2508: 07d8: 
+2509: 07d8: 
+2510: 07d8: \*******************************************************************************
+2511: 07d8: \***
+2512: 07d8: \*** UPDATE.JOBSOK
+2513: 07d8: \***
+2514: 07d8: \***    Updates PSB21 status flag in JOBOK file.
+2515: 07d8: \***
+2516: 07d8: \*******************************************************************************
+2517: 07d8: 
+2518: 07d8: SUB UPDATE.JOBSOK
+2519: 07fc: 
+2520: 07fc:     IF JOBSOK.FLAG$ = " " THEN BEGIN
+2521: 081a:        JOBSOK.FLAG$ = "E"
+2522: 0831:     ENDIF
+2523: 0839: 
+2524: 0839:     RC% = READ.JOBSOK
+2525: 0854:     IF RC% <> 0 THEN BEGIN
+2526: 0873:         CALL MODULE.5.LOG.EVENT(106)
+2527: 0897:     ENDIF
+2528: 089f: 
+2529: 089f:     JOBSOK.PSB21$ = JOBSOK.FLAG$
+2530: 08bd: 
+2531: 08bd:     IF JOBSOK.PSB21$ <> "X" THEN BEGIN
+2532: 08de: 
+2533: 08de:         IF IUF.EXISTS THEN BEGIN
+2534: 08f3: 
+2535: 08f3:             IF IUF.NEW.FORMAT THEN BEGIN
+2536: 0905:                 JOBSOK.IUF.SOURCE$ = "E" ! SAP
+2537: 091c:                 JOBSOK.LAST.PROCESSED.BATCH$ = IUF.TIME.STAMP$
+2538: 093c:             ENDIF ELSE BEGIN
+2539: 0944:                 JOBSOK.IUF.SOURCE$ = "M" ! Mainframe
+2540: 095b:                 JOBSOK.LAST.PROCESSED.BATCH$ = STRING$(17, " ")
+2541: 0979:             ENDIF
+2542: 0983:         ENDIF ELSE BEGIN
+2543: 098b:             JOBSOK.IUF.SOURCE$ = " " ! No IUF present
+2544: 09a2:             ! Set the last successfully processed batch on the                 !1.2CSk
+2545: 09a2:             ! JOBOK to the last batch processed from the BCF.                  !1.2CSk
+2546: 09a2:             JOBSOK.LAST.PROCESSED.BATCH$ = BCF.IUF.DATETIMESTAMP$              !1.2CSk
+2547: 09c0:         ENDIF
+2548: 09c8: 
+2549: 09c8:     ENDIF
+2550: 09d0: 
+2551: 09d0:     RC% = WRITE.JOBSOK
+2552: 09eb:     IF RC% <> 0 THEN BEGIN
+2553: 0a0a:         CALL MODULE.5.LOG.EVENT(106)
+2554: 0a2e:     ENDIF
+2555: 0a36: 
+2556: 0a36: END SUB
+2557: 0a4a: 
+2558: 0a4a: 
+2559: 0a4a: \*******************************************************************************
+2560: 0a4a: \***
+2561: 0a4a: \***    DECAPI.MSG function
+2562: 0a4a: \***    Initialises the DEC API, writes a message to it, then closes it.
+2563: 0a4a: \***    Writes appropriate error messages to the application event log if needed.
+2564: 0a4a: \***
+2565: 0a4a: \*******************************************************************************
+2566: 0a4a: 
+2567: 0a4a: FUNCTION DECAPI.MSG(PAYLOAD.MSG$) PUBLIC
+2568: 0a73: 
+2569: 0a73:     INTEGER*2 DECAPI.MSG
+2570: 0a73:     INTEGER*2 DECAPI.MSG.INTERNAL.RC%
+2571: 0a73:     STRING PAYLOAD.MSG$
+2572: 0a73: 
+2573: 0a73:     DECAPI.MSG = 0 ! Set to non-zero by failed calls to DEC API functions
+2574: 0a80: 
+2575: 0a80:     ! Initialise the DEC API
+2576: 0a80:     DECAPI.MSG.INTERNAL.RC% = DECAPI.INIT
+2577: 0a90: 
+2578: 0a90:     IF DECAPI.MSG.INTERNAL.RC% > 2 THEN BEGIN
+2579: 0aa2:         DECAPI.MSG = DECAPI.MSG.INTERNAL.RC%
+2580: 0ab0:         EVENT.222.DATA$ = "IN"                        + \
+2581: 0b13:                CHR$(SHIFT(DECAPI.MSG.INTERNAL.RC%,8)) + \
+2582: 0b13:                CHR$(SHIFT(DECAPI.MSG.INTERNAL.RC%,0)) + \
+2583: 0b13:                PACK$("0000000000000000")
+2584: 0b13:         CALL MODULE.5.LOG.EVENT(222)
+2585: 0b37:         EXIT FUNCTION
+2586: 0b42:     ENDIF
+2587: 0b4a: 
+2588: 0b4a:     ! DEC.MESSAGE.ID$ = "Item Update"
+2589: 0b4a:     ! DEC.PAYLOAD$    =  Content of PAYLOAD.MSG$
+2590: 0b4a:     ! DEC.COMMIT$     = "C" ! PSB21 payload will not need to be split
+2591: 0b4a:     ! DECAPI.MAX      =  0  ! Zero by default
+2592: 0b4a:     !                       ! PSB21 payloads will not be very big
+2593: 0b4a: 
+2594: 0b4a:     ! Send the payload message to the DEC API
+2595: 0b4a:     DECAPI.MSG.INTERNAL.RC% = DECAPI.SEND("Item Update", PAYLOAD.MSG$, "C")
+2596: 0b6b: 
+2597: 0b6b:     IF DECAPI.MSG.INTERNAL.RC% <> 0 THEN BEGIN
+2598: 0b7d:         DECAPI.MSG = DECAPI.MSG.INTERNAL.RC%
+2599: 0b8b:         EVENT.222.DATA$ = "SN"                        + \
+2600: 0bf6:                CHR$(SHIFT(DECAPI.MSG.INTERNAL.RC%,8)) + \
+2601: 0bf6:                CHR$(SHIFT(DECAPI.MSG.INTERNAL.RC%,0)) + \
+2602: 0bf6:                "CID" + "C" + PACK$("0000")
+2603: 0bf6:         CALL MODULE.5.LOG.EVENT(222)
+2604: 0c1a:     ENDIF
+2605: 0c22: 
+2606: 0c22:     ! Close the DEC API
+2607: 0c22:     DECAPI.MSG.INTERNAL.RC% = DECAPI.CLOSE
+2608: 0c32: 
+2609: 0c32:     IF DECAPI.MSG.INTERNAL.RC% <> 0 THEN BEGIN
+2610: 0c44:         DECAPI.MSG = DECAPI.MSG.INTERNAL.RC%
+2611: 0c52:         EVENT.222.DATA$ = "CL"                        + \
+2612: 0cb5:                CHR$(SHIFT(DECAPI.MSG.INTERNAL.RC%,8)) + \
+2613: 0cb5:                CHR$(SHIFT(DECAPI.MSG.INTERNAL.RC%,0)) + \
+2614: 0cb5:                PACK$("000000000000")
+2615: 0cb5:         CALL MODULE.5.LOG.EVENT(222)
+2616: 0cd9:     ENDIF
+2617: 0ce1: 
+2618: 0ce1: END FUNCTION
+2619: 0cfd: 
+2620: 0cfd: 
+2621: 0cfd: 
+2622: 0cfd: \*******************************************************************************
+2623: 0cfd: \***
+2624: 0cfd: \*** SEND.DEC.MESSAGE
+2625: 0cfd: \***
+2626: 0cfd: \***    Sends CSV formatted message to DEC if new format IUF was processed.
+2627: 0cfd: \***
+2628: 0cfd: \*******************************************************************************
+2629: 0cfd: 
+2630: 0cfd: SUB SEND.DEC.MESSAGE PUBLIC
+2631: 0d21: 
+2632: 0d21:     MODULE.NUMBER$ = "5"                                                        !1.2CSk
+2633: 0d38: 
+2634: 0d38:     IF IUF.NEW.FORMAT THEN BEGIN
+2635: 0d4d: 
+2636: 0d4d:         IF JOBSOK.FLAG$ <> "X" THEN BEGIN
+2637: 0d6b:             SUCCESS$ = "Y"
+2638: 0d84:         ENDIF ELSE BEGIN
+2639: 0d8c:             SUCCESS$ = "N"
+2640: 0da3:             IF IUF.INITIAL.LOAD$ = "Y" THEN BEGIN
+2641: 0dc1:                 ERROR$ = "4"            ! Initial load issue
+2642: 0dd8:             ENDIF
+2643: 0de0:         ENDIF
+2644: 0de8: 
+2645: 0de8:         DEC.MESSAGE$ =                      + \
+2646: 0e62:                 "IF_00022,IUF,"             + \  ! Interface Identifier
+2647: 0e62:                 STORE.NUMBER$         + "," + \
+2648: 0e62:                 IUF.TIME.STAMP$       + "," + \  ! YYYYMMDDHHMMSSsss
+2649: 0e62:                 "20" + DATE$ + TIME$  + "," + \  ! YYYYMMDDHHMMSS
+2650: 0e62:                 SUCCESS$              + "," + \  ! "Y" - File processed at store (so may be deleted from SAP) ! Batch processed at...
+2651: 0e62:                                             + \  ! "N" - File not processed (so retain in SAP for re-transmission) !Batch not process ...
+2652: 0e62:                 ERROR$                           ! "0"  No error
+2653: 0e62:                                                  ! "1"  Item Update File missing
+2654: 0e62:                                                  ! "2"  Header problem
+2655: 0e62:                                                  ! "3"  Trailer problem
+2656: 0e62:                                                  ! "4"  Initial load issue
+2657: 0e62:                                                  ! "5"  Batch already processed
+2658: 0e62:                                                  ! "6"  -- Not defined --
+2659: 0e62:                                                  ! "7"  -- Not defined --
+2660: 0e62:                                                  ! "8"  -- Not defined --
+2661: 0e62:                                                  ! "9"  Unexpected error
+2662: 0e62: 
+2663: 0e62:         CALL DO.MESSAGE("PSB21 DEC MSG: " + DEC.MESSAGE$, FALSE)
+2664: 0eaf:         CALL DO.MESSAGE("PSB21 Sending Message to DEC API", FALSE)
+2665: 0eee: 
+2666: 0eee:         CALL DECAPI.MSG(DEC.MESSAGE$)
+2667: 0f08: 
+2668: 0f08:         ERROR$ = "0"                             ! Reset error status
+2669: 0f1f: 
+2670: 0f1f:     ENDIF
+2671: 0f27: 
+2672: 0f27: END SUB
+2673: 0f3b: 
+2674: 0f3b: 
+2675: 0f3b: 
+2676: 0f3b: \******************************************************************************
+2677: 0f3b: \***                                                                          *
+2678: 0f3b: \***    SUBROUTINE      :       CLOSE.FILES                                   *
+2679: 0f3b: \***                                                                          *
+2680: 0f3b: \******************************************************************************
+2681: 0f3b: 
+2682: 0f3b: SUB CLOSE.FILES
+2683: 0f5f: 
+2684: 0f5f:     CALL DO.MESSAGE("PSB21 Closing Files", TRUE)
+2685: 0f9e:     CLOSE BCF.SESS.NUM%
+2686: 0fb2: 
+2687: 0fb2:     IF CIPPM.PRESENT THEN BEGIN                                 ! 1.6 RC (226)
+2688: 0fc4:         CLOSE CIPPM.SESS.NUM%
+2689: 0fd8:     ENDIF                                                       ! 1.6 RC (226)
+2690: 0fe0: 
+2691: 0fe0:     CLOSE DRUG.SESS.NUM%
+2692: 0ff4:     CLOSE IDF.SESS.NUM%
+2693: 1008:     CLOSE IEF.SESS.NUM%
+2694: 101c:     CLOSE IEX.SESS.NUM%
+2695: 1030:     CLOSE IRF.SESS.NUM%
+2696: 1044:     CLOSE IRFDEX.SESS.NUM%                                      ! 1.9 RC (242)
+2697: 1058:     CLOSE ISF.SESS.NUM%
+2698: 106c:     CLOSE JOBSOK.SESS.NUM%
+2699: 1080:     CLOSE LOCAL.SESS.NUM%
+2700: 1094:     CLOSE NEWLINES.SESS.NUM%
+2701: 10a8:     CLOSE RICF.SESS.NUM%
+2702: 10bc:     CLOSE STOCK.SESS.NUM%
+2703: 10d0: 
+2704: 10d0:     !Close IRFITGRP File                                                !BRN
+2705: 10d0:     IF IRFITGRP.OPEN THEN BEGIN                                         !BRN
+2706: 10e2:         CLOSE IRFITGRP.SESS.NUM%                                        !BRN
+2707: 10f6:         IRFITGRP.OPEN = FALSE                                           !BRN
+2708: 110c:     ENDIF                                                               !BRN
+2709: 1114: 
+2710: 1114:     CALL CLOSE.IRF.UPDT (NEW.IRF.DATA$,ACD.FLAG$)
+2711: 113a: 
+2712: 113a: END SUB
+2713: 114e: 
+2714: 114e: 
+2715: 114e: \*******************************************************************************
+2716: 114e: \***
+2717: 114e: \*** PROGRAM.EXIT
+2718: 114e: \***
+2719: 114e: \***
+2720: 114e: \***   Update JOBSOK, send message to DEC API and chain to PSB20 passing
+2721: 114e: \***   processing date.
+2722: 114e: \***
+2723: 114e: \*******************************************************************************
+2724: 114e: SUB PROGRAM.EXIT PUBLIC
+2725: 1172: 
+2726: 1172:     MODULE.NUMBER$ = "5"                                                        !1.2CSk
+2727: 1189: 
+2728: 1189: !   If PROGRAM.EXIT has been called unexpectedley ensure the PPFK is deleted    ! 1.4 RC (190)
+2729: 1189:     IF JOBSOK.FLAG$ <> " " THEN BEGIN                                           ! 1.7 RC (238)
+2730: 11aa: 
+2731: 11aa:         CALL DO.MESSAGE("PSB21 PROGRAM.EXIT (JOBSOK """ + JOBSOK.FLAG$ \        ! 1.7 RC (238)
+2732: 11fb:                                                         + """)", FALSE)         ! 1.7 RC (238)
+2733: 11fb: 
+2734: 11fb:         CALL DO.MESSAGE("PSB21 Deleting files from RAM disk W:", FALSE)         ! 1.8 RC (240)
+2735: 123a: 
+2736: 123a: !       Delete any RAM files used by the program that are still present         ! 1.7 RC (238)
+2737: 123a:         CALL OSSHELL("IF EXIST W:\%*.*        RESTRICT W:\%*.*")                ! 1.8 RC (240)
+2738: 124e:         CALL OSSHELL("IF EXIST W:\%*.*        DEL W:\%*.*")                     ! 1.7 RC (238)
+2739: 1262: 
+2740: 1262:         CALL OSSHELL("IF EXIST W:\PPFK.BIN RESTRICT W:\PPFK.BIN"   )            ! 1.8 RC (240)
+2741: 1276:         CALL OSSHELL("IF EXIST W:\PPFK.BIN      DEL W:\PPFK.BIN"   )            ! 1.8 RC (240)
+2742: 128a: 
+2743: 128a:     ENDIF                                                                       ! 1.4 RC (190)
+2744: 1292: 
+2745: 1292:     ! Moved from PSB2100.BAS
+2746: 1292:     CALL BACKUP.IUF.FILE ! Writes "PHASE 6"                     ! 1.4 RC
+2747: 129f: 
+2748: 129f:     CALL UPDATE.JOBSOK
+2749: 12ab: 
+2750: 12ab:     CALL DO.MESSAGE("PSB21 JOBSOK.FLAG$ = " + JOBSOK.FLAG$, FALSE)
+2751: 12f8: 
+2752: 12f8:     CALL CLOSE.FILES
+2753: 1304: 
+2754: 1304:     IF IUF.NEW.FORMAT \ ! Not legacy IUF                        ! 1.5 RC (223)
+2755: 132f:       AND IUF.J103.COUNT% > 0 THEN BEGIN                        ! 1.5 RC (223)
+2756: 132f:         CALL MODULE.5.LOG.EVENT(103)
+2757: 1353:     ENDIF
+2758: 135b: 
+2759: 135b:     CALL DO.MESSAGE("PSB21 Chaining to PSB20", TRUE)
+2760: 139a:     CALL DO.MESSAGE("PSB21 EXITED PROGRAM", TRUE)
+2761: 13d9:     CALL DO.MESSAGE("==================================================================", FALSE)
+2762: 1418: 
+2763: 1418:     CHAIN PSB20.PATH.NAME$,PROCESSING.DATE$
+2764: 1448: 
+2765: 1448: END SUB
+2766: 145c: 
+2767: 145c: End of Compilation

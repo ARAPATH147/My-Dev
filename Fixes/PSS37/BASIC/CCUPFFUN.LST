@@ -1,0 +1,217 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  KEYED
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  CCUPFFUN.BAS
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***                               UOD PROCESSED FILE 
+  13: 0000: \***
+  14: 0000: \***      VERSION A : Michael J. Kelsall      14th March 1994
+  15: 0000: \***      
+  16: 0000: \*****************************************************************************
+  17: 0000: \*****************************************************************************
+  18: 0000: 
+  19: 0000:   INTEGER*2 GLOBAL            \
+  20: 0000:          CURRENT.REPORT.NUM% 
+  21: 0000:          
+  22: 0000:   STRING GLOBAL               \
+  23: 0000:          CURRENT.CODE$,       \
+  24: 0000:          FILE.OPERATION$           
+  25: 0000: 
+  26: 0000:   %INCLUDE CCUPFDEC.J86
+  27: 0000: 
+  28: 0000: \*****************************************************************************
+  29: 0000: \*****************************************************************************
+  30: 0000: \***
+  31: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  32: 0000: \***
+  33: 0000: \***                   FILE TYPE:  KEYED
+  34: 0000: \***
+  35: 0000: \***                   REFERENCE:  CCUPFDEC.J86
+  36: 0000: \***
+  37: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  38: 0000: \***				   UOD PROCESSED FILE
+  39: 0000: \***
+  40: 0000: \***
+  41: 0000: \***      VERSION A : Michael J. Kelsall      14th March 1994
+  42: 0000: \***      
+  43: 0000: \*****************************************************************************
+  44: 0000: \*****************************************************************************
+  45: 0000: 
+  46: 0000: STRING GLOBAL			\
+  47: 0000:    CCUPF.FILE.NAME$,		\
+  48: 0000:    CCUPF.UOD.NUM$,		\  7 byte UPD
+  49: 0000:    CCUPF.CURRENT.STATUS$	!  1 byte ASC;  "C" = Closed,
+  50: 0000:    				!               "D" - Despatched,
+  51: 0000:    				!               "X" - Cancelled.
+  52: 0000:       				
+  53: 0000: 
+  54: 0000: INTEGER*2 GLOBAL		\
+  55: 0000:    CCUPF.RECL%,			\
+  56: 0000:    CCUPF.REPORT.NUM%,		\
+  57: 0000:    CCUPF.SESS.NUM%
+  58: 0000: 
+  59: 0000: 
+  60: 0000: 
+  61: 0000:   FUNCTION CCUPF.SET PUBLIC
+  62: 0014: 
+  63: 0014:      INTEGER*2 CCUPF.SET
+  64: 0014:      CCUPF.SET = 1
+  65: 0019: 
+  66: 0019:        CCUPF.REPORT.NUM% = 425
+  67: 0022:        CCUPF.RECL%       = 8
+  68: 002b:        CCUPF.FILE.NAME$  = "CCUPF"
+  69: 003a:   
+  70: 003a:      CCUPF.SET = 0
+  71: 003f: 
+  72: 003f:   END FUNCTION
+  73: 004e: 
+  74: 004e: 
+  75: 004e: 
+  76: 004e:   FUNCTION READ.CCUPF PUBLIC
+  77: 0062: 
+  78: 0062:     INTEGER*2 READ.CCUPF
+  79: 0062:     
+  80: 0062:        READ.CCUPF = 1    
+  81: 0067:        IF END #CCUPF.SESS.NUM% THEN READ.ERROR   
+  82: 007b:        READ FORM "T8,C1"; #CCUPF.SESS.NUM%                              \
+  83: 00ad:          KEY CCUPF.UOD.NUM$;                                            \
+  84: 00ad:              CCUPF.CURRENT.STATUS$
+  85: 00ad:        READ.CCUPF = 0
+  86: 00b2:        EXIT FUNCTION     
+  87: 00b4: 
+  88: 00b4:     READ.ERROR:
+  89: 00b4: 
+  90: 00b4:        CURRENT.CODE$ = CCUPF.UOD.NUM$
+  91: 00ca:        FILE.OPERATION$ = "R"
+  92: 00d9:        CURRENT.REPORT.NUM% = CCUPF.REPORT.NUM%
+  93: 00e7:        EXIT FUNCTION
+  94: 00e9: 
+  95: 00e9:   END FUNCTION
+  96: 00f8:   
+  97: 00f8: 
+  98: 00f8: 
+  99: 00f8:   FUNCTION READ.CCUPF.LOCKED PUBLIC
+ 100: 010c: 
+ 101: 010c:     INTEGER*2 READ.CCUPF.LOCKED
+ 102: 010c:     
+ 103: 010c:        READ.CCUPF.LOCKED = 1    
+ 104: 0111:        IF END #CCUPF.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 105: 0125:        READ FORM "T8,C1"; #CCUPF.SESS.NUM% AUTOLOCK                     \
+ 106: 0157:          KEY CCUPF.UOD.NUM$;                                            \
+ 107: 0157:              CCUPF.CURRENT.STATUS$
+ 108: 0157:        READ.CCUPF.LOCKED = 0
+ 109: 015c:        EXIT FUNCTION     
+ 110: 015e:         
+ 111: 015e:     READ.LOCKED.ERROR:
+ 112: 015e: 
+ 113: 015e:        CURRENT.CODE$ = CCUPF.UOD.NUM$
+ 114: 0174:        FILE.OPERATION$ = "R"
+ 115: 0183:        CURRENT.REPORT.NUM% = CCUPF.REPORT.NUM%
+ 116: 0191:            
+ 117: 0191:        EXIT FUNCTION
+ 118: 0193: 
+ 119: 0193:   END FUNCTION  
+ 120: 01a2: 
+ 121: 01a2: 
+ 122: 01a2: 
+ 123: 01a2:   FUNCTION WRITE.HOLD.CCUPF PUBLIC
+ 124: 01b6: 
+ 125: 01b6:     INTEGER*2 WRITE.HOLD.CCUPF
+ 126: 01b6:     
+ 127: 01b6:        WRITE.HOLD.CCUPF = 1
+ 128: 01bb:        IF END #CCUPF.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 129: 01cf:        WRITE FORM "C7,C1"; HOLD #CCUPF.SESS.NUM%;                       \     
+ 130: 0201:              CCUPF.UOD.NUM$,                                            \
+ 131: 0201:              CCUPF.CURRENT.STATUS$
+ 132: 0201:        WRITE.HOLD.CCUPF = 0
+ 133: 0206:        EXIT FUNCTION         
+ 134: 0208:      
+ 135: 0208:     WRITE.HOLD.ERROR:
+ 136: 0208:      
+ 137: 0208:        FILE.OPERATION$ = "W"
+ 138: 0217:        CURRENT.REPORT.NUM% = CCUPF.REPORT.NUM%
+ 139: 0225:        CURRENT.CODE$ = CCUPF.UOD.NUM$
+ 140: 023b:     
+ 141: 023b:        EXIT FUNCTION    
+ 142: 023d: 
+ 143: 023d:   END FUNCTION
+ 144: 024c: 
+ 145: 024c: 
+ 146: 024c: 
+ 147: 024c:   FUNCTION WRITE.UNLOCK.CCUPF PUBLIC
+ 148: 0260: 
+ 149: 0260:     INTEGER*2 WRITE.UNLOCK.CCUPF
+ 150: 0260:     
+ 151: 0260:        WRITE.UNLOCK.CCUPF = 1
+ 152: 0265:        IF END #CCUPF.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 153: 0279:        WRITE FORM "C7,C1"; #CCUPF.SESS.NUM% AUTOUNLOCK;                 \        
+ 154: 02ab:              CCUPF.UOD.NUM$,                                            \
+ 155: 02ab:              CCUPF.CURRENT.STATUS$
+ 156: 02ab:        WRITE.UNLOCK.CCUPF = 0
+ 157: 02b0:        EXIT FUNCTION         
+ 158: 02b2:      
+ 159: 02b2:     WRITE.UNLOCK.ERROR:
+ 160: 02b2:      
+ 161: 02b2:        FILE.OPERATION$ = "W"
+ 162: 02c1:        CURRENT.REPORT.NUM% = CCUPF.REPORT.NUM%
+ 163: 02cf:        CURRENT.CODE$ = CCUPF.UOD.NUM$
+ 164: 02e5:     
+ 165: 02e5:        EXIT FUNCTION    
+ 166: 02e7: 
+ 167: 02e7:   END FUNCTION
+ 168: 02f6: 
+ 169: 02f6: 
+ 170: 02f6: 
+ 171: 02f6:   FUNCTION WRITE.HOLD.UNLOCK.CCUPF PUBLIC
+ 172: 030a: 
+ 173: 030a:     INTEGER*2 WRITE.HOLD.UNLOCK.CCUPF
+ 174: 030a:     
+ 175: 030a:        WRITE.HOLD.UNLOCK.CCUPF = 1
+ 176: 030f:        IF END #CCUPF.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 177: 0323:        WRITE FORM "C7,C1"; HOLD #CCUPF.SESS.NUM% AUTOUNLOCK;            \        
+ 178: 0355:              CCUPF.UOD.NUM$,                                            \
+ 179: 0355:              CCUPF.CURRENT.STATUS$
+ 180: 0355:        WRITE.HOLD.UNLOCK.CCUPF = 0
+ 181: 035a:        EXIT FUNCTION         
+ 182: 035c:      
+ 183: 035c:     WRITE.HOLD.UNLOCK.ERROR:
+ 184: 035c:      
+ 185: 035c:        FILE.OPERATION$ = "W"
+ 186: 036b:        CURRENT.REPORT.NUM% = CCUPF.REPORT.NUM%
+ 187: 0379:        CURRENT.CODE$ = CCUPF.UOD.NUM$
+ 188: 038f:     
+ 189: 038f:        EXIT FUNCTION    
+ 190: 0391: 
+ 191: 0391:   END FUNCTION
+ 192: 03a0: 
+ 193: 03a0: 
+ 194: 03a0: 
+ 195: 03a0:   FUNCTION WRITE.CCUPF PUBLIC
+ 196: 03b4: 
+ 197: 03b4:     INTEGER*2 WRITE.CCUPF
+ 198: 03b4:     
+ 199: 03b4:        WRITE.CCUPF = 1
+ 200: 03b9:        IF END #CCUPF.SESS.NUM% THEN WRITE.ERROR
+ 201: 03cd:        WRITE FORM "C7,C1"; #CCUPF.SESS.NUM%;                            \     
+ 202: 03ff:              CCUPF.UOD.NUM$,                                            \
+ 203: 03ff:              CCUPF.CURRENT.STATUS$
+ 204: 03ff:        WRITE.CCUPF = 0
+ 205: 0404:        EXIT FUNCTION         
+ 206: 0406:      
+ 207: 0406:     WRITE.ERROR:
+ 208: 0406:      
+ 209: 0406:        FILE.OPERATION$ = "W"
+ 210: 0415:        CURRENT.REPORT.NUM% = CCUPF.REPORT.NUM%
+ 211: 0423:        CURRENT.CODE$ = CCUPF.UOD.NUM$
+ 212: 0439:     
+ 213: 0439:        EXIT FUNCTION    
+ 214: 043b: 
+ 215: 043b:   END FUNCTION
+ 216: 044a: 
+ 217: 044a: End of Compilation

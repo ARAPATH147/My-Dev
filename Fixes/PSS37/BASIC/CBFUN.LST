@@ -1,0 +1,148 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* Carton Buffer (CB) FILE FUNCTIONS                              */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : CBFUN.BAS                                        */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.           27 DECEMBER 2006   */
+   8: 0000: \/*                                                                */
+   9: 0000: \/******************************************************************/
+  10: 0000: 
+  11: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  12: 0000: 
+  13: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  14: 0000:                     FILE.OPERATION$
+  15: 0000: 
+  16: 0000:    %INCLUDE CBDEC.J86
+  17: 0000: \/******************************************************************/
+  18: 0000: \/*                                                                */
+  19: 0000: \/* Carton Buffer FILE GLOBAL VARIABLE DECLARATIONS                */
+  20: 0000: \/*                                                                */
+  21: 0000: \/* REFERENCE   : CBDEC.J86                                        */
+  22: 0000: \/*                                                                */
+  23: 0000: \/* VERSION A.          Neil Bennett.           27 DECEMBER 2006   */
+  24: 0000: \/*                                                                */
+  25: 0000: \/******************************************************************/
+  26: 0000: 
+  27: 0000:    STRING GLOBAL                \
+  28: 0000:       CB.FILE.NAME$,            \
+  29: 0000:                                 \
+  30: 0000:       CB.RCD$,                  \  ? bytes  (18/17/20/ 8)
+  31: 0000:       CB.REC.TYPE$,             \  1 byte   ( C/ H/ D/ T)
+  32: 0000:       CB.ITEM.BARCODE$,         \ 13 bytes  (with check digit)
+  33: 0000:       CB.CARTON.BARCODE$,       \ 14 bytes (6 bytes supplier ref.)
+  34: 0000:                                 \          (8 bytes Carton Number)
+  35: 0000:       CB.REPORT.RQD$,           \  1 byte  (Y/N)
+  36: 0000:       CB.ITEM.QUANTITY$,        \  4 bytes (1 -  9999)
+  37: 0000:       CB.ITEM.COUNT$            !  5 bytes (1 - 99999)
+  38: 0000: 
+  39: 0000:    INTEGER*2 GLOBAL             \
+  40: 0000:       CB.REPORT.NUM%,           \
+  41: 0000:       CB.SESS.NUM%              !
+  42: 0000: 
+  43: 0000: \/******************************************************************/
+  44: 0000: 
+  45: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  46: 0000: \/* FUNCTION CB.SET                                                */
+  47: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  48: 0000: 
+  49: 0000:    FUNCTION CB.SET PUBLIC
+  50: 0014: 
+  51: 0014:       INTEGER*1 CB.SET
+  52: 0014: 
+  53: 0014:       CB.REPORT.NUM% = 736
+  54: 001d:       CB.FILE.NAME$  = "CB:"
+  55: 002c: 
+  56: 002c:    END FUNCTION
+  57: 003b: 
+  58: 003b: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  59: 003b: \/* FUNCTION READ.CB                                               */
+  60: 003b: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  61: 003b: 
+  62: 003b:    FUNCTION READ.CB PUBLIC
+  63: 004f: 
+  64: 004f:       INTEGER*2 READ.CB
+  65: 004f: 
+  66: 004f:       READ.CB = 1
+  67: 0054: 
+  68: 0054:       IF END #CB.SESS.NUM% THEN READ.ERROR
+  69: 0068:       READ #CB.SESS.NUM%; LINE CB.RCD$
+  70: 0081: 
+  71: 0081:       CB.REC.TYPE$ = MID$(CB.RCD$,  1,  1)
+  72: 00a0: 
+  73: 00a0:       IF CB.REC.TYPE$ = "C" THEN BEGIN
+  74: 00b6:          CB.CARTON.BARCODE$ = MID$(CB.RCD$,  2, 14)
+  75: 00d5:          CB.REPORT.RQD$     = MID$(CB.RCD$, 16,  1)
+  76: 00f7:       ENDIF ELSE IF CB.REC.TYPE$ = "H" THEN BEGIN
+  77: 010d:          CB.CARTON.BARCODE$ = MID$(CB.RCD$,  2, 14)
+  78: 012f:       ENDIF ELSE IF CB.REC.TYPE$ = "D" THEN BEGIN
+  79: 0145:          CB.ITEM.BARCODE$   = MID$(CB.RCD$,  2, 13)
+  80: 0164:          CB.ITEM.QUANTITY$  = MID$(CB.RCD$, 15,  4)
+  81: 0185:       ENDIF ELSE IF CB.REC.TYPE$ = "T" THEN BEGIN
+  82: 019b:          CB.ITEM.COUNT$     = MID$(CB.RCD$,  2,  5)
+  83: 01ba:       ENDIF
+  84: 01ba: 
+  85: 01ba:       READ.CB = 0
+  86: 01bf:    EXIT FUNCTION
+  87: 01c1: 
+  88: 01c1: 
+  89: 01c1: READ.ERROR:
+  90: 01c1: 
+  91: 01c1:       FILE.OPERATION$     = "R"
+  92: 01d0:       CURRENT.REPORT.NUM% = CB.REPORT.NUM%
+  93: 01de:       CURRENT.CODE$       = ""
+  94: 01ed: 
+  95: 01ed:    END FUNCTION
+  96: 01fc: 
+  97: 01fc: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  98: 01fc: \/* FUNCTION WRITE.CB                                              */
+  99: 01fc: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 100: 01fc: 
+ 101: 01fc:    FUNCTION WRITE.CB PUBLIC
+ 102: 0210: 
+ 103: 0210:       INTEGER*2 WRITE.CB
+ 104: 0210:       STRING    crlf$
+ 105: 0210:       STRING    form$
+ 106: 0210: 
+ 107: 0210:       WRITE.CB = 1
+ 108: 0215: 
+ 109: 0215:       crlf$ = CHR$(13) + CHR$(10)
+ 110: 023a: 
+ 111: 023a:       IF CB.REC.TYPE$ = "C" THEN BEGIN
+ 112: 0253:          CB.RCD$ = CB.REC.TYPE$                                     \
+ 113: 02ef:                  + RIGHT$(STRING$(14,"0") + CB.CARTON.BARCODE$, 14) \
+ 114: 02ef:                  + RIGHT$(           " "  + CB.REPORT.RQD$    ,  1) \
+ 115: 02ef:                  + crlf$
+ 116: 02ef:       ENDIF ELSE IF CB.REC.TYPE$ = "H" THEN BEGIN
+ 117: 0305:          CB.RCD$ = CB.REC.TYPE$                                     \
+ 118: 036e:                  + RIGHT$(STRING$(14,"0") + CB.CARTON.BARCODE$, 14) \
+ 119: 036e:                  + crlf$
+ 120: 036e:       ENDIF ELSE IF CB.REC.TYPE$ = "D" THEN BEGIN
+ 121: 0387:          CB.RCD$ = CB.REC.TYPE$                                     \
+ 122: 0434:                  + RIGHT$(STRING$(13,"0") + CB.ITEM.BARCODE$  , 13) \
+ 123: 0434:                  + RIGHT$(STRING$( 4,"0") + CB.ITEM.QUANTITY$ ,  4) \
+ 124: 0434:                  + crlf$
+ 125: 0434:       ENDIF ELSE IF CB.REC.TYPE$ = "T" THEN BEGIN
+ 126: 044a:          CB.RCD$ = CB.REC.TYPE$                                     \
+ 127: 04b0:                  + RIGHT$(STRING$( 5,"0") + CB.ITEM.COUNT$    ,  5) \
+ 128: 04b0:                  + crlf$
+ 129: 04b0:       ENDIF
+ 130: 04b0: 
+ 131: 04b0:       form$ = "C" + STR$(LEN(CB.RCD$))
+ 132: 04de: 
+ 133: 04de:       IF END #CB.SESS.NUM% THEN WRITE.ERROR
+ 134: 04f2:       WRITE FORM form$; #CB.SESS.NUM%; CB.RCD$
+ 135: 0518: 
+ 136: 0518:       WRITE.CB = 0
+ 137: 051d:       EXIT FUNCTION
+ 138: 051f: 
+ 139: 051f: WRITE.ERROR:
+ 140: 051f: 
+ 141: 051f:       FILE.OPERATION$ = "W"
+ 142: 052e:       CURRENT.REPORT.NUM% = CB.REPORT.NUM%
+ 143: 053c:       CURRENT.CODE$ = ""
+ 144: 054b: 
+ 145: 054b:    END FUNCTION
+ 146: 055a: 
+ 147: 055a: \/******************************************************************/
+ 148: 055a: End of Compilation

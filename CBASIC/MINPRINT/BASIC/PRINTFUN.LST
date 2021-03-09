@@ -1,0 +1,309 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   PRINTFUN.bas  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.8  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: \******************************************************************************
+  10: 0000: \***
+  11: 0000: \***   $Log:   V:/Archive/Basarch/PRINTFUN.bav  $
+  12: 0000: \***
+  13: 0000: \***      Rev 1.8   17 Dec 2008 13:55:54   charles.skadorwa
+  14: 0000: \***   Modified function to make it compatible
+  15: 0000: \***   with Alliance Pharmacy stores Brother
+  16: 0000: \***   Laser printers when condensed printing
+  17: 0000: \***   selected. In condensed mode, the Lexmark
+  18: 0000: \***   printer can fit 135 characters per line
+  19: 0000: \***   whilst the Brother can only fit 120. The
+  20: 0000: \***   presence of a template file on the
+  21: 0000: \***   controller determines if it is an AP store.
+  22: 0000: \***
+  23: 0000: \***      Rev 1.7   Aug 07 2000 15:11:14   dev11ps
+  24: 0000: \***   Changed to allow Laserjet printing with
+  25: 0000: \***   Chinese characters
+  26: 0000: \***
+  27: 0000: \***      Rev 1.6   Apr 20 2000 10:59:38   dev11ps
+  28: 0000: \***   Changed the value of the Recl back to 600
+  29: 0000: \***   from 700. This was because a problem occurs
+  30: 0000: \***   when large volumes of labels are required.
+  31: 0000: \***
+  32: 0000: \***      Rev 1.5   Nov 02 1999 14:00:00   dev11ps
+  33: 0000: \***   Change to record length
+  34: 0000: \***
+  35: 0000: \***      Rev 1.4   Oct 22 1999 14:46:16   dev11ps
+  36: 0000: \***
+  37: 0000: \***
+  38: 0000: \***      Rev 1.3   Oct 18 1999 11:39:22   dev11ps
+  39: 0000: \***   Changed for Euro
+  40: 0000: \***
+  41: 0000: \***      Rev 1.2   Oct 15 1999 15:43:28   dev11ps
+  42: 0000: \***   Changed to cater for increase of record length
+  43: 0000: \***   for Euro
+  44: 0000: \***
+  45: 0000: \***      Rev 1.1   11 Jan 1995 15:08:30   NIK
+  46: 0000: \***
+  47: 0000: \***
+  48: 0000: \******************************************************************************
+  49: 0000: \******************************************************************************
+  50: 0000: REM \
+  51: 0000: \******************************************************************************
+  52: 0000: \******************************************************************************
+  53: 0000: \***
+  54: 0000: \***    SOURCE FOR PRINT FILE PUBLIC FUNCTIONS
+  55: 0000: \***
+  56: 0000: \***        REFERENCE   :   PRINTFU (BAS)
+  57: 0000: \***
+  58: 0000: \***        FILE TYPE   :   Printer / Labeller
+  59: 0000: \***
+  60: 0000: \***    VERSION A.              ANDREW WEDGEWORTH.                  09 JUL 1992.
+  61: 0000: \***    Original version created by merging PRINTFNG and PRINTSEG.
+  62: 0000: \***
+  63: 0000: \***    VERSION B.              UNKNOWN.                            ?? ??? 1992.
+  64: 0000: \***    Changes unknown.
+  65: 0000: \***
+  66: 0000: \***    VERSION C.              ROBERT COWEY.                       18 NOV 1992.
+  67: 0000: \***    Coded IF END # processing.
+  68: 0000: \***
+  69: 0000: \***    Version D           Andrew Wedgeworth                     24th May 1993
+  70: 0000: \***    Function added to produce a condensed report.
+  71: 0000: \***
+  72: 0000: \***    Version E           Stuart WIlliam McConnachie           31st July 2000
+  73: 0000: \***    Added function to write variable length lines.
+  74: 0000: \***
+  75: 0000: \***    Version F           Charles Skadorwa                     4th April 2008
+  76: 0000: \***    Modified function to make it compatible with Alliance Pharmacy
+  77: 0000: \***    stores Brother Laser printers when condensed printing selected.
+  78: 0000: \***    In condensed mode, the Lexmark printer can fit 135 characters
+  79: 0000: \***    per line whilst the Brother can only fit 120. The presence of a
+  80: 0000: \***    template file on the controller determines if it is an AP store.
+  81: 0000: \***
+  82: 0000: \***    Version G           Charles Skadorwa                     4th April 2016
+  83: 0000: \***    It was found that certain reports would not print when stores
+  84: 0000: \***    were converted to LAN printing.
+  85: 0000: \***
+  86: 0000: \***    Added new function: WRITE.PRINT.PLUS.LF based on WRITE.PRINT.
+  87: 0000: \***    This adds a Line-Feed characters to every print line.
+  88: 0000: \***
+  89: 0000: \*******************************************************************************
+  90: 0000: \*******************************************************************************
+  91: 0000: 
+  92: 0000:     %INCLUDE PRINTDEC.J86 ! Print file variable declarations
+  93: 0000: 
+  94: 0000: REM \
+  95: 0000: \*******************************************************************************
+  96: 0000: \*******************************************************************************
+  97: 0000: \***
+  98: 0000: \***    %INCLUDE FOR PRINT FILE VARIABLE DECLARATIONS
+  99: 0000: \***
+ 100: 0000: \***        REFERENCE   :   PRINTDE (J86)
+ 101: 0000: \***
+ 102: 0000: \***        FILE TYPE   :   Printer / Labeller
+ 103: 0000: \***
+ 104: 0000: \***    VERSION A.              ANDREW WEDGEWORTH                   09 JUL 1992.
+ 105: 0000: \***    Original version created by merging PRINTFLG and PRINTNUG.
+ 106: 0000: \***
+ 107: 0000: \***    VERSION B.              UNKNOWN.                            ?? ??? 1992.
+ 108: 0000: \***    Changes unknown.             
+ 109: 0000: \***
+ 110: 0000: \***    VERSION C.              ROBERT COWEY.                       18 NOV 1992.
+ 111: 0000: \***    No changes made to this file.
+ 112: 0000: \***
+ 113: 0000: \***    Version D               Andrew Wedgeworth                 24th May 1992
+ 114: 0000: \***    Variable added to contain condensed print record length.
+ 115: 0000: \***
+ 116: 0000: \*******************************************************************************
+ 117: 0000: \*******************************************************************************
+ 118: 0000: 
+ 119: 0000: 
+ 120: 0000:     STRING GLOBAL \
+ 121: 0000:         PRINT.LINE$, \
+ 122: 0000:         PRINT.FILE.NAME$, \
+ 123: 0000:         SELF.LAN.NAME$, \
+ 124: 0000:         SELF.NOLAN.NAME$
+ 125: 0000: 
+ 126: 0000:     INTEGER*2 GLOBAL \
+ 127: 0000:         PRINT.CONDENSED.RECL%, \                                       ! DAW  
+ 128: 0000:         PRINT.SESS.NUM%, \
+ 129: 0000:         PRINT.REPORT.NUM%, \
+ 130: 0000:         PRINT.REPORT.RECL%, \
+ 131: 0000:         PRINT.SELF.RECL%
+ 132: 0000: 
+ 133: 0000: 
+ 134: 0000:     STRING FORM$                                                       ! ESWM
+ 135: 0000: 
+ 136: 0000:     STRING GLOBAL \
+ 137: 0000:         CURRENT.CODE$, \
+ 138: 0000:         FILE.OPERATION$
+ 139: 0000: 
+ 140: 0000: 
+ 141: 0000:     INTEGER*2 GLOBAL \
+ 142: 0000:         CURRENT.REPORT.NUM%
+ 143: 0000: 
+ 144: 0000: 
+ 145: 0000: FUNCTION PRINT.SET PUBLIC
+ 146: 0014: 
+ 147: 0014:     INTEGER*2 PRINT.SET
+ 148: 0014:     PRINT.SET EQ 1
+ 149: 0019: 
+ 150: 0019: \    PRINT.CONDENSED.RECL% EQ 137                                       ! DAW
+ 151: 0019:     PRINT.CONDENSED.RECL% EQ 0
+ 152: 0022:     PRINT.REPORT.NUM%     EQ  30
+ 153: 002b:     PRINT.REPORT.RECL%    EQ  0
+ 154: 0034: \    PRINT.REPORT.RECL%    EQ  80
+ 155: 0034:     PRINT.SELF.RECL%      EQ  600
+ 156: 003d:     PRINT.FILE.NAME$      EQ "PRN0:"
+ 157: 004c:     SELF.NOLAN.NAME$      EQ "LABELLER"
+ 158: 005b:     SELF.LAN.NAME$        EQ "PRN0:"
+ 159: 006a: 
+ 160: 006a:     PRINT.SET EQ 0
+ 161: 006f: 
+ 162: 006f: END FUNCTION
+ 163: 007e: 
+ 164: 007e: 
+ 165: 007e: FUNCTION WRITE.PRINT PUBLIC
+ 166: 0092: 
+ 167: 0092:     INTEGER*2 WRITE.PRINT
+ 168: 0092:     WRITE.PRINT EQ 1
+ 169: 0097: 
+ 170: 0097:     IF END # PRINT.SESS.NUM% THEN ERROR.WRITE.PRINT
+ 171: 00ab:     WRITE FORM "C80"; # PRINT.SESS.NUM% ; PRINT.LINE$
+ 172: 00cd: 
+ 173: 00cd:     WRITE.PRINT EQ 0
+ 174: 00d2:     EXIT FUNCTION
+ 175: 00d4: 
+ 176: 00d4: ERROR.WRITE.PRINT:
+ 177: 00d4: 
+ 178: 00d4:     FILE.OPERATION$     EQ "W"
+ 179: 00e3:     CURRENT.REPORT.NUM% EQ 30
+ 180: 00ec:     CURRENT.CODE$       EQ ""
+ 181: 00fb: 
+ 182: 00fb:     EXIT FUNCTION
+ 183: 00fd: 
+ 184: 00fd: END FUNCTION
+ 185: 010c: 
+ 186: 010c: 
+ 187: 010c: !-----------------------------------------------------------------------!GCS
+ 188: 010c: ! WRITE.PRINT.PLUS.LF                                                   !GCS
+ 189: 010c: !                                                                       !GCS
+ 190: 010c: ! All report lines passed to this function should be less than 80       !GCS
+ 191: 010c: ! characters after which a Line-Feed is added.                          !GCS
+ 192: 010c: !                                                                       !GCS
+ 193: 010c: !-----------------------------------------------------------------------!GCS
+ 194: 010c:                                                                         !GCS
+ 195: 010c: FUNCTION WRITE.PRINT.PLUS.LF PUBLIC                                     !GCS
+ 196: 0120:                                                                         !GCS
+ 197: 0120:     INTEGER*2 WRITE.PRINT.PLUS.LF,                                     \!GCS
+ 198: 0120:               LENGTH%                                                   !GCS
+ 199: 0120:                                                                         !GCS
+ 200: 0120:     WRITE.PRINT.PLUS.LF EQ 1                                            !GCS
+ 201: 0125:                                                                         !GCS
+ 202: 0125:     LENGTH% = LEN(PRINT.LINE$)                                          !GCS
+ 203: 013a:     IF LEN(PRINT.LINE$) < 79 THEN BEGIN                                 !GCS
+ 204: 0150:        PRINT.LINE$ = PRINT.LINE$ + STRING$(79 - LENGTH%, " ")  +       \!GCS
+ 205: 018e:                      CHR$(10)                                           !GCS
+ 206: 018e:     ENDIF ELSE BEGIN                                                    !GCS
+ 207: 018e:        PRINT.LINE$ = LEFT$(PRINT.LINE$, 79)  + CHR$(10)                 !GCS
+ 208: 01c2:     ENDIF                                                               !GCS
+ 209: 01c2:     LENGTH% = MATCH(CHR$(12), PRINT.LINE$, 1)                           !GCS
+ 210: 01ec:     IF LENGTH% > 0 AND LENGTH% < 80 THEN BEGIN                          !GCS
+ 211: 0202:        PRINT.LINE$ = LEFT$(PRINT.LINE$, 79) + CHR$(10)                  !GCS
+ 212: 0236:     ENDIF                                                               !GCS
+ 213: 0236:                                                                         !GCS
+ 214: 0236:     IF END # PRINT.SESS.NUM% THEN ERROR.WRITE.PRINT.PLUS.LF             !GCS
+ 215: 024a:     WRITE  FORM "C80";# PRINT.SESS.NUM% ; PRINT.LINE$                   !GCS
+ 216: 026c:                                                                         !GCS
+ 217: 026c:     WRITE.PRINT.PLUS.LF EQ 0                                            !GCS
+ 218: 0271:     EXIT FUNCTION                                                       !GCS
+ 219: 0273:                                                                         !GCS
+ 220: 0273: ERROR.WRITE.PRINT.PLUS.LF:                                              !GCS
+ 221: 0273:                                                                         !GCS
+ 222: 0273:     FILE.OPERATION$     EQ "W"                                          !GCS
+ 223: 0282:     CURRENT.REPORT.NUM% EQ 30                                           !GCS
+ 224: 028b:     CURRENT.CODE$       EQ ""                                           !GCS
+ 225: 029a:                                                                         !GCS
+ 226: 029a:     EXIT FUNCTION                                                       !GCS
+ 227: 029c:                                                                         !GCS
+ 228: 029c: END FUNCTION                                                            !GCS
+ 229: 02ab: 
+ 230: 02ab: 
+ 231: 02ab: 
+ 232: 02ab: 
+ 233: 02ab: !FUNCTION WRITE.CONDENSED.PRINT PUBLIC                                  ! DAW
+ 234: 02ab: FUNCTION WRITE.CONDENSED.PRINT (AP.STORE) PUBLIC                       ! FCSk
+ 235: 02bf: 
+ 236: 02bf:     INTEGER*2 WRITE.CONDENSED.PRINT                                    ! DAW
+ 237: 02bf:     INTEGER*1 AP.STORE                                                 ! FCSk
+ 238: 02bf:     STRING MY.FORM$                                                    ! FCSk
+ 239: 02bf:     WRITE.CONDENSED.PRINT EQ 1                                         ! DAW
+ 240: 02c4: 
+ 241: 02c4:     IF AP.STORE THEN BEGIN                                             ! FCSk
+ 242: 02ca:         MY.FORM$ = "C122"                                              ! FCSk
+ 243: 02d9:     ENDIF ELSE BEGIN                                                   ! FCSk
+ 244: 02d9:         MY.FORM$ = "C137"                                              ! FCSk
+ 245: 02e6:     ENDIF                                                              ! FCSk
+ 246: 02e6: 
+ 247: 02e6:     IF END # PRINT.SESS.NUM% THEN ERROR.WRITE.CONDENSED.PRINT          ! DAW
+ 248: 02fa:     !WRITE FORM "C137"; # PRINT.SESS.NUM% ; PRINT.LINE$                 ! DAW
+ 249: 02fa:     WRITE FORM MY.FORM$; # PRINT.SESS.NUM% ; PRINT.LINE$               ! FCSk
+ 250: 0320: 
+ 251: 0320:     WRITE.CONDENSED.PRINT EQ 0                                         ! DAW
+ 252: 0325:     EXIT FUNCTION                                                      ! DAW
+ 253: 0327: 
+ 254: 0327: ERROR.WRITE.CONDENSED.PRINT:                                           ! DAW
+ 255: 0327: 
+ 256: 0327:     FILE.OPERATION$     EQ "W"                                         ! DAW
+ 257: 0336:     CURRENT.REPORT.NUM% EQ 30                                          ! DAW
+ 258: 033f:     CURRENT.CODE$       EQ ""                                          ! DAW
+ 259: 034e: 
+ 260: 034e:     EXIT FUNCTION                                                      ! DAW
+ 261: 0350: 
+ 262: 0350: END FUNCTION                                                           ! DAW
+ 263: 035f: 
+ 264: 035f: 
+ 265: 035f: FUNCTION WRITE.PCL.PRINT PUBLIC                                        ! ESWM
+ 266: 0373: 
+ 267: 0373:     INTEGER*2 WRITE.PCL.PRINT                                          ! ESWM
+ 268: 0373:     WRITE.PCL.PRINT EQ 1                                               ! ESWM
+ 269: 0378: 
+ 270: 0378:     IF END # PRINT.SESS.NUM% THEN ERROR.WRITE.PRINT                    ! ESWM
+ 271: 038c:     FORM$ = "C"+STR$(LEN(PRINT.LINE$))                                 ! ESWM
+ 272: 03ba:     WRITE FORM FORM$; # PRINT.SESS.NUM% ; PRINT.LINE$                  ! ESWM
+ 273: 03e0: 
+ 274: 03e0:     WRITE.PCL.PRINT EQ 0                                               ! ESWM
+ 275: 03e5:     EXIT FUNCTION                                                      ! ESWM
+ 276: 03e7: 
+ 277: 03e7: ERROR.WRITE.PRINT:                                                     ! ESWM
+ 278: 03e7: 
+ 279: 03e7:     FILE.OPERATION$     EQ "W"                                         ! ESWM
+ 280: 03f6:     CURRENT.REPORT.NUM% EQ 30                                          ! ESWM
+ 281: 03ff:     CURRENT.CODE$       EQ ""                                          ! ESWM
+ 282: 040e: 
+ 283: 040e:     EXIT FUNCTION                                                      ! ESWM
+ 284: 0410: 
+ 285: 0410: END FUNCTION                                                           ! ESWM
+ 286: 041f: 
+ 287: 041f: 
+ 288: 041f: FUNCTION WRITE.LABEL PUBLIC
+ 289: 0433: 
+ 290: 0433:     INTEGER*2 WRITE.LABEL
+ 291: 0433:     WRITE.LABEL EQ 1
+ 292: 0438: 
+ 293: 0438:     IF END # PRINT.SESS.NUM% THEN ERROR.WRITE.LABEL
+ 294: 044c:     WRITE FORM "C600"; # PRINT.SESS.NUM% ; PRINT.LINE$
+ 295: 046e: 
+ 296: 046e:     WRITE.LABEL EQ 0
+ 297: 0473:     EXIT FUNCTION
+ 298: 0475: 
+ 299: 0475: ERROR.WRITE.LABEL:
+ 300: 0475: 
+ 301: 0475:     FILE.OPERATION$     EQ "W"
+ 302: 0484:     CURRENT.REPORT.NUM% EQ 30
+ 303: 048d:     CURRENT.CODE$       EQ ""
+ 304: 049c: 
+ 305: 049c:     EXIT FUNCTION
+ 306: 049e: 
+ 307: 049e: END FUNCTION
+ 308: 04ad: 
+ 309: 04ad: End of Compilation

@@ -1,0 +1,147 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \***            Suppress Labels Parameter file functions
+   3: 0000: \***            SUPPARAM.BIN
+   4: 0000: \***      Version A           Jamie Thorpe                         17th Jan 2001
+   5: 0000: \***
+   6: 0000: \***      Version B           Brian Greenfield                     5th Nov 2004
+   7: 0000: \***                Changes to add in a sale date check limit for price 
+   8: 0000: \***                increases. This means that the existing LAST.SALE.CHECK$
+   9: 0000: \***                variable is now for decreases only.
+  10: 0000: \***
+  11: 0000: \***      SUPPARAM.ACTIVE.FLAG$       (Determines if the suppression of labels is on)
+  12: 0000: \***
+  13: 0000: \***      SUPPARAM.LAST.SALE.CHECK$   (The number of months to             )
+  14: 0000: \***                                  (check against the date of last sale)
+  15: 0000: \***                                  (Now for decreases only.) !BBG
+  16: 0000: \***
+  17: 0000: \***      SUPPARAM.INITIAL.LOAD.CHECK$(The number of months to check        )
+  18: 0000: \***                                  (against the date of last initial load)
+  19: 0000: \***
+  20: 0000: \***      SUPPARAM.INC.DEC.FLAG$      (Whether to suppress just decreases (D) )
+  21: 0000: \***                                  (or just increases (I) or both (B)      )
+  22: 0000: \***
+  23: 0000: \***      SUPPARAM.INITIAL.LOAD.DATE$ (The date that of the last initial load )
+  24: 0000: \***                                  (yymmdd                                 )
+  25: 0000: \***
+  26: 0000: \*******************************************************************************
+  27: 0000: 
+  28: 0000:    INTEGER*2 GLOBAL                  \
+  29: 0000:       CURRENT.REPORT.NUM%
+  30: 0000: 
+  31: 0000:    STRING GLOBAL                     \
+  32: 0000:       CURRENT.CODE$,                 \
+  33: 0000:       FILE.OPERATION$
+  34: 0000: 
+  35: 0000:    %INCLUDE SUPPDEC.J86
+  36: 0000: \*****************************************************************************
+  37: 0000: \*****************************************************************************
+  38: 0000: \***
+  39: 0000: \***               %INCLUDE FOR SUPPARAM - FIELD DECLARATIONS
+  40: 0000: \***                                  FILE REFERENCE PARAMETERS
+  41: 0000: \***
+  42: 0000: \***                      FILE TYPE    : DIRECT
+  43: 0000: \***
+  44: 0000: \***                      REFERENCE    : SUPPDEC.J86
+  45: 0000: \***
+  46: 0000: \***      Version A             Jamie Thorpe          17th Jan 2001
+  47: 0000: \***
+  48: 0000: \***      Version B             Brian Greenfield      5th Nov 2004
+  49: 0000: \***
+  50: 0000: \*****************************************************************************
+  51: 0000: \*****************************************************************************
+  52: 0000: 
+  53: 0000:   STRING GLOBAL                    \
+  54: 0000:      SUPPARAM.FILE.NAME$,          \
+  55: 0000:      SUPPARAM.RECORD$,             \
+  56: 0000:      SUPPARAM.ACTIVE.FLAG$,        \
+  57: 0000:      SUPPARAM.LAST.SALE.CHECK$,    \
+  58: 0000:      SUPPARAM.INITIAL.LOAD.CHECK$, \
+  59: 0000:      SUPPARAM.INITIAL.LOAD.DATE$,  \
+  60: 0000:      SUPPARAM.INC.DEC.FLAG$,       \
+  61: 0000:      SUPPARAM.LAST.SALE.INC.CHECK$,\ ! BBG
+  62: 0000:      SUPPARAM.FILLER$      
+  63: 0000: 
+  64: 0000:   INTEGER*2 GLOBAL                 \
+  65: 0000:     SUPPARAM.REPORT.NUM%,          \
+  66: 0000:     SUPPARAM.RECL%,                \
+  67: 0000:     SUPPARAM.SESS.NUM%
+  68: 0000: 
+  69: 0000:   INTEGER*4 GLOBAL                 \
+  70: 0000:     SUPPARAM.REC.NO%
+  71: 0000:    
+  72: 0000: !*****************************************************************************
+  73: 0000: 
+  74: 0000:    FUNCTION SUPPARAM.SET PUBLIC
+  75: 0022: 
+  76: 0022:     SUPPARAM.REPORT.NUM% = 628
+  77: 0032:     SUPPARAM.RECL%       = 40
+  78: 0042:     SUPPARAM.FILE.NAME$  = "ADXLXACN::D:\ADX_UDT1\SUPPARAM.BIN"
+  79: 0058:     SUPPARAM.REC.NO% = 1
+  80: 006e: 
+  81: 006e:    END FUNCTION
+  82: 0081:    
+  83: 0081: !*****************************************************************************   
+  84: 0081: 
+  85: 0081:    FUNCTION READ.SUPPARAM PUBLIC
+  86: 00a3: 
+  87: 00a3:    INTEGER*2 READ.SUPPARAM
+  88: 00a3:    READ.SUPPARAM = 1
+  89: 00af: 
+  90: 00af:    IF END #SUPPARAM.SESS.NUM% THEN READ.SUPPARAM.ERROR
+  91: 00ca:    READ FORM "C40" ; #SUPPARAM.SESS.NUM%, SUPPARAM.REC.NO%; SUPPARAM.RECORD$
+  92: 0103:    
+  93: 0103:    SUPPARAM.ACTIVE.FLAG$         = LEFT$(SUPPARAM.RECORD$,1)
+  94: 0129:    SUPPARAM.LAST.SALE.CHECK$     = STR$(VAL(MID$(SUPPARAM.RECORD$,2,3)))
+  95: 0169:    SUPPARAM.INITIAL.LOAD.CHECK$  = STR$(VAL(MID$(SUPPARAM.RECORD$,5,3)))
+  96: 01a9:    SUPPARAM.INC.DEC.FLAG$        = MID$(SUPPARAM.RECORD$,8,1)
+  97: 01cf:    SUPPARAM.INITIAL.LOAD.DATE$   = MID$(SUPPARAM.RECORD$,9,6)
+  98: 01f5:    SUPPARAM.LAST.SALE.INC.CHECK$ = MID$(SUPPARAM.RECORD$,15,3)  ! BBG
+  99: 021b:    SUPPARAM.FILLER$              = MID$(SUPPARAM.RECORD$,18,23) ! BBG
+ 100: 0241:    
+ 101: 0241:    READ.SUPPARAM = 0
+ 102: 024d:    EXIT FUNCTION
+ 103: 0257: 
+ 104: 0257:    READ.SUPPARAM.ERROR:
+ 105: 0265: 
+ 106: 0265:    CURRENT.REPORT.NUM% = SUPPARAM.REPORT.NUM%
+ 107: 027a:    FILE.OPERATION$ = "R"
+ 108: 0290:    CURRENT.CODE$ = RIGHT$(PACK$("00000000000000"+STR$(SUPPARAM.REC.NO%)),7)
+ 109: 02ea: 
+ 110: 02ea:    EXIT FUNCTION
+ 111: 02f3:   END FUNCTION
+ 112: 0309: 
+ 113: 0309: !**********************************************************************************
+ 114: 0309: 
+ 115: 0309:   FUNCTION WRITE.SUPPARAM PUBLIC
+ 116: 032b: 
+ 117: 032b:    INTEGER*2 WRITE.SUPPARAM
+ 118: 032b:    
+ 119: 032b:    SUPPARAM.LAST.SALE.CHECK$ = RIGHT$("000" + SUPPARAM.LAST.SALE.CHECK$,3)
+ 120: 0365:    SUPPARAM.INITIAL.LOAD.CHECK$ = RIGHT$("000" + SUPPARAM.INITIAL.LOAD.CHECK$,3)
+ 121: 039f:    
+ 122: 039f:    SUPPARAM.RECORD$ = SUPPARAM.ACTIVE.FLAG$         +     \
+ 123: 0401:                       SUPPARAM.LAST.SALE.CHECK$     +     \
+ 124: 0401:                       SUPPARAM.INITIAL.LOAD.CHECK$  +     \
+ 125: 0401:                       SUPPARAM.INC.DEC.FLAG$        +     \
+ 126: 0401:                       SUPPARAM.INITIAL.LOAD.DATE$   +     \
+ 127: 0401:                       SUPPARAM.LAST.SALE.INC.CHECK$ +     \ ! BBG
+ 128: 0401:                       SUPPARAM.FILLER$
+ 129: 0401:    
+ 130: 0401:    WRITE.SUPPARAM = 1
+ 131: 040e: 
+ 132: 040e:    IF END #SUPPARAM.SESS.NUM% THEN WRITE.SUPPARAM.ERROR
+ 133: 042a:    WRITE FORM "C40" ; #SUPPARAM.SESS.NUM%, SUPPARAM.REC.NO%; SUPPARAM.RECORD$
+ 134: 0464: 
+ 135: 0464:    WRITE.SUPPARAM = 0
+ 136: 0471:    
+ 137: 0471:    EXIT FUNCTION
+ 138: 047c:   
+ 139: 047c:   WRITE.SUPPARAM.ERROR:
+ 140: 048c: 
+ 141: 048c:    CURRENT.REPORT.NUM% = SUPPARAM.REPORT.NUM%
+ 142: 04a2:    FILE.OPERATION$ = "W"
+ 143: 04b9:    CURRENT.CODE$ = RIGHT$(PACK$("00000000000000"+STR$(SUPPARAM.REC.NO%)),7)
+ 144: 0514: 
+ 145: 0514:    EXIT FUNCTION
+ 146: 051e:   END FUNCTION
+ 147: 0535: End of Compilation

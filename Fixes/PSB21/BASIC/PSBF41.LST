@@ -1,0 +1,864 @@
+   1: 0000: \*******************************************************************************! CCSk
+   2: 0000: \*******************************************************************************! CCSk
+   3: 0000: \***                                                                            ! CCSk
+   4: 0000: \*** IMPORTANT                                                                  ! CCSk
+   5: 0000: \*** =========                                                                  ! CCSk
+   6: 0000: \***    All references to UPDT.IRF.UPDT have been commented out and replaced    ! CCSk
+   7: 0000: \***    with UPDT.IRF.TIF.UPDT due to the following issue found post MCF:       ! CCSk
+   8: 0000: \***                                                                            ! CCSk
+   9: 0000: \***    Node ID check removed as it is preventing the TIF from being updated in ! CCSk
+  10: 0000: \***    Single MCF controller stores ie. MCF has changed the single DE nodes    ! CCSk
+  11: 0000: \***    to CE. This change should have been done as part of the MCF project,    ! CCSk
+  12: 0000: \***    however, the Business were not willing to pay for the relinking and     ! CCSk
+  13: 0000: \***    testing of some 200+ programs. There is a slight processing overhead    ! CCSk
+  14: 0000: \***    in dual-MCF stores, since the TIF will now be updated in them as well,  ! CCSk
+  15: 0000: \***    however the impact is small and TOF does not run in this environment.   ! CCSk
+  16: 0000: \***                                                                            ! CCSk
+  17: 0000: \***    If you wish to use the old UPDT.IRF.UPDT function then you will need to ! CCSk
+  18: 0000: \***    either:                                                                 ! CCSk
+  19: 0000: \***                                                                            ! CCSk
+  20: 0000: \***          1. Check out the previous OBJs, PSBF19e.J86 and update the .INP   ! CCSk
+  21: 0000: \***             and .MAK to include the functions PSBF19, PSBF41 & PSBF42      ! CCSk
+  22: 0000: \***       or                                                                   ! CCSk
+  23: 0000: \***          2. Check out the previous PSBF19e.J86 and function library:       ! CCSk
+  24: 0000: \***             FUNLIB.L86                                                     ! CCSk
+  25: 0000: \***                                                                            ! CCSk
+  26: 0000: \*******************************************************************************! CCSk
+  27: 0000: \*******************************************************************************! CCSk
+  28: 0000: 
+  29: 0000: 
+  30: 0000: !******************************************************************************
+  31: 0000: !******************************************************************************
+  32: 0000: !***
+  33: 0000: !***            PROGRAM         :       PSBF41.BAS
+  34: 0000: !***
+  35: 0000: !***            DESCRIPTION     :       Update all IRF barcodes function
+  36: 0000: !***
+  37: 0000: !***            AUTHOR          :       Brian Greenfield
+  38: 0000: !***            DATE WRITTEN    :       July 2002
+  39: 0000: !***
+  40: 0000: !***        Pass in the Boots Item Code (7 digits) in the UPDATE.ITEM.CODE$
+  41: 0000: !***        variable and this function updates every single record linked to
+  42: 0000: !***        that item code on the IRF.
+  43: 0000: !***        You MUST have the IDF, & IEF open when calling this function.
+  44: 0000: !***        You MUST have the IRF open using the OPEN.IRF.UPDT function call.
+  45: 0000: !***
+  46: 0000: !***        Revision A    Brian Greenfield     July 2003
+  47: 0000: !***        Minor change so that if an IEF record is not found, the program
+  48: 0000: !***        stops correctly. It was simply looping because the test was
+  49: 0000: !***        WHILE NOT END.OF.IEF.CHAIN AND NOT ERROR.FLAG
+  50: 0000: !***        instead of the new line
+  51: 0000: !***        WHILE (NOT END.OF.IEF.CHAIN) AND (ERROR.FLAG <> 0)
+  52: 0000: !***        The original NOT test assumes TRUE is -1, not 1.
+  53: 0000: !***
+  54: 0000: !***        Revision B    Julia Stones    November 2003
+  55: 0000: !***        Minor change so that if an item has more than 2 bar codes
+  56: 0000: !***        The IEF records are read and the deal information updated on
+  57: 0000: !***        the IRF for each barcode record.
+  58: 0000: !***
+  59: 0000: \***        Revision C       Charles Skadorwa               25th September 2013
+  60: 0000: \***        F261 Gift Card Mall IIN Range Extension Project - Commented ! CCSk
+  61: 0000: \***
+  62: 0000: !***
+  63: 0000: !******************************************************************************
+  64: 0000: !******************************************************************************
+  65: 0000: 
+  66: 0000: %INCLUDE PSBF41G.J86
+  67: 0000: !******************************************************************************
+  68: 0000: !******************************************************************************
+  69: 0000: !***
+  70: 0000: !***            PROGRAM         :       PSBF41G.J86
+  71: 0000: !***
+  72: 0000: !***            DESCRIPTION     :       Update all IRF barcodes function
+  73: 0000: !***
+  74: 0000: !***            AUTHOR          :       Brian Greenfield
+  75: 0000: !***            DATE WRITTEN    :       July 2002
+  76: 0000: !***
+  77: 0000: !***        Pass in the Boots Item Code (7 digits) in the UPDATE.ITEM.CODE$
+  78: 0000: !***        variable and this function updates every single record linked to 
+  79: 0000: !***        that item code on the IRF.
+  80: 0000: !***        You MUST have the IRF, IDF, & IEF open when calling this function.
+  81: 0000: !***
+  82: 0000: !***        There are no globals for this function
+  83: 0000: !***
+  84: 0000: !******************************************************************************
+  85: 0000: !******************************************************************************
+  86: 0000:     
+  87: 0000: !******************************************************************************
+  88: 0000: 
+  89: 0000: 
+  90: 0000: !******************************************************************************
+  91: 0000: 
+  92: 0000: STRING ACD.FLAG$
+  93: 0000: STRING GROUP.CODE$
+  94: 0000: STRING IRF.LOCKED.FLAG$
+  95: 0000: STRING NON.GROUP.CODE$
+  96: 0000: STRING NULL.BAR.CODE$
+  97: 0000: 
+  98: 0000: INTEGER*2 NO.OF.BAR.CODES%
+  99: 0000: INTEGER*2 BAR.CODE.COUNT%
+ 100: 0000: 
+ 101: 0000: INTEGER*1 ERROR.FLAG
+ 102: 0000: INTEGER*1 END.OF.IEF.CHAIN
+ 103: 0000: 
+ 104: 0000: !******************************************************************************
+ 105: 0000: 
+ 106: 0000: %INCLUDE IDFDEC.J86     !IDF FUNCTIONS
+ 107: 0000: REM \
+ 108: 0000: \******************************************************************************
+ 109: 0000: \******************************************************************************
+ 110: 0000: \***
+ 111: 0000: \***         %INCLUDE FOR ITEM DATA FILE - FIELD DECLARATIONS
+ 112: 0000: \***                                       FILE REFERENCE PARAMETERS
+ 113: 0000: \***
+ 114: 0000: \***                  FILE TYPE    : Keyed
+ 115: 0000: \***
+ 116: 0000: \***                  REFERENCE    : IDFDEC.J86
+ 117: 0000: \***
+ 118: 0000: \***         VERSION A : Andrew Wedgeworth  29th June 1992    
+ 119: 0000: \***
+ 120: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 121: 0000: \***    Replaced un-used RANK$ with BSNS.CNTR$ and FILLER$.
+ 122: 0000: \***
+ 123: 0000: \***    VERSION D.              Andrew Wedgeworth               15th March 1995
+ 124: 0000: \***    Comments updated to reflect the fact that some bits on the file are
+ 125: 0000: \***    no longer used.
+ 126: 0000: \***
+ 127: 0000: \*******************************************************************************
+ 128: 0000: \*******************************************************************************
+ 129: 0000: 
+ 130: 0000:   STRING GLOBAL           \
+ 131: 0000:     IDF.FILE.NAME$,       \  
+ 132: 0000:     IDF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+ 133: 0000:     IDF.FIRST.BAR.CODE$,  \ 6 byte UPD without check digit
+ 134: 0000:     IDF.SECOND.BAR.CODE$, \ 6 byte UPD without check digit
+ 135: 0000:     IDF.NO.OF.BAR.CODES$, \ 2 byte UPD. Total number of bar codes for this item
+ 136: 0000:     IDF.PRODUCT.GRP$,     \ 3 byte UPD. The first two digits are the concept
+ 137: 0000:                           \ group and the last four the concept sequence
+ 138: 0000:     IDF.STNDRD.DESC$,     \ 24 bytes
+ 139: 0000:     IDF.STATUS.1$,        \ 1 byte, values B,C,D,P,X,Z and blank
+ 140: 0000:     IDF.INTRO.DATE$,      \ 3 byte UPD YYMMDD. Date first added to this file
+ 141: 0000:     IDF.BSNS.CNTR$,       \ 1 byte ASC. Business Centre ID letter      ! CRC
+ 142: 0000:     IDF.FILLER$,          \ 1 byte un-used                             ! CRC
+ 143: 0000:     IDF.PARENT.CODE$,     \ 4 byte UPD with check digit ; may be zero if no
+ 144: 0000:                           \ flashpacks, current IDF.BOOTS.CODE$ if parent line
+ 145: 0000:                           \ or Boots Code of parent line if a flashpack.
+ 146: 0000:     IDF.DATE.OF.LAST.SALE$! 3 byte UPD. Date of last sale.
+ 147: 0000: 
+ 148: 0000:   INTEGER*1 GLOBAL        \
+ 149: 0000:     IDF.BIT.FLAGS.1%,     \ 1 byte - bit values
+ 150: 0000:                           \ X"80"  - Group code flag
+ 151: 0000:                           \ X"40"  - Keylines flag
+ 152: 0000:                           \ X"20"  - Markdown flag
+ 153: 0000:                           \ X"10"  - Warehouse flag
+ 154: 0000:                           \ X"08"  - CSR flag
+ 155: 0000:                           \ X"04"  - Directs A flag
+ 156: 0000:                           \ X"02"  - Directs B flag
+ 157: 0000:                           \ X"01"  - Directs C flag
+ 158: 0000:     IDF.BIT.FLAGS.2%      \ 1 byte - bit values
+ 159: 0000:                           \ X"80"  - Own brand line flag
+ 160: 0000:                           \ X"40"  - Exclusive line flag
+ 161: 0000:                           \ X"20"  - Unused 
+ 162: 0000:                           \ X"10"  - Unused
+ 163: 0000:                           \ X"08"  - Stock system flag
+ 164: 0000:                           \ X"04"  - Pending count flag
+ 165: 0000:                           \ X"02"  - Reserved
+ 166: 0000:                           ! X"01"  - Reserved
+ 167: 0000: 
+ 168: 0000:   INTEGER*2 GLOBAL        \
+ 169: 0000:     IDF.RECL%,            \  
+ 170: 0000:     IDF.REPORT.NUM%,      \ 
+ 171: 0000:     IDF.SESS.NUM%
+ 172: 0000: %INCLUDE IRFDEC.J86     !IRF FUNCTIONS
+ 173: 0000: 
+ 174: 0000: \**********************************************************************************
+ 175: 0000: \***
+ 176: 0000: \***       %INCLUDE FOR ITEM RECORD FILE - FIELD DECLARATIONS
+ 177: 0000: \***                                     - FILE REFERENCE PARAMETERS
+ 178: 0000: \***
+ 179: 0000: \***                      FILE TYPE    : Keyed
+ 180: 0000: \***
+ 181: 0000: \***                      REFERENCE    : IRFDEC.J86
+ 182: 0000: \***
+ 183: 0000: \***     Version A               Andrew Wedgeworth            29th June 1992
+ 184: 0000: \***
+ 185: 0000: \***     Version B               Andrew Wedgeworth        14th December 1992
+ 186: 0000: \***     Version letter incremented to match other IRF code.
+ 187: 0000: \***
+ 188: 0000: \***     Version C             Steve Windsor          12.02.93
+ 189: 0000: \***     Version letter incremented to match other IRF code.
+ 190: 0000: \***
+ 191: 0000: \***     Version D             Steve Windsor          12.05.93
+ 192: 0000: \***     Version letter incremented to match other IRF code.
+ 193: 0000: \***
+ 194: 0000: \***     Version E           Steve Perkins       20th September 1993
+ 195: 0000: \***     Deals project : Handling of Converted/Unconverted records
+ 196: 0000: \***     ++   Anything with 'Delete' after initials should be   ++
+ 197: 0000: \***     ++   deleted once the IRF has been converted in all    ++
+ 198: 0000: \***     ++   stores.                                           ++
+ 199: 0000: \***
+ 200: 0000: \***     Version F           Mark Walker            5th January 1994
+ 201: 0000: \***     Version letter incremented to match other IRF code.
+ 202: 0000: \***
+ 203: 0000: \***     Version 96A         Mark Walker               22nd May 1995
+ 204: 0000: \***     Definition for IRF.POINTS% added.
+ 205: 0000: \***
+ 206: 0000: \***                     Stuart McConnachie           12th June 1995
+ 207: 0000: \***     INDICAT3% comments added for discount/loyalty flags.
+ 208: 0000: \***
+ 209: 0000: \***     Version for 96C  Andrew Wedgeworth            22nd May 1996
+ 210: 0000: \***     Removed IRF.FILLER$ field, as this is now redundant.
+ 211: 0000: \***
+ 212: 0000: \***     Version G     Stuart William McConnachie      11th February 2000
+ 213: 0000: \***     Converted IRF.INDICAT2$ to integer flag byte.
+ 214: 0000: \***
+ 215: 0000: \***     REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+ 216: 0000: \***     Major changes for 2002 Deals Rewrite project.
+ 217: 0000: \***     Incorporated up to date record layout to assist development work
+ 218: 0000: \***     (placed in the IRFDEC.J86 to make it visible from ...LST files).
+ 219: 0000: \***     Moved various comments against variables to record layout.
+ 220: 0000: \***     Relisted variables in alphabetical order.
+ 221: 0000: \***     Deleted redundant variables associated with the old deals system ...
+ 222: 0000: \***     DEAL.NUM$, DEAL.SAVING$
+ 223: 0000: \***     Retained variables that are otherwise redundant (to be set to null X'00'
+ 224: 0000: \***     within file functions) ...
+ 225: 0000: \***     INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+ 226: 0000: \***     Defined variables to hold interpreted deals data for new deals system ...
+ 227: 0000: \***     DEAL.NUM$(n) and LIST.ID%(n) (where 'n' represents entry 0, 1 and 2).
+ 228: 0000: \***     These two variables are interpretations of DEAL.DATA% which is defined
+ 229: 0000: \***     locally within IRFFUN.BAS to keep underlying data invisible to programs.
+ 230: 0000: \***
+ 231: 0000: \***     REVISION 1.7                ROBERT COWEY.               5 AUG 2002.
+ 232: 0000: \***     Further changes for 2002 Deals Rewrite project (PSBF19 related).
+ 233: 0000: \***     Defined NEW.IRF.DATA$ as a global variable for use with new functions
+ 234: 0000: \***     CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+ 235: 0000: \***
+ 236: 0000: \***     REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+ 237: 0000: \***     Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+ 238: 0000: \***     No changes to this file other than description.
+ 239: 0000: \***     No changes to IRF file functions.
+ 240: 0000: \***
+ 241: 0000: \***     REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+ 242: 0000: \***     Changes to remove limit of 3 deals per item.
+ 243: 0000: \***     Declaration of new variables for IRF Deal Extension file (IRFDEX).
+ 244: 0000: \***
+ 245: 0000: \***     REVISION 2.0.            ALAN CARR                       9 FEB 2006.
+ 246: 0000: \***     Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+ 247: 0000: \***
+ 248: 0000: \***     REVISION 2.1              TITTOO THOMAS                  01 July 2011
+ 249: 0000: \***     The IRF.UNUSED field is disintegrated to 2 new indicator fields
+ 250: 0000: \***                      IRF.INDICAT9%   1 INT
+ 251: 0000: \***                      IRF.INDICAT10%  1 INT
+ 252: 0000: \***...............................................................................
+ 253: 0000: 
+ 254: 0000: 
+ 255: 0000: \**********************************************************************************
+ 256: 0000: \***
+ 257: 0000: \***    IRF RECORD LAYOUT - REVISION 1.7 - CORRECT FOR 2011 CORE Stores PROJECT
+ 258: 0000: \***
+ 259: 0000: \***     1 11  UPD  BAR.CODE$   Without check digit - File KEY
+ 260: 0000: \***    12  1  INT  INDICAT0%
+ 261: 0000: \***                    X"01" - Contains statins                           ! 2.2 TT
+ 262: 0000: \***                    X"02" - Item not priced (giveaway)
+ 263: 0000: \***                    X"04" - Item not returnable
+ 264: 0000: \***                    X"08" - Item contains alcohol
+ 265: 0000: \***                    X"10" - Blocked from sale                          ! 2.2 TT
+ 266: 0000: \***                    X"20" - Enforced price entry
+ 267: 0000: \***                    X"40" - Enforced quantity entry
+ 268: 0000: \***                    X"80" - Movement kept
+ 269: 0000: \***    13  1  INT  INDICAT1%
+ 270: 0000: \***                    X"01" - Asprin
+ 271: 0000: \***                    X"02" - Paracetamol
+ 272: 0000: \***                    X"04" - TPLU inclusion flag
+ 273: 0000: \***                    X"08" - Giftcard item                              ! 2.2 TT
+ 274: 0000: \***                    X"10" - Withdrawn Block from sale                  ! 2.2 TT
+ 275: 0000: \***                    X"20" - Non-solid dose painkiller                  ! 2.2 TT
+ 276: 0000: \***                    X"40" - Insurance policy item                      ! 2.2 TT
+ 277: 0000: \***                    X"80" - Ibuprofen
+ 278: 0000: \***    14  2  INT  DEAL.DATA%(0)   Interpreted into sub-variables ...
+ 279: 0000: \***                    X'3F' - into DEAL.NUM$(0) "0000" to "9999" (2 byte UPD)
+ 280: 0000: \***                    X'C0' - into LIST.ID%(0) X'00' X
+ 281: 0000: \***                                             X'01' A
+ 282: 0000: \***                                             X'10' B
+ 283: 0000: \***                                             X'11' C                   ! 1.9 RC
+ 284: 0000: \***    16  1  INT  INDICAT8%                                              ! 2.0 AJC
+ 285: 0000: \***                    X"01" - Chlamydia NHS test kit                     ! 2.2 TT
+ 286: 0000: \***                    X"02" - Chlamydia open sell test kit               ! 2.2 TT
+ 287: 0000: \***                    X"04" - Unrestricted group code                    ! 2.2 TT
+ 288: 0000: \***                    X"08" - Nightingale Till prompt                    ! 2.2 TT
+ 289: 0000: \***                    X"10" - Contains Ephedrine                         ! 2.2 TT
+ 290: 0000: \***                    X"60" -  X'00' - If also Blocked From Sale Recall, ! 2.2 TT
+ 291: 0000: \***                                        Emergency                      ! 2.2 TT
+ 292: 0000: \***                             X'00' - If NOT Blocked From Sale Recall,  ! 2.2 TT
+ 293: 0000: \***                                        No recall                      ! 2.2 TT
+ 294: 0000: \***                             X'20' 100% returns                        ! 2.2 TT
+ 295: 0000: \***                             X'40' Withdrawn recall                    ! 2.2 TT
+ 296: 0000: \***                             X'60' Reverse Logistics                   ! 2.2 TT
+ 297: 0000: \***                    X"80" - WEEE item flag                             ! 2.0 AJC
+ 298: 0000: \***    17  1  INT  INDICAT9%
+ 299: 0000: \***                    X'3F' - Disposal special instruction (0-63)
+ 300: 0000: \***                    X"40" - Resaleable Indicator
+ 301: 0000: \***                    X"80" - Boots.com Extended Indicator
+ 302: 0000: \***    18  1  INT  INDICAT10%
+ 303: 0000: \***                    X'07' - Age restrictions
+ 304: 0000: \***                             X'00' - No Age restriction
+ 305: 0000: \***                             X'01' - Age 12 or over
+ 306: 0000: \***                             X'02' - Age 15 or over
+ 307: 0000: \***                             X'03' - Age 16 or over
+ 308: 0000: \***                             X'04' - Age 18 or over
+ 309: 0000: \***                             X'05' - Age 21 or over
+ 310: 0000: \***                             X'06' - Reserved
+ 311: 0000: \***                             X'07' - Reserved
+ 312: 0000: \***                    X'38' - Ethical classification
+ 313: 0000: \***                             X'00' - No ethical classification
+ 314: 0000: \***                             X'08' - Pharmacy medicine (P)
+ 315: 0000: \***                             X'10' - General Sale License (GSL)
+ 316: 0000: \***                             X'18' - Prescription Only Medicine (POM)
+ 317: 0000: \***                             X'20' - Reserved
+ 318: 0000: \***                             X'28' - Reserved
+ 319: 0000: \***                             X'30' - Reserved
+ 320: 0000: \***                             X'38' - Reserved
+ 321: 0000: \***                    X'C0' - Returns route
+ 322: 0000: \***                             X'00' - Not Returnable (Destroy)
+ 323: 0000: \***                             X'40' - Returns & Recovery
+ 324: 0000: \***                             X'80' - Direct
+ 325: 0000: \***                             X'C0' - Semi-centralised
+ 326: 0000: \***    19  5  UPD  SALEPRIC$   Current price in pence
+ 327: 0000: \***    24  1  INT  INDICAT5%   Guarantee duration
+ 328: 0000: \***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+ 329: 0000: \***                    X'40' - Contains Pseudoephedrine                   ! 2.2 TT
+ 330: 0000: \***                    X'80' - Guarantee Duration Type                    ! 2.2 TT
+ 331: 0000: \***                              (1 = Months, 0 = Years)                  ! 2.2 TT
+ 332: 0000: \***    25 18  ASC  ITEMNAME$   Description used by till
+ 333: 0000: \***    43  3  UPD  BOOTS.CODE$ Without check digit
+ 334: 0000: \***    46  2  INT  DEAL.DATA%(1)   Similar structure to DEAL.DATA%(0)
+ 335: 0000: \***    48  2  INT  DEAL.DATA%(2)   Similar structure to DEAL.DATA%(0)
+ 336: 0000: \***    50  1  INT  INDICAT3%
+ 337: 0000: \***                    X"01" - Discountexempt (item exempt from discount)
+ 338: 0000: \***                    X"02" - Boots brand item
+ 339: 0000: \***                    X"04" - Item redeemable for loyalty
+ 340: 0000: \***                    X"08" - Loyalty exempt (item exempt from loyalty)
+ 341: 0000: \***                    X"10" - **Redundant                                ! 2.2 TT
+ 342: 0000: \***                    X"20" - Local Price active
+ 343: 0000: \***                    X"40" - Stock system item
+ 344: 0000: \***                    X"80" - **Redundant                                ! 2.2 TT
+ 345: 0000: \***
+ 346: 0000: \***    Record Length 50
+ 347: 0000: \***
+ 348: 0000: \***
+ 349: 0000: \***    IRF DEAL EXTENSION RECORD LAYOUT ! 1.9 RC
+ 350: 0000: \***
+ 351: 0000: \***     1  3  UPD  BOOTS.CODE$
+ 352: 0000: \***     4  2  INT  IRF.DEAL.DATA%(3)   Similar structure to DEAL.DATA%(0)
+ 353: 0000: \***     6  2  INT  IRF.DEAL.DATA%(4)   Similar structure to DEAL.DATA%(0)
+ 354: 0000: \***     8  2  INT  IRF.DEAL.DATA%(5)   Similar structure to DEAL.DATA%(0)
+ 355: 0000: \***    10  2  INT  IRF.DEAL.DATA%(6)   Similar structure to DEAL.DATA%(0)
+ 356: 0000: \***    12  2  INT  IRF.DEAL.DATA%(7)   Similar structure to DEAL.DATA%(0)
+ 357: 0000: \***    14  2  INT  IRF.DEAL.DATA%(8)   Similar structure to DEAL.DATA%(0)
+ 358: 0000: \***    16  2  INT  IRF.DEAL.DATA%(9)   Similar structure to DEAL.DATA%(0)
+ 359: 0000: \***
+ 360: 0000: \***    Record Length 17
+ 361: 0000: \***
+ 362: 0000: \**********************************************************************************
+ 363: 0000: 
+ 364: 0000: 
+ 365: 0000:     STRING GLOBAL            \
+ 366: 0000:         IRF.ALT.FILE.NAME$,  \
+ 367: 0000:         IRF.BAR.CODE$,       \
+ 368: 0000:         IRF.BOOTS.CODE$,     \
+ 369: 0000:         IRF.DEAL.SAVING$,    \ 2 byte - deal saving amount (0 - œ99.99) ! ESP
+ 370: 0000:         IRF.DEPARTME$,       \ 3 byte UPD. Department number          ! ESP Delete
+ 371: 0000:         IRF.FILE.NAME$,      \
+ 372: 0000:         IRF.HOLDING.PRICE$,  \ 4 byte UPD. Current H.O. price in pence if a local
+ 373: 0000:                              \ price is in effect, zero otherwise.     ! ESP Delete
+ 374: 0000:         IRF.ITEMNAME$,       \
+ 375: 0000: \       IRF.MPGROUP$,        \ Removed SBH 31/1/96
+ 376: 0000:         IRF.RECORD$,         \                                         ! ESP Delete
+ 377: 0000:         IRF.SALEPRIC$,       \
+ 378: 0000:         IRF.SALEQUAN$,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 379: 0000:         IRF.UNUSED$,         \                                                        ! 1.6 RC
+ 380: 0000:         NEW.IRF.DATA$        !                                             ! 1.7 RC
+ 381: 0000: 
+ 382: 0000:     STRING GLOBAL            \                                             ! 1.6 RC
+ 383: 0000:         IRF.DEAL.NUM$(1)                                                   ! 1.6 RC
+ 384: 0000: 
+ 385: 0000:     INTEGER*1 GLOBAL         \
+ 386: 0000:         IRF.DD.SUB%,         \ IRF.DEAL.DATA% subscript                    ! 1.6 RC
+ 387: 0000:         IRF.INDICAT0%,       \
+ 388: 0000:         IRF.INDICAT1%,       \
+ 389: 0000:         IRF.INDICAT2%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 390: 0000:         IRF.INDICAT3%,       \
+ 391: 0000:         IRF.INDICAT4%,       \ Redundant (set to null within functions)    ! 1.6 RC
+ 392: 0000:         IRF.INDICAT5%,       \                                             ! 2.0 AJC
+ 393: 0000:         IRF.INDICAT8%,       \                                             ! 2.0 AJC
+ 394: 0000:         IRF.INDICAT9%,       \                                             ! 2.2 TT
+ 395: 0000:         IRF.INDICAT10%                                                     ! 2.2 TT
+ 396: 0000: 
+ 397: 0000:     INTEGER*1 GLOBAL         \                                             ! 1.6 RC
+ 398: 0000:         IRF.LIST.ID%(1)                                                    ! 1.6 RC
+ 399: 0000: 
+ 400: 0000:     INTEGER*2 GLOBAL         \
+ 401: 0000:         IRF.ALT.REPORT.NUM%, \
+ 402: 0000:         IRF.ALT.SESS.NUM%,   \
+ 403: 0000:         IRF.POINTS%,         \ Redundant (set to null within functions)    ! 1.6 RC
+ 404: 0000:         IRF.RECL%,           \
+ 405: 0000:         IRF.REPORT.NUM%,     \
+ 406: 0000:         IRF.SESS.NUM%,       \
+ 407: 0000:         IRF.MAX.DEALS%       !                                             ! 1.9 SM
+ 408: 0000: 
+ 409: 0000:     STRING GLOBAL IRFDEX.FILE.NAME$                                        ! 1.9 SM
+ 410: 0000: 
+ 411: 0000:     INTEGER*2 GLOBAL IRFDEX.SESS.NUM%                                      ! 1.9 SM
+ 412: 0000:     INTEGER*2 GLOBAL IRFDEX.REPORT.NUM%                                    ! 1.9 SM
+ 413: 0000:     INTEGER*2 GLOBAL IRFDEX.RECL%                                          ! 1.9 SM
+ 414: 0000: 
+ 415: 0000: 
+ 416: 0000: !   INTEGER*2 GLOBAL      \ IRF.DEAL.DATA%(n) variables are defined locally  1.6 RC
+ 417: 0000: !       IRF.DEAL.DATA%(1) \ within IRFFUN.BAS to keep invisible to programs  1.6 RC
+ 418: 0000: 
+ 419: 0000: %INCLUDE IEFDEC.J86     !IEF FUNCTIONS
+ 420: 0000: REM \
+ 421: 0000: \******************************************************************************
+ 422: 0000: \******************************************************************************
+ 423: 0000: \***
+ 424: 0000: \***         %INCLUDE FOR ITEM EAN CODES FILE - FIELD DECLARATIONS
+ 425: 0000: \***                                            FILE REFERENCE PARAMETERS
+ 426: 0000: \***
+ 427: 0000: \***               FILE TYPE    : Keyed
+ 428: 0000: \***
+ 429: 0000: \***               REFERENCE    : IEFDEC.J86
+ 430: 0000: \***
+ 431: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+ 432: 0000: \***    No changes to this file.
+ 433: 0000: \***
+ 434: 0000: \*******************************************************************************
+ 435: 0000: \*******************************************************************************
+ 436: 0000: 
+ 437: 0000:   STRING GLOBAL                      \
+ 438: 0000:     IEF.FILE.NAME$,		     \
+ 439: 0000:     IEF.BOOTS.CODE.BAR.CODE$,        \ 9 byte UPD -                        BBAAS
+ 440: 0000:                                      \ 3 bytes UPD boots code              BBAAS   
+ 441: 0000:                                      \ + 6 UPD bar code,                   BBAAS
+ 442: 0000:                                      \ no check digits. (key)              BBAAS
+ 443: 0000:     IEF.NEXT.BAR.CODE$               ! 6 byte UPD without check digit
+ 444: 0000: 
+ 445: 0000:   INTEGER*2 GLOBAL        \
+ 446: 0000:     IEF.REPORT.NUM%,	  \
+ 447: 0000:     IEF.SESS.NUM%,	  \ 
+ 448: 0000:     IEF.RECL%
+ 449: 0000: %INCLUDE PSBF19G.J86    !UPDATE IRF GLOBALS
+ 450: 0000: REM \
+ 451: 0000: \*******************************************************************************
+ 452: 0000: \*******************************************************************************
+ 453: 0000: \***
+ 454: 0000: \***
+ 455: 0000: \***            INCLUDE       : UPDATE IRF globals
+ 456: 0000: \***
+ 457: 0000: \***            REFERENCE     : PSBF19G.J86
+ 458: 0000: \***
+ 459: 0000: \***      Version A              Richard Hopkinson            16th March 1988
+ 460: 0000: \***
+ 461: 0000: \***      Version B              Janet Lawrence               12th April 1989
+ 462: 0000: \***      Version letter incremented to match that of external defintion of 
+ 463: 0000: \***      function 19.  
+ 464: 0000: \***
+ 465: 0000: \***      Version C              Andrew Wedgeworth             21st July 1992
+ 466: 0000: \***      Return code field removed as no longer used.
+ 467: 0000: \***
+ 468: 0000: \***      Version F              Steve Perkins                 20th October 1993
+ 469: 0000: \***      Version letter updated to keep in line with PSBF19.BAS
+ 470: 0000: \***
+ 471: 0000: \***    REVISION 1.9.                ROBERT COWEY.                08 DEC 2003.
+ 472: 0000: \***    Changes for Deal Limit removal project.
+ 473: 0000: \***    Revision number updated to keep in step with PSBF19.BAS.
+ 474: 0000: \***    Declared variables for IRFDEX and F19.NODE.FILE...
+ 475: 0000: \***
+ 476: 0000: \*******************************************************************************
+ 477: 0000: \*******************************************************************************
+ 478: 0000: 
+ 479: 0000:       STRING   F19.RETURNED.STRING                                     ! CAW
+ 480: 0000:       STRING   F19.NODE.FILE.NAME$                                         ! 1.9 RC
+ 481: 0000: 
+ 482: 0000:       STRING   GLOBAL NODE.ID$
+ 483: 0000:       STRING   GLOBAL TIF.FULL$
+ 484: 0000:       STRING   GLOBAL TIF.OPEN.FLAG$
+ 485: 0000:       STRING   GLOBAL TMCF.FULL$
+ 486: 0000:       STRING   GLOBAL TMCF.OPEN.FLAG$
+ 487: 0000:       
+ 488: 0000:       INTEGER*2 GLOBAL F19.IRFDEX.SESS.NUM%                                ! 1.9 RC
+ 489: 0000:       
+ 490: 0000:       INTEGER*2 F19.NODE.REPORT.NUM%                                       ! 1.9 RC
+ 491: 0000:       INTEGER*2 F19.NODE.SESS.NUM%                                         ! 1.9 RC
+ 492: 0000: 
+ 493: 0000: %INCLUDE IDFEXT.J86     !IDF EXTERNALS
+ 494: 0000: \*******************************************************************************
+ 495: 0000: \***                                                                         ***
+ 496: 0000: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM DESCRIPTION FILE        ***
+ 497: 0000: \***                                                                         ***
+ 498: 0000: \***                       REFERENCE : IDFEXT.J86                            ***
+ 499: 0000: \***                                                                         ***
+ 500: 0000: \***      Version A           Andrew Wedgeworth         9th July 1992        ***
+ 501: 0000: \***
+ 502: 0000: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 503: 0000: \***    No changes to this file.
+ 504: 0000: \***
+ 505: 0000: \***   VERSION D               Nik Sen                 22nd December 1994
+ 506: 0000: \***   WRITE.IDF.HOLD added
+ 507: 0000: \***
+ 508: 0000: \*******************************************************************************
+ 509: 0000: 
+ 510: 0000:        FUNCTION IDF.SET EXTERNAL                                      
+ 511: 0000:        END FUNCTION                                                   
+ 512: 0000: 
+ 513: 0000: 
+ 514: 0000:        FUNCTION READ.IDF EXTERNAL                                     
+ 515: 0000:           INTEGER*2 READ.IDF                                          
+ 516: 0000:        END FUNCTION                                                   
+ 517: 0000: 
+ 518: 0000: 
+ 519: 0000:        FUNCTION READ.IDF.LOCK EXTERNAL                                
+ 520: 0000:           INTEGER*2 READ.IDF.LOCK                                     
+ 521: 0000:        END FUNCTION                                                   
+ 522: 0000: 
+ 523: 0000:        FUNCTION WRITE.IDF EXTERNAL
+ 524: 0000:           INTEGER*2 WRITE.IDF
+ 525: 0000:        END FUNCTION	       
+ 526: 0000: 
+ 527: 0000:        FUNCTION WRITE.IDF.HOLD EXTERNAL
+ 528: 0000:           INTEGER*2 WRITE.IDF.HOLD
+ 529: 0000:        END FUNCTION
+ 530: 0000: 
+ 531: 0000:        FUNCTION WRITE.IDF.UNLOCK EXTERNAL                                  
+ 532: 0000:           INTEGER*2 WRITE.IDF.UNLOCK                                      
+ 533: 0000:        END FUNCTION                                                   
+ 534: 0000: %INCLUDE IRFEXT.J86     !IRF EXTERNALS
+ 535: 0000: \*********************************************************************************
+ 536: 0000: \***
+ 537: 0000: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FILE
+ 538: 0000: \***
+ 539: 0000: \***                    REFERENCE : IRFEXT.J86
+ 540: 0000: \***
+ 541: 0000: \***      Version A          Andrew Wedgeworth        9th July 1992
+ 542: 0000: \***
+ 543: 0000: \***      Version B          Andrew Wedgeworth        14th December 1992
+ 544: 0000: \***      Version letter incremented to match other IRF code.
+ 545: 0000: \***
+ 546: 0000: \***      Version C           Steve Windsor        12.02.93
+ 547: 0000: \***      Added external reference to read the alternate IRF.
+ 548: 0000: \***
+ 549: 0000: \***      Version D           Steve Windsor        12.05.93
+ 550: 0000: \***      Added all external references that wre in the original FNS.
+ 551: 0000: \***
+ 552: 0000: \***      Version E           Steve Perkins        21.09.93
+ 553: 0000: \***      Deals project: Fields changed for new deals project
+ 554: 0000: \*** 
+ 555: 0000: \***      Version F           Mark Walker          5th January 1994
+ 556: 0000: \***      Version letter incremented to match other IRF code.           
+ 557: 0000: \***                                                                    
+ 558: 0000: \***      Version G     Stuart William McConnachie      11th February 2000
+ 559: 0000: \***      Converted IRF.INDICAT2$ to integer flag byte.
+ 560: 0000: \***
+ 561: 0000: \***      REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+ 562: 0000: \***      Major changes to IRF layout for 2002 Deals Rewrite project.
+ 563: 0000: \***      No changes to this particular file for this revision.
+ 564: 0000: \***
+ 565: 0000: \***      REVISION 1.7.               ROBERT COWEY.               5 AUG 2002.
+ 566: 0000: \***      Further changes for 2002 Deals Rewrite project (PSBF19 related).
+ 567: 0000: \***      Defined new functions CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+ 568: 0000: \***
+ 569: 0000: \***      REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+ 570: 0000: \***      Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+ 571: 0000: \***      No changes to this file other than description.
+ 572: 0000: \***      No changes to IRF file functions.
+ 573: 0000: \***
+ 574: 0000: \***      REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+ 575: 0000: \***      Changes to remove limit of 3 deals per item.
+ 576: 0000: \***      No changes to this file.
+ 577: 0000: \***
+ 578: 0000: \***      REVISION 2.0.             ALAN CARR                      9 FEB 2006.
+ 579: 0000: \***      Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+ 580: 0000: \***      No changes to this file.
+ 581: 0000: \***
+ 582: 0000: \***..............................................................................
+ 583: 0000:    
+ 584: 0000:    FUNCTION IRF.SET EXTERNAL
+ 585: 0000:    END FUNCTION
+ 586: 0000: 
+ 587: 0000:   FUNCTION CONCAT.NEW.IRF.DATA$ EXTERNAL                                  ! 1.7 RC
+ 588: 0000:   END FUNCTION                                                            ! 1.7 RC
+ 589: 0000: 
+ 590: 0000:   FUNCTION SPLIT.NEW.IRF.DATA$ EXTERNAL                                   ! 1.7 RC
+ 591: 0000:   END FUNCTION                                                            ! 1.7 RC
+ 592: 0000:   
+ 593: 0000:   FUNCTION READ.IRF EXTERNAL
+ 594: 0000:    INTEGER*2 READ.IRF
+ 595: 0000:   END FUNCTION
+ 596: 0000: 
+ 597: 0000:   FUNCTION READ.IRF.ALT EXTERNAL
+ 598: 0000:    INTEGER*2 READ.IRF.ALT
+ 599: 0000:   END FUNCTION
+ 600: 0000: 
+ 601: 0000:   FUNCTION READ.IRF.LOCK EXTERNAL
+ 602: 0000:    INTEGER*2 READ.IRF.LOCK
+ 603: 0000:   END FUNCTION
+ 604: 0000: 
+ 605: 0000:   FUNCTION WRITE.IRF EXTERNAL
+ 606: 0000:    INTEGER*2 WRITE.IRF
+ 607: 0000:   END FUNCTION
+ 608: 0000: 
+ 609: 0000:   FUNCTION WRITE.IRF.UNLOCK EXTERNAL
+ 610: 0000:    INTEGER*2 WRITE.IRF.UNLOCK
+ 611: 0000:   END FUNCTION
+ 612: 0000: 
+ 613: 0000:   FUNCTION WRITE.IRF.HOLD EXTERNAL
+ 614: 0000:    INTEGER*2 WRITE.IRF.HOLD
+ 615: 0000:   END FUNCTION
+ 616: 0000: 
+ 617: 0000:   FUNCTION WRITE.IRF.HOLD.UNLOCK EXTERNAL
+ 618: 0000:    INTEGER*2 WRITE.IRF.HOLD.UNLOCK
+ 619: 0000:   END FUNCTION
+ 620: 0000: 
+ 621: 0000:   
+ 622: 0000: %INCLUDE IEFEXT.J86     !IEF EXTERNALS
+ 623: 0000: \*****************************************************************************
+ 624: 0000: \*****************************************************************************
+ 625: 0000: \***
+ 626: 0000: \***         EXTERNAL FUNCTION DEFINITIONS FOR IEF
+ 627: 0000: \***
+ 628: 0000: \***         REFERENCE: IEFEXT.J86
+ 629: 0000: \***
+ 630: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+ 631: 0000: \***    No changes to this file.
+ 632: 0000: \***
+ 633: 0000: \*******************************************************************************
+ 634: 0000: \*******************************************************************************
+ 635: 0000: 
+ 636: 0000:    FUNCTION IEF.SET EXTERNAL
+ 637: 0000:    END FUNCTION
+ 638: 0000:    
+ 639: 0000:    FUNCTION READ.IEF EXTERNAL
+ 640: 0000:       INTEGER*2 READ.IEF
+ 641: 0000:    END FUNCTION
+ 642: 0000:    
+ 643: 0000:    FUNCTION WRITE.IEF EXTERNAL
+ 644: 0000:       INTEGER*2 WRITE.IEF
+ 645: 0000:    END FUNCTION
+ 646: 0000:    
+ 647: 0000:    
+ 648: 0000: %INCLUDE PSBF19E.J86    !UPDATE IRF EXTERNALS
+ 649: 0000: \*******************************************************************************! GCSk
+ 650: 0000: \*******************************************************************************! GCSk
+ 651: 0000: \***                                                                            ! GCSk
+ 652: 0000: \*** IMPORTANT                                                                  ! GCSk
+ 653: 0000: \*** =========                                                                  ! GCSk
+ 654: 0000: \***    All references to UPDT.IRF.UPDT have been commented out and replaced    ! GCSk
+ 655: 0000: \***    with UPDT.IRF.TIF.UPDT due to the following issue found post MCF:       ! GCSk
+ 656: 0000: \***                                                                            ! GCSk
+ 657: 0000: \***    Node ID check removed as it is preventing the TIF from being updated in ! GCSk
+ 658: 0000: \***    Single MCF controller stores ie. MCF has changed the single DE nodes    ! GCSk
+ 659: 0000: \***    to CE. This change should have been done as part of the MCF project,    ! GCSk
+ 660: 0000: \***    however, the Business were not willing to pay for the relinking and     ! GCSk
+ 661: 0000: \***    testing of some 200+ programs. There is a slight processing overhead    ! GCSk
+ 662: 0000: \***    in dual-MCF stores, since the TIF will now be updated in them as well,  ! GCSk
+ 663: 0000: \***    however the impact is small and TOF does not run in this environment.   ! GCSk
+ 664: 0000: \***                                                                            ! GCSk
+ 665: 0000: \***    If you wish to use the old UPDT.IRF.UPDT function then you will need to ! GCSk
+ 666: 0000: \***    either:                                                                 ! GCSk
+ 667: 0000: \***                                                                            ! GCSk
+ 668: 0000: \***          1. Check out the previous OBJs, PSBF19e.J86 and update the .INP   ! GCSk
+ 669: 0000: \***             and .MAK to include the functions PSBF19, PSBF41 & PSBF42      ! GCSk
+ 670: 0000: \***       or                                                                   ! GCSk
+ 671: 0000: \***          2. Check out the previous PSBF19e.J86 and function library:       ! GCSk
+ 672: 0000: \***             FUNLIB.L86                                                     ! GCSk
+ 673: 0000: \***                                                                            ! GCSk
+ 674: 0000: \*******************************************************************************! GCSk
+ 675: 0000: \*******************************************************************************! GCSk
+ 676: 0000: 
+ 677: 0000: REM \
+ 678: 0000: \*******************************************************************************
+ 679: 0000: \*******************************************************************************
+ 680: 0000: \***
+ 681: 0000: \***
+ 682: 0000: \***            INCLUDE       : IRF.UPDATE external definition
+ 683: 0000: \***
+ 684: 0000: \***            REFERENCE     : PSBF19E.J86
+ 685: 0000: \***
+ 686: 0000: \***      Version A      Richard Hopkinson                  16th March 1988
+ 687: 0000: \***
+ 688: 0000: \***      Version B      Janet Lawrence                     12th April 1989
+ 689: 0000: \***      Add extra parameter, IRF.LOCKED.FLAG$, to each function definition.
+ 690: 0000: \***
+ 691: 0000: \***      Version C      Andrew Wedgeworth                   21st July 1992
+ 692: 0000: \***      Redundant parameters removed (ie. BATCH.SCREEN.FLAG$,
+ 693: 0000: \***      MODULE.NUMBER$ and OPERATOR.NUMBER$).  Function names defined as
+ 694: 0000: \***      variables to hold the return code.
+ 695: 0000: \***
+ 696: 0000: \***      Version F     Steve Perkins                      20th October 1993
+ 697: 0000: \***      Version letter updated to keep in line with PSBF19.BAS
+ 698: 0000: \***
+ 699: 0000: \***    REVISION 1.9.                ROBERT COWEY.                08 DEC 2003.
+ 700: 0000: \***    Changes for Deal Limit removal project.
+ 701: 0000: \***    Revision number updated to keep in step with PSBF19.BAS.
+ 702: 0000: \***    No actual coding changes to this file.
+ 703: 0000: \***
+ 704: 0000: \***    Version G       Charles Skadorwa                   25th September 2013
+ 705: 0000: \***    F261 Gift Card Mall IIN Range Extension Project - Commented ! GCSk
+ 706: 0000: \***
+ 707: 0000: \*******************************************************************************
+ 708: 0000: \*******************************************************************************
+ 709: 0000: 
+ 710: 0000:    FUNCTION OPEN.IRF.UPDT (NEW.IRF.DATA$,                                  \
+ 711: 0000:                            ACD.FLAG$)                                      \
+ 712: 0000:    EXTERNAL
+ 713: 0000: 
+ 714: 0000:       STRING    ACD.FLAG$,                                                 \
+ 715: 0000:                 NEW.IRF.DATA$
+ 716: 0000: 
+ 717: 0000:       INTEGER*2 OPEN.IRF.UPDT                                          ! CAW
+ 718: 0000: 
+ 719: 0000:    END FUNCTION
+ 720: 0000: 
+ 721: 0000: 
+ 722: 0000:   !FUNCTION UPDT.IRF.UPDT (NEW.IRF.DATA$,                              ! GCSk
+ 723: 0000:    FUNCTION UPDT.IRF.TIF.UPDT (NEW.IRF.DATA$,                          \ ! GCSk
+ 724: 0000:                            ACD.FLAG$,                                  \
+ 725: 0000:                            IRF.LOCKED.FLAG$)                           \ BJAL
+ 726: 0000:    EXTERNAL
+ 727: 0000: 
+ 728: 0000:       STRING    ACD.FLAG$,                                             \
+ 729: 0000:                 IRF.LOCKED.FLAG$,                                      \ BJAL
+ 730: 0000:                 NEW.IRF.DATA$
+ 731: 0000: 
+ 732: 0000:      !INTEGER*2 UPDT.IRF.UPDT                                          ! CAW ! GCSk
+ 733: 0000:       INTEGER*2 UPDT.IRF.TIF.UPDT                                      ! GCSk
+ 734: 0000: 
+ 735: 0000:    END FUNCTION
+ 736: 0000: 
+ 737: 0000: 
+ 738: 0000:    FUNCTION CLOSE.IRF.UPDT (NEW.IRF.DATA$,                                 \
+ 739: 0000:                             ACD.FLAG$)                                     \
+ 740: 0000:    EXTERNAL
+ 741: 0000: 
+ 742: 0000:       STRING    ACD.FLAG$,                                                 \
+ 743: 0000:                 NEW.IRF.DATA$
+ 744: 0000: 
+ 745: 0000:       INTEGER*2 CLOSE.IRF.UPDT                                         ! CAW
+ 746: 0000: 
+ 747: 0000:    END FUNCTION
+ 748: 0000: 
+ 749: 0000: 
+ 750: 0000: !******************************************************************************
+ 751: 0000: 
+ 752: 0000: FUNCTION UPDATE.ALL.IRF.BAR.CODES(UPDATE.ITEM.CODE$) PUBLIC
+ 753: 0019: 
+ 754: 0019:     STRING UPDATE.ITEM.CODE$
+ 755: 0019:     INTEGER*1 UPDATE.ALL.IRF.BAR.CODES
+ 756: 0019: 
+ 757: 0019:     GROUP.CODE$     = PACK$("2" + STRING$(9,"0"))
+ 758: 003e:     NON.GROUP.CODE$ = PACK$(STRING$(10,"0"))
+ 759: 0057:     NULL.BAR.CODE$  = PACK$(STRING$(12,"0"))
+ 760: 0070: 
+ 761: 0070:     ACD.FLAG$ = "CHANGE"
+ 762: 007d:     IRF.LOCKED.FLAG$ = "N"
+ 763: 008a: 
+ 764: 008a:     ERROR.FLAG = 0
+ 765: 008f: 
+ 766: 008f:     IDF.BOOTS.CODE$ = PACK$("0" + UPDATE.ITEM.CODE$)
+ 767: 00b1:     IF READ.IDF = 0 THEN BEGIN
+ 768: 00be: 
+ 769: 00be:        !READ DATA FROM ITEM CODE WHICH HAS BEEN UPDATED BY CALLING PROGRAM
+ 770: 00be:        IRF.BAR.CODE$ = PACK$(STRING$(16,"0")) + PACK$(LEFT$(UPDATE.ITEM.CODE$,6))
+ 771: 0106: 
+ 772: 0106:        IF READ.IRF = 0 THEN BEGIN
+ 773: 0113: 
+ 774: 0113:           NO.OF.BAR.CODES% = VAL(UNPACK$(IDF.NO.OF.BAR.CODES$))
+ 775: 0130: 
+ 776: 0130:           IF (IDF.BIT.FLAGS.1% AND 10000000B) <> 0 THEN BEGIN !TEST THE GROUP CODE FLAG
+ 777: 0142: 
+ 778: 0142:              !GROUP CODES SUCH AS 309 HAVE TWO IRF RECORDS, ONE WITH A 2 AT THE BEGINNING OF THE PACKED IRF KEY
+ 779: 0142:              IRF.BAR.CODE$ = NON.GROUP.CODE$ + IDF.FIRST.BAR.CODE$
+ 780: 0163:              CALL CONCAT.NEW.IRF.DATA$
+ 781: 0168:             !IF UPDT.IRF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1     !CCSk
+ 782: 0168:              IF UPDT.IRF.TIF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1 !CCSk
+ 783: 0194: 
+ 784: 0194:              IRF.BAR.CODE$ = GROUP.CODE$ + IDF.FIRST.BAR.CODE$
+ 785: 01b5:              IF NOT ERROR.FLAG THEN BEGIN
+ 786: 01bc:                 CALL CONCAT.NEW.IRF.DATA$
+ 787: 01c1:                !IF UPDT.IRF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1     !CCSk
+ 788: 01c1:                 IF UPDT.IRF.TIF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1 !CCSk
+ 789: 01ed:              ENDIF
+ 790: 01ed: 
+ 791: 01ed:              IRF.BAR.CODE$ = GROUP.CODE$ + IDF.SECOND.BAR.CODE$
+ 792: 020e:              IF NOT ERROR.FLAG THEN BEGIN
+ 793: 0215:                 CALL CONCAT.NEW.IRF.DATA$
+ 794: 021a:                !IF UPDT.IRF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1     !CCSk
+ 795: 021a:                 IF UPDT.IRF.TIF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1 !CCSk
+ 796: 0246:              ENDIF
+ 797: 0249: 
+ 798: 0249:           ENDIF ELSE IF IDF.SECOND.BAR.CODE$ <> NULL.BAR.CODE$ THEN BEGIN
+ 799: 0266: 
+ 800: 0266:              IRF.BAR.CODE$ = NON.GROUP.CODE$ + IDF.SECOND.BAR.CODE$
+ 801: 0287:              CALL CONCAT.NEW.IRF.DATA$
+ 802: 028c:             !IF UPDT.IRF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1     !CCSk
+ 803: 028c:              IF UPDT.IRF.TIF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) THEN ERROR.FLAG = 1 !CCSk
+ 804: 02b8: 
+ 805: 02b8:              IF NO.OF.BAR.CODES% > 2 AND (ERROR.FLAG = 0) THEN BEGIN      !BJAS
+ 806: 02d8: 
+ 807: 02d8:                 !GO THROUGH IEF BAR CODES
+ 808: 02d8: 
+ 809: 02d8:                 IEF.BOOTS.CODE.BAR.CODE$ = IRF.BOOTS.CODE$ + IDF.SECOND.BAR.CODE$
+ 810: 02fc: 
+ 811: 02fc:                 IF READ.IEF = 0 THEN BEGIN
+ 812: 0309: 
+ 813: 0309:                    BAR.CODE.COUNT% = 2
+ 814: 030f:                    END.OF.IEF.CHAIN = 0
+ 815: 0314: 
+ 816: 0314:                    WHILE (NOT END.OF.IEF.CHAIN) AND (ERROR.FLAG = 0) !ABG !BJAS
+ 817: 0317: 
+ 818: 0317:                       IRF.BAR.CODE$ = NON.GROUP.CODE$ + IEF.NEXT.BAR.CODE$
+ 819: 0338:                       CALL CONCAT.NEW.IRF.DATA$
+ 820: 033d:                      !IF UPDT.IRF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) = 0 THEN BEGIN     !CCSk
+ 821: 033d:                       IF UPDT.IRF.TIF.UPDT (NEW.IRF.DATA$, ACD.FLAG$, IRF.LOCKED.FLAG$) = 0 THEN BEGIN !CCSk
+ 822: 0365: 
+ 823: 0365:                          IEF.BOOTS.CODE.BAR.CODE$ = IRF.BOOTS.CODE$ + IEF.NEXT.BAR.CODE$
+ 824: 0389: 
+ 825: 0389:                          IF READ.IEF = 0 THEN BEGIN
+ 826: 0393: 
+ 827: 0393:                             BAR.CODE.COUNT% = BAR.CODE.COUNT% + 1
+ 828: 0397: 
+ 829: 0397:                             IF (IEF.NEXT.BAR.CODE$ = NULL.BAR.CODE$) OR \
+ 830: 03cd:                                (BAR.CODE.COUNT% = NO.OF.BAR.CODES%) THEN BEGIN
+ 831: 03cd:                                END.OF.IEF.CHAIN = -1
+ 832: 03d2:                             ENDIF
+ 833: 03d4: 
+ 834: 03d4:                          ENDIF ELSE BEGIN
+ 835: 03d4:                             ERROR.FLAG = 1
+ 836: 03d9:                          ENDIF
+ 837: 03db:                       ENDIF ELSE BEGIN
+ 838: 03db:                          ERROR.FLAG = 1
+ 839: 03e0:                       ENDIF
+ 840: 03e0: 
+ 841: 03e0:                    WEND
+ 842: 03fa: 
+ 843: 03fa:                 ENDIF ELSE BEGIN
+ 844: 03fa:                    ERROR.FLAG = 1
+ 845: 03ff:                 ENDIF
+ 846: 03ff: 
+ 847: 03ff:              ENDIF
+ 848: 03ff: 
+ 849: 03ff:           ENDIF
+ 850: 0401: 
+ 851: 0401:        ENDIF ELSE BEGIN
+ 852: 0401:           ERROR.FLAG = 1
+ 853: 0406:        ENDIF
+ 854: 0408: 
+ 855: 0408:     ENDIF ELSE BEGIN
+ 856: 0408:        ERROR.FLAG = 1
+ 857: 040d:     ENDIF
+ 858: 040d: 
+ 859: 040d:     UPDATE.ALL.IRF.BAR.CODES = ERROR.FLAG
+ 860: 0413: 
+ 861: 0413: END FUNCTION
+ 862: 0427: 
+ 863: 0427: 
+ 864: 0427: End of Compilation

@@ -1,0 +1,111 @@
+	var strSQL;
+	var objRS;
+	var v_MacName;
+	var strCMD;
+	var objWSHShell;
+	var objLogFile;
+	var objFSO;
+	var objCONN;
+        var strConn;
+        var ShutDownExePath;
+    	var intRetVal;
+    	var strCMD;
+    	var strPath;
+    	var strFolder;
+    	var objFile;
+	var strCMDDNS;
+	var strCMDNBTR
+    	
+//WScript.Echo("Hello");
+    	
+    	objFSO 	= new ActiveXObject("Scripting.FileSystemObject");
+        objWSHShell = new ActiveXObject("WScript.Shell");
+ 
+        strPath = WScript.ScriptFullName;
+        objFile = objFSO.GetFile(strPath);
+        strFolder = objFSO.GetParentFolderName(objFile);
+ 
+
+//WScript.Echo(strFolder);
+
+        objCONN = new ActiveXObject("ADODB.Connection");
+                	
+        strConn = "Provider=SQLOLEDB.1;Integrated Security=SSPI;Persist Security Info=False;Initial Catalog=NexphaseV6;Data Source=.\\pharm01";
+        
+//WScript.Echo(strConn);
+     
+        objCONN.ConnectionString = strConn;
+        objCONN.open();
+        objCONN.commandtimeout = 0
+        
+	objLogFile = objFSO.CreateTextFile(strFolder + "\\Log.txt", true);
+		 
+	ShutDownExePath = strFolder + "\\EnigmaShutdown.exe"
+	
+//WScript.Echo(ShutDownExePath);
+		
+//objLogFile.WriteLine("Start");
+		
+		strSQL 	= "SELECT Mach_IP FROM NexPhasev6..TRAMachines";
+						
+		objRS		= objCONN.Execute(strSQL);
+		
+			while (!objRS.EOF && !objRS.BOF)
+			{
+				v_MacName 	= objRS("Mach_IP").value;
+				
+				strCMD	= 'cmd /c "' + ShutDownExePath + '" ' + v_MacName ;
+				
+		objLogFile.WriteLine(strCMD);
+
+				intRetVal = objWSHShell.run(strCMD,0,true);
+
+				if (intRetVal != "0") 
+					{
+						objLogFile.WriteLine("failed to execute."  + intRetVal);
+					}
+				
+				//SLEEP FOR 5 SEC BEFORE EXECUTING ShutDownExe AGAIN
+				WScript.sleep(1000) 
+				
+				objLogFile.WriteLine("Nexphase shutdown on " + v_MacName);	
+					
+				objRS.MoveNext();
+			}
+			objRS.close()
+			objRS = null;
+
+
+// command for DNS flush
+			strCMDDNS	= 'cmd /c ipconfig/flushdns' ;
+			objLogFile.WriteLine(strCMDDNS);
+			intRetVal = objWSHShell.run(strCMDDNS,0,true);
+objLogFile.WriteLine(intRetVal);
+			if (intRetVal != "0") 
+					{
+						objLogFile.WriteLine("failed to execute."  + intRetVal);
+					}
+				
+			//SLEEP FOR 5 SEC BEFORE EXECUTING ShutDownExe AGAIN
+			WScript.sleep(1000) 
+			objLogFile.WriteLine("DNS Flush successfully");
+			
+
+//Purge and Reload remote cache table 
+			strCMDNBTR	= 'cmd /c NBTSTAT -R' ;
+			objLogFile.WriteLine(strCMDNBTR);
+			intRetVal = objWSHShell.run(strCMDNBTR,0,true);
+objLogFile.WriteLine(intRetVal);
+			if (intRetVal != "0") 
+					{
+						objLogFile.WriteLine("failed to execute."  + intRetVal);
+					}
+				
+			//SLEEP FOR 5 SEC BEFORE EXECUTING ShutDownExe AGAIN
+			WScript.sleep(1000) 
+			
+			objLogFile.WriteLine("Purge and Reload remote cache table completed");
+			
+objLogFile.WriteLine("Completed.");	
+
+        	

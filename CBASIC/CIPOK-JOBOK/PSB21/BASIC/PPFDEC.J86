@@ -1,0 +1,150 @@
+
+\REM
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR PENDING PRICES FILES VARIABLE DECLARATIONS
+\***
+\***        REFERENCE   :   PPFDEC (J86)
+\***
+\***        FILE TYPE   :   Sequential
+\***
+\***    VERSION D.              ROBERT COWEY.                       23 AUG 1993.
+\***    Original version created by combining PPFFLDC, PPFINUMC and PPFONUMC.
+\***
+\***    VERSION E.              ROBERT COWEY.                       26 OCT 1993.
+\***    Removed SPLAN.ID$ from RPD and Deal records.
+\***    Defined Link-Save Multi-Buy Deal record.
+\***
+\***    VERSION F               BRIAN GREENFIELD                    24 JUN 2004.
+\***    Added Markdown variables to RPD record.
+\***    
+\*******************************************************************************
+\*******************************************************************************
+
+
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    RECORD LAYOUTS
+\***
+\***    TRAILER RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$     "99999999"
+\***     8  1  ASC  REC.TYPE.FLAG$  "T" Trailer
+\***     9  5  ASC  REC.COUNT$
+\***
+\***    RPD RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+\***     8  1  ASC  REC.TYPE.FLAG$    "R" RPD
+\***     9  6  ASC  DATE.DUE$         YYMMDD
+\***    15  5  ASC  RPD.NO$
+\***    20  1  ASC  STATUS.FLAG$      "S" label printed but price not effected
+\***                                  "L" Locally priced - No label printed
+\***                                  "D" Deal priced - No label printed
+\***                                  " " Yet to be processed
+\***    21  1  ASC  INC.DEC.FLAG$     "D", "I", (" " if no change or deal price)
+\***    22  8  ASC  PRICE$
+\***    30  1  ASC  MARKDOWN$         Mark-down "Y" or "N"               ! FBG
+\***
+\***    DEAL PRICE RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+\***     8  1  ASC  REC.TYPE.FLAG$    "D" Deal price
+\***     9  1  ASC  DEAL.TYPE$        "0", "1", "2", "3"
+\***    10  2  ASC  DEAL.QUANTITY$
+\***    12  5  ASC  SPECIAL.PRICE$
+\***    17  2  ASC  M.P.GROUP$
+\***    19  6  ASC  FIRST.DATE$       YYMMDD
+\***    25  6  ASC  LAST.DATE$        YYMMDD
+\***    31  1  ASC  EFFECT.FLAG$
+\***
+\***    LINK-SAVE MULTI-BUY DEAL RECORD
+\***
+\***     1  7  ASC  BOOTS.CODE$       Boots code including check digit
+\***     8  1  ASC  REC.TYPE.FLAG$    "B" Link-Save Multi-Buy deal record
+\***     9  1  ASC  DEAL.ID$          "M", "A", "B", "X"
+\***    10  1  ASC  PAIR.TRIP.FLAG$   "P", "T", " "
+\***    11  1  ASC  3FOR2.FLAG$       "T", " "
+\***    12  2  ASC  DEAL.LIMIT$       1 to 15
+\***    14  4  ASC  DEAL.NUM$         1 to 9999
+\***    18  4  ASC  SAVED.AMOUNT$     0 to 9999
+\***    22  6  ASC  DEAL.DATE.START$  YYMMDD of deal start
+\***    28  6  ASC  DEAL.DATE.FINISH$ YYMMDD of deal finish
+\***    34  1  ASC  ACTIVE.FLAG$      "Y", "N"
+\***
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    OTHER INFORMATION
+\***
+\***    Prefixes PPFI... and PPFO... are used for variables that are specific
+\***    to the INPUT or OUTPUT usage of the file.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+ 
+    STRING GLOBAL \
+        PPF.3FOR2.FLAG$, \                                             ! ERC
+        PPF.ACTIVE.FLAG$, \                                            ! ERC
+        PPF.BOOTS.CODE$, \
+        PPF.DATE.DUE$, \
+        PPF.DEAL.DATE.FINISH$, \                                       ! ERC
+        PPF.DEAL.DATE.START$, \                                        ! ERC
+        PPF.DEAL.ID$, \                                                ! ERC
+        PPF.DEAL.LIMIT$, \                                             ! ERC
+        PPF.DEAL.NUM$, \                                               ! ERC
+        PPF.DEAL.QUANTITY$, \
+        PPF.DEAL.TYPE$, \
+        PPF.EFFECT.FLAG$, \
+        PPF.FIRST.DATE$, \
+        PPF.INC.DEC.FLAG$, \
+        PPF.LAST.DATE$, \
+        PPF.MARKDOWN$, \                                               ! FBG
+        PPF.M.P.GROUP$, \
+        PPF.PAIR.TRIP.FLAG$, \                                         ! ERC
+        PPF.PRICE$, \
+        PPF.REC.COUNT$, \
+        PPF.REC.TYPE.FLAG$, \
+        PPF.RECORD$, \
+        PPF.RPD.NO$, \
+        PPF.SAVED.AMOUNT$, \                                           ! ERC
+        PPF.SPECIAL.PRICE$, \
+        PPF.STATUS.FLAG$, \
+        PPFI.3FOR2.FLAG$, \                                            ! ERC
+        PPFI.ACTIVE.FLAG$, \                                           ! ERC
+        PPFI.BOOTS.CODE$, \
+        PPFI.DATE.DUE$, \
+        PPFI.DEAL.DATE.FINISH$, \                                      ! ERC
+        PPFI.DEAL.DATE.START$, \                                       ! ERC
+        PPFI.DEAL.ID$, \                                               ! ERC
+        PPFI.DEAL.LIMIT$, \                                            ! ERC
+        PPFI.DEAL.NUM$, \                                              ! ERC
+        PPFI.DEAL.QUANTITY$, \
+        PPFI.DEAL.TYPE$, \
+        PPFI.EFFECT.FLAG$, \
+        PPFI.FILE.NAME$, \
+        PPFI.FIRST.DATE$, \
+        PPFI.INC.DEC.FLAG$, \
+        PPFI.LAST.DATE$, \
+        PPFI.MARKDOWN$, \                                               ! FBG
+        PPFI.M.P.GROUP$, \
+        PPFI.PAIR.TRIP.FLAG$, \                                        ! ERC
+        PPFI.PRICE$, \
+        PPFI.REC.COUNT$, \
+        PPFI.REC.TYPE.FLAG$, \
+        PPFI.RECORD$, \
+        PPFI.RPD.NO$, \
+        PPFI.SAVED.AMOUNT$, \                                          ! ERC
+        PPFI.SPECIAL.PRICE$, \
+        PPFI.STATUS.FLAG$, \
+        PPFO.FILE.NAME$
+
+    INTEGER*2 GLOBAL \
+        PPFI.REPORT.NUM%, \
+        PPFO.REPORT.NUM%, \
+        PPFI.SESS.NUM%, \
+        PPFO.SESS.NUM%
+

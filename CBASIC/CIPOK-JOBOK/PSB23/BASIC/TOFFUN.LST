@@ -1,0 +1,251 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \***
+   3: 0000: \***        %INCLUDE FOR TERMINAL OPTIONS FILE - FUNCTION DEFINITIONS
+   4: 0000: \***
+   5: 0000: \***                         FILE TYPE : Direct
+   6: 0000: \***
+   7: 0000: \***                         REFERENCE : TOFFUN
+   8: 0000: \***
+   9: 0000: \***    Version A               Mark Walker                  1st November 1993
+  10: 0000: \***
+  11: 0000: \***    Version B        Stuart William McConnachie            9th August 1995
+  12: 0000: \***    Added functions to read and write the terminal options file.
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***    Version C           Lee J Rockach                 1st October 1997
+  16: 0000: \***
+  17: 0000: \***    Added functions: READ.TRMOP.SEQ,
+  18: 0000: \***                     READ.TRMOP.DATA.CRLF,
+  19: 0000: \***                     READ.TRMOP.DATA.CRLF.LOCK,
+  20: 0000: \***                     WRITE.TRMOP.DATA.CRLF.UNLOCK.HOLD. 
+  21: 0000: \***
+  22: 0000: \***   Version D           Julia Stones                   23rd September 1998
+  23: 0000: \***
+  24: 0000: \***   Added function:  WRITE.TRMOP.DATA.CRLF.UNLOCK.
+  25: 0000: \***
+  26: 0000: \******************************************************************************
+  27: 0000: 
+  28: 0000: %INCLUDE TOFDEC.J86
+  29: 0000: \******************************************************************************
+  30: 0000: \***
+  31: 0000: \***        %INCLUDE FOR TERMINAL OPTIONS FILE - FIELD DECLARATIONS
+  32: 0000: \***                                           - FILE REFERENCE PARAMETERS
+  33: 0000: \***
+  34: 0000: \***                         FILE TYPE : Direct
+  35: 0000: \***
+  36: 0000: \***                         REFERENCE : TOFDEC
+  37: 0000: \***
+  38: 0000: \***    Version A               Mark Walker                  1st November 1993
+  39: 0000: \***
+  40: 0000: \***    Version B        Stuart William McConnachie            9th August 1995
+  41: 0000: \***    Added functions to read and write the terminal options file.
+  42: 0000: \***
+  43: 0000: \******************************************************************************
+  44: 0000: 
+  45: 0000:         STRING GLOBAL                   TOF.FILE.NAME$,                 \
+  46: 0000:                                         TRMOP.FILE.NAME$,               \
+  47: 0000:                                         TRMOP.PATH.NAME$,               \
+  48: 0000:                                         TRMOP.REC.DATA$,                \
+  49: 0000:                                         TRMOP.REC.CRLF$
+  50: 0000: 
+  51: 0000:         INTEGER*2 GLOBAL                TOF.RECL%,                      \
+  52: 0000:                                         TOF.REPORT.NUM%,                \
+  53: 0000:                                         TOF.SESS.NUM%,                  \
+  54: 0000:                                         TRMOP.REC.NUM%,                 \
+  55: 0000:                                         TRMOP.RECL%,                    \
+  56: 0000:                                         TRMOP.REPORT.NUM%,              \
+  57: 0000:                                         TRMOP.SESS.NUM%,                \
+  58: 0000:                                         TRMOP.ASO.FLAG%,                \
+  59: 0000:                                         TRMOP.ESE.FLAG%
+  60: 0000: 
+  61: 0000:     STRING GLOBAL FILE.OPERATION$,                                     \
+  62: 0000:                   CURRENT.CODE$
+  63: 0000: 
+  64: 0000:     INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  65: 0000: 
+  66: 0000: \------------------------------------------------------------------------------
+  67: 0000: 
+  68: 0000:     FUNCTION TOF.SET PUBLIC
+  69: 0014: 
+  70: 0014:     TOF.REPORT.NUM%  = 34
+  71: 001d:     TOF.RECL%        = 512
+  72: 0026:     TOF.FILE.NAME$   = "EALTO000"
+  73: 0035: 
+  74: 0035:     TRMOP.REPORT.NUM% = 37
+  75: 003e:     TRMOP.RECL%       = 102
+  76: 0047:     TRMOP.FILE.NAME$  = "EALTO:"
+  77: 0056: 
+  78: 0056:     END FUNCTION
+  79: 0062: 
+  80: 0062: \------------------------------------------------------------------------------
+  81: 0062: 
+  82: 0062:     FUNCTION READ.TRMOP PUBLIC
+  83: 0076: 
+  84: 0076:     INTEGER*2 I%, READ.TRMOP
+  85: 0076: 
+  86: 0076:     READ.TRMOP = 1
+  87: 007b: 
+  88: 007b:     IF END #TRMOP.SESS.NUM% THEN END.OF.READ.TRMOP
+  89: 008f:     READ FORM "T1,C100,C2"; #TRMOP.SESS.NUM%, TRMOP.REC.NUM%;          \
+  90: 00cb:                              TRMOP.REC.DATA$, TRMOP.REC.CRLF$
+  91: 00cb: 
+  92: 00cb:     I% = 100
+  93: 00d1:     WHILE MID$(TRMOP.REC.DATA$,I%,1) = " "      \
+  94: 00d3:     AND  I% > 1
+  95: 00d3:         I% = I% - 1
+  96: 00d7:     WEND
+  97: 0121:     TRMOP.REC.DATA$ = LEFT$(TRMOP.REC.DATA$,I%)
+  98: 0142: 
+  99: 0142:     READ.TRMOP = 0
+ 100: 0147:     EXIT FUNCTION
+ 101: 0149: 
+ 102: 0149: 
+ 103: 0149:     END.OF.READ.TRMOP:
+ 104: 0149: 
+ 105: 0149:     FILE.OPERATION$     = "R"
+ 106: 0158:     CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+ 107: 01aa:                                  STR$(TRMOP.REC.NUM%)), 8)
+ 108: 01aa:     CURRENT.REPORT.NUM% = TRMOP.REPORT.NUM%
+ 109: 01b8: 
+ 110: 01b8:     EXIT FUNCTION
+ 111: 01ba: 
+ 112: 01ba:     END FUNCTION
+ 113: 01c9: 
+ 114: 01c9: 
+ 115: 01c9: \------------------------------------------------------------------------------
+ 116: 01c9: 
+ 117: 01c9:     FUNCTION READ.TRMOP.SEQ PUBLIC                                 ! CLJR
+ 118: 01dd: 
+ 119: 01dd:          INTEGER*2 READ.TRMOP.SEQ                                  ! CLJR
+ 120: 01dd: 
+ 121: 01dd:          READ.TRMOP.SEQ = 1                                        ! CLJR
+ 122: 01e2: 
+ 123: 01e2:          IF END #TRMOP.SESS.NUM% THEN END.OF.READ.TRMOP.SEQ        ! CLJR
+ 124: 01f6:       
+ 125: 01f6:          READ # TRMOP.SESS.NUM%;TRMOP.ESE.FLAG%,TRMOP.ASO.FLAG%    ! CLJR
+ 126: 021f:     
+ 127: 021f:          READ.TRMOP.SEQ = 0                                        ! CLJR
+ 128: 0224: 
+ 129: 0224:     EXIT FUNCTION                                                  ! CLJR
+ 130: 0226:     
+ 131: 0226:     END.OF.READ.TRMOP.SEQ:                                         ! CLJR
+ 132: 0226:     
+ 133: 0226:     END FUNCTION                                                   ! CLJR
+ 134: 0235: 
+ 135: 0235: \------------------------------------------------------------------------------
+ 136: 0235: 
+ 137: 0235:     FUNCTION READ.TRMOP.DATA.CRLF PUBLIC                           ! CLJR
+ 138: 0249: 
+ 139: 0249:             INTEGER*2 READ.TRMOP.DATA.CRLF                         ! CLJR
+ 140: 0249: 
+ 141: 0249:             READ.TRMOP.DATA.CRLF = 1                               ! CLJR
+ 142: 024e: 
+ 143: 024e:             IF END #TRMOP.SESS.NUM% THEN END.READ.TRMOP.DATA.CRLF  ! CLJR
+ 144: 0262: 
+ 145: 0262:             READ FORM "C100,C2";# TRMOP.SESS.NUM%, TRMOP.REC.NUM%; \ CLJR
+ 146: 029e:                                   TRMOP.REC.DATA$, TRMOP.REC.CRLF$ ! CLJR
+ 147: 029e: 
+ 148: 029e:             READ.TRMOP.DATA.CRLF = 0                               ! CLJR
+ 149: 02a3: 
+ 150: 02a3:     EXIT FUNCTION                                                  ! CLJR
+ 151: 02a5: 
+ 152: 02a5:     END.READ.TRMOP.DATA.CRLF:                                      ! CLJR
+ 153: 02a5: 
+ 154: 02a5:     END FUNCTION                                                   ! CLJR
+ 155: 02b4: 
+ 156: 02b4: 
+ 157: 02b4: \-----------------------------------------------------------------------------------
+ 158: 02b4: 
+ 159: 02b4:     FUNCTION READ.TRMOP.DATA.CRLF.LOCK PUBLIC                               ! CLJR
+ 160: 02c8: 
+ 161: 02c8:             INTEGER*2 READ.TRMOP.DATA.CRLF.LOCK                             ! CLJR
+ 162: 02c8: 
+ 163: 02c8:             READ.TRMOP.DATA.CRLF.LOCK = 1                                   ! CLJR
+ 164: 02cd: 
+ 165: 02cd:             IF END #TRMOP.SESS.NUM% THEN END.READ.TRMOP.DATA.CRLF.LOCK      ! CLJR
+ 166: 02e1:     
+ 167: 02e1:             READ FORM "C100,C2";# TRMOP.SESS.NUM% AUTOLOCK, TRMOP.REC.NUM%; \ CLJR
+ 168: 031d:                                   TRMOP.REC.DATA$, TRMOP.REC.CRLF$          ! CLJR
+ 169: 031d:                                                                            
+ 170: 031d:             READ.TRMOP.DATA.CRLF.LOCK = 0                                   ! CLJR
+ 171: 0322:                                                                            
+ 172: 0322:     EXIT FUNCTION                                                           ! CLJR
+ 173: 0324:                                                                             
+ 174: 0324:     END.READ.TRMOP.DATA.CRLF.LOCK:                                          ! CLJR
+ 175: 0324:                                                                            
+ 176: 0324:     END FUNCTION                                                            ! CLJR
+ 177: 0333: 
+ 178: 0333: 
+ 179: 0333: \------------------------------------------------------------------------------
+ 180: 0333: 
+ 181: 0333:     FUNCTION WRITE.TRMOP PUBLIC
+ 182: 0347: 
+ 183: 0347:     INTEGER*2 WRITE.TRMOP
+ 184: 0347: 
+ 185: 0347:     WRITE.TRMOP = 1
+ 186: 034c: 
+ 187: 034c:     IF END #TRMOP.SESS.NUM% THEN END.OF.WRITE.TRMOP
+ 188: 0360:     WRITE FORM "C100,C2"; #TRMOP.SESS.NUM%, TRMOP.REC.NUM%;           \
+ 189: 03a1:                             TRMOP.REC.DATA$, TRMOP.REC.CRLF$
+ 190: 03a1: 
+ 191: 03a1:     WRITE.TRMOP = 0
+ 192: 03a6:     EXIT FUNCTION
+ 193: 03a8: 
+ 194: 03a8: 
+ 195: 03a8:     END.OF.WRITE.TRMOP:
+ 196: 03a8: 
+ 197: 03a8:     FILE.OPERATION$     = "W"
+ 198: 03b7:     CURRENT.CODE$       = RIGHT$(PACK$("0000000000000000" +        \
+ 199: 0409:                                  STR$(TRMOP.REC.NUM%)), 8)
+ 200: 0409:     CURRENT.REPORT.NUM% = TRMOP.REPORT.NUM%
+ 201: 0417: 
+ 202: 0417:     EXIT FUNCTION
+ 203: 0419: 
+ 204: 0419: 
+ 205: 0419:     END FUNCTION
+ 206: 0428: 
+ 207: 0428: \------------------------------------------------------------------------------
+ 208: 0428: 
+ 209: 0428:     FUNCTION WRITE.TRMOP.DATA.CRLF.UNLOCK.HOLD PUBLIC                     ! CLJR
+ 210: 043c: 
+ 211: 043c:     INTEGER*2 WRITE.TRMOP.DATA.CRLF.UNLOCK.HOLD                           ! CLJR
+ 212: 043c:             
+ 213: 043c:             WRITE.TRMOP.DATA.CRLF.UNLOCK.HOLD = 1                         ! CLJR
+ 214: 0441: 
+ 215: 0441:             IF END #TRMOP.SESS.NUM% THEN END.WRITE.TRMOP.CRLF.UNLOCK.HOLD ! CLJR
+ 216: 0455: 
+ 217: 0455:             WRITE FORM "C100,C2"; HOLD # TRMOP.SESS.NUM% AUTOUNLOCK,      \ CLJR
+ 218: 0496:                     TRMOP.REC.NUM%;TRMOP.REC.DATA$, TRMOP.REC.CRLF$       ! CLJR
+ 219: 0496: 
+ 220: 0496:             WRITE.TRMOP.DATA.CRLF.UNLOCK.HOLD = 0                         ! CLJR
+ 221: 049b: 
+ 222: 049b:     EXIT FUNCTION                                                         ! CLJR
+ 223: 049d: 
+ 224: 049d:     END.WRITE.TRMOP.CRLF.UNLOCK.HOLD:                                     ! CLJR
+ 225: 049d:     
+ 226: 049d:     END FUNCTION                                                          ! CLJR
+ 227: 04ac: 
+ 228: 04ac: \------------------------------------------------------------------------------
+ 229: 04ac: 
+ 230: 04ac:     FUNCTION WRITE.TRMOP.DATA.CRLF.UNLOCK PUBLIC                          ! DJAS
+ 231: 04c0: 
+ 232: 04c0:     INTEGER*2 WRITE.TRMOP.DATA.CRLF.UNLOCK                                ! DJAS
+ 233: 04c0:                                                                         
+ 234: 04c0:             WRITE.TRMOP.DATA.CRLF.UNLOCK = 1                              ! DJAS
+ 235: 04c5: 
+ 236: 04c5:             IF END #TRMOP.SESS.NUM% THEN END.WRITE.TRMOP.CRLF.UNLOCK      ! DJAS
+ 237: 04d9: 
+ 238: 04d9:             WRITE FORM "C100,C2"; # TRMOP.SESS.NUM% AUTOUNLOCK,           \ DJAS
+ 239: 051a:                     TRMOP.REC.NUM%;TRMOP.REC.DATA$, TRMOP.REC.CRLF$       ! DJAS
+ 240: 051a: 
+ 241: 051a:             WRITE.TRMOP.DATA.CRLF.UNLOCK = 0                              ! DJAS
+ 242: 051f: 
+ 243: 051f:     EXIT FUNCTION                                                         ! DJAS
+ 244: 0521: 
+ 245: 0521:     END.WRITE.TRMOP.CRLF.UNLOCK:                                          ! DJAS
+ 246: 0521:     
+ 247: 0521:     END FUNCTION                                                          ! DJAS
+ 248: 0530: 
+ 249: 0530: \------------------------------------------------------------------------------
+ 250: 0530: 
+ 251: 0530: End of Compilation

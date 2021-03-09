@@ -1,0 +1,358 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***          UOD MASTER FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***          REFERENCE   :   UODMSFUN.BAS
+   7: 0000: \***
+   8: 0000: \***          VERSION A   :   Les Cook     23rd December 1992
+   9: 0000: \***
+  10: 0000: \*****************************************************************************
+  11: 0000: \*****************************************************************************
+  12: 0000: 
+  13: 0000:   INTEGER*2 GLOBAL            \
+  14: 0000:          CURRENT.REPORT.NUM% 
+  15: 0000:          
+  16: 0000:   STRING GLOBAL               \
+  17: 0000:          CURRENT.CODE$,       \
+  18: 0000:          FILE.OPERATION$           
+  19: 0000: 
+  20: 0000:   %INCLUDE UODMSDEC.J86
+  21: 0000: \*****************************************************************************
+  22: 0000: \*****************************************************************************
+  23: 0000: \***
+  24: 0000: \***      % INCLUDE FOR UOD MASTER FILE - FIELD DECLARATIONS
+  25: 0000: \***                                      FILE REFERENCE PARAMETERS
+  26: 0000: \***
+  27: 0000: \***                FILE TYPE: KEYED
+  28: 0000: \***
+  29: 0000: \***                REFERENCE: UODMSDEC.J86
+  30: 0000: \***
+  31: 0000: \***      VERSION A : Les Cook     23rd December 1992
+  32: 0000: \***
+  33: 0000: \***	  21 byte master record with key length of 5 bytes.
+  34: 0000: \***      
+  35: 0000: \*****************************************************************************
+  36: 0000: \*****************************************************************************
+  37: 0000: 
+  38: 0000: STRING GLOBAL			\
+  39: 0000:    UODMS.FILE.NAME$,		\
+  40: 0000:    UODMS.KEY$,			\ 5 byte key
+  41: 0000:                                 \
+  42: 0000:    UODMS.DIST.CENTRE$,		\ 1 byte UPD.  High Values for header record
+  43: 0000:    UODMS.WAREHOUSE.NUM$,	\ 1 byte UPD.  High Values for header record
+  44: 0000:    UODMS.UOD.NUMBER$,		\ 3 byte UPD.  High Values for header record
+  45: 0000:    				\ The above is the 5 byte key for the file.
+  46: 0000: 				\
+  47: 0000: 				\ Following are the detail records
+  48: 0000: 				\
+  49: 0000:    UODMS.QA.FLAG$,		\ 1 byte ASC. "Y" = QA included.
+  50: 0000:    				\	      " " = not included.
+  51: 0000:    UODMS.EXPECTED.DELIV.DATE$,	\ 3 byte UPD.
+  52: 0000:    UODMS.ACTUAL.DELIV.DATE$,	\ 3 byte UPD. 
+  53: 0000:    UODMS.UOD.TYPE$,		\ 1 byte ASC. Type of UOD.
+  54: 0000:    UODMS.STATUS$,		\ 1 byte ASC. "N" - Not booked in
+  55: 0000:    				\	      "B" - Booked in
+  56: 0000: 				\	      "R" - Retro request
+  57: 0000: 				\	      "O" - Opened
+  58: 0000: 				\	      "P" - Picking checked
+  59: 0000: 				\	      "D" - Opened UOD Retro request
+  60: 0000: 				\	      "G" - Checked UOD Retro request
+  61: 0000: 				\	      "M" - Missing
+  62: 0000:    UODMS.DETAIL.FILLER$,	\ 5 byte ASC.
+  63: 0000:                                 \
+  64: 0000: 				\ Following are the Header records
+  65: 0000: 				\
+  66: 0000:    UODMS.LAST.RUN.DATE$,	\ 3 byte UPD. Date of last PSS32 run date
+  67: 0000:    UODMS.HEADER.FILLER$		! 11 byte ASC.
+  68: 0000:    
+  69: 0000: INTEGER*2 GLOBAL		\
+  70: 0000:    UODMS.RECL%,			\
+  71: 0000:    UODMS.REPORT.NUM%,		\
+  72: 0000:    UODMS.SESS.NUM%,		\
+  73: 0000:    UODMS.NUM.ITEMS%,		\ Detail record
+  74: 0000:    UODMS.NUM.DATED.RETRO.RECS%	! Header record  
+  75: 0000:    
+  76: 0000:    								
+  77: 0000: 
+  78: 0000: 
+  79: 0000:   FUNCTION UODMS.SET PUBLIC
+  80: 0014: \***************************
+  81: 0014: 
+  82: 0014:      UODMS.REPORT.NUM% = 261                                   
+  83: 001d:      UODMS.RECL%      = 21
+  84: 0026:      UODMS.FILE.NAME$ = "UODMS"
+  85: 0035: 
+  86: 0035:   END FUNCTION
+  87: 0041: \------------------------------------------------------------------------------
+  88: 0041: REM EJECT^L  
+  89: 0041: 
+  90: 0041:   FUNCTION READ.UODMS PUBLIC
+  91: 0055: \****************************  
+  92: 0055: 
+  93: 0055:     INTEGER*2 READ.UODMS
+  94: 0055:     
+  95: 0055:     READ.UODMS = 1    
+  96: 005a: 
+  97: 005a:     IF UODMS.KEY$ = PACK$(STRING$(5,"??")) THEN BEGIN   ! header record
+  98: 007f:        IF END #UODMS.SESS.NUM% THEN READ.ERROR   
+  99: 0093:        READ FORM "T6,I2,C3,C11";                                        \ 
+ 100: 00db:             #UODMS.SESS.NUM%                                            \
+ 101: 00db:             KEY UODMS.KEY$;                                             \
+ 102: 00db:                 UODMS.NUM.DATED.RETRO.RECS%,                            \
+ 103: 00db:                 UODMS.LAST.RUN.DATE$,                                   \
+ 104: 00db:                 UODMS.HEADER.FILLER$
+ 105: 00db:        READ.UODMS = 0
+ 106: 00e0:        EXIT FUNCTION     
+ 107: 00e6:     ENDIF ELSE BEGIN                                    ! detail record
+ 108: 00e6:        IF END #UODMS.SESS.NUM% THEN READ.ERROR
+ 109: 00fa:        READ FORM "T6,C1,C3,C3,C1,C1,I2,C5"; # UODMS.SESS.NUM%           \
+ 110: 016e:            KEY UODMS.KEY$;                                              \
+ 111: 016e:                UODMS.QA.FLAG$,                                          \
+ 112: 016e:                UODMS.EXPECTED.DELIV.DATE$,                              \
+ 113: 016e:                UODMS.ACTUAL.DELIV.DATE$,                                \
+ 114: 016e:                UODMS.UOD.TYPE$,                                         \
+ 115: 016e:                UODMS.STATUS$,                                           \
+ 116: 016e:                UODMS.NUM.ITEMS%,                                        \
+ 117: 016e:                UODMS.DETAIL.FILLER$
+ 118: 016e:        READ.UODMS = 0
+ 119: 0173:        EXIT FUNCTION
+ 120: 0175:     ENDIF
+ 121: 0175:         
+ 122: 0175:     READ.ERROR:
+ 123: 0175: 
+ 124: 0175:         CURRENT.CODE$ = UODMS.KEY$
+ 125: 018b:         FILE.OPERATION$ = "R"
+ 126: 019a:         CURRENT.REPORT.NUM% = UODMS.REPORT.NUM%
+ 127: 01a8:            
+ 128: 01a8:         EXIT FUNCTION
+ 129: 01aa: 
+ 130: 01aa:   END FUNCTION
+ 131: 01b9:   
+ 132: 01b9: \------------------------------------------------------------------------------
+ 133: 01b9: REM EJECT^L  
+ 134: 01b9: 
+ 135: 01b9:   FUNCTION READ.UODMS.LOCKED PUBLIC
+ 136: 01cd: \***********************************  
+ 137: 01cd: 
+ 138: 01cd:     INTEGER*2 READ.UODMS.LOCKED
+ 139: 01cd:     
+ 140: 01cd:     READ.UODMS.LOCKED = 1    
+ 141: 01d2: 
+ 142: 01d2:     IF UODMS.KEY$ = PACK$(STRING$(5,"??")) THEN BEGIN   ! header record
+ 143: 01f7:        IF END #UODMS.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 144: 020b:        READ FORM "T6,I2,C3,C11";                                        \ 
+ 145: 0253:             #UODMS.SESS.NUM% AUTOLOCK                                   \
+ 146: 0253:             KEY UODMS.KEY$;                                             \
+ 147: 0253:                 UODMS.NUM.DATED.RETRO.RECS%,                            \
+ 148: 0253:                 UODMS.LAST.RUN.DATE$,                                   \
+ 149: 0253:                 UODMS.HEADER.FILLER$
+ 150: 0253:        READ.UODMS.LOCKED = 0
+ 151: 0258:        EXIT FUNCTION     
+ 152: 025e:     ENDIF ELSE BEGIN                                    ! detail record
+ 153: 025e:        IF END #UODMS.SESS.NUM% THEN READ.LOCKED.ERROR
+ 154: 0272:        READ FORM "T6,C1,C3,C3,C1,C1,I2,C5"; # UODMS.SESS.NUM% AUTOLOCK  \
+ 155: 02e6:            KEY UODMS.KEY$;                                              \
+ 156: 02e6:                UODMS.QA.FLAG$,                                          \
+ 157: 02e6:                UODMS.EXPECTED.DELIV.DATE$,                              \
+ 158: 02e6:                UODMS.ACTUAL.DELIV.DATE$,                                \
+ 159: 02e6:                UODMS.UOD.TYPE$,                                         \
+ 160: 02e6:                UODMS.STATUS$,                                           \
+ 161: 02e6:                UODMS.NUM.ITEMS%,                                        \
+ 162: 02e6:                UODMS.DETAIL.FILLER$
+ 163: 02e6:        READ.UODMS.LOCKED = 0
+ 164: 02eb:        EXIT FUNCTION
+ 165: 02ed:     ENDIF
+ 166: 02ed:         
+ 167: 02ed:     READ.LOCKED.ERROR:
+ 168: 02ed: 
+ 169: 02ed:         CURRENT.CODE$ = UODMS.KEY$
+ 170: 0303:         FILE.OPERATION$ = "R"
+ 171: 0312:         CURRENT.REPORT.NUM% = UODMS.REPORT.NUM%
+ 172: 0320:            
+ 173: 0320:         EXIT FUNCTION
+ 174: 0322: 
+ 175: 0322:   END FUNCTION  
+ 176: 0331: \------------------------------------------------------------------------------
+ 177: 0331: REM EJECT^L  
+ 178: 0331: 
+ 179: 0331: 
+ 180: 0331:   FUNCTION WRITE.HOLD.UODMS PUBLIC
+ 181: 0345: \**********************************
+ 182: 0345: 
+ 183: 0345:     INTEGER*2 WRITE.HOLD.UODMS
+ 184: 0345:     
+ 185: 0345:     WRITE.HOLD.UODMS = 1
+ 186: 034a:       
+ 187: 034a:     IF UODMS.KEY$ = PACK$(STRING$(5,"??")) THEN BEGIN   ! Header Record
+ 188: 036f:        IF END #UODMS.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 189: 0383:        WRITE FORM "C5,I2,C3,C11"; HOLD #UODMS.SESS.NUM%;                \
+ 190: 03d1:              UODMS.KEY$,                                                \
+ 191: 03d1:              UODMS.NUM.DATED.RETRO.RECS%,                               \
+ 192: 03d1:              UODMS.LAST.RUN.DATE$,                                      \
+ 193: 03d1:              UODMS.HEADER.FILLER$   
+ 194: 03d1:        WRITE.HOLD.UODMS = 0
+ 195: 03d6:        EXIT FUNCTION         
+ 196: 03dc:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 197: 03dc:        IF END #UODMS.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 198: 03f0:        WRITE FORM "C5,C1,2C3,2C1,I2,C5"; HOLD #UODMS.SESS.NUM%;         \
+ 199: 047e:              UODMS.KEY$,                                                \
+ 200: 047e:              UODMS.QA.FLAG$,                                            \
+ 201: 047e:              UODMS.EXPECTED.DELIV.DATE$,                                \
+ 202: 047e:              UODMS.ACTUAL.DELIV.DATE$,                                  \
+ 203: 047e:              UODMS.UOD.TYPE$,                                           \
+ 204: 047e:              UODMS.STATUS$,                                             \
+ 205: 047e:              UODMS.NUM.ITEMS%,                                          \
+ 206: 047e:              UODMS.DETAIL.FILLER$            
+ 207: 047e:        WRITE.HOLD.UODMS = 0
+ 208: 0483:        EXIT FUNCTION
+ 209: 0485:     ENDIF
+ 210: 0485:      
+ 211: 0485:     WRITE.HOLD.ERROR:
+ 212: 0485:      
+ 213: 0485:        FILE.OPERATION$ = "O"
+ 214: 0494:        CURRENT.REPORT.NUM% = UODMS.REPORT.NUM%
+ 215: 04a2:        CURRENT.CODE$ = UODMS.KEY$
+ 216: 04b8:     
+ 217: 04b8:        EXIT FUNCTION    
+ 218: 04ba: 
+ 219: 04ba:   END FUNCTION
+ 220: 04c9: 
+ 221: 04c9: \------------------------------------------------------------------------------
+ 222: 04c9: REM EJECT^L  
+ 223: 04c9: 
+ 224: 04c9: 
+ 225: 04c9:   FUNCTION WRITE.UNLOCK.UODMS PUBLIC
+ 226: 04dd: \************************************
+ 227: 04dd: 
+ 228: 04dd:     INTEGER*2 WRITE.UNLOCK.UODMS
+ 229: 04dd:     
+ 230: 04dd:     WRITE.UNLOCK.UODMS = 1
+ 231: 04e2:       
+ 232: 04e2:     IF UODMS.KEY$ = PACK$(STRING$(5,"??")) THEN BEGIN   ! Header Record
+ 233: 0507:        IF END #UODMS.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 234: 051b:        WRITE FORM "C5,I2,C3,C11"; #UODMS.SESS.NUM% AUTOUNLOCK;          \
+ 235: 0569:              UODMS.KEY$,                                                \
+ 236: 0569:              UODMS.NUM.DATED.RETRO.RECS%,                               \
+ 237: 0569:              UODMS.LAST.RUN.DATE$,                                      \
+ 238: 0569:              UODMS.HEADER.FILLER$   
+ 239: 0569:        WRITE.UNLOCK.UODMS = 0
+ 240: 056e:        EXIT FUNCTION         
+ 241: 0574:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 242: 0574:        IF END #UODMS.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 243: 0588:        WRITE FORM "C5,C1,2C3,2C1,I2,C5"; #UODMS.SESS.NUM% AUTOUNLOCK;   \
+ 244: 0616:              UODMS.KEY$,                                                \
+ 245: 0616:              UODMS.QA.FLAG$,                                            \
+ 246: 0616:              UODMS.EXPECTED.DELIV.DATE$,                                \
+ 247: 0616:              UODMS.ACTUAL.DELIV.DATE$,                                  \
+ 248: 0616:              UODMS.UOD.TYPE$,                                           \
+ 249: 0616:              UODMS.STATUS$,                                             \
+ 250: 0616:              UODMS.NUM.ITEMS%,                                          \
+ 251: 0616:              UODMS.DETAIL.FILLER$            
+ 252: 0616:        WRITE.UNLOCK.UODMS = 0
+ 253: 061b:        EXIT FUNCTION
+ 254: 061d:     ENDIF
+ 255: 061d:      
+ 256: 061d:     WRITE.UNLOCK.ERROR:
+ 257: 061d:      
+ 258: 061d:        FILE.OPERATION$ = "O"
+ 259: 062c:        CURRENT.REPORT.NUM% = UODMS.REPORT.NUM%
+ 260: 063a:        CURRENT.CODE$ = UODMS.KEY$
+ 261: 0650:     
+ 262: 0650:        EXIT FUNCTION    
+ 263: 0652: 
+ 264: 0652:   END FUNCTION
+ 265: 0661: 
+ 266: 0661: \------------------------------------------------------------------------------
+ 267: 0661: REM EJECT^L  
+ 268: 0661: 
+ 269: 0661: 
+ 270: 0661:   FUNCTION WRITE.HOLD.UNLOCK.UODMS PUBLIC
+ 271: 0675: \*****************************************
+ 272: 0675: 
+ 273: 0675:     INTEGER*2 WRITE.HOLD.UNLOCK.UODMS
+ 274: 0675:     
+ 275: 0675:     WRITE.HOLD.UNLOCK.UODMS = 1
+ 276: 067a:       
+ 277: 067a:     IF UODMS.KEY$ = PACK$(STRING$(5,"??")) THEN BEGIN   ! Header Record
+ 278: 069f:        IF END #UODMS.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 279: 06b3:        WRITE FORM "C5,I2,C3,C11"; HOLD #UODMS.SESS.NUM% AUTOUNLOCK;     \
+ 280: 0701:              UODMS.KEY$,                                                \
+ 281: 0701:              UODMS.NUM.DATED.RETRO.RECS%,                               \
+ 282: 0701:              UODMS.LAST.RUN.DATE$,                                      \
+ 283: 0701:              UODMS.HEADER.FILLER$   
+ 284: 0701:        WRITE.HOLD.UNLOCK.UODMS = 0
+ 285: 0706:        EXIT FUNCTION         
+ 286: 070c:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 287: 070c:        IF END #UODMS.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 288: 0720:        WRITE FORM "C5,C1,2C3,2C1,I2,C5"; HOLD #UODMS.SESS.NUM%          \ 
+ 289: 07ae:           AUTOUNLOCK;                                                   \
+ 290: 07ae:              UODMS.KEY$,                                                \
+ 291: 07ae:              UODMS.QA.FLAG$,                                            \
+ 292: 07ae:              UODMS.EXPECTED.DELIV.DATE$,                                \
+ 293: 07ae:              UODMS.ACTUAL.DELIV.DATE$,                                  \
+ 294: 07ae:              UODMS.UOD.TYPE$,                                           \
+ 295: 07ae:              UODMS.STATUS$,                                             \
+ 296: 07ae:              UODMS.NUM.ITEMS%,                                          \
+ 297: 07ae:              UODMS.DETAIL.FILLER$            
+ 298: 07ae:        WRITE.HOLD.UNLOCK.UODMS = 0
+ 299: 07b3:        EXIT FUNCTION
+ 300: 07b5:     ENDIF
+ 301: 07b5:      
+ 302: 07b5:     WRITE.HOLD.UNLOCK.ERROR:
+ 303: 07b5:      
+ 304: 07b5:        FILE.OPERATION$ = "O"
+ 305: 07c4:        CURRENT.REPORT.NUM% = UODMS.REPORT.NUM%
+ 306: 07d2:        CURRENT.CODE$ = UODMS.KEY$
+ 307: 07e8:     
+ 308: 07e8:        EXIT FUNCTION    
+ 309: 07ea: 
+ 310: 07ea:   END FUNCTION
+ 311: 07f9: 
+ 312: 07f9: 
+ 313: 07f9: \------------------------------------------------------------------------------
+ 314: 07f9: REM EJECT^L  
+ 315: 07f9: 
+ 316: 07f9: 
+ 317: 07f9:   FUNCTION WRITE.UODMS PUBLIC
+ 318: 080d: \**********************************
+ 319: 080d: 
+ 320: 080d:     INTEGER*2 WRITE.UODMS
+ 321: 080d:     
+ 322: 080d:     WRITE.UODMS = 1
+ 323: 0812:       
+ 324: 0812:     IF UODMS.KEY$ = PACK$(STRING$(5,"??")) THEN BEGIN   ! Header Record
+ 325: 0837:        IF END #UODMS.SESS.NUM% THEN WRITE.ERROR
+ 326: 084b:        WRITE FORM "C5,I2,C3,C11"; #UODMS.SESS.NUM%;                \
+ 327: 0899:              UODMS.KEY$,                                                \
+ 328: 0899:              UODMS.NUM.DATED.RETRO.RECS%,                               \
+ 329: 0899:              UODMS.LAST.RUN.DATE$,                                      \
+ 330: 0899:              UODMS.HEADER.FILLER$   
+ 331: 0899:        WRITE.UODMS = 0
+ 332: 089e:        EXIT FUNCTION         
+ 333: 08a4:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 334: 08a4:        IF END #UODMS.SESS.NUM% THEN WRITE.ERROR
+ 335: 08b8:        WRITE FORM "C5,C1,2C3,2C1,I2,C5"; #UODMS.SESS.NUM%;              \
+ 336: 0946:              UODMS.KEY$,                                                \
+ 337: 0946:              UODMS.QA.FLAG$,                                            \
+ 338: 0946:              UODMS.EXPECTED.DELIV.DATE$,                                \
+ 339: 0946:              UODMS.ACTUAL.DELIV.DATE$,                                  \
+ 340: 0946:              UODMS.UOD.TYPE$,                                           \
+ 341: 0946:              UODMS.STATUS$,                                             \
+ 342: 0946:              UODMS.NUM.ITEMS%,                                          \
+ 343: 0946:              UODMS.DETAIL.FILLER$            
+ 344: 0946:        WRITE.UODMS = 0
+ 345: 094b:        EXIT FUNCTION
+ 346: 094d:     ENDIF
+ 347: 094d:      
+ 348: 094d:     WRITE.ERROR:
+ 349: 094d:      
+ 350: 094d:        FILE.OPERATION$ = "O"
+ 351: 095c:        CURRENT.REPORT.NUM% = UODMS.REPORT.NUM%
+ 352: 096a:        CURRENT.CODE$ = UODMS.KEY$
+ 353: 0980:     
+ 354: 0980:        EXIT FUNCTION    
+ 355: 0982: 
+ 356: 0982:   END FUNCTION
+ 357: 0991: 
+ 358: 0991: End of Compilation

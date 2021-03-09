@@ -1,0 +1,478 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***                                                                           *
+   4: 0000: \***    SOURCE FOR GSA AUTHORISATION FILE PUBLIC FUNCTIONS                     *
+   5: 0000: \***                                                                           *
+   6: 0000: \***        REFERENCE   :  AFFUN (BAS)                                         *
+   7: 0000: \***                                                                           *
+   8: 0000: \***        FILE TYPE   :  Keyed                                               *
+   9: 0000: \***                                                                           *
+  10: 0000: \***    The GSA Authorisation File (EALAUTH.DAT) should not be confused with   *
+  11: 0000: \***    the Operating System Authorisation File (ADXCSOUF.DAT).                *
+  12: 0000: \***                                                                           *
+  13: 0000: \***    VERSION A.              ROBERT COWEY.                     18 AUG 1992. *
+  14: 0000: \***    Original version created by merging AFFNSD and AFSETD.                 *
+  15: 0000: \***                                                                           *
+  16: 0000: \***    VERSION B.              Steve Windsor                        Nov 1992. *
+  17: 0000: \***    Additions required for security changes - supervisor flag & operator   *
+  18: 0000: \***    model.                                                                 *
+  19: 0000: \***                                                                           *
+  20: 0000: \***    VERSION C.              ROBERT COWEY.                     03 MAR 1994. *
+  21: 0000: \***    Defined fields DATE.PSWD.CHANGE$, and MODEL.FLAGS.1% and ...2%.        *
+  22: 0000: \***                                                                           *
+  23: 0000: \***    VERSION D.             Mike Bishop                          30 JUN 2004
+  24: 0000: \***    Defined field AF.STAFF.NUM$ AF.EMPLOYEE.FLAG$
+  25: 0000: \***
+  26: 0000: \***    VERSION E.              Alan Carr                            4 Oct 2004
+  27: 0000: \***    Defined field AF.RECEIPT.NAME$
+  28: 0000: \***
+  29: 0000: \***    VERSION F.              Alan Carr                            4 Oct 2004
+  30: 0000: \***    Defined field AF.GROUP.CODE$
+  31: 0000: \***
+  32: 0000: \***    REVISION 1.6.                ROBERT COWEY.                15 JUN 2009.
+  33: 0000: \***    Changes for A9C POS improvements project.
+  34: 0000: \***    Used up last available three bytes of EALAUTH user data by redefining 
+  35: 0000: \***    remaining AF.USER$ variable as AF.BIRTH.DATE$.
+  36: 0000: \***
+  37: 0000: \***    REVISION 1.7.                ROBERT COWEY.                22 JUN 2009.
+  38: 0000: \***    Changes for A9C POS improvements project creating PSB99.286 Rv 1.8.
+  39: 0000: \***    Defect 3247 - Redefined AF.BIRTH.DATE$ format within AFDEC.J86.
+  40: 0000: \***    Description text change only - No code changes to this file.
+  41: 0000: \***
+  42: 0000: \*******************************************************************************
+  43: 0000: \*******************************************************************************
+  44: 0000: 
+  45: 0000: 
+  46: 0000:     %INCLUDE AFDEC.J86 ! AF variable declarations                     ! CRC
+  47: 0000: 
+  48: 0000: \REM
+  49: 0000: \*******************************************************************************
+  50: 0000: \*******************************************************************************
+  51: 0000: \***
+  52: 0000: \***    %INCLUDE FOR GSA AUTHORISATION FILE VARIABLE DECLARATIONS
+  53: 0000: \***
+  54: 0000: \***        REFERENCE   :  AFDEC (J86)
+  55: 0000: \***
+  56: 0000: \***        FILE TYPE   :  Keyed
+  57: 0000: \***
+  58: 0000: \***    The GSA Authorisation File (EALAUTH.DAT) should not be confused with
+  59: 0000: \***    the Operating System Authorisation File (ADXCSOUF.DAT).
+  60: 0000: \***
+  61: 0000: \***    VERSION A.              ROBERT COWEY.                       18 AUG 1992.
+  62: 0000: \***    Original version created by merging AFFLDD and AFNUMD.
+  63: 0000: \***
+  64: 0000: \***    VERSION B.              Steve Windsor                          Nov 1992.
+  65: 0000: \***    Addition of new fields for the CASTLE project.
+  66: 0000: \***    Supervisor flag and operator model.
+  67: 0000: \***
+  68: 0000: \***    VERSION C.              ROBERT COWEY.                       03 MAR 1994.
+  69: 0000: \***    Defined fields DATE.PSWD.CHANGE$, and MODEL.FLAGS.1% and ...2%.
+  70: 0000: \***
+  71: 0000: \***    VERSION D.             Mike Bishop                          30 JUN 2004
+  72: 0000: \***    Defined field AF.STAFF.NUM$ AF.EMPLOYEE.FLAG$
+  73: 0000: \***
+  74: 0000: \***    VERSION E.             Alan Carr  (AJC)                      4 Oct 2004
+  75: 0000: \***    Defined field AF.RECEIPT.NAME$
+  76: 0000: \***
+  77: 0000: \***    VERSION F.             Alan Carr  (AJC)                     31 Jan 2005
+  78: 0000: \***    Defined field AF.GROUP.CODE$
+  79: 0000: \***
+  80: 0000: \***    REVISION 1.6.                ROBERT COWEY.                15 JUN 2009.
+  81: 0000: \***    Changes for A9C POS improvements project.
+  82: 0000: \***    Used up last available three bytes of EALAUTH user data by redefining 
+  83: 0000: \***    remaining AF.USER$ variable as AF.BIRTH.DATE$.
+  84: 0000: \***    See IBM manual "GSA Programming Guide" Appendix A-27 for file layout 
+  85: 0000: \***    describing INDICAT flags (and position of original 20 bytes user data).
+  86: 0000: \***
+  87: 0000: \***    REVISION 1.7.                ROBERT COWEY.                22 JUN 2009.
+  88: 0000: \***    Changes for A9C POS improvements project creating PSB99.286 Rv 1.8.
+  89: 0000: \***    Defect 3247 - Redefined AF.BIRTH.DATE$ format as UPD-hex DDMCYY.
+  90: 0000: \***    Description text change only - No code changes to this file.
+  91: 0000: \***
+  92: 0000: \*******************************************************************************
+  93: 0000: \*******************************************************************************
+  94: 0000: 
+  95: 0000: 
+  96: 0000:     STRING GLOBAL \
+  97: 0000:         AF.BIRTH.DATE$,       \ ! 3 byte DDMCYY UPD/hex format         ! 1.7 RC
+  98: 0000:                               \ ! M is month  A=Oct B=Nov C=Dec        ! 1.7 RC
+  99: 0000:                               \ ! C is century  0=19xx 1=20xx          ! 1.7 RC
+ 100: 0000:         AF.DATE.PSWD.CHANGE$, \ ! 3 bytes UPD                          ! CRC
+ 101: 0000:         AF.FILE.NAME$, \
+ 102: 0000:         AF.FLAGS.01.12$, \      ! 15 bytes
+ 103: 0000:         AF.FLAGS.13.16$, \      ! 4 bytes
+ 104: 0000:         AF.OPERATOR.NAME$,\     ! 20 bytes
+ 105: 0000:         AF.OPERATOR.NO$, \      ! 4 byte UPD (key)
+ 106: 0000:         AF.OPTIONS.KEY$, \      ! 1 byte UPD
+ 107: 0000:         AF.PASSWORD$, \         ! 4 byte UPD
+ 108: 0000:         AF.RECEIPT.NAME$, \     ! 12 bytes                             ! AJC
+ 109: 0000:         AF.STAFF.NUM$, \         ! 4 byte UPD                          DMB
+ 110: 0000:         AF.EMPLOYEE.FLAG$, \     ! 1 byte UPD                          DMB
+ 111: 0000:         AF.GROUP.CODE$, \       ! 1  byte UPD                          AJC
+ 112: 0000: \       AF.USER$, \             ! 3  bytes                             ! 1.6 RC
+ 113: 0000:         AF.SUP.FLAG$, \         ! 1  byte                              BSJW
+ 114: 0000:         AF.OP.MODEL$            ! 3  bytes                             BSJW
+ 115: 0000: 
+ 116: 0000:     INTEGER*1 GLOBAL \
+ 117: 0000:         AF.INDICAT4%, \
+ 118: 0000:         AF.INDICAT5%, \
+ 119: 0000:         AF.INDICAT6%, \
+ 120: 0000:         AF.INDICAT7%, \
+ 121: 0000:         AF.INDICAT8%, \
+ 122: 0000:         AF.INDICAT9%, \
+ 123: 0000:         AF.INDICAT10%, \
+ 124: 0000:         AF.INDICAT11%, \
+ 125: 0000:         AF.INDICAT12%, \
+ 126: 0000:         AF.INDICAT13%, \
+ 127: 0000:         AF.INDICAT14%, \
+ 128: 0000:         AF.INDICAT15%, \
+ 129: 0000:         AF.INDICAT16%, \
+ 130: 0000:         AF.REPORT.NUM%
+ 131: 0000: 
+ 132: 0000:     INTEGER*2 GLOBAL \
+ 133: 0000:         AF.INDICAT1%, \
+ 134: 0000:         AF.INDICAT2%, \
+ 135: 0000:         AF.INDICAT3%, \
+ 136: 0000:         AF.MODEL.FLAGS.1%, \                                           ! CRC
+ 137: 0000:         AF.MODEL.FLAGS.2%, \                                           ! CRC
+ 138: 0000:         AF.RECL%, \
+ 139: 0000:         AF.SESS.NUM%
+ 140: 0000: 
+ 141: 0000: 
+ 142: 0000:     STRING GLOBAL \
+ 143: 0000:         CURRENT.CODE$, \
+ 144: 0000:         FILE.OPERATION$
+ 145: 0000: 
+ 146: 0000:     INTEGER*2 GLOBAL \
+ 147: 0000:         CURRENT.REPORT.NUM%
+ 148: 0000: 
+ 149: 0000: 
+ 150: 0000: FUNCTION AF.SET PUBLIC
+ 151: 0014: 
+ 152: 0014:     INTEGER*2 AF.SET
+ 153: 0014:     AF.SET EQ 1
+ 154: 0019: 
+ 155: 0019:     AF.FILE.NAME$  EQ "AF" ! Defines local copy of EALAUTH.DAT
+ 156: 0028:     AF.REPORT.NUM% EQ  2
+ 157: 0030:     AF.RECL%       EQ  80
+ 158: 0039: 
+ 159: 0039:     AF.SET EQ 0
+ 160: 003e: 
+ 161: 003e: END FUNCTION
+ 162: 004d: 
+ 163: 004d: 
+ 164: 004d: FUNCTION READ.AF PUBLIC
+ 165: 0061: 
+ 166: 0061:     INTEGER*2 READ.AF
+ 167: 0061:     READ.AF EQ 1
+ 168: 0066: 
+ 169: 0066:     IF END # AF.SESS.NUM% THEN ERROR.READ.AF
+ 170: 007a:     READ FORM "T5,C4,C1,3I2,9I1,C20,4I1,C12,C4,C1,C1,C3,C3,I2,I2,C1,C3"; \  ! CRC
+ 171: 01e0:       # AF.SESS.NUM% \
+ 172: 01e0:         KEY AF.OPERATOR.NO$; \
+ 173: 01e0:             AF.PASSWORD$, \
+ 174: 01e0:             AF.OPTIONS.KEY$, \
+ 175: 01e0:             AF.INDICAT1%, \
+ 176: 01e0:             AF.INDICAT2%, \
+ 177: 01e0:             AF.INDICAT3%, \
+ 178: 01e0:             AF.INDICAT4%, \
+ 179: 01e0:             AF.INDICAT5%, \
+ 180: 01e0:             AF.INDICAT6%, \
+ 181: 01e0:             AF.INDICAT7%, \
+ 182: 01e0:             AF.INDICAT8%, \
+ 183: 01e0:             AF.INDICAT9%, \
+ 184: 01e0:             AF.INDICAT10%, \
+ 185: 01e0:             AF.INDICAT11%, \
+ 186: 01e0:             AF.INDICAT12%, \
+ 187: 01e0:             AF.OPERATOR.NAME$, \
+ 188: 01e0:             AF.INDICAT13%, \
+ 189: 01e0:             AF.INDICAT14%, \
+ 190: 01e0:             AF.INDICAT15%, \
+ 191: 01e0:             AF.INDICAT16%, \
+ 192: 01e0:             AF.RECEIPT.NAME$, \                                        ! AJC
+ 193: 01e0:             AF.STAFF.NUM$, \                                            DMB
+ 194: 01e0:             AF.EMPLOYEE.FLAG$, \                                        DMB
+ 195: 01e0:             AF.GROUP.CODE$, \                                           AJC
+ 196: 01e0:             AF.BIRTH.DATE$, \                                          ! 1.6 RC
+ 197: 01e0:             AF.DATE.PSWD.CHANGE$, \                                    ! CRC
+ 198: 01e0:             AF.MODEL.FLAGS.1%, \                                       ! CRC
+ 199: 01e0:             AF.MODEL.FLAGS.2%, \                                       ! CRC
+ 200: 01e0:             AF.SUP.FLAG$, \                                             BSJW
+ 201: 01e0:             AF.OP.MODEL$                                               !BSJW
+ 202: 01e0: 
+ 203: 01e0:     READ.AF EQ 0
+ 204: 01e5:     EXIT FUNCTION
+ 205: 01e7: 
+ 206: 01e7: ERROR.READ.AF:
+ 207: 01e7: 
+ 208: 01e7:     FILE.OPERATION$     EQ "R"
+ 209: 01f6:     CURRENT.REPORT.NUM% EQ AF.REPORT.NUM%
+ 210: 0205:     CURRENT.CODE$       EQ AF.OPERATOR.NO$
+ 211: 021b: 
+ 212: 021b:     EXIT FUNCTION
+ 213: 021d: 
+ 214: 021d: END FUNCTION
+ 215: 022c: 
+ 216: 022c: 
+ 217: 022c: FUNCTION READ.AF.LOCKED PUBLIC
+ 218: 0240: 
+ 219: 0240:     INTEGER*2 READ.AF.LOCKED
+ 220: 0240:     READ.AF.LOCKED EQ 1
+ 221: 0245: 
+ 222: 0245:     IF END # AF.SESS.NUM% THEN ERROR.READ.AF.LOCKED
+ 223: 0259:     READ FORM "T5,C4,C1,3I2,9I1,C20,4I1,C12,C4,C1,C1,C3,C3,I2,I2,C1,C3"; \  ! CRC
+ 224: 03bf:       # AF.SESS.NUM% AUTOLOCK \
+ 225: 03bf:         KEY AF.OPERATOR.NO$; \
+ 226: 03bf:             AF.PASSWORD$, \
+ 227: 03bf:             AF.OPTIONS.KEY$, \
+ 228: 03bf:             AF.INDICAT1%, \
+ 229: 03bf:             AF.INDICAT2%, \
+ 230: 03bf:             AF.INDICAT3%, \
+ 231: 03bf:             AF.INDICAT4%, \
+ 232: 03bf:             AF.INDICAT5%, \
+ 233: 03bf:             AF.INDICAT6%, \
+ 234: 03bf:             AF.INDICAT7%, \
+ 235: 03bf:             AF.INDICAT8%, \
+ 236: 03bf:             AF.INDICAT9%, \
+ 237: 03bf:             AF.INDICAT10%, \
+ 238: 03bf:             AF.INDICAT11%, \
+ 239: 03bf:             AF.INDICAT12%, \
+ 240: 03bf:             AF.OPERATOR.NAME$, \
+ 241: 03bf:             AF.INDICAT13%, \
+ 242: 03bf:             AF.INDICAT14%, \
+ 243: 03bf:             AF.INDICAT15%, \
+ 244: 03bf:             AF.INDICAT16%, \
+ 245: 03bf:             AF.RECEIPT.NAME$, \                                        ! AJC
+ 246: 03bf:             AF.STAFF.NUM$, \                                            DMB
+ 247: 03bf:             AF.EMPLOYEE.FLAG$, \                                        DMB
+ 248: 03bf:             AF.GROUP.CODE$, \                                           AJC
+ 249: 03bf:             AF.BIRTH.DATE$, \                                          ! 1.6 RC
+ 250: 03bf:             AF.DATE.PSWD.CHANGE$, \                                    ! CRC
+ 251: 03bf:             AF.MODEL.FLAGS.1%, \                                       ! CRC
+ 252: 03bf:             AF.MODEL.FLAGS.2%, \                                       ! CRC
+ 253: 03bf:             AF.SUP.FLAG$, \                                             BSJW
+ 254: 03bf:             AF.OP.MODEL$                                               !BSJW
+ 255: 03bf: 
+ 256: 03bf:     READ.AF.LOCKED EQ 0
+ 257: 03c4:     EXIT FUNCTION
+ 258: 03c6: 
+ 259: 03c6: ERROR.READ.AF.LOCKED:
+ 260: 03c6: 
+ 261: 03c6:     FILE.OPERATION$     EQ "R"
+ 262: 03d5:     CURRENT.REPORT.NUM% EQ AF.REPORT.NUM%
+ 263: 03e4:     CURRENT.CODE$       EQ AF.OPERATOR.NO$
+ 264: 03fa: 
+ 265: 03fa:     EXIT FUNCTION
+ 266: 03fc: 
+ 267: 03fc: END FUNCTION
+ 268: 040b: 
+ 269: 040b: 
+ 270: 040b: FUNCTION READ.AF.ABREV PUBLIC
+ 271: 041f: 
+ 272: 041f:     INTEGER*2 READ.AF.ABREV
+ 273: 041f:     READ.AF.ABREV EQ 1
+ 274: 0424: 
+ 275: 0424:     IF END # AF.SESS.NUM% THEN ERROR.READ.AF.ABREV
+ 276: 0438:     READ FORM "T5,C4,C1,C15,C20,C4,C12,C4,C1,C1,C3,C3,I2,I2,C1,C3"; \       ! CRC
+ 277: 0504:       # AF.SESS.NUM% \
+ 278: 0504:         KEY AF.OPERATOR.NO$; \
+ 279: 0504:             AF.PASSWORD$, \
+ 280: 0504:             AF.OPTIONS.KEY$, \
+ 281: 0504:             AF.FLAGS.01.12$, \
+ 282: 0504:             AF.OPERATOR.NAME$, \
+ 283: 0504:             AF.FLAGS.13.16$, \
+ 284: 0504:             AF.RECEIPT.NAME$, \                                        ! AJC
+ 285: 0504:             AF.STAFF.NUM$, \                                            DMB
+ 286: 0504:             AF.EMPLOYEE.FLAG$, \                                        DMB
+ 287: 0504:             AF.GROUP.CODE$, \                                           AJC
+ 288: 0504:             AF.BIRTH.DATE$, \                                          ! 1.6 RC
+ 289: 0504:             AF.DATE.PSWD.CHANGE$, \                                    ! CRC
+ 290: 0504:             AF.MODEL.FLAGS.1%, \                                       ! CRC
+ 291: 0504:             AF.MODEL.FLAGS.2%, \                                       ! CRC
+ 292: 0504:             AF.SUP.FLAG$, \                                             BSJW
+ 293: 0504:             AF.OP.MODEL$                                               !BSJW
+ 294: 0504: 
+ 295: 0504:     READ.AF.ABREV EQ 0
+ 296: 0509:     EXIT FUNCTION
+ 297: 050b: 
+ 298: 050b: ERROR.READ.AF.ABREV:
+ 299: 050b: 
+ 300: 050b:     FILE.OPERATION$     EQ "R"
+ 301: 051a:     CURRENT.REPORT.NUM% EQ AF.REPORT.NUM%
+ 302: 0529:     CURRENT.CODE$       EQ AF.OPERATOR.NO$
+ 303: 053f: 
+ 304: 053f:     EXIT FUNCTION
+ 305: 0541: 
+ 306: 0541: END FUNCTION
+ 307: 0550: 
+ 308: 0550: 
+ 309: 0550: FUNCTION READ.AF.ABREV.LOCKED PUBLIC
+ 310: 0564: 
+ 311: 0564:     INTEGER*2 READ.AF.ABREV.LOCKED
+ 312: 0564:     READ.AF.ABREV.LOCKED EQ 1
+ 313: 0569: 
+ 314: 0569:     IF END # AF.SESS.NUM% THEN ERROR.READ.AF.ABREV.LOCKED
+ 315: 057d:     READ FORM "T5,C4,C1,C15,C20,C4,C12,C4,C1,C1,C3,C3,I2,I2,C1,C3"; \      ! CRC
+ 316: 0649:       # AF.SESS.NUM% AUTOLOCK \
+ 317: 0649:         KEY AF.OPERATOR.NO$; \
+ 318: 0649:             AF.PASSWORD$, \
+ 319: 0649:             AF.OPTIONS.KEY$, \
+ 320: 0649:             AF.FLAGS.01.12$, \
+ 321: 0649:             AF.OPERATOR.NAME$, \
+ 322: 0649:             AF.FLAGS.13.16$, \
+ 323: 0649:             AF.RECEIPT.NAME$, \                                        ! AJC
+ 324: 0649:             AF.STAFF.NUM$, \                                            DMB
+ 325: 0649:             AF.EMPLOYEE.FLAG$, \                                        DMB
+ 326: 0649:             AF.GROUP.CODE$, \                                           AJC
+ 327: 0649:             AF.BIRTH.DATE$, \                                          ! 1.6 RC
+ 328: 0649:             AF.DATE.PSWD.CHANGE$, \                                    ! CRC
+ 329: 0649:             AF.MODEL.FLAGS.1%, \                                       ! CRC
+ 330: 0649:             AF.MODEL.FLAGS.2%, \                                       ! CRC
+ 331: 0649:             AF.SUP.FLAG$, \                                             BSJW
+ 332: 0649:             AF.OP.MODEL$                                               !BSJW
+ 333: 0649: 
+ 334: 0649:     READ.AF.ABREV.LOCKED EQ 0
+ 335: 064e:     EXIT FUNCTION
+ 336: 0650: 
+ 337: 0650: ERROR.READ.AF.ABREV.LOCKED:
+ 338: 0650: 
+ 339: 0650:     FILE.OPERATION$     EQ "R"
+ 340: 065f:     CURRENT.REPORT.NUM% EQ AF.REPORT.NUM%
+ 341: 066e:     CURRENT.CODE$       EQ AF.OPERATOR.NO$
+ 342: 0684: 
+ 343: 0684:     EXIT FUNCTION
+ 344: 0686: 
+ 345: 0686: END FUNCTION
+ 346: 0695: 
+ 347: 0695: 
+ 348: 0695: FUNCTION WRITE.AF.UNLOCK PUBLIC
+ 349: 06a9: 
+ 350: 06a9:     INTEGER*2 WRITE.AF.UNLOCK
+ 351: 06a9:     WRITE.AF.UNLOCK EQ 1
+ 352: 06ae: 
+ 353: 06ae:     IF END # AF.SESS.NUM% THEN ERROR.WRITE.AF.UNLOCK
+ 354: 06c2:     WRITE FORM "C4,C4,C1,3I2,9I1,C20,4I1,C12,C4,C1,C1,C3,C3,I2,I2,C1,C3"; \ ! CRC
+ 355: 0886:       # AF.SESS.NUM% AUTOUNLOCK; \
+ 356: 0886:             AF.OPERATOR.NO$, \
+ 357: 0886:             AF.PASSWORD$, \
+ 358: 0886:             AF.OPTIONS.KEY$, \
+ 359: 0886:             AF.INDICAT1%, \
+ 360: 0886:             AF.INDICAT2%, \
+ 361: 0886:             AF.INDICAT3%, \
+ 362: 0886:             AF.INDICAT4%, \
+ 363: 0886:             AF.INDICAT5%, \
+ 364: 0886:             AF.INDICAT6%, \
+ 365: 0886:             AF.INDICAT7%, \
+ 366: 0886:             AF.INDICAT8%, \
+ 367: 0886:             AF.INDICAT9%, \
+ 368: 0886:             AF.INDICAT10%, \
+ 369: 0886:             AF.INDICAT11%, \
+ 370: 0886:             AF.INDICAT12%, \
+ 371: 0886:             AF.OPERATOR.NAME$, \
+ 372: 0886:             AF.INDICAT13%, \
+ 373: 0886:             AF.INDICAT14%, \
+ 374: 0886:             AF.INDICAT15%, \
+ 375: 0886:             AF.INDICAT16%, \
+ 376: 0886:             AF.RECEIPT.NAME$, \                                        ! AJC
+ 377: 0886:             AF.STAFF.NUM$, \                                            DMB
+ 378: 0886:             AF.EMPLOYEE.FLAG$, \                                        DMB
+ 379: 0886:             AF.GROUP.CODE$, \                                           AJC
+ 380: 0886:             AF.BIRTH.DATE$, \                                          ! 1.6 RC
+ 381: 0886:             AF.DATE.PSWD.CHANGE$, \                                    ! CRC
+ 382: 0886:             AF.MODEL.FLAGS.1%, \                                       ! CRC
+ 383: 0886:             AF.MODEL.FLAGS.2%, \                                       ! CRC
+ 384: 0886:             AF.SUP.FLAG$, \                                             BSJW
+ 385: 0886:             AF.OP.MODEL$                                               !BSJW
+ 386: 0886: 
+ 387: 0886:     WRITE.AF.UNLOCK EQ 0
+ 388: 088b:     EXIT FUNCTION
+ 389: 088d: 
+ 390: 088d: ERROR.WRITE.AF.UNLOCK:
+ 391: 088d: 
+ 392: 088d:     FILE.OPERATION$     EQ "W"
+ 393: 089c:     CURRENT.REPORT.NUM% EQ AF.REPORT.NUM%
+ 394: 08ab:     CURRENT.CODE$       EQ AF.OPERATOR.NO$
+ 395: 08c1: 
+ 396: 08c1:     EXIT FUNCTION
+ 397: 08c3: 
+ 398: 08c3: END FUNCTION
+ 399: 08d2: 
+ 400: 08d2: 
+ 401: 08d2: FUNCTION WRITE.AF.ABREV PUBLIC
+ 402: 08e6: 
+ 403: 08e6:     INTEGER*2 WRITE.AF.ABREV
+ 404: 08e6:     WRITE.AF.ABREV EQ 1
+ 405: 08eb: 
+ 406: 08eb:     IF END # AF.SESS.NUM% THEN ERROR.WRITE.AF.ABREV
+ 407: 08ff:     WRITE FORM "C4,C4,C1,C15,C20,C4,C12,C4,C1,C1,C3,C3,I2,I2,C1,C3"; \      ! CRC
+ 408: 0a09:       # AF.SESS.NUM%; \
+ 409: 0a09:             AF.OPERATOR.NO$, \
+ 410: 0a09:             AF.PASSWORD$, \
+ 411: 0a09:             AF.OPTIONS.KEY$, \
+ 412: 0a09:             AF.FLAGS.01.12$, \
+ 413: 0a09:             AF.OPERATOR.NAME$, \
+ 414: 0a09:             AF.FLAGS.13.16$, \
+ 415: 0a09:             AF.RECEIPT.NAME$, \                                        ! AJC
+ 416: 0a09:             AF.STAFF.NUM$, \                                            DMB
+ 417: 0a09:             AF.EMPLOYEE.FLAG$, \                                        DMB
+ 418: 0a09:             AF.GROUP.CODE$, \                                           AJC
+ 419: 0a09:             AF.BIRTH.DATE$, \                                          ! 1.6 RC
+ 420: 0a09:             AF.DATE.PSWD.CHANGE$, \                                    ! CRC
+ 421: 0a09:             AF.MODEL.FLAGS.1%, \                                       ! CRC
+ 422: 0a09:             AF.MODEL.FLAGS.2%, \                                       ! CRC
+ 423: 0a09:             AF.SUP.FLAG$, \                                             BSJW
+ 424: 0a09:             AF.OP.MODEL$                                               !BSJW
+ 425: 0a09: 
+ 426: 0a09:     WRITE.AF.ABREV EQ 0
+ 427: 0a0e:     EXIT FUNCTION
+ 428: 0a10: 
+ 429: 0a10: ERROR.WRITE.AF.ABREV:
+ 430: 0a10: 
+ 431: 0a10:     FILE.OPERATION$     EQ "W"
+ 432: 0a1f:     CURRENT.REPORT.NUM% EQ AF.REPORT.NUM%
+ 433: 0a2e:     CURRENT.CODE$       EQ AF.OPERATOR.NO$
+ 434: 0a44: 
+ 435: 0a44:     EXIT FUNCTION
+ 436: 0a46: 
+ 437: 0a46: END FUNCTION
+ 438: 0a55: 
+ 439: 0a55: 
+ 440: 0a55: FUNCTION WRITE.AF.ABREV.UNLOCK PUBLIC
+ 441: 0a69: 
+ 442: 0a69:     INTEGER*2 WRITE.AF.ABREV.UNLOCK
+ 443: 0a69:     WRITE.AF.ABREV.UNLOCK EQ 1
+ 444: 0a6e: 
+ 445: 0a6e:     IF END # AF.SESS.NUM% THEN ERROR.WRITE.AF.ABREV.UNLOCK
+ 446: 0a82:     WRITE FORM "C4,C4,C1,C15,C20,C4,C12,C4,C1,C1,C3,C3,I2,I2,C1,C3"; \      ! CRC
+ 447: 0b8c:       # AF.SESS.NUM% AUTOUNLOCK; \
+ 448: 0b8c:             AF.OPERATOR.NO$, \
+ 449: 0b8c:             AF.PASSWORD$, \
+ 450: 0b8c:             AF.OPTIONS.KEY$, \
+ 451: 0b8c:             AF.FLAGS.01.12$, \
+ 452: 0b8c:             AF.OPERATOR.NAME$, \
+ 453: 0b8c:             AF.FLAGS.13.16$, \
+ 454: 0b8c:             AF.RECEIPT.NAME$, \                                        ! AJC
+ 455: 0b8c:             AF.STAFF.NUM$, \                                            DMB
+ 456: 0b8c:             AF.EMPLOYEE.FLAG$, \                                        DMB
+ 457: 0b8c:             AF.GROUP.CODE$, \                                           AJC
+ 458: 0b8c:             AF.BIRTH.DATE$, \                                          ! 1.6 RC
+ 459: 0b8c:             AF.DATE.PSWD.CHANGE$, \                                    ! CRC
+ 460: 0b8c:             AF.MODEL.FLAGS.1%, \                                       ! CRC
+ 461: 0b8c:             AF.MODEL.FLAGS.2%, \                                       ! CRC
+ 462: 0b8c:             AF.SUP.FLAG$, \                                             BSJW
+ 463: 0b8c:             AF.OP.MODEL$                                               !BSJW
+ 464: 0b8c: 
+ 465: 0b8c:     WRITE.AF.ABREV.UNLOCK EQ 0
+ 466: 0b91:     EXIT FUNCTION
+ 467: 0b93: 
+ 468: 0b93: ERROR.WRITE.AF.ABREV.UNLOCK:
+ 469: 0b93: 
+ 470: 0b93:     FILE.OPERATION$     EQ "W"
+ 471: 0ba2:     CURRENT.REPORT.NUM% EQ AF.REPORT.NUM%
+ 472: 0bb1:     CURRENT.CODE$       EQ AF.OPERATOR.NO$
+ 473: 0bc7: 
+ 474: 0bc7:     EXIT FUNCTION
+ 475: 0bc9: 
+ 476: 0bc9: END FUNCTION
+ 477: 0bd8: 
+ 478: 0bd8: End of Compilation

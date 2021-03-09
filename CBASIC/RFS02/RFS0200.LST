@@ -1,0 +1,2525 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   rfs0200.bas  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.8  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: 
+  10: 0000: \*******************************************************************************
+  11: 0000: \*******************************************************************************
+  12: 0000: \***
+  13: 0000: \***    PROGRAM:  RFS02 -  RF Report Browser Program
+  14: 0000: \***
+  15: 0000: \***    VERSION A.       NIK SEN              15 October 1998
+  16: 0000: \***
+  17: 0000: \***    VERSION B.       Charles Skadorwa     15 December 1998
+  18: 0000: \***                     Prevent program abort if ENTER pressed & no reports.
+  19: 0000: \***
+  20: 0000: \***    VERSION C.       Charles Skadorwa     12 Jnauary 1999
+  21: 0000: \***                     Fix to stop report screen (1st screen) redrawing twice   
+  22: 0000: \***                     when returning from viewing a reports versions.
+  23: 0000: \***
+  24: 0000: \***    VERSION D.       Charles Skadorwa     13 Jnauary 1999
+  25: 0000: \***                     Fix to correctly interpret short file names listed in the
+  26: 0000: \***                     rfrdesc.dat file. Fix to enable correct processing of
+  27: 0000: \***                     non-existent filenames in the rfrdesc.dat file.
+  28: 0000: \***
+  29: 0000: \***    VERSION E.       Chris Combes         21st May 2004
+  30: 0000: \***                     Check added to ensure that report cannot be more than 
+  31: 0000: \***                     ARRAY.SIZE% lines long (and thus cause an error when 
+  32: 0000: \***                     assigning to REPORT$ Array). If report is too long it is
+  33: 0000: \***                     trucated to ARRAY.SIZE%-1 and a line is added to the end
+  34: 0000: \***                     of the report stating it has been trucated.  ARRAY.SIZE%
+  35: 0000: \***                     increased from 2000 to 3000
+  36: 0000: \***
+  37: 0000: \***    VERSION F.       RANJITH GOPALANKUTTY   24th October  2014
+  38: 0000: \***                     GAP Archival report has issue of duplicity, display
+  39: 0000: \***                     engine combines more than one report and displays.Also
+  40: 0000: \***                     when  the user taps in to different versions of  report
+  41: 0000: \***                     ,it just shows first report and repeating it to total
+  42: 0000: \***                     number of times the user performed GAP in a business
+  43: 0000: \***                     day, added logic to fix those.
+  44: 0000: \***
+  45: 0000: \******************************************************************************
+  46: 0000: \******************************************************************************
+  47: 0000: 
+  48: 0000: \******************************************************************************
+  49: 0000: \******************************************************************************
+  50: 0000: \***                                                                        
+  51: 0000: \***  O V E R V I E W                                                      
+  52: 0000: \***                                                                        
+  53: 0000: \***  This program allows RF HHT Reports to be viewed or printed from the 
+  54: 0000: \***  controller.      
+  55: 0000: \***
+  56: 0000: \****************************************************************************
+  57: 0000:        
+  58: 0000:        %INCLUDE RFRDEDEC.J86      ! RF REPORT DESCRIPTORS FILE
+  59: 0000: \******************************************************************************
+  60: 0000: \******************************************************************************
+  61: 0000: \***
+  62: 0000: \***   $Workfile:   RFRDEDEC.J86  $
+  63: 0000: \***
+  64: 0000: \***   $Revision:   1.0  $
+  65: 0000: \***
+  66: 0000: \******************************************************************************
+  67: 0000: \******************************************************************************
+  68: 0000: \***
+  69: 0000: \***   
+  70: 0000: \*** 
+  71: 0000: \***   
+  72: 0000: \******************************************************************************
+  73: 0000: \******************************************************************************\*****************************************************************************
+  74: 0000: \*****************************************************************************
+  75: 0000: \***
+  76: 0000: \***               %INCLUDE FOR RFRDESC - FIELD DECLARATIONS
+  77: 0000: \***
+  78: 0000: \***                      FILE TYPE    : RANDOM
+  79: 0000: \***
+  80: 0000: \***                      REFERENCE    : RFRDEDEC
+  81: 0000: \***
+  82: 0000: \***           VERSION A : NIK SEN  15th October 1998
+  83: 0000: \***
+  84: 0000: \***
+  85: 0000: \*****************************************************************************
+  86: 0000: \*****************************************************************************
+  87: 0000: 
+  88: 0000: 
+  89: 0000:   STRING GLOBAL           \
+  90: 0000:     RFRDE.FILE.NAME$          
+  91: 0000:           
+  92: 0000: 
+  93: 0000:   INTEGER*2 GLOBAL        \
+  94: 0000:     RFRDE.SESS.NUM%,      \
+  95: 0000:     RFRDE.REPORT.NUM%,    \
+  96: 0000:     RFRDE.RECL%          
+  97: 0000: 
+  98: 0000:   INTEGER*4 GLOBAL        \
+  99: 0000:     RFRDE.REC.NUM%       
+ 100: 0000: 
+ 101: 0000: 
+ 102: 0000:        %INCLUDE PRINTDEC.J86      ! PRINTER
+ 103: 0000: 
+ 104: 0000: REM \
+ 105: 0000: \*******************************************************************************
+ 106: 0000: \*******************************************************************************
+ 107: 0000: \***
+ 108: 0000: \***    %INCLUDE FOR PRINT FILE VARIABLE DECLARATIONS
+ 109: 0000: \***
+ 110: 0000: \***        REFERENCE   :   PRINTDE (J86)
+ 111: 0000: \***
+ 112: 0000: \***        FILE TYPE   :   Printer / Labeller
+ 113: 0000: \***
+ 114: 0000: \***    VERSION A.              ANDREW WEDGEWORTH                   09 JUL 1992.
+ 115: 0000: \***    Original version created by merging PRINTFLG and PRINTNUG.
+ 116: 0000: \***
+ 117: 0000: \***    VERSION B.              UNKNOWN.                            ?? ??? 1992.
+ 118: 0000: \***    Changes unknown.             
+ 119: 0000: \***
+ 120: 0000: \***    VERSION C.              ROBERT COWEY.                       18 NOV 1992.
+ 121: 0000: \***    No changes made to this file.
+ 122: 0000: \***
+ 123: 0000: \***    Version D               Andrew Wedgeworth                 24th May 1992
+ 124: 0000: \***    Variable added to contain condensed print record length.
+ 125: 0000: \***
+ 126: 0000: \*******************************************************************************
+ 127: 0000: \*******************************************************************************
+ 128: 0000: 
+ 129: 0000: 
+ 130: 0000:     STRING GLOBAL \
+ 131: 0000:         PRINT.LINE$, \
+ 132: 0000:         PRINT.FILE.NAME$, \
+ 133: 0000:         SELF.LAN.NAME$, \
+ 134: 0000:         SELF.NOLAN.NAME$
+ 135: 0000: 
+ 136: 0000:     INTEGER*2 GLOBAL \
+ 137: 0000:         PRINT.CONDENSED.RECL%, \                                       ! DAW  
+ 138: 0000:         PRINT.SESS.NUM%, \
+ 139: 0000:         PRINT.REPORT.NUM%, \
+ 140: 0000:         PRINT.REPORT.RECL%, \
+ 141: 0000:         PRINT.SELF.RECL%
+ 142: 0000: 
+ 143: 0000: 
+ 144: 0000:        %INCLUDE PSBUSEG.J86       ! CHAINING VARIABLES
+ 145: 0000: \/*********************************************************************/ PSBUSEG
+ 146: 0000: \/*                                                                   */ PSBUSEG
+ 147: 0000: \/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+ 148: 0000: \/* ----------------------------------------------------------------- */ PSBUSEG
+ 149: 0000: \/*                                                                   */ PSBUSEG
+ 150: 0000: \/*********************************************************************/ PSBUSEG
+ 151: 0000:                                                                        ! PSBUSEG
+ 152: 0000:         STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+ 153: 0000:                        PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+ 154: 0000:                        PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+ 155: 0000:                        PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+ 156: 0000:                        PSBCHN.U1,       \ User parameter               ! PSBUSEG
+ 157: 0000:                        PSBCHN.U2,       \ User parameter               ! PSBUSEG
+ 158: 0000:                        PSBCHN.U3        ! User parameter               ! PSBUSEG
+ 159: 0000:                                                                        ! PSBUSEG
+ 160: 0000:        %INCLUDE PSBF01G.J86       ! APPLICATION.LOG
+ 161: 0000: REM \
+ 162: 0000: \*******************************************************************************
+ 163: 0000: \*******************************************************************************
+ 164: 0000: \***
+ 165: 0000: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+ 166: 0000: \***
+ 167: 0000: \***                FUNCTION NUMBER    : PSBF01
+ 168: 0000: \***
+ 169: 0000: \***                REFERENCE          : PSBF01G.J86
+ 170: 0000: \***
+ 171: 0000: \***                DATE OF LAST AMENDMENT  - 27/2/86
+ 172: 0000: \***
+ 173: 0000: \***
+ 174: 0000: \*******************************************************************************
+ 175: 0000: 
+ 176: 0000:       INTEGER GLOBAL  F01.RETURN.CODE%
+ 177: 0000: 
+ 178: 0000: 
+ 179: 0000:        %INCLUDE PSBF03G.J86       ! DISPLAY MANAGER
+ 180: 0000: REM \
+ 181: 0000: \*******************************************************************************
+ 182: 0000: \***
+ 183: 0000: \***      INCLUDED CODE FOR DISPLAY MANAGER FUNCTIONS GLOBAL DECLARATIONS
+ 184: 0000: \***
+ 185: 0000: \***                    REFERENCE :  PSBF03G.J86
+ 186: 0000: \***              
+ 187: 0000: \***      Version A                                        21st March 1986
+ 188: 0000: \***
+ 189: 0000: \***      Version B          Andrew Wedgeworth              27th July 1992
+ 190: 0000: \***      Removal of F03.RETURN.CODE% which is no longer used.
+ 191: 0000: \***
+ 192: 0000: \*******************************************************************************
+ 193: 0000: 
+ 194: 0000:    ! 1 line deleted from here                                          ! BAW
+ 195: 0000:    INTEGER*2   GLOBAL   F03.RETURNED.INTEGER%    ! from IBM Display Manager
+ 196: 0000:    STRING      GLOBAL   F03.RETURNED.STRING$     ! from IBM Display Manager
+ 197: 0000: 
+ 198: 0000: 
+ 199: 0000: 
+ 200: 0000: 
+ 201: 0000: 
+ 202: 0000: 
+ 203: 0000:        %INCLUDE PSBF16G.J86       ! CONV TO HEX   
+ 204: 0000: REM\
+ 205: 0000: \*******************************************************************************
+ 206: 0000: \*******************************************************************************
+ 207: 0000: \***
+ 208: 0000: \***           %INCLUDE GLOBAL DEFINITIONS FOR CONV.TO.HEX FUNCTION
+ 209: 0000: \***
+ 210: 0000: \***                       REFERENCE     : PSBF16G.J86
+ 211: 0000: \*** 
+ 212: 0000: \***       Version A           Bruce Scriver            25th February 1986
+ 213: 0000: \***
+ 214: 0000: \***       Version B         Andrew Wedgeworth               2nd July 1992
+ 215: 0000: \***       Removal of now redundant F16.RETURN.CODE%.
+ 216: 0000: \***
+ 217: 0000: \*******************************************************************************
+ 218: 0000: \*******************************************************************************
+ 219: 0000: 
+ 220: 0000:       STRING   GLOBAL F16.HEX.STRING$
+ 221: 0000: 
+ 222: 0000:       ! 1 line deleted from here                                       ! BAW
+ 223: 0000:        %INCLUDE PSBF20G.J86       ! ALLOCATE.DEALLOCATE.SESS.NUM   
+ 224: 0000: REM\
+ 225: 0000: \*******************************************************************************
+ 226: 0000: \*******************************************************************************
+ 227: 0000: \***
+ 228: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 229: 0000: \***
+ 230: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 231: 0000: \*** 
+ 232: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 233: 0000: \*** 
+ 234: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 235: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 236: 0000: \***     to two byte integer.
+ 237: 0000: \***
+ 238: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 239: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 240: 0000: \***
+ 241: 0000: \*******************************************************************************
+ 242: 0000: \*******************************************************************************
+ 243: 0000: 
+ 244: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 245: 0000:                        F20.STRING.FILE.NO$,                            \
+ 246: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 247: 0000:                        SESS.NUM.TABLE$(1)
+ 248: 0000: 
+ 249: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 250: 0000: 
+ 251: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 252: 0000: 
+ 253: 0000: 
+ 254: 0000: 
+ 255: 0000: 
+ 256: 0000: \****************************************************************************
+ 257: 0000: \    Declare working variables
+ 258: 0000: \****************************************************************************
+ 259: 0000: 
+ 260: 0000:    INTEGER*1 EOF
+ 261: 0000:    INTEGER*1 EVENT.NUMBER%,    \
+ 262: 0000:              ERROR.COUNT%,     \
+ 263: 0000:              IP.ERROR.COUNT%
+ 264: 0000:   
+ 265: 0000:    INTEGER*1 GLOBAL FALSE
+ 266: 0000:    INTEGER*1 GLOBAL TRUE
+ 267: 0000:   
+ 268: 0000:    INTEGER*2 MESSAGE.NO%
+ 269: 0000:    INTEGER*2 DISPLAY.ITEM%       ! The line in the table,i.e., min 1, max 12
+ 270: 0000:    INTEGER*2 DISPLAY.COUNT%
+ 271: 0000: 
+ 272: 0000:    INTEGER*2 RC%
+ 273: 0000:    INTEGER*2 INPUT.EXIT%
+ 274: 0000:    INTEGER*2 SCREEN.EXIT%
+ 275: 0000:    INTEGER*2 NEW.HHT.EXIT%
+ 276: 0000:    INTEGER*2 BACKUP.EXISTS%
+ 277: 0000:    INTEGER*2 INSERT.LINE%
+ 278: 0000:    INTEGER*2 PAGE.MOVE%
+ 279: 0000:    INTEGER*2 TWIN.HOST%             
+ 280: 0000:    INTEGER*2 SAVED.CHANGES%
+ 281: 0000:    INTEGER*2 FILENAME.END%       ! End of filename position (for extract)  !DCS
+ 282: 0000:    INTEGER*2 ESC.KEY                                                   
+ 283: 0000:    INTEGER*2 F1.KEY
+ 284: 0000:    INTEGER*2 F3.KEY
+ 285: 0000:    INTEGER*2 F4.KEY
+ 286: 0000:    INTEGER*2 F5.KEY
+ 287: 0000:    INTEGER*2 F6.KEY
+ 288: 0000:    INTEGER*2 F7.KEY
+ 289: 0000:    INTEGER*2 F8.KEY
+ 290: 0000:    INTEGER*2 F10.KEY
+ 291: 0000:    INTEGER*2 ENTER.KEY
+ 292: 0000:    INTEGER*2 TAB.KEY
+ 293: 0000:    INTEGER*2 SHIFT.TAB      
+ 294: 0000:    INTEGER*2 UP.KEY
+ 295: 0000:    INTEGER*2 DOWN.KEY,         \
+ 296: 0000:              PGUP.KEY,         \
+ 297: 0000:              PGDN.KEY,         \
+ 298: 0000:              NO.OF.LINES%
+ 299: 0000: 
+ 300: 0000:    INTEGER*2 WORKFILE.SESS.NUM%,       \
+ 301: 0000:              WKFILE2.SESS.NUM%
+ 302: 0000: 
+ 303: 0000:    INTEGER*2 BACKUP.SESS.NUM%,         \
+ 304: 0000:              RETURN.FIELD%,            \
+ 305: 0000:              SCR.EXITKEY,              \
+ 306: 0000:              SB.EVENT.NO%,             \
+ 307: 0000:              CURR.SESS.NUM%,           \
+ 308: 0000:              INDEX%,                   \
+ 309: 0000:              PAGE%,                    \
+ 310: 0000:              PAGES%
+ 311: 0000:              
+ 312: 0000:    INTEGER*2 ARRAY.SIZE%               !ECC - Stores the size of REPORT$ Array   
+ 313: 0000: 
+ 314: 0000:    INTEGER*2 GLOBAL INTEGER.DATA%, PASSED.INTEGER%,    \
+ 315: 0000:                     CURRENT.REPORT.NUM%, ADX.FUNCTION%
+ 316: 0000: 
+ 317: 0000:    INTEGER*4 X%
+ 318: 0000:    INTEGER*4 Y%,                          \
+ 319: 0000:              RFRDESC.REC.NO%,             \
+ 320: 0000:              NO.OF.HEADERS%,              \
+ 321: 0000:              ADX.RETURN.CODE%,            \
+ 322: 0000:              REPORT.START,                \
+ 323: 0000:              REPORT.END
+ 324: 0000:    INTEGER*4 NO.REPORTS%
+ 325: 0000:    INTEGER*4 TERM%                        ! Number of HHT found in file
+ 326: 0000:    INTEGER*4 STARTING.POINT%              ! For displaying the table
+ 327: 0000:    INTEGER*4 END.POINT%                   ! For displaying the table
+ 328: 0000:    INTEGER*4 LINE.COUNT%
+ 329: 0000:    INTEGER*4 LIST.ITEM%                   ! Current position in total list
+ 330: 0000: 
+ 331: 0000:    INTEGER*4 L% (1)                       ! Length
+ 332: 0000:    INTEGER*4 INDEX2%                                                    ! FRG
+ 333: 0000:    INTEGER*4 RECORD%                                                    ! FRG
+ 334: 0000:    INTEGER*4 RECORD2%                                                   ! FRG
+ 335: 0000:    INTEGER*4 S% (1)          ! Start
+ 336: 0000: 
+ 337: 0000: 
+ 338: 0000:    INTEGER*4 GLOBAL F24.RETURN.CODE%
+ 339: 0000:       
+ 340: 0000:    STRING MESSAGE$
+ 341: 0000:    STRING FILE.NAME$
+ 342: 0000:    STRING GAP.FILE.NAME$                                                ! FRG
+ 343: 0000:    STRING VAR.STRING.1$                   ! For use with logging event 106
+ 344: 0000:    STRING VAR.STRING.2$                  
+ 345: 0000:    STRING LINE.X$
+ 346: 0000:    STRING CHAIN.FLAG$
+ 347: 0000:    STRING MODULE$,                     \
+ 348: 0000:           PASSED.STRING$,              \
+ 349: 0000:           SB.UNIQUE$,                  \
+ 350: 0000:           UNIQUE.2$,                   \
+ 351: 0000:           SB.MESSAGE$,                 \
+ 352: 0000:           FILE.OPERATION$,             \
+ 353: 0000:           ADXSERVE.DATA$,              \
+ 354: 0000:           TITLE$,                      \
+ 355: 0000:           TODAYS.DATE$,                \
+ 356: 0000:           REPORT.DATE$,                \
+ 357: 0000:           REPORT.TIME$,                \
+ 358: 0000:           NEW.LINE$,                   \
+ 359: 0000:           WORKFILE.FILE.NAME$,         \
+ 360: 0000:           REPORT.LINE$,                \
+ 361: 0000:           STORE.NUMBER$,               \
+ 362: 0000:           NAME$,                       \
+ 363: 0000:           REPORT.FILE.NAME$
+ 364: 0000: 
+ 365: 0000: 
+ 366: 0000: 
+ 367: 0000: 
+ 368: 0000: 
+ 369: 0000:    STRING GLOBAL STRING.DATA$
+ 370: 0000:    STRING GLOBAL PROGRAM$
+ 371: 0000:    STRING GLOBAL MODULE.NUMBER$           ! For use with display mgr routines
+ 372: 0000:    STRING GLOBAL BATCH.SCREEN.FLAG$
+ 373: 0000:    STRING GLOBAL OPERATOR.NUMBER$
+ 374: 0000:    STRING GLOBAL SCREEN.NUMBER$,       \
+ 375: 0000:                  FUNCTION.FLAG$,       \
+ 376: 0000:                  CURRENT.CODE.LOGGED$
+ 377: 0000: 
+ 378: 0000: 
+ 379: 0000:    
+ 380: 0000: \****************************************************************************
+ 381: 0000: \    Variables to be used as field names when read from the file
+ 382: 0000: \****************************************************************************
+ 383: 0000: 
+ 384: 0000: 
+ 385: 0000:    STRING FILLER$
+ 386: 0000:    STRING LN$
+ 387: 0000:    STRING FILENAME.STR$       ! End of filename position (for extract)  !DCS
+ 388: 0000:      
+ 389: 0000: 
+ 390: 0000:    STRING LINE$(1)                                                      ! FRG
+ 391: 0000:    STRING LINE2$(1)                                                     ! FRG
+ 392: 0000:    STRING LINE3$(1)                                                     ! FRG
+ 393: 0000:    STRING REPORT$(1) 
+ 394: 0000: 
+ 395: 0000: 
+ 396: 0000: \****************************************************************************
+ 397: 0000: \   Included code defining external Boots functions
+ 398: 0000: \****************************************************************************
+ 399: 0000: 
+ 400: 0000:        %INCLUDE RFRDEEXT.J86               
+ 401: 0000: \******************************************************************************
+ 402: 0000: \******************************************************************************
+ 403: 0000: \***
+ 404: 0000: \***   $Workfile:   RFRDEEXT.J86  $
+ 405: 0000: \***
+ 406: 0000: \***   $Revision:   1.0  $
+ 407: 0000: \***
+ 408: 0000: \******************************************************************************
+ 409: 0000: \******************************************************************************
+ 410: 0000: \***
+ 411: 0000: \***   
+ 412: 0000: \******************************************************************************
+ 413: 0000: \******************************************************************************\*****************************************************************************
+ 414: 0000: \*****************************************************************************
+ 415: 0000: \***
+ 416: 0000: \***                  FUNCTION DEFINITIONS FOR RFRDESC
+ 417: 0000: \***
+ 418: 0000: \***                      REFERENCE    : RFRDEEXT
+ 419: 0000: \***
+ 420: 0000: \***           VERSION A : NIK SEN  15th October 1998
+ 421: 0000: \***
+ 422: 0000: \*****************************************************************************
+ 423: 0000: \*****************************************************************************
+ 424: 0000: 
+ 425: 0000:    FUNCTION RFRDE.SET EXTERNAL
+ 426: 0000:    END FUNCTION
+ 427: 0000: 
+ 428: 0000: 
+ 429: 0000: 
+ 430: 0000:        %INCLUDE PRINTEXT.J86
+ 431: 0000: 
+ 432: 0000: REM \
+ 433: 0000: \*******************************************************************************
+ 434: 0000: \*******************************************************************************
+ 435: 0000: \***
+ 436: 0000: \***    %INCLUDE FOR PRINT FILE EXTERNAL FUNCTIONS
+ 437: 0000: \***
+ 438: 0000: \***        REFERENCE   :   PRINTEX (J86)
+ 439: 0000: \***
+ 440: 0000: \***        FILE TYPE   :   Printer / Labeller
+ 441: 0000: \***
+ 442: 0000: \***    VERSION A.              ANDREW WEDGEWORTH                   09 JUL 1992.
+ 443: 0000: \***    Original version created from PRINTEXG.
+ 444: 0000: \***
+ 445: 0000: \***    VERSION B.              UNKNOWN.                            ?? ??? 1992.
+ 446: 0000: \***    Changes unknown.             
+ 447: 0000: \***
+ 448: 0000: \***    VERSION C.              ROBERT COWEY.                       18 NOV 1992.
+ 449: 0000: \***    Defined function variables for use as return codes.
+ 450: 0000: \***
+ 451: 0000: \***    Version C               Andrew Wedgeworth                 24th May 1992
+ 452: 0000: \***    Condensed print function added.
+ 453: 0000: \***
+ 454: 0000: \***    Version D               Stuart WIlliam McConnachie       31st July 2000.
+ 455: 0000: \***    Added function for PCL printing to LaserJet.
+ 456: 0000: \***
+ 457: 0000: \***    Version E               Charles Skadorwa                   4th Apr 2008.
+ 458: 0000: \***    Added parameter to WRITE.CONDENSED.PRINT function to 
+ 459: 0000: \***    enable Alliance Pharmacy Brother Laser printers to print
+ 460: 0000: \***    in condensed mode.
+ 461: 0000: \***
+ 462: 0000: \*******************************************************************************
+ 463: 0000: \*******************************************************************************
+ 464: 0000: 
+ 465: 0000: 
+ 466: 0000:     FUNCTION PRINT.SET EXTERNAL                                      
+ 467: 0000:         INTEGER*2 PRINT.SET
+ 468: 0000:     END FUNCTION                                                   
+ 469: 0000: 
+ 470: 0000: 
+ 471: 0000:     FUNCTION WRITE.PRINT EXTERNAL
+ 472: 0000:        INTEGER*2 WRITE.PRINT
+ 473: 0000:     END FUNCTION 
+ 474: 0000: 
+ 475: 0000: 
+ 476: 0000:     FUNCTION WRITE.CONDENSED.PRINT (AP.STORE) EXTERNAL                 ! ECSk
+ 477: 0000:        INTEGER*2 WRITE.CONDENSED.PRINT
+ 478: 0000:     END FUNCTION 
+ 479: 0000:     
+ 480: 0000: 
+ 481: 0000:     FUNCTION WRITE.PCL.PRINT EXTERNAL                                  ! DSWM
+ 482: 0000:        INTEGER*2 WRITE.PCL.PRINT                                       ! DSWM
+ 483: 0000:     END FUNCTION                                                       ! DSWM
+ 484: 0000:     
+ 485: 0000: 
+ 486: 0000:     FUNCTION WRITE.LABEL EXTERNAL
+ 487: 0000:         INTEGER*2 WRITE.LABEL
+ 488: 0000:     END FUNCTION 
+ 489: 0000: 
+ 490: 0000: 
+ 491: 0000: 
+ 492: 0000:        %INCLUDE PSBF01E.J86       ! APPLICATION.LOG
+ 493: 0000: REM \
+ 494: 0000: \*******************************************************************************
+ 495: 0000: \*******************************************************************************
+ 496: 0000: \***
+ 497: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 498: 0000: \***
+ 499: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 500: 0000: \***
+ 501: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 502: 0000: \*** 
+ 503: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 504: 0000: \***      Three parameters which passed to the function have been removed.
+ 505: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 506: 0000: \***      return code).
+ 507: 0000: \***
+ 508: 0000: \*******************************************************************************
+ 509: 0000: 
+ 510: 0000: 
+ 511: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 512: 0000:                              VAR.STRING.1$,                                   \
+ 513: 0000:                              VAR.STRING.2$,                                   \
+ 514: 0000:                              EVENT.NO%)  EXTERNAL
+ 515: 0000: 
+ 516: 0000:       INTEGER*1 EVENT.NO%
+ 517: 0000: 
+ 518: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 519: 0000:                 MESSAGE.NO%
+ 520: 0000: 
+ 521: 0000:       STRING VAR.STRING.1$,                                            \
+ 522: 0000:              VAR.STRING.2$
+ 523: 0000: 
+ 524: 0000:    END FUNCTION
+ 525: 0000: 
+ 526: 0000: \*******************************************************************************
+ 527: 0000:        %INCLUDE PSBF03E.J86       ! DISPLAY MANAGER
+ 528: 0000: REM \
+ 529: 0000: \*******************************************************************************
+ 530: 0000: \***
+ 531: 0000: \***    %INCLUDED CODE FOR EXTERNAL DEFINITIONS OF DISPLAY MANAGER FUNCTIONS
+ 532: 0000: \***     
+ 533: 0000: \***            REFERENCE       : PSBF03E.J86     
+ 534: 0000: \***     
+ 535: 0000: \***            DATE.WRITTEN    : 21/03/1986     
+ 536: 0000: \***     
+ 537: 0000: \***    Version B              Andrew Wedgeworth              21st July 1992
+ 538: 0000: \***    Remove redundant function parameters (BATCH.SCREEN.FLAG$, 
+ 539: 0000: \***    MODULE.NUMBER$ and OPERATOR.NUMBER$).  Function names defined as 
+ 540: 0000: \***    variables to hold return codes.
+ 541: 0000: \***
+ 542: 0000: \*******************************************************************************
+ 543: 0000: 
+ 544: 0000:    FUNCTION DM.INITDM (STRING.DATA$,                                   \
+ 545: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 546: 0000: 
+ 547: 0000:       STRING      STRING.DATA$
+ 548: 0000: 
+ 549: 0000:       INTEGER*2   DM.INITDM,                                           \ BAW
+ 550: 0000:                   INTEGER.DATA%
+ 551: 0000:                          
+ 552: 0000:      
+ 553: 0000: 
+ 554: 0000:    END FUNCTION
+ 555: 0000: 
+ 556: 0000:    FUNCTION DM.CLRSCR (STRING.DATA$,                                   \
+ 557: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 558: 0000: 
+ 559: 0000:       STRING      STRING.DATA$
+ 560: 0000: 
+ 561: 0000:       INTEGER*2   DM.CLRSCR,                                           \ BAW
+ 562: 0000:                   INTEGER.DATA%
+ 563: 0000: 
+ 564: 0000:    END FUNCTION
+ 565: 0000: 
+ 566: 0000:    FUNCTION DM.CLSDIS (STRING.DATA$,                                   \
+ 567: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 568: 0000: 
+ 569: 0000:       STRING      STRING.DATA$
+ 570: 0000: 
+ 571: 0000:       INTEGER*2   DM.CLSDIS,                                           \ BAW
+ 572: 0000:                   INTEGER.DATA%
+ 573: 0000: 
+ 574: 0000:    END FUNCTION
+ 575: 0000: 
+ 576: 0000:    FUNCTION DM.OPNDIS (STRING.DATA$,                                   \
+ 577: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 578: 0000: 
+ 579: 0000:       STRING      STRING.DATA$
+ 580: 0000: 
+ 581: 0000:       INTEGER*2   DM.OPNDIS,                                           \ BAW 
+ 582: 0000:                   INTEGER.DATA%
+ 583: 0000: 
+ 584: 0000:    END FUNCTION
+ 585: 0000: 
+ 586: 0000:    FUNCTION DM.DISPD  (STRING.DATA$,                                   \
+ 587: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 588: 0000: 
+ 589: 0000:       STRING      STRING.DATA$
+ 590: 0000: 
+ 591: 0000:       INTEGER*2   DM.DISPD,                                            \ BAW
+ 592: 0000:                   INTEGER.DATA%
+ 593: 0000: 
+ 594: 0000:    END FUNCTION
+ 595: 0000: 
+ 596: 0000:    FUNCTION DM.RETDM  (STRING.DATA$,                                   \
+ 597: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 598: 0000: 
+ 599: 0000:       STRING      STRING.DATA$
+ 600: 0000: 
+ 601: 0000:       INTEGER*2   DM.RETDM,                                            \ BAW 
+ 602: 0000:                   INTEGER.DATA%
+ 603: 0000: 
+ 604: 0000:    END FUNCTION
+ 605: 0000: 
+ 606: 0000:    FUNCTION DM.CURS   (STRING.DATA$,                                   \
+ 607: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 608: 0000: 
+ 609: 0000:       STRING      STRING.DATA$
+ 610: 0000: 
+ 611: 0000:       INTEGER*2   DM.CURS,                                             \ BAW      
+ 612: 0000:                   INTEGER.DATA%
+ 613: 0000: 
+ 614: 0000:    END FUNCTION
+ 615: 0000: 
+ 616: 0000:    FUNCTION DM.RETF   (STRING.DATA$,                                   \
+ 617: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 618: 0000: 
+ 619: 0000:       STRING      STRING.DATA$
+ 620: 0000: 
+ 621: 0000:       INTEGER*2   DM.RETF,                                             \ BAW
+ 622: 0000:                   INTEGER.DATA%
+ 623: 0000: 
+ 624: 0000:    END FUNCTION
+ 625: 0000: 
+ 626: 0000:    FUNCTION DM.SETF   (STRING.DATA$,                                   \
+ 627: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 628: 0000: 
+ 629: 0000:       STRING      STRING.DATA$
+ 630: 0000: 
+ 631: 0000:       INTEGER*2   DM.SETF,                                             \ BAW
+ 632: 0000:                   INTEGER.DATA%
+ 633: 0000: 
+ 634: 0000:    END FUNCTION
+ 635: 0000: 
+ 636: 0000:    FUNCTION DM.POSF   (STRING.DATA$,                            \
+ 637: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 638: 0000: 
+ 639: 0000:       STRING      STRING.DATA$
+ 640: 0000: 
+ 641: 0000:       INTEGER*2   DM.POSF,                                             \ BAW
+ 642: 0000:                   INTEGER.DATA%
+ 643: 0000: 
+ 644: 0000:    END FUNCTION
+ 645: 0000: 
+ 646: 0000:    FUNCTION DM.NEXTF  (STRING.DATA$,                                   \
+ 647: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 648: 0000: 
+ 649: 0000:       STRING      STRING.DATA$
+ 650: 0000: 
+ 651: 0000:       INTEGER*2   DM.NEXTF,                                            \ BAW
+ 652: 0000:                   INTEGER.DATA%
+ 653: 0000: 
+ 654: 0000:    END FUNCTION
+ 655: 0000: 
+ 656: 0000:    FUNCTION DM.PUTF   (STRING.DATA$,                                   \
+ 657: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 658: 0000: 
+ 659: 0000:       STRING      STRING.DATA$
+ 660: 0000: 
+ 661: 0000:       INTEGER*2   DM.PUTF,                                             \ BAW
+ 662: 0000:                   INTEGER.DATA%
+ 663: 0000: 
+ 664: 0000:    END FUNCTION
+ 665: 0000: 
+ 666: 0000:    FUNCTION DM.GETF   (STRING.DATA$,                                   \ BAW
+ 667: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 668: 0000: 
+ 669: 0000:       STRING      STRING.DATA$
+ 670: 0000: 
+ 671: 0000:       INTEGER*2   DM.GETF,                                             \ BAW 
+ 672: 0000:                   INTEGER.DATA%
+ 673: 0000: 
+ 674: 0000:    END FUNCTION
+ 675: 0000: 
+ 676: 0000:    FUNCTION DM.UPDF   (STRING.DATA$,                                   \
+ 677: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 678: 0000: 
+ 679: 0000:       STRING      STRING.DATA$
+ 680: 0000: 
+ 681: 0000:       INTEGER*2   DM.UPDF,                                             \ BAW
+ 682: 0000:                   INTEGER.DATA%
+ 683: 0000: 
+ 684: 0000:    END FUNCTION
+ 685: 0000: 
+ 686: 0000:    FUNCTION DM.RESF   (STRING.DATA$,                                   \
+ 687: 0000:                        INTEGER.DATA%)   EXTERNAL
+ 688: 0000: 
+ 689: 0000:       STRING      STRING.DATA$
+ 690: 0000: 
+ 691: 0000:       INTEGER*2   DM.RESF,                                             \ BAW
+ 692: 0000:                   INTEGER.DATA%
+ 693: 0000: 
+ 694: 0000:    END FUNCTION
+ 695: 0000: 
+ 696: 0000: \*******************************************************************************
+ 697: 0000:        %INCLUDE PSBF04E.J86       ! EXTERNAL MESSAGE
+ 698: 0000: REM \
+ 699: 0000: \*******************************************************************************
+ 700: 0000: \*******************************************************************************
+ 701: 0000: \***
+ 702: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION EXTERNAL.MESSAGE
+ 703: 0000: \***
+ 704: 0000: \***
+ 705: 0000: \***            FUNCTION NUMBER    : PSBF04
+ 706: 0000: \***
+ 707: 0000: \***            INCLUDE REFERENCE  : PSBF04E.J86
+ 708: 0000: \***
+ 709: 0000: \***            DATE WRITTEN       : 5th March 1986
+ 710: 0000: \***
+ 711: 0000: \***        Version B        Andrew Wedgeworth         15th July 1992
+ 712: 0000: \***        Redundant function parameters removed.  EXTERNAL.MESSAGE
+ 713: 0000: \***        is defined as a variable which holds the return code.  
+ 714: 0000: \***
+ 715: 0000: \*******************************************************************************
+ 716: 0000: \*******************************************************************************
+ 717: 0000: 
+ 718: 0000:    FUNCTION EXTERNAL.MESSAGE  (MESSAGE.NO%,                            \
+ 719: 0000:                                STRING.DATA$,                           \
+ 720: 0000:                                RETURN.FIELD%) EXTERNAL
+ 721: 0000:    ! 3 parameters deleted from here                                    ! BAW
+ 722: 0000: 
+ 723: 0000:       STRING     STRING.DATA$
+ 724: 0000: 
+ 725: 0000:       INTEGER*2  EXTERNAL.MESSAGE,                                     \ BAW
+ 726: 0000:                  MESSAGE.NO%,                                          \
+ 727: 0000:                  RETURN.FIELD%
+ 728: 0000: 
+ 729: 0000:    END FUNCTION
+ 730: 0000: 
+ 731: 0000: \*******************************************************************************
+ 732: 0000:        %INCLUDE PSBF08E.J86       ! Print Report Function
+ 733: 0000: rem\
+ 734: 0000: \*******************************************************************************
+ 735: 0000: \*******************************************************************************
+ 736: 0000: \***
+ 737: 0000: \***         INCLUDE       : PRINT.REPORT external definition
+ 738: 0000: \***
+ 739: 0000: \***         REFERENCE     : PSBF08E.J86
+ 740: 0000: \***
+ 741: 0000: \***         Version A     Bruce Scriver     27th February 1986
+ 742: 0000: \*** 
+ 743: 0000: \***         Version B     Andrew Wedgeworth      7th July 1992
+ 744: 0000: \***         Remove redundant parameters, and add PRINT.REPORT as a variable
+ 745: 0000: \***         to hold the return code.
+ 746: 0000: \*** 
+ 747: 0000: \***         Version C     Andrew Wedgeworth      24th May 1993
+ 748: 0000: \***         Extra parameter added to enable the printing of a condensed
+ 749: 0000: \***         report.
+ 750: 0000: \***
+ 751: 0000: \*******************************************************************************
+ 752: 0000: \*******************************************************************************
+ 753: 0000: 
+ 754: 0000:    FUNCTION PRINT.REPORT (SESSION.NUMBER%,CONDENSED.PRINT.FLAG$)       \ CAW
+ 755: 0000:    EXTERNAL
+ 756: 0000: 
+ 757: 0000:    STRING    CONDENSED.PRINT.FLAG$                                     ! CAW
+ 758: 0000:  
+ 759: 0000:    INTEGER   PRINT.REPORT,                                             \ BAW
+ 760: 0000:              SESSION.NUMBER%
+ 761: 0000: 
+ 762: 0000:    END FUNCTION
+ 763: 0000:        %INCLUDE PSBF12E.J86       ! HELP
+ 764: 0000: REM \
+ 765: 0000: \*****************************************************************************
+ 766: 0000: \*****************************************************************************
+ 767: 0000: \***
+ 768: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF HELP FUNCTION
+ 769: 0000: \***
+ 770: 0000: \***            FUNCTION NUMBER      : PSBF12
+ 771: 0000: \***
+ 772: 0000: \***            REFERENCE            : PSBF12E.J86
+ 773: 0000: \***
+ 774: 0000: \***            DATE WRITTEN         : 17th March 1986
+ 775: 0000: \***
+ 776: 0000: \***      Version B           Andrew Wedgeworth           21st July 1992
+ 777: 0000: \***      Removal of redundant function parameters. HELP included as a 
+ 778: 0000: \***      variable to hold the return code.
+ 779: 0000: \***
+ 780: 0000: \*****************************************************************************
+ 781: 0000: \*****************************************************************************
+ 782: 0000: 
+ 783: 0000:    FUNCTION HELP (SCREEN.NO$) EXTERNAL
+ 784: 0000: 
+ 785: 0000:        STRING SCREEN.NO$
+ 786: 0000:        
+ 787: 0000:        INTEGER*2 HELP       
+ 788: 0000: 
+ 789: 0000:    END FUNCTION
+ 790: 0000: 
+ 791: 0000: \******************************************************************************
+ 792: 0000:        %INCLUDE PSBF16E.J86       ! CONV TO HEX
+ 793: 0000: REM\
+ 794: 0000: \*******************************************************************************
+ 795: 0000: \*******************************************************************************
+ 796: 0000: \***
+ 797: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.HEX FUNCTION
+ 798: 0000: \***
+ 799: 0000: \***                  REFERENCE     : PSBF16E.J86
+ 800: 0000: \***
+ 801: 0000: \***       Version A            Bruce Scriver          25th February 1986
+ 802: 0000: \***
+ 803: 0000: \***       Version B           Andrew Wedgeworth            2nd July 1992
+ 804: 0000: \***       Removal of redundant parameters, and CONV.TO.HEX defined as a 
+ 805: 0000: \***       variable to hold the return code. 
+ 806: 0000: \***
+ 807: 0000: \*******************************************************************************
+ 808: 0000: \*******************************************************************************
+ 809: 0000: 
+ 810: 0000:    FUNCTION CONV.TO.HEX (INTEGER4%)                                            \
+ 811: 0000:    EXTERNAL
+ 812: 0000:    ! 3 parameters removed from here                                    ! BAW
+ 813: 0000: 
+ 814: 0000:    ! 3 lines deleted from here                                         ! BAW
+ 815: 0000:    
+ 816: 0000:       INTEGER*2 CONV.TO.HEX                                            ! BAW
+ 817: 0000: 
+ 818: 0000:       INTEGER*4 INTEGER4%
+ 819: 0000: 
+ 820: 0000:    END FUNCTION
+ 821: 0000: 
+ 822: 0000:        %INCLUDE PSBF20E.J86       ! ALLOCATE.DEALLOCATE.SESS.NUM
+ 823: 0000: REM\
+ 824: 0000: \*******************************************************************************
+ 825: 0000: \*******************************************************************************
+ 826: 0000: \***
+ 827: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 828: 0000: \***
+ 829: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 830: 0000: \***
+ 831: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 832: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 833: 0000: \***     128 files.
+ 834: 0000: \***
+ 835: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 836: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 837: 0000: \***     as a variable.  This new variable contains the function's return
+ 838: 0000: \***     code.
+ 839: 0000: \***
+ 840: 0000: \*******************************************************************************
+ 841: 0000: \*******************************************************************************
+ 842: 0000: 
+ 843: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 844: 0000:                               PASSED.INTEGER%,                         \
+ 845: 0000:                               PASSED.STRING$)                          \
+ 846: 0000:    EXTERNAL
+ 847: 0000: 
+ 848: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 849: 0000:              PASSED.STRING$
+ 850: 0000:    ! 3 variables removed from here                                     ! CAW
+ 851: 0000: 
+ 852: 0000: 
+ 853: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 854: 0000:              PASSED.INTEGER%				               ! CJAS
+ 855: 0000: 
+ 856: 0000:    END FUNCTION
+ 857: 0000: 
+ 858: 0000:        %INCLUDE PSBF24E.J86       ! STANDARD.ERROR.DETECTED
+ 859: 0000: REM \
+ 860: 0000: \*******************************************************************************
+ 861: 0000: \*******************************************************************************
+ 862: 0000: \***
+ 863: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 864: 0000: \***
+ 865: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 866: 0000: \***
+ 867: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 868: 0000: \***
+ 869: 0000: \*******************************************************************************
+ 870: 0000: \*******************************************************************************
+ 871: 0000: 
+ 872: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 873: 0000: 				    ERRFILE%,              \
+ 874: 0000: 				    ERRL%,                 \
+ 875: 0000: 				    ERR$)        EXTERNAL
+ 876: 0000: 				    
+ 877: 0000:           STRING    ERR$
+ 878: 0000: 
+ 879: 0000:           INTEGER*2 ERRFILE%,              \
+ 880: 0000: 	            ERRL%,                 \
+ 881: 0000: 		    STANDARD.ERROR.DETECTED
+ 882: 0000: 		    
+ 883: 0000:           INTEGER*4 ERRN%
+ 884: 0000: 	  		    
+ 885: 0000:    END FUNCTION
+ 886: 0000: 
+ 887: 0000: 
+ 888: 0000:        %INCLUDE PSBF26E.J86       ! CONV.TO.INTEGER
+ 889: 0000: REM\
+ 890: 0000: \*******************************************************************************
+ 891: 0000: \*******************************************************************************
+ 892: 0000: \***
+ 893: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.INTEGER FUNCTION
+ 894: 0000: \***
+ 895: 0000: \***                  REFERENCE     : PSBF26E.J86
+ 896: 0000: \***
+ 897: 0000: \***      Version A           Michael J. Kelsall          18th March 1993
+ 898: 0000: \***
+ 899: 0000: \*******************************************************************************
+ 900: 0000: \*******************************************************************************
+ 901: 0000: 
+ 902: 0000:    FUNCTION CONV.TO.INTEGER ( NUM.STRING$ )				\
+ 903: 0000:    EXTERNAL
+ 904: 0000:    
+ 905: 0000:       REAL      CONV.TO.INTEGER
+ 906: 0000: 
+ 907: 0000:       STRING    NUM.STRING$
+ 908: 0000: 
+ 909: 0000:    END FUNCTION
+ 910: 0000: 
+ 911: 0000: 
+ 912: 0000: 
+ 913: 0000: \****************************************************************************
+ 914: 0000: \   EXT included code defining file related external functions
+ 915: 0000: \****************************************************************************
+ 916: 0000: 
+ 917: 0000:    %INCLUDE ADXSERVE.J86
+ 918: 0000: \******************************************************************************
+ 919: 0000: \******************************************************************************
+ 920: 0000: \***                                                                        ***
+ 921: 0000: \***    %INCLUDE FOR FUNCTION ADXSERVE (an I.B.M. system function)          ***
+ 922: 0000: \***                                                                        ***
+ 923: 0000: \***         AUTHOR        :  Bruce Scriver                                 ***
+ 924: 0000: \***                                                                        ***
+ 925: 0000: \***         DATE WRITTEN  :  14th March 1986                               ***
+ 926: 0000: \***                                                                        ***
+ 927: 0000: \***         DATE OF LAST REVISION  - 14th March 1986                       ***
+ 928: 0000: \***                                                                        ***
+ 929: 0000: \***                                                                        ***
+ 930: 0000: \******************************************************************************
+ 931: 0000: \******************************************************************************
+ 932: 0000: 
+ 933: 0000:    SUB ADXSERVE (RETURN.CODE%,                                                \
+ 934: 0000:                  ADX.FUNCTION%,                                               \
+ 935: 0000:                  ADX.PARM.1%,                                                 \
+ 936: 0000:                  ADX.PARM.2$)                                                 \
+ 937: 0000:    EXTERNAL
+ 938: 0000:   
+ 939: 0000:       STRING     ADX.PARM.2$
+ 940: 0000: 
+ 941: 0000:       INTEGER*2  ADX.FUNCTION%,                                               \
+ 942: 0000:                  ADX.PARM.1%
+ 943: 0000: 
+ 944: 0000:       INTEGER*4  RETURN.CODE%                                                 \
+ 945: 0000: 
+ 946: 0000:    END SUB     
+ 947: 0000: 
+ 948: 0000:    
+ 949: 0000: \****************************************************************************
+ 950: 0000: \    MAIN PROGRAM
+ 951: 0000: \****************************************************************************
+ 952: 0000: 
+ 953: 0000:    ON ERROR GOTO ERROR.DETECTED 
+ 954: 002f: 
+ 955: 002f:    %INCLUDE PSBUSEE.J86          ! External functions for chaining operations
+ 956: 002f: \/*********************************************************************/ PSBUSEE
+ 957: 002f: \/*                                                                   */ PSBUSEE
+ 958: 002f: \/*      PSBUSEE.J86  -  USE in PSB Application Program               */ PSBUSEE
+ 959: 002f: \/*      ----------------------------------------------               */ PSBUSEE
+ 960: 002f: \/*                                                                   */ PSBUSEE
+ 961: 002f: \/*********************************************************************/ PSBUSEE
+ 962: 002f:                                                                        ! PSBUSEE
+ 963: 002f:         USE  PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON , PSBCHN.U1 ,      \ PSBUSEE
+ 964: 0083:              PSBCHN.U2 , PSBCHN.U3                                     ! PSBUSEE
+ 965: 0083:                                                                        ! PSBUSEE
+ 966: 0083: 
+ 967: 0083:    SCR.EXITKEY = 0
+ 968: 0091: 
+ 969: 0091:    GOSUB INITIALISATION
+ 970: 00a3:    GOSUB DISPLAY.SCREEN1
+ 971: 00b5:    GOSUB INITIALISE.TABLE
+ 972: 00c7:    GOSUB DISPLAY.TABLE
+ 973: 00d9:    GOSUB RECEIVE.INPUT
+ 974: 00eb: 
+ 975: 00eb:               
+ 976: 00eb: PROGRAM.EXIT:               
+ 977: 00fb:                                           
+ 978: 00fb: 
+ 979: 00fb:        STRING.DATA$ = ""  :  INTEGER.DATA% = 1
+ 980: 011b:        GOSUB  X.DM.POSF
+ 981: 012d:        STRING.DATA$ = "30"  :  INTEGER.DATA% = 0
+ 982: 014d:        GOSUB  X.DM.SETF
+ 983: 015f:        MESSAGE.NO% = 405  :  STRING.DATA$ = ""  :  RETURN.FIELD% = 1
+ 984: 0182:        GOSUB X.EXTERNAL.MESSAGE
+ 985: 0194:        STRING.DATA$ = ""  :  INTEGER.DATA% = 20
+ 986: 01b4:        GOSUB  X.DM.NEXTF
+ 987: 01c6:                                  
+ 988: 01c6: 
+ 989: 01c6:       
+ 990: 01c6: \*********************************************************************
+ 991: 01c6: \*                                                                   *
+ 992: 01c6: \*     CHAIN.TO.CALLER: Return to calling program                    *
+ 993: 01c6: \*     ------------------------------------------                    *
+ 994: 01c6: \*                                                                   *
+ 995: 01c6: \*********************************************************************
+ 996: 01c6: 
+ 997: 01c6: CHAIN.TO.CALLER:
+ 998: 01ce: 
+ 999: 01ce:       PSBCHN.PRG = "ADX_UPGM:" + PSBCHN.APP + ".286"
+1000: 01f7:       PSBCHN.APP = PROGRAM$
+1001: 0215:       STRING.DATA$ = ""
+1002: 022c:       INTEGER.DATA% = 0
+1003: 023d:       RC% = DM.CLSDIS(STRING.DATA$, INTEGER.DATA%)   
+1004: 0262: 
+1005: 0262:       CHAIN.FLAG$ = "P"
+1006: 0277:       %INCLUDE PSBCHNE.J86
+1007: 0277: \/*********************************************************************/ PSBCHNE
+1008: 0277: \/*                                                                   */ PSBCHNE
+1009: 0277: \/*      PSBCHNE.J86  -  Chain to PSB Application Program             */ PSBCHNE
+1010: 0277: \/*      ------------------------------------------------             */ PSBCHNE
+1011: 0277: \/*                                                                   */ PSBCHNE
+1012: 0277: \/*********************************************************************/ PSBCHNE
+1013: 0277:                                                                        ! PSBCHNE
+1014: 0277:         CHAIN  PSBCHN.PRG , PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON ,   \ PSBCHNE
+1015: 02f7:                             PSBCHN.U1 , PSBCHN.U2  , PSBCHN.U3         ! PSBCHNE
+1016: 02f7:                                                                        ! PSBCHNE
+1017: 02f7: 
+1018: 02f7:        STOP
+1019: 0304: 
+1020: 0304: \****************************************************************************
+1021: 0304: \    Initialisation
+1022: 0304: \****************************************************************************
+1023: 0304: 
+1024: 0304: INITIALISATION:
+1025: 0314: 
+1026: 0314: 
+1027: 0314:       PROGRAM$           = "RFS02"
+1028: 032b:       MODULE$            = "00"
+1029: 0340:       MODULE.NUMBER$     =  PROGRAM$ + MODULE$
+1030: 0369:       BATCH.SCREEN.FLAG$ = "S" ! Screen
+1031: 0380:                                                    
+1032: 0380:       STRING.DATA$ = ""
+1033: 0397:       INTEGER.DATA% = -1
+1034: 03a8:       RC% = DM.INITDM(STRING.DATA$, INTEGER.DATA%)
+1035: 03cd:       IF RC% <> 0 THEN GOTO PROGRAM.EXIT
+1036: 03df: 
+1037: 03df:       STRING.DATA$ = "D"
+1038: 03f6:       INTEGER.DATA% = 0
+1039: 0407:       RC% = DM.OPNDIS(STRING.DATA$, INTEGER.DATA%)
+1040: 042c:       IF RC% <> 0 THEN GOTO PROGRAM.EXIT           
+1041: 043e: 
+1042: 043e:       CALL RFRDE.SET             
+1043: 0459:       CALL PRINT.SET
+1044: 0466: 
+1045: 0466:       FUNCTION.FLAG$ = "O"
+1046: 047d: 
+1047: 047d:       PASSED.INTEGER% = RFRDE.REPORT.NUM%
+1048: 0493:       PASSED.STRING$ = RFRDE.FILE.NAME$
+1049: 04af:       GOSUB CALL.F20.SESS.NUM.UTILITY
+1050: 04c1:       RFRDE.SESS.NUM% = F20.INTEGER.FILE.NO% 
+1051: 04d7: 
+1052: 04d7:       PASSED.INTEGER% = PRINT.REPORT.NUM%
+1053: 04ed:       PASSED.STRING$ = PRINT.FILE.NAME$
+1054: 0509:       GOSUB CALL.F20.SESS.NUM.UTILITY
+1055: 051b:       PRINT.SESS.NUM% = F20.INTEGER.FILE.NO% 
+1056: 0531:       
+1057: 0531:       ESC.KEY = 27
+1058: 053f:       F1.KEY = -1
+1059: 054d:       F3.KEY = -3
+1060: 055b:       F4.KEY = -4
+1061: 0569:       F5.KEY = -5 
+1062: 0577:       F6.KEY = -6 
+1063: 0585:       F7.KEY = -7
+1064: 0593:       F8.KEY = -8
+1065: 05a1:       F10.KEY = -10 
+1066: 05af:       ENTER.KEY = 0
+1067: 05bd:       UP.KEY = 16 
+1068: 05cb:       DOWN.KEY = 17
+1069: 05d9:       TAB.KEY = 9
+1070: 05e7:       SHIFT.TAB = 8217
+1071: 05f5:       PGUP.KEY = 329
+1072: 0603:       PGDN.KEY = 337
+1073: 0611:       
+1074: 0611:       FALSE = 0
+1075: 0621:       TRUE = 1
+1076: 0631:       
+1077: 0631:       GAP.FILE.NAME$ = "D:\ADX_UDT1\RFRONWAY.WEK"                       ! FRG
+1078: 0646:       EOF = FALSE
+1079: 0658:       SAVED.CHANGES%= TRUE
+1080: 066b:       INPUT.EXIT% = FALSE
+1081: 067e:       SCREEN.EXIT% = FALSE
+1082: 0691:       
+1083: 0691:       STARTING.POINT% = 1
+1084: 06a6:       DISPLAY.ITEM% = 1
+1085: 06b4:       LIST.ITEM% = 1
+1086: 06c9:       NO.REPORTS% = 0
+1087: 06de: 
+1088: 06de: 
+1089: 06de:       WORKFILE.SESS.NUM% = 53
+1090: 06ec:       WKFILE2.SESS.NUM% = 54
+1091: 06fa: 
+1092: 06fa:       ARRAY.SIZE%=3000           !ECC
+1093: 0708:       DIM REPORT$(ARRAY.SIZE%)   !ECC      
+1094: 0733: 
+1095: 0733: 
+1096: 0733: RETURN
+1097: 0743: 
+1098: 0743: 
+1099: 0743: !****************************************************************************
+1100: 0743: !   Read the RFRDESC file and assign the values to array variables 
+1101: 0743: !****************************************************************************
+1102: 0743: 
+1103: 0743: INITIALISE.TABLE:
+1104: 0753:    
+1105: 0753: 
+1106: 0753:    EOF = FALSE
+1107: 0765:                      
+1108: 0765:    CURR.SESS.NUM% = RFRDE.SESS.NUM%
+1109: 0777:    RFRDESC.REC.NO% = 1
+1110: 078c:    NO.OF.HEADERS% = 1
+1111: 07a1:    IF END # RFRDE.SESS.NUM% THEN END.OF.RFRDESC.FILE
+1112: 07bd: 
+1113: 07bd:    CURR.SESS.NUM% = RFRDE.SESS.NUM%
+1114: 07cf:        
+1115: 07cf:    OPEN RFRDE.FILE.NAME$ DIRECT RECL RFRDE.RECL% AS RFRDE.SESS.NUM%    \
+1116: 07fc:         NOWRITE NODEL
+1117: 07fc:      
+1118: 07fc: 
+1119: 07fc:    WHILE EOF = FALSE
+1120: 0807: 
+1121: 0807:          READ FORM "C51"; #RFRDE.SESS.NUM%, RFRDESC.REC.NO% ; LN$
+1122: 083c:                        
+1123: 083c:          IF MID$(LN$,49,1) <> "H" THEN BEGIN
+1124: 086e:             REPORT$(NO.OF.HEADERS%) = LEFT$(LN$,32)   
+1125: 08a1:             NO.OF.HEADERS% = NO.OF.HEADERS% + 1
+1126: 08ba:          ENDIF
+1127: 08c2:          RFRDESC.REC.NO% = RFRDESC.REC.NO% + 1
+1128: 08db: 
+1129: 08db: END.INITIALISE.TABLE:
+1130: 08eb:    WEND    
+1131: 0903: 
+1132: 0903:    NO.REPORTS% = NO.OF.HEADERS% - 2
+1133: 091c: 
+1134: 091c:    CLOSE RFRDE.SESS.NUM%
+1135: 0930:    TITLE$ = "Report Name                     "
+1136: 0945: 
+1137: 0945: RETURN                           
+1138: 0955: 
+1139: 0955: 
+1140: 0955: END.OF.RFRDESC.FILE:
+1141: 0965:    
+1142: 0965:       EOF = TRUE
+1143: 0977:       
+1144: 0977:       GOTO END.INITIALISE.TABLE
+1145: 0982:                    
+1146: 0982: 
+1147: 0982: 
+1148: 0982: 
+1149: 0982: !****************************************************************************
+1150: 0982: !   Display table on screen
+1151: 0982: !****************************************************************************
+1152: 0982:    
+1153: 0982: DISPLAY.TABLE:
+1154: 0992:    
+1155: 0992:    !***************************************************************************
+1156: 0992:    !   First ensure that the table is cleared.
+1157: 0992:    !   For each field in the table, erase any contents.
+1158: 0992:    !***************************************************************************
+1159: 0992:                         
+1160: 0992: 
+1161: 0992:       FOR X% = 1 TO 12
+1162: 09aa:          STRING.DATA$=""                        
+1163: 09c1:          INTEGER.DATA%=9+(X%*3)          
+1164: 09e8:          GOSUB X.DM.POSF                       
+1165: 09fa:          STRING.DATA$=STRING$(3,"   ")   
+1166: 0a18:          INTEGER.DATA%=0                      
+1167: 0a29:          GOSUB X.DM.PUTF                      
+1168: 0a3b: 
+1169: 0a3b:          STRING.DATA$=""                      
+1170: 0a52:          INTEGER.DATA%=10+(X%*3)       
+1171: 0a79:          GOSUB X.DM.POSF                        
+1172: 0a8b:          STRING.DATA$=STRING$(12," ")
+1173: 0aa9:          INTEGER.DATA%=0                        
+1174: 0aba:          GOSUB X.DM.PUTF                       
+1175: 0acc:          STRING.DATA$ = "1"
+1176: 0ae3:          GOSUB X.DM.SETF
+1177: 0af5:    
+1178: 0af5:       NEXT X%
+1179: 0b22:       
+1180: 0b22:     
+1181: 0b22:       !****************************************************************************
+1182: 0b22:       !   Fist work out if showing last page and less than a full page
+1183: 0b22:       !****************************************************************************
+1184: 0b22:     
+1185: 0b22:       IF LIST.ITEM% > (NO.REPORTS%-MOD(NO.REPORTS%,12)) \
+1186: 0b4c:          THEN END.POINT%=MOD(NO.REPORTS%,12) ELSE END.POINT%=12
+1187: 0b74:       
+1188: 0b74:       IF LIST.ITEM% > 12 THEN BEGIN
+1189: 0b8d:          IF MOD(LIST.ITEM%,12) = 0 THEN X% = LIST.ITEM%-11 ELSE \
+1190: 0bc1:             X% = LIST.ITEM% - (MOD(LIST.ITEM%,12))+1 
+1191: 0bf2:       ENDIF ELSE X% = 1
+1192: 0c07: 
+1193: 0c07:       FOR LINE.COUNT% = 1 TO END.POINT%
+1194: 0c1f:          
+1195: 0c1f:          STRING.DATA$=""                        !   Position the ID number
+1196: 0c36:          INTEGER.DATA%=9+(LINE.COUNT%*3)        !
+1197: 0c5d:          GOSUB X.DM.POSF                        !
+1198: 0c6f:          STRING.DATA$=STR$(X%)                  !   Place the ID number 
+1199: 0c8f:          INTEGER.DATA%=0                        !
+1200: 0ca0:          GOSUB X.DM.PUTF                        !
+1201: 0cb2:  
+1202: 0cb2:          STRING.DATA$=""                        !   Position the report title
+1203: 0cc9:          INTEGER.DATA%=10+(LINE.COUNT%*3)       !  
+1204: 0cf0:          GOSUB X.DM.POSF                        !
+1205: 0d02:          STRING.DATA$ = LEFT$(REPORT$(X%),20)   !   Place the report title
+1206: 0d38:          INTEGER.DATA%=0                        !
+1207: 0d49:          GOSUB X.DM.PUTF                        !
+1208: 0d5b:          STRING.DATA$ = "0"                     !   Make the value visible
+1209: 0d72:          GOSUB X.DM.SETF                        !
+1210: 0d84:  
+1211: 0d84:                        
+1212: 0d84:          X% = X% + 1
+1213: 0d9d:  
+1214: 0d9d:       NEXT LINE.COUNT%
+1215: 0dca: 
+1216: 0dca:       IF NO.REPORTS% > 0 THEN BEGIN
+1217: 0de3:          
+1218: 0de3:          STRING.DATA$ = ""
+1219: 0dfa:          INTEGER.DATA% = 2
+1220: 0e0b:          GOSUB X.DM.POSF
+1221: 0e1d:          STRING.DATA$ = "Use Arrow Keys to select required report  " 
+1222: 0e34:          INTEGER.DATA% = 0
+1223: 0e45:          GOSUB X.DM.PUTF
+1224: 0e5a:  
+1225: 0e5a:       ENDIF ELSE BEGIN
+1226: 0e62: 
+1227: 0e62:          STRING.DATA$ = ""
+1228: 0e79:          INTEGER.DATA% = 2
+1229: 0e8a:          GOSUB X.DM.POSF
+1230: 0e9c:          STRING.DATA$ = "No Reports Available.  "
+1231: 0eb3:          INTEGER.DATA% = 0
+1232: 0ec4:          GOSUB X.DM.PUTF
+1233: 0ed6: 
+1234: 0ed6:       ENDIF    
+1235: 0ede: 
+1236: 0ede:       STRING.DATA$ = ""
+1237: 0ef5:       INTEGER.DATA% = 6
+1238: 0f06:       GOSUB X.DM.POSF
+1239: 0f18:       STRING.DATA$ = TITLE$
+1240: 0f33:       INTEGER.DATA% = 0
+1241: 0f44:       GOSUB X.DM.PUTF
+1242: 0f56:       
+1243: 0f56: RETURN
+1244: 0f66: 
+1245: 0f66: !****************************************************************************
+1246: 0f66: !    Procedure to receive and respond to main screen input
+1247: 0f66: !****************************************************************************
+1248: 0f66: 
+1249: 0f66:    !****************************************************************************
+1250: 0f66:    !   Receive input loop
+1251: 0f66:    !****************************************************************************
+1252: 0f66:     
+1253: 0f66: RECEIVE.INPUT:
+1254: 0f76:        
+1255: 0f76:       WHILE SCREEN.EXIT% <> TRUE 
+1256: 0f81:          WHILE INPUT.EXIT% <> TRUE
+1257: 0f8c:        
+1258: 0f8c: !****************************************************************************
+1259: 0f8c: !   Position and highlight the input field
+1260: 0f8c: !****************************************************************************
+1261: 0f8c:  
+1262: 0f8c:             STRING.DATA$ = ""
+1263: 0fa3:             INTEGER.DATA% = 10+(3*DISPLAY.ITEM%)
+1264: 0fbc:             GOSUB X.DM.POSF
+1265: 0fce: 
+1266: 0fce:             STRING.DATA$ = "3313333333113001"
+1267: 0fe5:             INTEGER.DATA% = 0
+1268: 0ff6:             GOSUB X.DM.SETF
+1269: 1008: 
+1270: 1008:             STRING.DATA$=""
+1271: 101f:             INTEGER.DATA%=0
+1272: 1030:             GOSUB X.DM.UPDF
+1273: 1042:             SCR.EXITKEY = F03.RETURNED.INTEGER%
+1274: 1054:         
+1275: 1054: !****************************************************************************
+1276: 1054: !   Check if the input is valid, i.e., needs acting upon
+1277: 1054: !****************************************************************************
+1278: 1054: 
+1279: 1054:             IF (SCR.EXITKEY = F1.KEY) OR      \
+1280: 10fb:                (SCR.EXITKEY = F3.KEY) OR      \
+1281: 10fb:                (SCR.EXITKEY = F5.KEY) OR      \
+1282: 10fb:                (SCR.EXITKEY = F7.KEY) OR      \
+1283: 10fb:                (SCR.EXITKEY = F8.KEY) OR      \
+1284: 10fb:                (SCR.EXITKEY = ESC.KEY) OR     \
+1285: 10fb:                (SCR.EXITKEY = UP.KEY) OR      \
+1286: 10fb:                (SCR.EXITKEY = DOWN.KEY) OR    \
+1287: 10fb:                (SCR.EXITKEY = PGUP.KEY) OR    \
+1288: 10fb:                (SCR.EXITKEY = PGDN.KEY) OR    \
+1289: 10fb:                (SCR.EXITKEY = TAB.KEY) OR     \
+1290: 10fb:                (SCR.EXITKEY = SHIFT.TAB) OR   \
+1291: 10fb:                (SCR.EXITKEY = ENTER.KEY) THEN \
+1292: 10fb:                INPUT.EXIT% = TRUE
+1293: 110e:          WEND 
+1294: 1127: 
+1295: 1127:       !****************************************************************************
+1296: 1127:       !   Respond to input
+1297: 1127:       !****************************************************************************
+1298: 1127:       
+1299: 1127:          INPUT.EXIT% = FALSE
+1300: 113a:   
+1301: 113a:       !****************************************************************************
+1302: 113a:       !   Respond to help key
+1303: 113a:       !****************************************************************************
+1304: 113a:       
+1305: 113a:          IF SCR.EXITKEY = F1.KEY THEN BEGIN
+1306: 114e:             GOSUB SCREEN.HELP
+1307: 1160:             STRING.DATA$ = SCREEN.NUMBER$                             
+1308: 117e:             INTEGER.DATA% = 0
+1309: 118f:             RC% = DM.DISPD(STRING.DATA$, INTEGER.DATA%)
+1310: 11b4:             GOSUB DISPLAY.TABLE
+1311: 11c6:          ENDIF
+1312: 11ce:       
+1313: 11ce:       !****************************************************************************
+1314: 11ce:       !   Respond to cursor movements
+1315: 11ce:       !****************************************************************************
+1316: 11ce: 
+1317: 11ce:          IF (SCR.EXITKEY = DOWN.KEY) OR  \
+1318: 1209:             (SCR.EXITKEY = UP.KEY) OR    \
+1319: 1209:             (SCR.EXITKEY = TAB.KEY) OR   \
+1320: 1209:             (SCR.EXITKEY = SHIFT.TAB) THEN GOSUB CHOOSE.ITEM
+1321: 121b: 
+1322: 121b:       !****************************************************************************
+1323: 121b:       !   Respond to page up and page down keys
+1324: 121b:       !****************************************************************************
+1325: 121b:       
+1326: 121b:          IF (SCR.EXITKEY = F7.KEY) OR (SCR.EXITKEY = PGUP.KEY) OR \
+1327: 1256:             (SCR.EXITKEY = F8.KEY) OR (SCR.EXITKEY = PGDN.KEY)    \
+1328: 1256:             THEN GOSUB MOVE.PAGE
+1329: 1268:  
+1330: 1268:       !****************************************************************************
+1331: 1268:       !   Respond to escape key or quit key
+1332: 1268:       !****************************************************************************
+1333: 1268:       
+1334: 1268:          IF (SCR.EXITKEY = ESC.KEY) OR \
+1335: 128b:             (SCR.EXITKEY = F3.KEY) THEN GOSUB EXIT.RFS0200
+1336: 129d:  
+1337: 129d:                        
+1338: 129d:          IF (SCR.EXITKEY = ENTER.KEY) AND (NO.REPORTS% > 0) THEN BEGIN ! BCS
+1339: 12cb:             GOSUB DISPLAY.REPORTS
+1340: 12dd:             GOSUB INITIALISE.TABLE
+1341: 12ef:             GOSUB DISPLAY.TABLE
+1342: 1301:          ENDIF
+1343: 1309: 
+1344: 1309:       WEND 
+1345: 1322: RETURN
+1346: 1332: 
+1347: 1332: 
+1348: 1332: \****************************************************************************
+1349: 1332: \***
+1350: 1332: \*** DISPLAY REPORTS
+1351: 1332: \***
+1352: 1332: \****************************************************************************
+1353: 1332: DISPLAY.REPORTS:
+1354: 1342: 
+1355: 1342:    EOF = FALSE
+1356: 1354:                       
+1357: 1354:    STRING.DATA$ = "3303333333003111"
+1358: 136b:    INTEGER.DATA% = 0
+1359: 137c:    GOSUB X.DM.SETF
+1360: 138e:        
+1361: 138e:    STRING.DATA$ = LEFT$(REPORT$(LIST.ITEM%),20)
+1362: 13c4:    INTEGER.DATA% = 0
+1363: 13d5:    GOSUB X.DM.PUTF
+1364: 13e7:        
+1365: 13e7:    TITLE$ = "Versions of " + LEFT$(REPORT$(LIST.ITEM%),20)
+1366: 1422:    
+1367: 1422:    ! Extract filename from selected entry (remove spaces at end)        !DCS
+1368: 1422:    FILENAME.STR$ = MID$(REPORT$(LIST.ITEM%),21,12)                      !DCS
+1369: 1456:    FILENAME.END% = MATCH(" ", FILENAME.STR$,1)                          !DCS
+1370: 1474:    
+1371: 1474:    IF FILENAME.END% > 1 THEN BEGIN                                      !DCS
+1372: 1483:       FILENAME.STR$ = LEFT$(FILENAME.STR$,(FILENAME.END% - 1))          !DCS
+1373: 14a8:    ENDIF                                                                !DCS
+1374: 14b0:    
+1375: 14b0:    REPORT.FILE.NAME$ = "D:\ADX_UDT1\" + FILENAME.STR$                   !DCS
+1376: 14d0: 
+1377: 14d0: 
+1378: 14d0:    GOSUB GET.VERSIONS
+1379: 14e2: 
+1380: 14e2: 
+1381: 14e2:                       
+1382: 14e2:    INPUT.EXIT% = FALSE
+1383: 14f5:    SCREEN.EXIT% = FALSE
+1384: 1508:       
+1385: 1508:    STARTING.POINT% = 1
+1386: 151d:    DISPLAY.ITEM% = 1
+1387: 152b:    LIST.ITEM% = 1
+1388: 1540: 
+1389: 1540:    GOSUB DISPLAY.TABLE
+1390: 1552:             
+1391: 1552:    GOSUB GET.INPUT
+1392: 1564: 
+1393: 1564:    GOSUB INITIALISE.TABLE
+1394: 1576:                             
+1395: 1576:    INPUT.EXIT% = FALSE
+1396: 1589:    SCREEN.EXIT% = FALSE
+1397: 159c:       
+1398: 159c:    STARTING.POINT% = 1
+1399: 15b1:    DISPLAY.ITEM% = 1
+1400: 15bf:    LIST.ITEM% = 1
+1401: 15d4: 
+1402: 15d4: RETURN
+1403: 15e4:                 
+1404: 15e4: 
+1405: 15e4: \****************************************************************************
+1406: 15e4: \***
+1407: 15e4: \*** GET VERSIONS
+1408: 15e4: \***
+1409: 15e4: \****************************************************************************
+1410: 15e4: GET.VERSIONS:
+1411: 15f4: 
+1412: 15f4: 
+1413: 15f4:    DIM LINE$(ARRAY.SIZE%)                                               ! FRG
+1414: 161f:    CURR.SESS.NUM% = WORKFILE.SESS.NUM%
+1415: 162d:    INDEX% = 1
+1416: 163b:    RECORD% = 1                                                          ! FRG
+1417: 1650:    LN$    = " "                                                         ! FRG
+1418: 1665:    IF END # WORKFILE.SESS.NUM% THEN NO.DISPLAY.REPORTS                    !DCS
+1419: 167e:    OPEN REPORT.FILE.NAME$ AS WORKFILE.SESS.NUM% NOWRITE NODEL
+1420: 16a0:    EOF = FALSE
+1421: 16b2: 
+1422: 16b2:    ! If Report selected is GAP Archival then read the second line       ! FRG
+1423: 16b2:    !    starting with 1M, which has the time of GAP and add it with     ! FRG
+1424: 16b2:    !    0M line to make the version. As all other reports occurs only   ! FRG
+1425: 16b2:    !    once in a day, GAP archival may have many reports against       ! FRG
+1426: 16b2:    !    each user for a particular business date. So 1M line will help  ! FRG
+1427: 16b2:    !    to separate those.                                              ! FRG
+1428: 16b2:    ! Else                                                               ! FRG
+1429: 16b2:    !    Just read all the 0M lines and make a version by increasing     ! FRG
+1430: 16b2:    !    the Version counter by one.                                     ! FRG
+1431: 16b2:    
+1432: 16b2:    
+1433: 16b2:    WHILE EOF = FALSE
+1434: 16bd: 
+1435: 16bd:    IF REPORT.FILE.NAME$ = GAP.FILE.NAME$  THEN BEGIN                    ! FRG
+1436: 16df:        IF END # WORKFILE.SESS.NUM% THEN END.OF.WORKFILE                 ! FRG
+1437: 16f8:        READ #WORKFILE.SESS.NUM% ; LN$                                   ! FRG
+1438: 1719:        IF LEFT$(LN$,2) = "0M" THEN   BEGIN                              ! FRG
+1439: 174b:            REPORT$(INDEX%) = RIGHT$(LN$,20)                             ! FRG
+1440: 177b:        ENDIF ELSE IF LEFT$(LN$,2) = "1M" THEN BEGIN                     ! FRG
+1441: 17b0:            LINE$(RECORD%)= RIGHT$(LN$,20)                               ! FRG
+1442: 17e1:            REPORT$(INDEX%)=REPORT$(INDEX%)  + RIGHT$(LN$,20)            ! FRG
+1443: 1827:            INDEX%  = INDEX%  + 1                                        ! FRG
+1444: 1833:            RECORD% = RECORD% + 1                                        ! FRG
+1445: 184c:        ENDIF                                                            ! FRG
+1446: 1857:    ENDIF ELSE BEGIN                                                     ! FRG
+1447: 185f:        IF END # WORKFILE.SESS.NUM% THEN END.OF.WORKFILE                 
+1448: 1878:        READ #WORKFILE.SESS.NUM% ; LN$                                   
+1449: 1899:        IF LEFT$(LN$,1) = "0" THEN BEGIN                                 
+1450: 18cb:            REPORT$(INDEX%) = RIGHT$(LN$,20)                             
+1451: 18f8:            INDEX% = INDEX% + 1                                          
+1452: 1904:        ENDIF                                                            
+1453: 190c:    ENDIF                                                                
+1454: 1914: 
+1455: 1914: END.DISPLAY.REPORTS:
+1456: 1924:    WEND
+1457: 193c: 
+1458: 193c:    CLOSE WORKFILE.SESS.NUM%
+1459: 194d: 
+1460: 194d: NO.DISPLAY.REPORTS:
+1461: 195d: 
+1462: 195d:    
+1463: 195d:    NO.REPORTS% = INDEX% - 1
+1464: 1975: 
+1465: 1975: RETURN
+1466: 1985: 
+1467: 1985: 
+1468: 1985: END.OF.WORKFILE: 
+1469: 1995:        EOF = TRUE
+1470: 19a7:        GOTO END.DISPLAY.REPORTS
+1471: 19b2: 
+1472: 19b2: !****************************************************************************
+1473: 19b2: !    Procedure to receive and respond to report list screen input
+1474: 19b2: !****************************************************************************
+1475: 19b2:     
+1476: 19b2: GET.INPUT:
+1477: 19c2:        
+1478: 19c2:       WHILE SCREEN.EXIT% <> TRUE 
+1479: 19cd:          WHILE INPUT.EXIT% <> TRUE
+1480: 19d8:        
+1481: 19d8:  
+1482: 19d8:             STRING.DATA$ = ""
+1483: 19ef:             INTEGER.DATA% = 10+(3*DISPLAY.ITEM%)
+1484: 1a08:             GOSUB X.DM.POSF
+1485: 1a1a: 
+1486: 1a1a:             STRING.DATA$ = "3313333333113001"
+1487: 1a31:             INTEGER.DATA% = 0
+1488: 1a42:             GOSUB X.DM.SETF
+1489: 1a54: 
+1490: 1a54:             STRING.DATA$=""
+1491: 1a6b:             INTEGER.DATA%=0
+1492: 1a7c:             GOSUB X.DM.UPDF
+1493: 1a8e:             SCR.EXITKEY = F03.RETURNED.INTEGER%
+1494: 1aa0:         
+1495: 1aa0: 
+1496: 1aa0:             IF (SCR.EXITKEY = F1.KEY) OR      \
+1497: 1b47:                (SCR.EXITKEY = F3.KEY) OR      \
+1498: 1b47:                (SCR.EXITKEY = F5.KEY) OR      \
+1499: 1b47:                (SCR.EXITKEY = F7.KEY) OR      \
+1500: 1b47:                (SCR.EXITKEY = F8.KEY) OR      \
+1501: 1b47:                (SCR.EXITKEY = ESC.KEY) OR     \
+1502: 1b47:                (SCR.EXITKEY = UP.KEY) OR      \
+1503: 1b47:                (SCR.EXITKEY = DOWN.KEY) OR    \
+1504: 1b47:                (SCR.EXITKEY = PGUP.KEY) OR    \
+1505: 1b47:                (SCR.EXITKEY = PGDN.KEY) OR    \
+1506: 1b47:                (SCR.EXITKEY = TAB.KEY) OR     \
+1507: 1b47:                (SCR.EXITKEY = SHIFT.TAB) OR   \
+1508: 1b47:                (SCR.EXITKEY = ENTER.KEY) THEN \
+1509: 1b47:                INPUT.EXIT% = TRUE
+1510: 1b5a:          WEND 
+1511: 1b73: 
+1512: 1b73:       
+1513: 1b73:          INPUT.EXIT% = FALSE
+1514: 1b86:   
+1515: 1b86:       
+1516: 1b86:          IF SCR.EXITKEY = F1.KEY THEN BEGIN
+1517: 1b9a:             GOSUB SCREEN.HELP
+1518: 1bac:             STRING.DATA$ = SCREEN.NUMBER$                             
+1519: 1bca:             INTEGER.DATA% = 0
+1520: 1bdb:             RC% = DM.DISPD(STRING.DATA$, INTEGER.DATA%)
+1521: 1c00:             GOSUB DISPLAY.TABLE
+1522: 1c12:          ENDIF
+1523: 1c1a:       
+1524: 1c1a: 
+1525: 1c1a:          IF (SCR.EXITKEY = DOWN.KEY) OR  \
+1526: 1c55:             (SCR.EXITKEY = UP.KEY) OR    \
+1527: 1c55:             (SCR.EXITKEY = TAB.KEY) OR   \
+1528: 1c55:             (SCR.EXITKEY = SHIFT.TAB) THEN GOSUB CHOOSE.ITEM
+1529: 1c67: 
+1530: 1c67:       
+1531: 1c67:          IF (SCR.EXITKEY = F7.KEY) OR (SCR.EXITKEY = PGUP.KEY) OR \
+1532: 1ca2:             (SCR.EXITKEY = F8.KEY) OR (SCR.EXITKEY = PGDN.KEY)    \
+1533: 1ca2:             THEN GOSUB MOVE.PAGE
+1534: 1cb4:  
+1535: 1cb4:       
+1536: 1cb4:          IF (SCR.EXITKEY = ESC.KEY) THEN GOTO EXIT.RFS0200
+1537: 1cc8: 
+1538: 1cc8:          IF (SCR.EXITKEY = F3.KEY) THEN BEGIN
+1539: 1cd9:             STRING.DATA$ = "3303333333003111"
+1540: 1cf0:             INTEGER.DATA% = 0
+1541: 1d01:             GOSUB X.DM.SETF
+1542: 1d13:             SCREEN.EXIT% = TRUE
+1543: 1d26:          ENDIF
+1544: 1d2e:       
+1545: 1d2e: 
+1546: 1d2e:          IF SCR.EXITKEY = F5.KEY AND NO.REPORTS% > 0 THEN BEGIN
+1547: 1d5c:             GOSUB REPORT.PRINT   
+1548: 1d6e:             GOSUB GET.VERSIONS
+1549: 1d80:             GOSUB DISPLAY.TABLE
+1550: 1d92:          ENDIF
+1551: 1d9a: 
+1552: 1d9a:          IF SCR.EXITKEY = ENTER.KEY AND NO.REPORTS% > 0 THEN BEGIN
+1553: 1dcb:             NAME$ = REPORT$(LIST.ITEM%)
+1554: 1df6:             GOSUB DISPLAY.SCREEN2
+1555: 1e08:             GOSUB REPORT.DISPLAY
+1556: 1e1a:             GOSUB REPORT.INPUT
+1557: 1e2c:             SCREEN.EXIT% = FALSE
+1558: 1e3f:             GOSUB DISPLAY.SCREEN1
+1559: 1e51:             GOSUB GET.VERSIONS
+1560: 1e63:             GOSUB DISPLAY.TABLE
+1561: 1e75:          ENDIF
+1562: 1e7d: 
+1563: 1e7d:       WEND 
+1564: 1e96: RETURN
+1565: 1ea6: 
+1566: 1ea6: \****************************************************************************
+1567: 1ea6: \***
+1568: 1ea6: \***   REPORT DISPLAY
+1569: 1ea6: \***
+1570: 1ea6: \***   Extract report from file
+1571: 1ea6: \***   Print report
+1572: 1ea6: \***
+1573: 1ea6: \****************************************************************************
+1574: 1ea6: REPORT.DISPLAY:
+1575: 1eb6:                                   
+1576: 1eb6:  
+1577: 1eb6:      PAGE% = 1
+1578: 1ec4:                                                                                                                                          
+1579: 1ec4:      CURR.SESS.NUM% = WKFILE2.SESS.NUM%
+1580: 1ed2:      !Processing will happen in PROCESS.REPORT WITH END.OF.WKFILE2      ! FRG
+1581: 1ed2:      !IF END #WKFILE2.SESS.NUM% THEN END.OF.WKFILE3                     
+1582: 1ed2:      IF END #WKFILE2.SESS.NUM% THEN END.OF.WKFILE2                      ! FRG
+1583: 1eeb:      OPEN REPORT.FILE.NAME$ AS WKFILE2.SESS.NUM% NOWRITE NODEL
+1584: 1f0d:      NO.OF.LINES% = 1 
+1585: 1f1b:      ! DIM REPORT$(ARRAY.SIZE%)                                         ! FRG
+1586: 1f1b:      GOSUB PROCESS.REPORT                                               ! FRG
+1587: 1f2d: 
+1588: 1f2d:      ! Below Lines code have been moved to PROCESS.REPORT Sub routine & ! FRG
+1589: 1f2d:      ! logic has been added to fix duplicate report issue while seeing  ! FRG
+1590: 1f2d:      ! GAP Archival reports.                                            ! FRG
+1591: 1f2d: 
+1592: 1f2d:      ! EOF = FALSE                                                      ! FRG
+1593: 1f2d:      ! WHILE (EOF = FALSE) AND (NO.OF.LINES%<=ARRAY.SIZE%)              ! FRG ECC
+1594: 1f2d:            
+1595: 1f2d: 
+1596: 1f2d:      !   READ #WKFILE2.SESS.NUM% ; LN$                                  ! FRG
+1597: 1f2d:      !    IF LN$ = "0M" + NAME$ THEN BEGIN                              ! FRG
+1598: 1f2d:      !       REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)                     ! FRG
+1599: 1f2d:      !       NO.OF.LINES% = NO.OF.LINES% + 1                            ! FRG
+1600: 1f2d:      !       LN$ = "  "                                                 ! FRG
+1601: 1f2d:      !       WHILE (LEFT$(LN$,2) <> "0M") AND \                         ! FRG
+1602: 1f2d:      !             (NO.OF.LINES%<=ARRAY.SIZE%)                          ! FRG ECC    
+1603: 1f2d:      !          READ #WKFILE2.SESS.NUM%;LN$                             ! FRG
+1604: 1f2d:      !          IF LEFT$(LN$,2) <> "0M" THEN BEGIN                      ! FRG
+1605: 1f2d:      !             REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)               ! FRG
+1606: 1f2d:      !             NO.OF.LINES% = NO.OF.LINES% + 1                      ! FRG
+1607: 1f2d:      !          ENDIF                                                   ! FRG
+1608: 1f2d:      !       WEND                                                       ! FRG
+1609: 1f2d:      !    ENDIF                                                         ! FRG
+1610: 1f2d: 
+1611: 1f2d: !END.GET.REPORT:                                                        ! FRG  
+1612: 1f2d: 
+1613: 1f2d: !     WEND                                                              ! FRG  
+1614: 1f2d: 
+1615: 1f2d:     
+1616: 1f2d:    
+1617: 1f2d:      IF NO.OF.LINES%>ARRAY.SIZE% THEN BEGIN           !ECC
+1618: 1f3e:         NO.OF.LINES%=ARRAY.SIZE%                      !ECC
+1619: 1f4c:     REPORT$(ARRAY.SIZE%)="  REPORT TRUNCATED  "   !ECC 
+1620: 1f6e:      ENDIF
+1621: 1f76:       
+1622: 1f76:      CLOSE WKFILE2.SESS.NUM%                                           
+1623: 1f87: 
+1624: 1f87:      REPORT.START = 1
+1625: 1f9c:      GOSUB OUTPUT.REPORT
+1626: 1fae:                  
+1627: 1fae:                                       
+1628: 1fae: RETURN
+1629: 1fbe: 
+1630: 1fbe: !END.OF.WKFILE3:                                                        ! FRG
+1631: 1fbe: !       EOF = TRUE                                                      ! FRG
+1632: 1fbe: !       GOTO END.GET.REPORT                                             ! FRG
+1633: 1fbe: 
+1634: 1fbe: 
+1635: 1fbe: \****************************************************************************
+1636: 1fbe: \***
+1637: 1fbe: \***   PROCESS REPORT
+1638: 1fbe: \***
+1639: 1fbe: \***   Reads Each file and reads the content in to the array
+1640: 1fbe: \***  
+1641: 1fbe: \***
+1642: 1fbe: \****************************************************************************
+1643: 1fbe: 
+1644: 1fbe: PROCESS.REPORT:                                                         ! FRG
+1645: 1fce: 
+1646: 1fce:      INDEX2% =1                                                         ! FRG
+1647: 1fe3:      RECORD2%=1                                                         ! FRG
+1648: 1ff8:      DIM LINE2$(ARRAY.SIZE%)                                            ! FRG
+1649: 2023:      DIM LINE3$(ARRAY.SIZE%)                                            ! FRG
+1650: 204e:      DIM REPORT$(ARRAY.SIZE%)                                           ! FRG
+1651: 2079:      EOF = FALSE
+1652: 208b: 
+1653: 208b:      ! IF Report selected is GAP Archival then it reads both OM         ! FRG
+1654: 208b:      !    and  1M ,As 1M line has unique time factor, which will be     ! FRG
+1655: 208b:      !    validated  against the Version.If it matches then report      ! FRG
+1656: 208b:      !    will be displayed Else read will continue until it finds the  ! FRG
+1657: 208b:      !    right report.                                                 ! FRG
+1658: 208b:      ! ELSE                                                             ! FRG
+1659: 208b:      !    Read will be performed against only 0M lines as it has        ! FRG
+1660: 208b:      !    unique Date and Time combination of all other reports and     ! FRG
+1661: 208b:      !    displays on the screen                                        ! FRG
+1662: 208b: 
+1663: 208b:      WHILE (EOF = FALSE) AND (NO.OF.LINES% <= ARRAY.SIZE%)              ! ECC
+1664: 2096: 
+1665: 2096:      IF REPORT.FILE.NAME$ = GAP.FILE.NAME$ THEN BEGIN                   ! FRG
+1666: 20b8:          IF END #WKFILE2.SESS.NUM% THEN END.OF.WKFILE2                  ! FRG
+1667: 20d1:          READ #WKFILE2.SESS.NUM% ; LN$                                  ! FRG
+1668: 20f2:          IF LEFT$(LN$,2) = "0M" THEN BEGIN                              ! FRG
+1669: 2124:              LINE2$(INDEX2%) = RIGHT$(LN$,20)                           ! FRG
+1670: 2158:          ENDIF ELSE IF LEFT$(LN$,2) = "1M" THEN BEGIN                   ! FRG
+1671: 218d:              LINE3$(RECORD2%)= RIGHT$(LN$,20)                           ! FRG
+1672: 21be:              IF LINE3$(RECORD2%) = RIGHT$(NAME$,20) THEN BEGIN          ! FRG
+1673: 21fc:                   REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)                ! FRG
+1674: 2229:                   NO.OF.LINES% = NO.OF.LINES% + 1                       ! FRG
+1675: 2235:                   LN$ = ""                                              ! FRG
+1676: 224a: 
+1677: 224a:              WHILE ((LEFT$(LN$,2) <> "0M") AND                          \ FRG
+1678: 2255:                   (NO.OF.LINES% <= ARRAY.SIZE%))                        ! FRG
+1679: 2255:                  IF END #WKFILE2.SESS.NUM% THEN END.OF.WKFILE2          ! FRG
+1680: 226e:                  READ #WKFILE2.SESS.NUM%;LN$                            ! FRG
+1681: 228f:                  IF LEFT$(LN$,2) <> "0M" THEN BEGIN                     ! FRG
+1682: 22c4:                      REPORT$(1) = LINE2$(INDEX2%)                       ! FRG
+1683: 22fa:                      REPORT$(2) = LINE3$(RECORD2%)                      ! FRG
+1684: 2330:                      REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)             ! FRG
+1685: 235d:                      NO.OF.LINES% = NO.OF.LINES% + 1                    ! FRG
+1686: 236b:                  ENDIF ELSE IF LEFT$(LN$,2) = "0M" THEN BEGIN           ! FRG
+1687: 239d:                      EOF = TRUE                                         ! FRG
+1688: 23af:                  ENDIF                                                  ! FRG
+1689: 23b7:              WEND                                                       ! FRG
+1690: 2408:              ENDIF                                                      ! FRG
+1691: 2410:                  INDEX2%  = INDEX2%  + 1                                ! FRG
+1692: 2429:                  RECORD2% = RECORD2% + 1                                ! FRG
+1693: 2442:          ENDIF                                                          ! FRG
+1694: 244d:      ENDIF  ELSE BEGIN                                                  ! FRG
+1695: 2455:          IF END #WKFILE2.SESS.NUM% THEN END.OF.WKFILE2                  ! FRG
+1696: 246e:          READ #WKFILE2.SESS.NUM% ; LN$
+1697: 248f:          IF LN$ = "0M" + NAME$ THEN BEGIN                                
+1698: 24c0:              REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)                      
+1699: 24ed:              NO.OF.LINES% = NO.OF.LINES% + 1                             
+1700: 24f9:              LN$ = ""                                                    
+1701: 250e:              WHILE ((LEFT$(LN$,2) <> "0M") AND                          \ FRG
+1702: 2519:                   (NO.OF.LINES% <= ARRAY.SIZE%))                         
+1703: 2519:                  IF END #WKFILE2.SESS.NUM% THEN END.OF.WKFILE2          ! FRG
+1704: 2532:                  READ #WKFILE2.SESS.NUM%;LN$
+1705: 2553:                  IF LEFT$(LN$,2) <> "0M" THEN BEGIN
+1706: 2585:                      REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)
+1707: 25b2:                      NO.OF.LINES% = NO.OF.LINES% + 1  
+1708: 25c0: 
+1709: 25c0:              ! Below lines of code will Restrict the extra Read being   ! FRG
+1710: 25c0:              ! performed after 'END OF REPORT' and screen will not      ! FRG
+1711: 25c0:              ! display any extra lines after it.                        ! FRG
+1712: 25c0:             
+1713: 25c0:                  ENDIF ELSE IF LEFT$(LN$,2) = "0M" THEN BEGIN           ! FRG
+1714: 25f2:                      EOF = TRUE                                         ! FRG
+1715: 2604:                 ENDIF                                                   ! FRG
+1716: 260c:              WEND                                                       ! FRG
+1717: 265d:          ENDIF                                                          ! FRG
+1718: 2665:      ENDIF                                                              ! FRG
+1719: 266d:    
+1720: 266d: END.GET.REPORT: 
+1721: 267d:      WEND
+1722: 26aa: RETURN
+1723: 26ba: 
+1724: 26ba: END.OF.WKFILE2:
+1725: 26ca:      EOF = TRUE
+1726: 26dc:      GOTO END.GET.REPORT
+1727: 26e6: \****************************************************************************
+1728: 26e6: \***
+1729: 26e6: \***   OUTPUT REPORT
+1730: 26e6: \***
+1731: 26e6: \***   Clear table
+1732: 26e6: \***   Work out start and end point
+1733: 26e6: \***
+1734: 26e6: \****************************************************************************
+1735: 26e6:    
+1736: 26e6: OUTPUT.REPORT:
+1737: 26f6:                          
+1738: 26f6:       FOR X% = 12 TO 65
+1739: 270e:          STRING.DATA$ = ""                        
+1740: 2725:          INTEGER.DATA% = X%       
+1741: 273b:          GOSUB X.DM.POSF                       
+1742: 274d:          STRING.DATA$ = STRING$(20," ")   
+1743: 276b:          INTEGER.DATA% = 0                      
+1744: 277c:          GOSUB X.DM.PUTF                      
+1745: 278e:    
+1746: 278e:       NEXT X%
+1747: 27bb:               
+1748: 27bb:       REPORT.END = REPORT.START + 53
+1749: 27d4:       IF REPORT.END > NO.OF.LINES% THEN REPORT.END = NO.OF.LINES%
+1750: 27f9: 
+1751: 27f9:       X% = 12
+1752: 280e:       FOR Y% = REPORT.START TO REPORT.END
+1753: 2826:          
+1754: 2826:          STRING.DATA$ = ""                      
+1755: 283d:          INTEGER.DATA% = X%                     
+1756: 2853:          GOSUB X.DM.POSF                         
+1757: 2865:          STRING.DATA$ = REPORT$(Y%)             
+1758: 2892:          INTEGER.DATA% = 0                      
+1759: 28a3:          GOSUB X.DM.PUTF                        
+1760: 28b5:  
+1761: 28b5:          X% = X% + 1
+1762: 28ce:  
+1763: 28ce:       NEXT Y%
+1764: 28fb: 
+1765: 28fb:       STRING.DATA$ = ""
+1766: 2912:       INTEGER.DATA% = 6
+1767: 2923:       GOSUB X.DM.POSF
+1768: 2935: 
+1769: 2935:              
+1770: 2935:     ! All other report uses NAME$ to display the date as the NAME$      ! FRG
+1771: 2935:     ! string get changed during GAP Archival processing,it will be      ! FRG
+1772: 2935:     ! replaced with REPORT$(1)                                          ! FRG
+1773: 2935:      
+1774: 2935:       IF REPORT.FILE.NAME$  = "D:\ADX_UDT1\RFRONWAY.WEK" THEN BEGIN     ! FRG
+1775: 2950:           STRING.DATA$ = RIGHT$(TITLE$,20) + " - " + REPORT$(1)         ! FRG
+1776: 299a:       ENDIF ELSE BEGIN                                                  ! FRG
+1777: 29a2:           STRING.DATA$ = RIGHT$(TITLE$,20) + " - " + NAME$
+1778: 29de:       ENDIF 
+1779: 29e6:       INTEGER.DATA% = 0
+1780: 29f7:       GOSUB X.DM.PUTF
+1781: 2a09:       
+1782: 2a09: RETURN
+1783: 2a19: 
+1784: 2a19: 
+1785: 2a19: \****************************************************************************
+1786: 2a19: \***
+1787: 2a19: \***   REPORT INPUT
+1788: 2a19: \***
+1789: 2a19: \****************************************************************************
+1790: 2a19:     
+1791: 2a19: REPORT.INPUT:
+1792: 2a29:        
+1793: 2a29:       WHILE SCREEN.EXIT% <> TRUE 
+1794: 2a34:          WHILE INPUT.EXIT% <> TRUE
+1795: 2a3f:        
+1796: 2a3f:  
+1797: 2a3f:             STRING.DATA$ = ""
+1798: 2a56:             INTEGER.DATA% = 11
+1799: 2a67:             GOSUB X.DM.POSF
+1800: 2a79: 
+1801: 2a79: 
+1802: 2a79:             STRING.DATA$=""
+1803: 2a90:             INTEGER.DATA%=0
+1804: 2aa1:             GOSUB X.DM.UPDF
+1805: 2ab3:             SCR.EXITKEY = F03.RETURNED.INTEGER%
+1806: 2ac5:         
+1807: 2ac5:             IF (SCR.EXITKEY = F1.KEY) OR      \
+1808: 2b24:                (SCR.EXITKEY = F3.KEY) OR      \
+1809: 2b24:                (SCR.EXITKEY = F7.KEY) OR      \
+1810: 2b24:                (SCR.EXITKEY = F8.KEY) OR      \
+1811: 2b24:                (SCR.EXITKEY = ESC.KEY) OR     \
+1812: 2b24:                (SCR.EXITKEY = PGUP.KEY) OR    \
+1813: 2b24:                (SCR.EXITKEY = PGDN.KEY) THEN  \
+1814: 2b24:                INPUT.EXIT% = TRUE
+1815: 2b37:          WEND 
+1816: 2b50: 
+1817: 2b50:       
+1818: 2b50:          INPUT.EXIT% = FALSE
+1819: 2b63:   
+1820: 2b63:       
+1821: 2b63:          IF SCR.EXITKEY = F1.KEY THEN BEGIN
+1822: 2b77:             GOSUB SCREEN.HELP
+1823: 2b89:             STRING.DATA$ = SCREEN.NUMBER$                             
+1824: 2ba7:             INTEGER.DATA% = 0
+1825: 2bb8:             RC% = DM.DISPD(STRING.DATA$, INTEGER.DATA%)
+1826: 2bdd:             GOSUB REPORT.DISPLAY
+1827: 2bef:          ENDIF      
+1828: 2bf7: 
+1829: 2bf7:       
+1830: 2bf7:          IF (SCR.EXITKEY = F7.KEY) OR (SCR.EXITKEY = PGUP.KEY) OR \
+1831: 2c32:             (SCR.EXITKEY = F8.KEY) OR (SCR.EXITKEY = PGDN.KEY)    \
+1832: 2c32:             THEN GOSUB REPORT.PAGE
+1833: 2c44:  
+1834: 2c44:       
+1835: 2c44:          IF (SCR.EXITKEY = ESC.KEY) THEN GOTO EXIT.RFS0200
+1836: 2c58: 
+1837: 2c58:          IF (SCR.EXITKEY = F3.KEY) THEN BEGIN
+1838: 2c69:             SCREEN.EXIT% = TRUE
+1839: 2c7c:          ENDIF
+1840: 2c84: 
+1841: 2c84: 
+1842: 2c84:       WEND 
+1843: 2c9d: 
+1844: 2c9d: RETURN
+1845: 2cad: 
+1846: 2cad: \****************************************************************************
+1847: 2cad: \***
+1848: 2cad: \***   REPORT PAGE
+1849: 2cad: \***
+1850: 2cad: \***   Display page of report
+1851: 2cad: \***
+1852: 2cad: \****************************************************************************
+1853: 2cad: REPORT.PAGE:
+1854: 2cbd:       
+1855: 2cbd:        IF (SCR.EXITKEY = F8.KEY OR SCR.EXITKEY = PGDN.KEY) THEN BEGIN
+1856: 2ce0:           REPORT.START = REPORT.START + 54
+1857: 2cf9:           IF REPORT.START > NO.OF.LINES% THEN BEGIN
+1858: 2d0f:              REPORT.START = REPORT.START - 54 
+1859: 2d28:           ENDIF
+1860: 2d30:        ENDIF   
+1861: 2d38: 
+1862: 2d38:        IF (SCR.EXITKEY = F7.KEY OR SCR.EXITKEY = PGUP.KEY) THEN BEGIN
+1863: 2d5b:           REPORT.START = REPORT.START - 54
+1864: 2d74:           IF REPORT.START < 1 THEN BEGIN
+1865: 2d8d:              REPORT.START = REPORT.START + 54
+1866: 2da6:           ENDIF
+1867: 2dae:        ENDIF
+1868: 2db6: 
+1869: 2db6:        GOSUB OUTPUT.REPORT
+1870: 2dc8: 
+1871: 2dc8: RETURN
+1872: 2dd8:               
+1873: 2dd8: \****************************************************************************
+1874: 2dd8: \***
+1875: 2dd8: \***   REPORT PRINT
+1876: 2dd8: \***
+1877: 2dd8: \***   Format date and time
+1878: 2dd8: \***   Get store number
+1879: 2dd8: \***   Extract report from file
+1880: 2dd8: \***   Print report
+1881: 2dd8: \***
+1882: 2dd8: \****************************************************************************
+1883: 2dd8: REPORT.PRINT:
+1884: 2de8:                                   
+1885: 2de8:      NAME$ = REPORT$(LIST.ITEM%)
+1886: 2e13:      LN$   = " "                                                        ! FRG
+1887: 2e28:      TODAYS.DATE$ = DATE$                                                
+1888: 2e3e:      REPORT.DATE$ = RIGHT$(TODAYS.DATE$,2) + "/" + MID$(TODAYS.DATE$,3,2) + \
+1889: 2ea1:         "/" + LEFT$(TODAYS.DATE$,2)                                      
+1890: 2ea1:      REPORT.TIME$ = LEFT$(TIME$,2) + ":" + MID$(TIME$,3,2)  
+1891: 2ef6: 
+1892: 2ef6:      NEW.LINE$ = """" + CHR$(13) + CHR$(10) + """"  
+1893: 2f36:      PAGE% = 1
+1894: 2f44: 
+1895: 2f44:      ADX.FUNCTION% = 4                                                 
+1896: 2f55:      CALL ADXSERVE (ADX.RETURN.CODE%,ADX.FUNCTION%,0,ADXSERVE.DATA$)   
+1897: 2f89:      IF ADX.RETURN.CODE% <> 0 THEN GOSUB ADXSERVE.FAILURE              
+1898: 2fae:                                                                                                                                     
+1899: 2fae:      STORE.NUMBER$ = LEFT$(ADXSERVE.DATA$,4)    
+1900: 2fd0:       
+1901: 2fd0:      WORKFILE.FILE.NAME$ = "D:\ADX_UDT1\RFREPORT.BIN" 
+1902: 2fe5: 
+1903: 2fe5:      CURR.SESS.NUM% = WORKFILE.SESS.NUM%                         
+1904: 2ff3:      IF END #WORKFILE.SESS.NUM% THEN CREATE.ERROR                       
+1905: 300c:      CREATE POSFILE WORKFILE.FILE.NAME$ AS WORKFILE.SESS.NUM% LOCAL    
+1906: 302c: 
+1907: 302c: 
+1908: 302c:      CURR.SESS.NUM% = WKFILE2.SESS.NUM%
+1909: 303a:      IF END #WKFILE2.SESS.NUM% THEN END.OF.WKFILE2
+1910: 3053:      OPEN REPORT.FILE.NAME$ AS WKFILE2.SESS.NUM% NOWRITE NODEL
+1911: 3075:                     
+1912: 3075:      NO.OF.LINES% = 1                           
+1913: 3083: 
+1914: 3083:      GOSUB PROCESS.REPORT                                               ! FRG
+1915: 3095: 
+1916: 3095:      ! Below logic will be taken care in PROCESS.REPORT Sub routine     ! FRG
+1917: 3095:      ! also added code to fix Duplicity issue while printing GAP        ! FRG
+1918: 3095:      ! Archival reports                                                 ! FRG
+1919: 3095:      ! DIM REPORT$(ARRAY.SIZE%)                                         ! FRG
+1920: 3095: 
+1921: 3095:      !EOF = FALSE                                                       ! FRG
+1922: 3095:      !WHILE EOF = FALSE                                                 ! FRG
+1923: 3095: 
+1924: 3095:      !    READ #WKFILE2.SESS.NUM% ; LN$                                 ! FRG
+1925: 3095:      !    IF LN$ = "0M" + NAME$ THEN BEGIN                              ! FRG
+1926: 3095:      !       REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)                     ! FRG
+1927: 3095:      !       NO.OF.LINES% = NO.OF.LINES% + 1                            ! FRG
+1928: 3095:      !       LN$ = "  "                                                 ! FRG
+1929: 3095:      !       WHILE LEFT$(LN$,2) <> "0M"                                 ! FRG
+1930: 3095:      !          READ #WKFILE2.SESS.NUM%;LN$                             ! FRG
+1931: 3095:      !          IF LEFT$(LN$,2) <> "0M" THEN BEGIN                      ! FRG
+1932: 3095:      !             REPORT$(NO.OF.LINES%) = RIGHT$(LN$,20)               ! FRG
+1933: 3095:      !             NO.OF.LINES% = NO.OF.LINES% + 1                      ! FRG
+1934: 3095:      !          ENDIF                                                   ! FRG
+1935: 3095:      !       WEND                                                       ! FRG
+1936: 3095:      !    ENDIF                                                         ! FRG
+1937: 3095: 
+1938: 3095: ! END.READ.REPORT:                                                      ! FRG
+1939: 3095: 
+1940: 3095: !     WEND                                                              ! FRG
+1941: 3095:    
+1942: 3095:     
+1943: 3095:      PAGES% = (NO.OF.LINES% / 150) + 1
+1944: 30aa: 
+1945: 30aa:      FOR X% = 1 TO NO.OF.LINES% STEP 150
+1946: 30c2:         GOSUB OUTPUT.HEADER
+1947: 30d4:         FOR Y% = 0 TO 49
+1948: 30ec:            REPORT.LINE$ = REPORT$(X% + Y%) + STRING$(30," ") +  \
+1949: 31a2:            REPORT$(X% + Y% + 50) + STRING$(30," ") + REPORT$(X% + Y% + 100)
+1950: 31a2:            PRINT #WORKFILE.SESS.NUM%; REPORT.LINE$
+1951: 31c2:         NEXT Y%
+1952: 31ef:         PAGE% = PAGE% + 1
+1953: 31fb:         PRINT #WORKFILE.SESS.NUM%;NEW.LINE$
+1954: 321b:         
+1955: 321b:         IF PAGE% > PAGES% THEN BEGIN
+1956: 322c:            REPORT.LINE$ = STRING$(50," ") + "*** END OF REPORT ***"                                       
+1957: 325a:            PRINT #WORKFILE.SESS.NUM%;REPORT.LINE$
+1958: 327a:         ENDIF
+1959: 3282:         PRINT #WORKFILE.SESS.NUM%;CHR$(12)
+1960: 32a4:      NEXT X%
+1961: 32ce: 
+1962: 32ce:      CURRENT.REPORT.NUM% = PRINT.REPORT.NUM%
+1963: 32e4:      CURR.SESS.NUM% = PRINT.SESS.NUM%                                
+1964: 32f6:      IF END #PRINT.SESS.NUM% THEN OPEN.ERROR
+1965: 3312:      OPEN PRINT.FILE.NAME$ AS PRINT.SESS.NUM% 
+1966: 3339: 
+1967: 3339:      RC% = PRINT.REPORT(WORKFILE.SESS.NUM%, "Y")
+1968: 3354:                        
+1969: 3354:      CLOSE PRINT.SESS.NUM%
+1970: 3368:      CLOSE WORKFILE.SESS.NUM%
+1971: 3379:      CLOSE WKFILE2.SESS.NUM%
+1972: 338a: 
+1973: 338a:      DIM REPORT$(ARRAY.SIZE%)
+1974: 33b5:                                       
+1975: 33b5: RETURN
+1976: 33c5: 
+1977: 33c5: !END.OF.WKFILE2:                                                        ! FRG
+1978: 33c5: !       EOF = TRUE                                                      ! FRG 
+1979: 33c5: !       GOTO END.READ.REPORT                                            ! FRG   
+1980: 33c5:  
+1981: 33c5: 
+1982: 33c5: \****************************************************************************
+1983: 33c5: \***
+1984: 33c5: \***   OUTPUT HEADER
+1985: 33c5: \***
+1986: 33c5: \****************************************************************************
+1987: 33c5: 
+1988: 33c5: OUTPUT.HEADER:
+1989: 33d5:                         
+1990: 33d5:       REPORT.LINE$ = "STORE: " + STORE.NUMBER$ + STRING$(29, " ") +    \
+1991: 344e:                      + "旼컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴커" \ 
+1992: 344e:                      + STRING$(38," ") + "Page " +                     \ 
+1993: 344e:                      STR$(PAGE%) + " of " + STR$(PAGES%)            
+1994: 344e: 
+1995: 344e:        PRINT #WORKFILE.SESS.NUM%;REPORT.LINE$                             
+1996: 346e: 
+1997: 346e:        IF REPORT.FILE.NAME$ = GAP.FILE.NAME$ THEN BEGIN                 ! FRG
+1998: 348d:            NAME$= REPORT$(1)                                            ! FRG
+1999: 34b2:        ENDIF                                                            ! FRG
+2000: 34ba: 
+2001: 34ba:        REPORT.LINE$ =   STRING$(40, " ") +                              \ 
+2002: 353c:          "� " + RIGHT$(TITLE$,20) + " - " + NAME$ +                     \ 
+2003: 353c:          + "�" + STRING$(41," ") + REPORT.DATE$ + "  " +                \ 
+2004: 353c:          REPORT.TIME$                                                   
+2005: 353c:      
+2006: 353c:        PRINT #WORKFILE.SESS.NUM%;REPORT.LINE$                          
+2007: 355c:       
+2008: 355c:        REPORT.LINE$ = STRING$(40," ") +                                 \ 
+2009: 358a:           "읕컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴켸"  
+2010: 358a:        PRINT #WORKFILE.SESS.NUM%;REPORT.LINE$                            
+2011: 35aa: 
+2012: 35aa:        PRINT #WORKFILE.SESS.NUM%;NEW.LINE$    
+2013: 35ca:                     
+2014: 35ca: RETURN
+2015: 35da: 
+2016: 35da: !****************************************************************************
+2017: 35da: !   Move up and down individual items in the list
+2018: 35da: !****************************************************************************
+2019: 35da:    
+2020: 35da: CHOOSE.ITEM:
+2021: 35ea:     
+2022: 35ea:        STRING.DATA$ = "3303333333003111"
+2023: 3601:        INTEGER.DATA% = 0
+2024: 3612:        GOSUB X.DM.SETF
+2025: 3624:        
+2026: 3624:        STRING.DATA$ = LEFT$(REPORT$(LIST.ITEM%),20)
+2027: 365a:        INTEGER.DATA% = 0
+2028: 366b:        GOSUB X.DM.PUTF
+2029: 367d:           
+2030: 367d:        IF (SCR.EXITKEY = UP.KEY) OR      \
+2031: 36a3:           (SCR.EXITKEY = SHIFT.TAB) THEN BEGIN
+2032: 36a3:              DISPLAY.ITEM% = DISPLAY.ITEM% - 1
+2033: 36af:              LIST.ITEM% = LIST.ITEM% - 1
+2034: 36c8:           IF DISPLAY.ITEM% = 0 THEN BEGIN
+2035: 36d7:              IF LIST.ITEM% > 0 THEN BEGIN
+2036: 36f0:                 DISPLAY.ITEM% = 12
+2037: 36fe:                 GOSUB DISPLAY.TABLE
+2038: 3712:              ENDIF ELSE BEGIN
+2039: 371a:                 DISPLAY.ITEM% = 1
+2040: 3728:                 LIST.ITEM% = 1
+2041: 373d:              ENDIF
+2042: 3745:           ENDIF
+2043: 374d:        ENDIF
+2044: 3755:                                
+2045: 3755: 
+2046: 3755:        IF ((SCR.EXITKEY = DOWN.KEY) OR  \
+2047: 378f:           (SCR.EXITKEY = TAB.KEY)) AND (LIST.ITEM% < NO.REPORTS%) THEN BEGIN
+2048: 378f:              DISPLAY.ITEM% = DISPLAY.ITEM% + 1
+2049: 379b:              LIST.ITEM% = LIST.ITEM% + 1
+2050: 37b4:           IF DISPLAY.ITEM% > 12 THEN BEGIN
+2051: 37c3:                 DISPLAY.ITEM% = 1
+2052: 37d1:                 GOSUB DISPLAY.TABLE
+2053: 37e3:           ENDIF
+2054: 37eb:        ENDIF               
+2055: 37f3: 
+2056: 37f3:        STRING.DATA$ = ""
+2057: 380a:        INTEGER.DATA% = 10+(3*DISPLAY.ITEM%)
+2058: 3823:        GOSUB X.DM.POSF       
+2059: 3835: 
+2060: 3835: 
+2061: 3835: RETURN  
+2062: 3845: 
+2063: 3845: 
+2064: 3845: \* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *
+2065: 3845: \*                                                                   *
+2066: 3845: \*     DISPLAY SCREEN 1                                              *
+2067: 3845: \*                                                                   *
+2068: 3845: \*     IF  last exit key <> F1 (help)  THEN                          *
+2069: 3845: \*         Output screen 1                                           *
+2070: 3845: \*     ENDIF                                                         *
+2071: 3845: \*                                                                   *
+2072: 3845: \*                                                                   *
+2073: 3845: \*     RETURN                                                        *
+2074: 3845: \*                                                                   *
+2075: 3845: \* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *
+2076: 3845: 
+2077: 3845: DISPLAY.SCREEN1:
+2078: 3855: 
+2079: 3855:         SCREEN.NUMBER$ = MID$(MODULE.NUMBER$,3,3) + "01"
+2080: 388e:         IF  SCR.EXITKEY <> F1.KEY  THEN BEGIN                               
+2081: 389f:             STRING.DATA$ = SCREEN.NUMBER$                             
+2082: 38bd:             INTEGER.DATA% = 0
+2083: 38ce:             RC% = DM.DISPD(STRING.DATA$, INTEGER.DATA%)
+2084: 38f3:         ENDIF
+2085: 38fb:                                                    
+2086: 38fb:                                                    
+2087: 38fb: RETURN
+2088: 390b: 
+2089: 390b: \* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *
+2090: 390b: \*                                                                   *
+2091: 390b: \*     DISPLAY SCREEN 2                                              *
+2092: 390b: \*                                                                   *
+2093: 390b: \* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *
+2094: 390b: 
+2095: 390b: DISPLAY.SCREEN2:
+2096: 391b: 
+2097: 391b:         SCREEN.NUMBER$ = MID$(MODULE.NUMBER$,3,3) + "02"
+2098: 3954: 
+2099: 3954:         STRING.DATA$ = SCREEN.NUMBER$                             
+2100: 3972:         INTEGER.DATA% = 0
+2101: 3983:         RC% = DM.DISPD(STRING.DATA$, INTEGER.DATA%)
+2102: 39a8:                                                                                                      
+2103: 39a8: RETURN
+2104: 39b8: 
+2105: 39b8: !****************************************************************************
+2106: 39b8: !   F3 - Exit RFS0200
+2107: 39b8: !   -----------------
+2108: 39b8: !****************************************************************************
+2109: 39b8: 
+2110: 39b8: EXIT.RFS0200:
+2111: 39c8:       
+2112: 39c8:       SCREEN.EXIT% = TRUE
+2113: 39db:      
+2114: 39db: RETURN
+2115: 39eb: 
+2116: 39eb: 
+2117: 39eb: 
+2118: 39eb: 
+2119: 39eb: !****************************************************************************
+2120: 39eb: !   F7 & F8 - Move up or down a page
+2121: 39eb: !   --------------------------------
+2122: 39eb: !   If F7 is pressed then move up the list by 12 items.
+2123: 39eb: !   If F8 is pressed then move down the list by 12 items.
+2124: 39eb: !****************************************************************************
+2125: 39eb: 
+2126: 39eb: MOVE.PAGE:
+2127: 39fb:  
+2128: 39fb:        IF SCR.EXITKEY = F7.KEY OR SCR.EXITKEY = PGUP.KEY THEN BEGIN
+2129: 3a1e:           SCR.EXITKEY = UP.KEY
+2130: 3a2e:        ENDIF ELSE BEGIN
+2131: 3a36:           SCR.EXITKEY = DOWN.KEY
+2132: 3a44:        ENDIF
+2133: 3a4c: 
+2134: 3a4c: \*************************************************************************
+2135: 3a4c: \*** By using X% for the following loop - when a new page is displayed 
+2136: 3a4c: \*** by the Choose Item routine this loop will exit leaving the cursor
+2137: 3a4c: \*** at the top (for PGDN) or bottom (for PGUP) of the screen - which is  
+2138: 3a4c: \*** where we want it to be!!
+2139: 3a4c: \*************************************************************************
+2140: 3a4c: 
+2141: 3a4c: 
+2142: 3a4c: 
+2143: 3a4c:        FOR X% = 1 TO 12
+2144: 3a63:            GOSUB CHOOSE.ITEM
+2145: 3a75:                   
+2146: 3a75:        NEXT X%
+2147: 3a9f: 
+2148: 3a9f: 
+2149: 3a9f: RETURN
+2150: 3aaf: 
+2151: 3aaf: 
+2152: 3aaf: 
+2153: 3aaf: 
+2154: 3aaf: 
+2155: 3aaf: 
+2156: 3aaf: \*****************************************************************************
+2157: 3aaf: \***
+2158: 3aaf: \***  SCREEN HELP
+2159: 3aaf: \***
+2160: 3aaf: \***  Call Display Manager help function
+2161: 3aaf: \***
+2162: 3aaf: \*****************************************************************************
+2163: 3aaf: 
+2164: 3aaf: 
+2165: 3aaf: SCREEN.HELP:
+2166: 3abf: 
+2167: 3abf:         GOSUB X.HELP
+2168: 3ad1:          
+2169: 3ad1: 
+2170: 3ad1: RETURN
+2171: 3ae1: 
+2172: 3ae1: \*********************************************************************
+2173: 3ae1: \*                                                                   *
+2174: 3ae1: \*     X.xxxxxxxxx:    Calls to PSB functions with return code check *
+2175: 3ae1: \*     ------------------------------------------------------------- *
+2176: 3ae1: \*                                                                   *
+2177: 3ae1: \*     If an error is found then the application will return to the  *
+2178: 3ae1: \*     calling program.                                              *
+2179: 3ae1: \*                                                                   *
+2180: 3ae1: \*     X.DM.OPNDIS     X.DM.INITDM     X.DM.CURS       X.DM.POSF     *
+2181: 3ae1: \*     X.DM.NEXTF      X.DM.UPDF       X.DM.DISPD      X.DM.SETF     *
+2182: 3ae1: \*     X.DM.RETF       X.DM.PUTF       X.DM.CLSDIS                   *
+2183: 3ae1: \*     X.EXTERNAL.MESSAGE      X.HELP                                *
+2184: 3ae1: \*                                                                   *
+2185: 3ae1: \*********************************************************************
+2186: 3ae1: 
+2187: 3ae1: X.DM.OPNDIS:
+2188: 3ae9: 
+2189: 3ae9:       RC% = DM.OPNDIS(STRING.DATA$, INTEGER.DATA%)
+2190: 3b0e:       IF RC% = 1  THEN BEGIN
+2191: 3b1d:          GOTO PROGRAM.EXIT      
+2192: 3b28:       ENDIF
+2193: 3b30: RETURN
+2194: 3b40: 
+2195: 3b40: X.DM.INITDM:
+2196: 3b48:       RC% = DM.INITDM(STRING.DATA$, INTEGER.DATA%)               
+2197: 3b6d:       IF RC% = 1  THEN BEGIN
+2198: 3b7c:          GOTO PROGRAM.EXIT      
+2199: 3b87:       ENDIF
+2200: 3b8f: RETURN
+2201: 3b9f: 
+2202: 3b9f: X.DM.CURS:
+2203: 3ba7:       RC% = DM.CURS(STRING.DATA$, INTEGER.DATA%)                  
+2204: 3bcc:       IF RC% = 1  THEN BEGIN
+2205: 3bdb:          GOTO PROGRAM.EXIT      
+2206: 3be6:       ENDIF
+2207: 3bee: RETURN
+2208: 3bfe: 
+2209: 3bfe: X.DM.POSF:
+2210: 3c0e:       RC% = DM.POSF(STRING.DATA$, INTEGER.DATA%)
+2211: 3c33:       IF RC% = 1  THEN BEGIN
+2212: 3c42:          GOTO PROGRAM.EXIT     
+2213: 3c4d:       ENDIF
+2214: 3c55: RETURN
+2215: 3c65:    
+2216: 3c65: X.DM.NEXTF:
+2217: 3c75:       RC% = DM.NEXTF(STRING.DATA$, INTEGER.DATA%)               
+2218: 3c9a:       IF RC% = 1  THEN BEGIN
+2219: 3ca9:          GOTO PROGRAM.EXIT     
+2220: 3cb4:       ENDIF
+2221: 3cbc: RETURN
+2222: 3ccc: 
+2223: 3ccc: X.DM.UPDF:
+2224: 3cdc:       RC% = DM.UPDF(STRING.DATA$, INTEGER.DATA%)
+2225: 3d01:       IF RC% = 1  THEN BEGIN
+2226: 3d10:          GOTO PROGRAM.EXIT     
+2227: 3d1b:       ENDIF
+2228: 3d23: RETURN
+2229: 3d33: 
+2230: 3d33: X.DM.DISPD:
+2231: 3d3b:       RC% = DM.DISPD(STRING.DATA$, INTEGER.DATA%)
+2232: 3d60:       IF RC% = 1  THEN BEGIN
+2233: 3d6f:          GOTO PROGRAM.EXIT    
+2234: 3d7a:       ENDIF
+2235: 3d82: RETURN
+2236: 3d92: 
+2237: 3d92: X.DM.SETF:
+2238: 3da2:       RC% = DM.SETF(STRING.DATA$, INTEGER.DATA%)
+2239: 3dc7:       IF RC% = 1  THEN BEGIN
+2240: 3dd6:          GOTO PROGRAM.EXIT   
+2241: 3de1:       ENDIF
+2242: 3de9: RETURN
+2243: 3df9: 
+2244: 3df9: X.DM.PUTF:
+2245: 3e09:       RC% = DM.PUTF(STRING.DATA$, INTEGER.DATA%)
+2246: 3e2e:       IF RC% = 1  THEN BEGIN
+2247: 3e3d:          GOTO PROGRAM.EXIT    
+2248: 3e48:       ENDIF
+2249: 3e50: RETURN
+2250: 3e60: 
+2251: 3e60: X.DM.CLSDIS:
+2252: 3e68:       RC% = DM.CLSDIS(STRING.DATA$, INTEGER.DATA%)
+2253: 3e8d:       IF RC% = 1  THEN BEGIN
+2254: 3e9c:          GOTO PROGRAM.EXIT   
+2255: 3ea7:       ENDIF
+2256: 3eaf: RETURN
+2257: 3ebf: 
+2258: 3ebf: X.DM.RETF:
+2259: 3ec7:       RC% = DM.RETF(STRING.DATA$, INTEGER.DATA%)
+2260: 3eec:         IF RC% = 1  THEN BEGIN
+2261: 3efb:            GOTO PROGRAM.EXIT  
+2262: 3f06:       ENDIF
+2263: 3f0e: RETURN
+2264: 3f1e:        
+2265: 3f1e: X.EXTERNAL.MESSAGE:
+2266: 3f2e:         RC% = EXTERNAL.MESSAGE(MESSAGE.NO%, STRING.DATA$, RETURN.FIELD%)
+2267: 3f54: RETURN
+2268: 3f64: 
+2269: 3f64: X.HELP:
+2270: 3f74:       RC% = HELP(SCREEN.NUMBER$)
+2271: 3f92: 
+2272: 3f92: RETURN
+2273: 3fa2: 
+2274: 3fa2: 
+2275: 3fa2: \*******************************************************************************
+2276: 3fa2: \***
+2277: 3fa2: \***    CALL.F20.SESS.NUM.UTILITY:
+2278: 3fa2: \***    References SESS.NUM.UTILITY (F20) to create, read, or delete entry on
+2279: 3fa2: \***    Session Number Table as determined by FUNCTION.FLAG$ ("O" "R" "C").
+2280: 3fa2: \***
+2281: 3fa2: \***............................................................................
+2282: 3fa2: 
+2283: 3fa2: 
+2284: 3fa2: CALL.F20.SESS.NUM.UTILITY:
+2285: 3fb2: 
+2286: 3fb2:        RC% = SESS.NUM.UTILITY(FUNCTION.FLAG$,PASSED.INTEGER%,PASSED.STRING$)
+2287: 3fdf: 
+2288: 3fdf:        IF RC% <> 0 THEN BEGIN
+2289: 3ff1:                SB.EVENT.NO% = 48
+2290: 3fff:                SB.UNIQUE$ = RIGHT$(STRING$(10,"0") + STR$(F20.INTEGER.FILE.NO%),10)
+2291: 4059:                SB.MESSAGE$ = "SESSION NUMBER ALLOCATION ROUTINE FAILED"
+2292: 406e:                GOSUB SB.LOG.AN.EVENT
+2293: 4080:                GOTO PROGRAM.EXIT
+2294: 408b:        ENDIF
+2295: 4093: 
+2296: 4093: RETURN
+2297: 40a3:                          
+2298: 40a3: \****************************************************************************
+2299: 40a3: \***
+2300: 40a3: \***   DISPLAY.MESSAGE
+2301: 40a3: \***
+2302: 40a3: \***   If background task then show message on background else print message
+2303: 40a3: \***
+2304: 40a3: \****************************************************************************
+2305: 40a3: 
+2306: 40a3: DISPLAY.MESSAGE:
+2307: 40b3: 
+2308: 40b3:                                      
+2309: 40b3:          PRINT ADXSERVE.DATA$                               
+2310: 40c8:                  
+2311: 40c8: 
+2312: 40c8: RETURN
+2313: 40d8:                                      
+2314: 40d8: 
+2315: 40d8: \*******************************************************************************
+2316: 40d8: \***
+2317: 40d8: \***    SB.LOG.AN.EVENT:
+2318: 40d8: \***    Writes details of Event to application event log.
+2319: 40d8: \***
+2320: 40d8: \***............................................................................
+2321: 40d8: 
+2322: 40d8: SB.LOG.AN.EVENT:
+2323: 40e8:    
+2324: 40e8:        RC% = APPLICATION.LOG(MESSAGE.NO%,SB.UNIQUE$,UNIQUE.2$,SB.EVENT.NO%)
+2325: 4114:    
+2326: 4114: RETURN
+2327: 4124: 
+2328: 4124: \*******************************************************************************
+2329: 4124: \***
+2330: 4124: \***    LOG.AN.EVENT.106:
+2331: 4124: \***    Writes details of Event 106 to application event log.
+2332: 4124: \***
+2333: 4124: \***............................................................................
+2334: 4124: 
+2335: 4124: 
+2336: 4124: LOG.AN.EVENT.106:
+2337: 4134: 
+2338: 4134:     EVENT.NUMBER% = 106
+2339: 4141: 
+2340: 4141: 
+2341: 4141:     FUNCTION.FLAG$ = "R"
+2342: 4158:     PASSED.INTEGER% = CURR.SESS.NUM%
+2343: 416a:     PASSED.STRING$ = ""
+2344: 417f:     GOSUB CALL.F20.SESS.NUM.UTILITY
+2345: 4191: 
+2346: 4191:     CURRENT.REPORT.NUM% = F20.INTEGER.FILE.NO%
+2347: 41a7: 
+2348: 41a7: 
+2349: 41a7:     VAR.STRING.1$ = \ ! Application event log data
+2350: 4216:       FILE.OPERATION$ + \
+2351: 4216:         CHR$(SHIFT(CURRENT.REPORT.NUM%,8)) + \ ! Two byte integer byte order
+2352: 4216:         CHR$(SHIFT(CURRENT.REPORT.NUM%,0)) + \ ! reversed to give hex number
+2353: 4216:         CURRENT.CODE.LOGGED$
+2354: 4216: 
+2355: 4216:     GOSUB CALL.F01.APPLICATION.LOG
+2356: 4228: 
+2357: 4228: RETURN
+2358: 4238: 
+2359: 4238: \*******************************************************************************
+2360: 4238: \***
+2361: 4238: \***    CALL.F01.APPLICATION.LOG:
+2362: 4238: \***    References APPLICATION.LOG (F01) to write details of event defined
+2363: 4238: \***    by EVENT.NUMBER% and VAR.STRING.1$ to Application Event Log.
+2364: 4238: \***
+2365: 4238: \***............................................................................
+2366: 4238: 
+2367: 4238: 
+2368: 4238: CALL.F01.APPLICATION.LOG:
+2369: 4248:                                                    
+2370: 4248:       RC% = APPLICATION.LOG(MESSAGE.NO%,                          \
+2371: 4274:                         VAR.STRING.1$,                            \
+2372: 4274:                         VAR.STRING.2$,                            \
+2373: 4274:                         EVENT.NUMBER%)
+2374: 4274: 
+2375: 4274: 
+2376: 4274: RETURN
+2377: 4284: 
+2378: 4284: \******************************************************************************
+2379: 4284: \***
+2380: 4284: \***   ADXSERVE FAILURE
+2381: 4284: \***
+2382: 4284: \***   LOG an event 106
+2383: 4284: \***   GOTO PROGRAM.EXIT
+2384: 4284: \***
+2385: 4284: \******************************************************************************                                                                       ! MNS
+2386: 4284: ADXSERVE.FAILURE:                                                      
+2387: 4294:                                                                        
+2388: 4294:     VAR.STRING.1$ = STR$(ADX.RETURN.CODE%) +                           \ 
+2389: 42d4:                     PACK$(STR$(ADX.FUNCTION%))                         
+2390: 42d4:     VAR.STRING.2$ = ""                                                 
+2391: 42e9:     EVENT.NUMBER% = 23                                                 
+2392: 42f6:     GOSUB SB.LOG.AN.EVENT                                              
+2393: 4308:     GOTO PROGRAM.EXIT                                                  
+2394: 4313: 
+2395: 4313: RETURN                                                                 
+2396: 4323:         
+2397: 4323: 
+2398: 4323: \******************************************************************************
+2399: 4323: \***
+2400: 4323: \***   CREATE ERROR:
+2401: 4323: \***
+2402: 4323: \***   LOG an event 106
+2403: 4323: \***   GOTO PROGRAM.EXIT
+2404: 4323: \***
+2405: 4323: \******************************************************************************
+2406: 4323: 
+2407: 4323: CREATE.ERROR:
+2408: 4333:    
+2409: 4333:        FILE.OPERATION$ = "C"
+2410: 4348:   
+2411: 4348:        GOSUB LOG.AN.EVENT.106 
+2412: 435a:    
+2413: 435a:        GOTO PROGRAM.EXIT
+2414: 4365: 
+2415: 4365: \******************************************************************************
+2416: 4365: \***
+2417: 4365: \***   READ.ERROR:
+2418: 4365: \***
+2419: 4365: \***   LOG an event 106
+2420: 4365: \***   GOTO PROGRAM.EXIT
+2421: 4365: \***
+2422: 4365: \******************************************************************************
+2423: 4365: 
+2424: 4365: READ.ERROR:
+2425: 436d:    
+2426: 436d:        FILE.OPERATION$ = "R"
+2427: 4382:   
+2428: 4382:        GOSUB LOG.AN.EVENT.106 
+2429: 4394:    
+2430: 4394:        GOTO PROGRAM.EXIT
+2431: 439f:   
+2432: 439f: \******************************************************************************
+2433: 439f: \***
+2434: 439f: \***   OPEN.ERROR:
+2435: 439f: \***
+2436: 439f: \***   LOG an event 106 
+2437: 439f: \***
+2438: 439f: \***   GOTO PROGRAM.EXIT
+2439: 439f: \***
+2440: 439f: \******************************************************************************
+2441: 439f: 
+2442: 439f: OPEN.ERROR:
+2443: 43af:       
+2444: 43af:       FILE.OPERATION$ = "O"
+2445: 43c4: 
+2446: 43c4:       GOSUB LOG.AN.EVENT.106
+2447: 43d6: 
+2448: 43d6:       GOTO PROGRAM.EXIT
+2449: 43e1: 
+2450: 43e1: !****************************************************************************
+2451: 43e1: !   Display details of errors
+2452: 43e1: !****************************************************************************
+2453: 43e1:                                            
+2454: 43e1: RENAME.ERROR:
+2455: 43e9: 
+2456: 43e9:        SB.EVENT.NO% = 26
+2457: 43f7:        MESSAGE.NO% = 221
+2458: 4405:        SB.UNIQUE$ = "RFS02"
+2459: 441a:        UNIQUE.2$ = MESSAGE$ + SB.UNIQUE$
+2460: 443e:        GOSUB SB.LOG.AN.EVENT
+2461: 4450: 
+2462: 4450: GOTO PROGRAM.EXIT     
+2463: 445b:             
+2464: 445b: 
+2465: 445b: 
+2466: 445b:             
+2467: 445b: 
+2468: 445b: RFRDESC.ERROR:
+2469: 4463: 
+2470: 4463:        SB.EVENT.NO% = 26
+2471: 4471:        MESSAGE.NO% = 221
+2472: 447f:        SB.UNIQUE$ = "RFS02"
+2473: 4494:        UNIQUE.2$ = \
+2474: 44b4:           "INTERNAL ERROR - Problem with RFRDESC file " + SB.UNIQUE$
+2475: 44b4:        GOSUB SB.LOG.AN.EVENT
+2476: 44c6: 
+2477: 44c6:        GOTO PROGRAM.EXIT
+2478: 44d1: 
+2479: 44d1: 
+2480: 44d1: \*******************************************************************************
+2481: 44d1: \***
+2482: 44d1: \***   ERROR.DETECTED:
+2483: 44d1: \***
+2484: 44d1: \***   References STANDARD.ERROR.DETECTED to log Event 101.
+2485: 44d1: \***   Stops program.
+2486: 44d1: \***
+2487: 44d1: \***............................................................................
+2488: 44d1: 
+2489: 44d1: 
+2490: 44d1: ERROR.DETECTED:
+2491: 44e1:                                 
+2492: 44e1:        ERROR.COUNT% = ERROR.COUNT% + 1
+2493: 44ed:     
+2494: 44ed:        IF ERROR.COUNT% > 1 THEN BEGIN
+2495: 44fc:           RESUME PROGRAM.EXIT
+2496: 4513:        ENDIF
+2497: 451b: 
+2498: 451b:        IF ERR = "OE" THEN BEGIN 
+2499: 4541:           IF CURR.SESS.NUM% = WORKFILE.SESS.NUM% THEN BEGIN
+2500: 4552:              ERROR.COUNT% = 0
+2501: 455f:              RESUME NO.DISPLAY.REPORTS
+2502: 4576:           ENDIF
+2503: 457e:        ENDIF                       
+2504: 4586: 
+2505: 4586: 
+2506: 4586:        RC% =                                         \
+2507: 45b6:        STANDARD.ERROR.DETECTED                                         \
+2508: 45b6:           (ERRN,                                                       \
+2509: 45b6:            ERRF%,                                                      \
+2510: 45b6:            ERRL,                                                       \
+2511: 45b6:            ERR)
+2512: 45b6:                        
+2513: 45b6:        RC% = CONV.TO.HEX(ERRN)
+2514: 45d2:        ADXSERVE.DATA$ = "ERROR: " + ERR + " " + F16.HEX.STRING$ 
+2515: 4609:        GOSUB DISPLAY.MESSAGE
+2516: 461b:  
+2517: 461b: 
+2518: 461b: 
+2519: 461b:        RESUME PROGRAM.EXIT
+2520: 4632: 
+2521: 4632:       STOP
+2522: 4644:                
+2523: 4644:       
+2524: 4644:    END
+2525: 4644: End of Compilation

@@ -1,0 +1,382 @@
+\*******************************************************************************
+\***
+\***   4680 BASIC SOCKETS INTERFACE EXTERNAL DECLARATIONS
+\***
+\***   Copyright (c) 2008, 2009 Stuart Highley
+\***   All rights reserved
+\***
+\***
+\***   Possible TCPIP return codes (in global TCPERRNO%):
+\***
+\***   EWOULDBLOCK     35              Operation would block             
+\***   EDEADLK         EWOULDBLOCK     ditto                             
+\***   EINPROGRESS     36              Operation now in progress         
+\***   EALREADY        37              Operation already in progress     
+\***   
+\***   Argument errors                                                   
+\***   ENOTSOCK        38              Socket operation on non-socket    
+\***   EDESTADDRREQ    39              Destination address required      
+\***   EMSGSIZE        40              Message too long                  
+\***   EPROTOTYPE      41              Protocol wrong type for socket    
+\***   ENOPROTOOPT     42              Protocol not available            
+\***   EPROTONOSUPPORT 43              Protocol not supported            
+\***   ESOCKTNOSUPPORT 44              Socket type not supported         
+\***   EOPNOTSUPP      45              Operation not supported on socket 
+\***   EPFNOSUPPORT    46              Protocol family not supported     
+\***   EAFNOSUPPORT    47              Address family not supported by   
+\***   protocol family                     
+\***   EADDRINUSE      48              Address already in use            
+\***   EADDRNOTAVAIL   49              Can't assign requested address    
+\***   
+\***   Operational errors                                                
+\***   ENETDOWN        50              Network is down                   
+\***   ENETUNREACH     51              Network is unreachable            
+\***   ENETRESET       52              Network dropped connection on reset 
+\***   ECONNABORTED    53              Software caused connection abort    
+\***   ECONNRESET      54              Connection reset by peer            
+\***   ENOBUFS         55              No buffer space available           
+\***   EISCONN         56              Socket is already connected         
+\***   ENOTCONN        57              Socket is not connected             
+\***   ESHUTDOWN       58              Can't send after socket shutdown    
+\***   ETOOMANYREFS    59              Too many references: can't splice   
+\***   ETIMEDOUT       60              Connection timed out                
+\***   ECONNREFUSED    61              Connection refused                  
+\***   
+\***   ELOOP           62              Too many levels of symbolic links   
+\***   ENAMETOOLONG    63              File name too long                  
+\***   
+\***   Should be rearranged                                                
+\***   EHOSTDOWN       64              Host is down                        
+\***   EHOSTUNREACH    65              No route to host                    
+\***   ENOTEMPTY       66              Directory not empty                 
+\***
+\*******************************************************************************
+
+\*******************************************************************************
+\***
+\***   PUBLIC FUNCTIONS
+\***
+\*******************************************************************************
+
+\*******************************************************************************
+\***   SOCK.INIT
+\***   Open the TCPIP device driver and dimension a table to hold sockets
+\***
+\***   NOTE: BUFFER.SIZE% is no longer used as buffer is always set to
+\***   31K. Parameter is left as UNUSED% to prevent link problems with legacy
+\***   applications.
+\*******************************************************************************
+FUNCTION SOCK.INIT(MAX.SOCKS%, UNUSED%) EXTERNAL                        !1.1SH
+    INTEGER*2 MAX.SOCKS%
+    INTEGER*2 UNUSED%                                                   !1.1SH
+    INTEGER*1 SOCK.INIT
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.SOCKET
+\***   Create a socket
+\*******************************************************************************
+\***
+\***  Domains: (only AF_INET is valid)
+\***  AF_UNSPEC       0               unspecified
+\***  AF_UNIX         1               local to host (pipes, portals)
+\***  AF_INET         2               internetwork: UDP, TCP, etc.
+\***  AF_IMPLINK      3               arpanet imp addresses
+\***  AF_PUP          4               pup protocols: e.g. BSP
+\***  AF_CHAOS        5               mit CHAOS protocols
+\***  AF_NS           6               XEROX NS protocols
+\***  AF_NBS          7               nbs protocols
+\***  AF_ECMA         8               european computer manufacturers
+\***  AF_DATAKIT      9               datakit protocols
+\***  AF_CCITT        10              CCITT protocols, X.25 etc
+\***  AF_SNA          11              IBM SNA
+\***  AF_DECnet       12              DECnet
+\***  AF_DLI          13              Direct data link interface
+\***  AF_LAT          14              LAT
+\***  AF_HYLINK       15              NSC Hyperchannel
+\***  AF_APPLETALK    16              Apple Talk
+\***
+\***  Valid types:
+\***  SOCK_STREAM     1               stream socket
+\***  SOCK_DGRAM      2               datagram socket
+\***  SOCK_RAW        3               raw-protocol interface
+\***  SOCK_RDM        4               reliably-delivered message
+\***  SOCK_SEQPACKET  5               sequenced packet stream
+
+\*******************************************************************************
+
+FUNCTION SOCK.SOCKET(DOMAIN%, TYPE%, PROTOCOL%) EXTERNAL
+    INTEGER*2 SOCK.SOCKET
+    INTEGER*2 DOMAIN%
+    INTEGER*2 TYPE%
+    INTEGER*2 PROTOCOL%
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.BIND
+\***   Bind to a particular port number
+\***   NOTE: Address is always set to INADDR_ANY in this implementation
+\*******************************************************************************
+
+FUNCTION SOCK.BIND(HANDLE%, PORT%) EXTERNAL
+    STRING SOCKADDR.IN$
+    INTEGER*4 PORT%
+    INTEGER*2 HANDLE%
+    INTEGER*2 SOCK.BIND
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.CONNECT
+\***   Connect to a remote host
+\*******************************************************************************
+
+FUNCTION SOCK.CONNECT(HANDLE%, IP.ADDRESS$, PORT%) EXTERNAL
+    STRING IP.ADDRESS$
+    INTEGER*4 PORT%
+    INTEGER*2 HANDLE%
+    INTEGER*2 SOCK.CONNECT
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.LISTEN
+\***   This call completes the binding necessary for a socket and creates a 
+\***   connection request queue for incoming requests.
+\*******************************************************************************
+
+FUNCTION SOCK.LISTEN(HANDLE%, BACKLOG%) EXTERNAL
+    INTEGER*2 SOCK.LISTEN
+    INTEGER*2 HANDLE%
+    INTEGER*2 BACKLOG%
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.ACCEPT
+\***   Accepts a TCP connection request from a remote host.
+\*******************************************************************************
+
+SUB SOCK.ACCEPT(MY.HANDLE%, CLIENT.HANDLE%, CLIENT.IP%, CLIENT.PORT%) EXTERNAL
+    INTEGER*4 CLIENT.IP%
+    INTEGER*2 SOCK.ACCEPT
+    INTEGER*2 MY.HANDLE%
+    INTEGER*2 CLIENT.PORT%
+END SUB
+
+\*******************************************************************************
+\***   SOCK.SEND
+\***   Send a message to the remote host
+\*******************************************************************************
+\***
+\***   Flags:
+\***   MSG_OOB        01h  Sends out-of-band data on sockets that support it.
+\***                       Only SOCK_STREAM sockets created in the AF_INET 
+\***                       address family support out-of-band data.
+\***   MSG_DONTROUTE  04h  The SO_DONTROUTE option is turned on for the duration
+\***                       of the operation. Usually only diagnostic or routing
+\***                       programs use this.
+\***
+\*******************************************************************************
+
+FUNCTION SOCK.SEND(HANDLE%, MSG$, FLAGS%) EXTERNAL
+    STRING MSG$
+    INTEGER*2 SOCK.SEND
+    INTEGER*2 HANDLE%
+    INTEGER*2 FLAGS%
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.RECV
+\***   Receive a message from the remote host
+\*******************************************************************************
+\***
+\***   Flags:
+\***   MSG_OOB        01h  Sends out-of-band data on sockets that support it.
+\***                       Only SOCK_STREAM sockets created in the AF_INET 
+\***                       address family support out-of-band data.
+\***   MSG_PEEK       02h  Peeks at the data present on the socket; the data is 
+\***                       returned but not consumed, so that a later receive
+\***                       operation sees the same data.
+\***
+\***   Returns:
+\***   0   : Good return code. The returned string's length indicates the actual
+\***         number of bytes read. If the returned string is null, then the 
+\***         remote session has closed the socket.
+\***   -ve : Error code
+\***
+\*******************************************************************************
+
+SUB SOCK.RECV(HANDLE%, MSG$, FLAGS%, RC%) EXTERNAL
+    STRING MSG$
+    INTEGER*2 RC%
+    INTEGER*2 HANDLE%
+    INTEGER*2 FLAGS%
+END SUB
+
+\*******************************************************************************
+\***   SOCK.CLOSE
+\***   Close a socket
+\*******************************************************************************
+
+FUNCTION SOCK.CLOSE(HANDLE%) EXTERNAL
+    INTEGER*2 HANDLE%
+    INTEGER*2 SOCK.CLOSE
+END FUNCTION
+
+
+\*******************************************************************************
+\***   SOCK.ABORT
+\***   Abort a socket
+\*******************************************************************************
+
+FUNCTION SOCK.ABORT(HANDLE%) EXTERNAL
+    INTEGER*2 HANDLE%
+    INTEGER*2 SOCK.ABORT
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.CLEANUP
+\***   Close all known sockets
+\*******************************************************************************
+
+FUNCTION SOCK.CLEANUP EXTERNAL
+    INTEGER*2 SOCK.CLEANUP
+END FUNCTION
+
+    
+\*******************************************************************************
+\***   SOCK.IOCTL
+\***   performs a special operation on a socket
+\*******************************************************************************
+\***
+\***   FIOASYNC (667Fh)   Sets or clears asynchronous input-output for a socket.
+\***   data is a pointer to an integer. If the integer is 0, asynchronous 
+\***   input-output on the socket is cleared. Otherwise, the socket is set for
+\***   asynchronous input-output.
+\***
+\***   FIONBIO (667Eh)    Sets or clears nonblocking input-output for a socket.
+\***   data is a pointer to an integer. If the integer is 0, nonblocking 
+\***   input-output on the socket is cleared. Otherwise, the socket is set for
+\***   nonblocking input-output.
+\***
+\***   FIONREAD (667Dh)   Gets the number of immediately readable bytes for the
+\***   socket. data is a pointer to an integer. Sets the value of the integer to
+\***   the number of immediately readable characters for the socket.
+\***
+\***   SIOCADDRT (7300h)  Adds a routing table entry. data is a pointer to a
+\***   rtentry structure, as defined in <NET\ROUTE.H>. The routing table entry,
+\***   passed as an argument, is added to the routing tables.
+\***
+\***   SIOCATMARK (7301h) Queries whether the current location in the data input
+\***   is pointing to out-of-band data. data is a pointer to an integer. Sets 
+\***   the argument to 1 if the socket points to a mark in the data stream for
+\***   out-of-band data. Otherwise, sets the argument to 0.
+\***
+\***   SIOCDARP (7302h)   Deletes an arp table entry. data is a pointer to a
+\***   arpreq as defined in <NET\IF_ARP.H>. The arp table entry passed as an
+\***   argument is deleted from the arp tables, if it exists. SIOCDELRT Deletes
+\***   a routing table entry. data is a pointer to a rtentry structure, as
+\***   defined in <NET\ROUTE.H>. If it exists, the routing table entry passed as
+\***   an argument is deleted from the routing tables.
+\***
+\***   SIOCGARP (7303h)   Gets the arp table entries. data is a pointer to an
+\***   arpreq, as defined in <NET\IF_ARP.H>. The arp table entry passed as an
+\***   argument is returned from the arp tables if it exists. SIOCGIFADDR Gets
+\***   the network interface address. data is a pointer to an ifreq structure,
+\***   as defined in <NET\IF.H>. The interface address is returned in the
+\***   argument.
+\***
+\***   SIOCGIFBRDADDR (7304h) Gets the network interface broadcast address. data
+\***   is a pointer to an ifreq structure, as defined in <NET\IF.H>. The
+\***   interface broadcast address is returned in the argument.
+\***
+\***   SIOCGIFCONF (7305h) Gets the network interface configuration. data is a 
+\***   pointer to an ifconf structure, as defined in <NET\IF.H>. The interface 
+\***   configuration is returned in the argument.
+\***
+\***   SIOCGIFDSTADDR (7306h) Gets the network interface destination address.
+\***   data is a pointer to an ifreq structure, as defined in <NET\IF.H>. The 
+\***   interface destination (point-to-point) address is returned in the
+\***   argument.
+\***
+\***   SIOCGIFFLAGS (7307h) Gets the network interface flags. data is a pointer 
+\***   to an ifreq structure, as defined in <NET\IF.H>. The interface flags are 
+\***   returned in the argument.
+\***
+\***   SIOCGIFMETRIC (7308h) Gets the network interface routing metric. data is 
+\***   a pointer to an ifreq structure, as defined in <NET\IF.H>. The interface 
+\***   routing metric is returned in the argument.
+\***   
+\***   SIOCGIFNETMASK (7309h) Gets the network interface network mask. data is a
+\***   pointer to an ifreq structure, as defined in <NET\IF.H>. The interface
+\***   network mask is returned in the argument.
+\***
+\***   SIOCSARP           Sets an arp table entry. data is a pointer to an 
+\***   arpreq as defined in <NET\IF_ARP.H>. The arp table entry passed as an
+\***   argument is added to the arp tables.
+\***
+\***   SIOCSIFADDR        Sets the network interface address. data is a pointer
+\***   to an ifreq structure, as defined in <NET\IF.H>. Sets the interface 
+\***   address to the value passed in the argument.
+\***
+\***   SIOCSIFBRDADDR     Sets the network interface broadcast address. data is
+\***   a pointer to an ifreq structure, as defined in <NET\IF.H>. Sets the 
+\***   interface broadcast address to the value passed in the argument.
+\***
+\***   SIOCSIFDSTADDR     Sets the network interface destination address. data 
+\***   is a pointer to an ifreq structure, as defined in <NET\IF.H>. Sets the 
+\***   interface destination (point-to-point) address to the value passed in the
+\***   argument.
+\***
+\***   SIOCSIFFLAGS       Sets the network interface flags. data is a pointer to 
+\***   an ifreq structure, as defined in <NET\IF.H>. Sets the interface flags to
+\***   the values passed in the argument.
+\***
+\***   SIOCSIFMETRIC      Sets the network interface routing metric. data is a 
+\***   pointer to an ifreq structure, as defined in <NET\IF.H>. Sets the 
+\***   interface routing metric to the value passed in the argument.
+\***
+\***   SIOCSIFNETMASK     Sets the network interface network mask. data is a 
+\***   pointer to an ifreq structure, as defined in <NET\IF.H>. Sets the 
+\***   interface network mask to the value passed in the argument.
+\***
+\*******************************************************************************
+
+FUNCTION SOCK.IOCTL(HANDLE%, CMD%, DATA$) EXTERNAL
+    STRING DATA$
+    INTEGER*2 HANDLE%
+    INTEGER*2 SOCK.IOCTL
+    INTEGER*2 CMD%
+END FUNCTION
+
+\*******************************************************************************
+\***   SOCK.DONT.BLOCK
+\***   User friendly entry point to set up non-blocking mode
+\*******************************************************************************
+
+FUNCTION SOCK.DONT.BLOCK(HANDLE%) EXTERNAL
+    INTEGER*2 SOCK.DONT.BLOCK
+    INTEGER*2 HANDLE%
+END FUNCTION
+    
+    
+\*******************************************************************************
+\***   SOCK.SELECT
+\***   Monitor read, write, and exception status on a group of sockets.
+\***   Timeout is in milliseconds.
+\*******************************************************************************
+\***
+\***   Returns the number of ready sockets. The value -1 indicates an error, and
+\***   the value 0 indicates an expired time limit. If the return value is 
+\***   greater than 0, the socket numbers in s that were not ready are set to -1
+\***
+\*******************************************************************************
+
+SUB SOCK.SELECT(HANDLE.LIST$, NUM.READ.SOCKS%, NUM.WRITE.SOCKS%, \
+                NUM.EXCPT.SOCKS%, TIMEOUT%, RETURN.RC%) EXTERNAL
+    STRING HANDLE.LIST$
+    INTEGER*4 TIMEOUT%
+    INTEGER*2 NUM.READ.SOCKS%
+    INTEGER*2 NUM.WRITE.SOCKS%
+    INTEGER*2 NUM.EXCPT.SOCKS%
+    INTEGER*2 RETURN.RC%
+END SUB
+

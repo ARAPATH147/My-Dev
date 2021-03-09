@@ -1,0 +1,372 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***********************************************************************
+   3: 0000: \***
+   4: 0000: \***    DESCRIPTION: Item Movement & Stock File
+   5: 0000: \***                 Public File Function Definitions
+   6: 0000: \***
+   7: 0000: \***    FILE TYPE : Keyed
+   8: 0000: \***
+   9: 0000: \***********************************************************************
+  10: 0000: \***
+  11: 0000: \***    Version A.          Les Cook                     21st Aug 1992
+  12: 0000: \***    Initial version.
+  13: 0000: \***
+  14: 0000: \***    Version B.          Julia Stones                 13th Jun 2005
+  15: 0000: \***    Added new external functions for:
+  16: 0000: \***        MIMSTC - Merged IMSTC
+  17: 0000: \***        CIMSTC - Copy of IMSTC
+  18: 0000: \***        BIMSTC - Backup of IMSTC
+  19: 0000: \***
+  20: 0000: \***    Version C.          Mark Walker                  23rd Jan 2014
+  21: 0000: \***    F337 Centralised View of Stock
+  22: 0000: \***    - Added sequence ID to all reads and writes.
+  23: 0000: \***    - When reading, calculate the value of the next sequence ID.
+  24: 0000: \***    - Fixed error handling file operation flag for writes.
+  25: 0000: \***    - Moved BIMSTC, CIMSTC and MIMSTC functions to separate modules.
+  26: 0000: \***    - Minor formatting changes (uncommented).
+  27: 0000: \***
+  28: 0000: \***    Version D.          Mark Walker                  15th Mar 2014
+  29: 0000: \***    F337 Centralised View of Stock
+  30: 0000: \***    Added initialisation of next sequence ID field.
+  31: 0000: \***
+  32: 0000: \***    Version E.          Mark Walker                  30th Apr 2014
+  33: 0000: \***    F337 Centralised View of Stock
+  34: 0000: \***    QC599: Introduced item level TSL restart pointer to allow
+  35: 0000: \***           Sales Support restart/recovery to continue processing
+  36: 0000: \***           correctly from the next unprocessed item.
+  37: 0000: \***
+  38: 0000: \***********************************************************************
+  39: 0000: \***********************************************************************
+  40: 0000: 
+  41: 0000:     INTEGER*2 GLOBAL                                                    \
+  42: 0000:         CURRENT.REPORT.NUM%
+  43: 0000: 
+  44: 0000:     STRING GLOBAL                                                       \
+  45: 0000:         CURRENT.CODE$,                                                  \
+  46: 0000:         FILE.OPERATION$
+  47: 0000: 
+  48: 0000:     %INCLUDE IMSTCDEC.J86
+  49: 0000: \***********************************************************************
+  50: 0000: \***********************************************************************
+  51: 0000: \***
+  52: 0000: \***    DESCRIPTION: Item Movement & Stock File
+  53: 0000: \***                 Field Definitions         
+  54: 0000: \***
+  55: 0000: \***    FILE TYPE : Keyed
+  56: 0000: \***
+  57: 0000: \***********************************************************************
+  58: 0000: \***
+  59: 0000: \***    Version A.          Les Cook                     21st Aug 1992
+  60: 0000: \***    Initial version.
+  61: 0000: \***
+  62: 0000: \***    VERSION 1.1         Julia Stones                 13th Jun 2005
+  63: 0000: \***    Added new external functions for
+  64: 0000: \***        MIMSTC - merged IMSTC
+  65: 0000: \***        CIMSTC - Copy of IMSTC
+  66: 0000: \***        BIMSTC - Backup of IMSTC
+  67: 0000: \***
+  68: 0000: \***    Version C.          Mark Walker                  23rd Jan 2014
+  69: 0000: \***    F337 Centralised View of Stock
+  70: 0000: \***    - Added sequence ID field definition.
+  71: 0000: \***    - Moved BIMST, CIMST and MIMST field definitions to separate
+  72: 0000: \***      modules.
+  73: 0000: \***    - Moved TIMST record length to TIMSTDEC.J86.
+  74: 0000: \***    - Minor formatting changes (uncommented).
+  75: 0000: \***
+  76: 0000: \***    Version D.          Mark Walker                  30th Apr 2014
+  77: 0000: \***    F337 Centralised View of Stock
+  78: 0000: \***    QC599: Introduced item level TSL restart pointer to allow
+  79: 0000: \***           Sales Support restart/recovery to continue processing
+  80: 0000: \***           correctly from the next unprocessed item.
+  81: 0000: \***
+  82: 0000: \***********************************************************************
+  83: 0000: \***********************************************************************
+  84: 0000: 
+  85: 0000: \***********************************************************************
+  86: 0000: \***********************************************************************
+  87: 0000: \***
+  88: 0000: \***    File Record Layout
+  89: 0000: \***
+  90: 0000: \***    IMSTC.BAR.CODE$             11 UPD  Barcode (Key)
+  91: 0000: \***    IMSTC.RESTART%               4 INT  IMSTC Restart pointer
+  92: 0000: \***    IMSTC.NUMITEMS%              4 INT  Number of items sold
+  93: 0000: \***    IMSTC.AMTSALE%               4 INT  Amount of items sold
+  94: 0000: \***    IMSTC.TSL.RESTART%           4 INT  TSL Restart pointer             !DMW
+  95: 0000: \***    IMSTC.STKMQ.RESTART%         4 INT  STKMQ Restart pointer
+  96: 0000: \***    IMSTC.STATUS.FLAG$           1 ASC  Status flags
+  97: 0000: \***    IMSTC.STOCK.FIGURE%          2 INT  Stock Figure
+  98: 0000: \***    IMSTC.REASON.ITEM.REMOVED$   1 ASC  Deletion Reason
+  99: 0000: \***    IMSTC.SID%                   4 INT  Sequence ID
+ 100: 0000: \***    IMSTC.FILLER$                1 UPD  Filler
+ 101: 0000: \***
+ 102: 0000: \***********************************************************************
+ 103: 0000: \***********************************************************************
+ 104: 0000: 
+ 105: 0000:     INTEGER*2 GLOBAL                                                    \
+ 106: 0000:         IMSTC.SESS.NUM%,                                                \
+ 107: 0000:         IMSTC.RECL%,                                                    \
+ 108: 0000:         IMSTC.REPORT.NUM%,                                              \
+ 109: 0000:         IMSTC.STOCK.FIGURE%
+ 110: 0000: 
+ 111: 0000:     INTEGER*4 GLOBAL                                                    \
+ 112: 0000:         IMSTC.AMTSALE%,                                                 \
+ 113: 0000:         IMSTC.NEXT.SID%,                                                \   !CMW
+ 114: 0000:         IMSTC.NUMITEMS%,                                                \
+ 115: 0000:         IMSTC.RESERVED%,                                                \
+ 116: 0000:         IMSTC.RESTART%,                                                 \
+ 117: 0000:         IMSTC.SID%,                                                     \   !CMW
+ 118: 0000:         IMSTC.STKMQ.RESTART%,                                           \
+ 119: 0000:         IMSTC.TSL.RESTART%                                                  !DMW
+ 120: 0000: 
+ 121: 0000:     STRING GLOBAL                                                       \
+ 122: 0000:         IMSTC.BAR.CODE$,                                                \
+ 123: 0000:         IMSTC.FILE.NAME$,                                               \
+ 124: 0000:         IMSTC.FILLER$,                                                  \
+ 125: 0000:         IMSTC.HOLD.PENDING$,                                            \
+ 126: 0000:         IMSTC.REASON.ITEM.REMOVED$,                                     \
+ 127: 0000:         IMSTC.STATUS.FLAG$
+ 128: 0000: 
+ 129: 0000: 
+ 130: 0000: FUNCTION IMSTC.SET PUBLIC
+ 131: 0014: 
+ 132: 0014:     IMSTC.REPORT.NUM% = 31
+ 133: 001d:     IMSTC.RECL%       = 40
+ 134: 0026:     IMSTC.FILE.NAME$  = "IMSTC"
+ 135: 0035: 
+ 136: 0035: END FUNCTION
+ 137: 0041: 
+ 138: 0041: FUNCTION READ.IMSTC PUBLIC
+ 139: 0055: 
+ 140: 0055:     INTEGER*1   READ.IMSTC
+ 141: 0055:     STRING      FORMAT.STRING$                                              !CMW
+ 142: 0055: 
+ 143: 0055:     READ.IMSTC = 1
+ 144: 0059:     
+ 145: 0059:     IMSTC.NEXT.SID% = 0                                                     !DMW
+ 146: 0068:     IMSTC.RESERVED% = 0                                                     !EMW
+ 147: 0077: 
+ 148: 0077:     FORMAT.STRING$ = "T12,5I4,C1,I2,C1,I4,C1"                               !CMW
+ 149: 0084:     
+ 150: 0084:     IF END #IMSTC.SESS.NUM% THEN READ.IMSTC.ERROR
+ 151: 0098:     READ FORM FORMAT.STRING$; #IMSTC.SESS.NUM%                          \   !CMW
+ 152: 0131:          KEY IMSTC.BAR.CODE$;               \ Barcode                   \
+ 153: 0131:              IMSTC.RESTART%,                \ Restart pointer           \
+ 154: 0131:              IMSTC.NUMITEMS%,               \ Number of items sold      \
+ 155: 0131:              IMSTC.AMTSALE%,                \ Amount of items sold      \
+ 156: 0131:              IMSTC.TSL.RESTART%,            \ TSL Restart pointer       \   !EMW
+ 157: 0131:              IMSTC.STKMQ.RESTART%,          \ STKMQ Restart pointer     \
+ 158: 0131:              IMSTC.STATUS.FLAG$,            \ Status flags              \
+ 159: 0131:              IMSTC.STOCK.FIGURE%,           \ Stock Figure              \
+ 160: 0131:              IMSTC.REASON.ITEM.REMOVED$,    \ Deletion Reason           \
+ 161: 0131:              IMSTC.SID%,                    \ Sequence ID               \   !CMW
+ 162: 0131:              IMSTC.FILLER$                  ! Filler
+ 163: 0131:                                                                           
+ 164: 0131:     READ.IMSTC = 0
+ 165: 0135: 
+ 166: 0135:     ! Get the next sequence ID                                              !CMW
+ 167: 0135:     IMSTC.NEXT.SID% = IMSTC.SID% + 1                                        !CMW
+ 168: 014a:                                                                             !CMW
+ 169: 014a:     ! IF the sequence ID has wrapped                                        !CMW
+ 170: 014a:     IF IMSTC.NEXT.SID% < 0 THEN BEGIN                                       !CMW
+ 171: 015f:         ! Re-initialise sequence ID                                         !CMW
+ 172: 015f:         IMSTC.NEXT.SID% = 0                                                 !CMW
+ 173: 016e:     ENDIF                                                                   !CMW
+ 174: 016e: 
+ 175: 016e:     EXIT FUNCTION
+ 176: 0170: 
+ 177: 0170: READ.IMSTC.ERROR:
+ 178: 0170: 
+ 179: 0170:     FILE.OPERATION$     = "R"
+ 180: 017f:     CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 181: 018d:     CURRENT.CODE$       = IMSTC.BAR.CODE$
+ 182: 01a3: 
+ 183: 01a3: END FUNCTION
+ 184: 01b2: 
+ 185: 01b2: FUNCTION READ.IMSTC.LOCK PUBLIC
+ 186: 01c6: 
+ 187: 01c6:     INTEGER*1   READ.IMSTC.LOCK
+ 188: 01c6:     STRING      FORMAT.STRING$                                              !CMW
+ 189: 01c6: 
+ 190: 01c6:     READ.IMSTC.LOCK = 1
+ 191: 01ca:     
+ 192: 01ca:     IMSTC.NEXT.SID% = 0                                                     !DMW
+ 193: 01d9:     IMSTC.RESERVED% = 0                                                     !EMW
+ 194: 01e8:     
+ 195: 01e8:     FORMAT.STRING$ = "T12,5I4,C1,I2,C1,I4,C1"                               !CMW
+ 196: 01f5: 
+ 197: 01f5:     IF END #IMSTC.SESS.NUM% THEN READ.IMSTC.LOCK.ERROR
+ 198: 0209:     READ FORM FORMAT.STRING$; #IMSTC.SESS.NUM% AUTOLOCK                 \   !CMW
+ 199: 02a2:          KEY IMSTC.BAR.CODE$;               \ Barcode                   \
+ 200: 02a2:              IMSTC.RESTART%,                \ Restart pointer           \
+ 201: 02a2:              IMSTC.NUMITEMS%,               \ Number of items sold      \
+ 202: 02a2:              IMSTC.AMTSALE%,                \ Amount of items sold      \
+ 203: 02a2:              IMSTC.TSL.RESTART%,            \ TSL Restart pointer       \   !EMW
+ 204: 02a2:              IMSTC.STKMQ.RESTART%,          \ STKMQ Restart pointer     \
+ 205: 02a2:              IMSTC.STATUS.FLAG$,            \ Status flags              \
+ 206: 02a2:              IMSTC.STOCK.FIGURE%,           \ Stock Figure              \
+ 207: 02a2:              IMSTC.REASON.ITEM.REMOVED$,    \ Deletion Reason           \
+ 208: 02a2:              IMSTC.SID%,                    \ Sequence ID               \   !CMW
+ 209: 02a2:              IMSTC.FILLER$                  ! Filler
+ 210: 02a2:              
+ 211: 02a2:     READ.IMSTC.LOCK = 0
+ 212: 02a6:     
+ 213: 02a6:     ! Get the next sequence ID                                              !CMW
+ 214: 02a6:     IMSTC.NEXT.SID% = IMSTC.SID% + 1                                        !CMW
+ 215: 02bb:                                                                             !CMW
+ 216: 02bb:     ! IF the sequence ID has wrapped                                        !CMW
+ 217: 02bb:     IF IMSTC.NEXT.SID% < 0 THEN BEGIN                                       !CMW
+ 218: 02d0:         ! Re-initialise sequence ID                                         !CMW
+ 219: 02d0:         IMSTC.NEXT.SID% = 0                                                 !CMW
+ 220: 02df:     ENDIF                                                                   !CMW
+ 221: 02df:     
+ 222: 02df:     EXIT FUNCTION
+ 223: 02e1: 
+ 224: 02e1: READ.IMSTC.LOCK.ERROR:
+ 225: 02e1: 
+ 226: 02e1:        FILE.OPERATION$     = "R"
+ 227: 02f0:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 228: 02fe:        CURRENT.CODE$       = IMSTC.BAR.CODE$
+ 229: 0314: 
+ 230: 0314: END FUNCTION
+ 231: 0323: 
+ 232: 0323: FUNCTION WRITE.IMSTC PUBLIC
+ 233: 0337: 
+ 234: 0337:     INTEGER*1   WRITE.IMSTC
+ 235: 0337:     STRING      FORMAT.STRING$                                              !CMW
+ 236: 0337: 
+ 237: 0337:     WRITE.IMSTC = 1
+ 238: 033b:     
+ 239: 033b:     FORMAT.STRING$ = "C11,5I4,C1,I2,C1,I4,C1"                               !CMW
+ 240: 0348: 
+ 241: 0348:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.ERROR
+ 242: 035c:     WRITE FORM FORMAT.STRING$; #IMSTC.SESS.NUM%;                        \   !CMW
+ 243: 041e:         IMSTC.BAR.CODE$,                \ Barcode                       \
+ 244: 041e:         IMSTC.RESTART%,                 \ Restart pointer               \
+ 245: 041e:         IMSTC.NUMITEMS%,                \ Number of items sold          \
+ 246: 041e:         IMSTC.AMTSALE%,                 \ Amount of items sold          \
+ 247: 041e:         IMSTC.TSL.RESTART%,             \ TSL Restart pointer           \   !EMW
+ 248: 041e:         IMSTC.STKMQ.RESTART%,           \ STKMQ Restart pointer         \
+ 249: 041e:         IMSTC.STATUS.FLAG$,             \ Status flags                  \
+ 250: 041e:         IMSTC.STOCK.FIGURE%,            \ Stock Figure                  \
+ 251: 041e:         IMSTC.REASON.ITEM.REMOVED$,     \ Deletion Reason               \
+ 252: 041e:         IMSTC.SID%,                     \ Sequence ID                   \   !CMW
+ 253: 041e:         IMSTC.FILLER$                   ! Filler
+ 254: 041e:     
+ 255: 041e:     WRITE.IMSTC = 0
+ 256: 0422:     
+ 257: 0422:     EXIT FUNCTION
+ 258: 0424: 
+ 259: 0424: WRITE.IMSTC.ERROR:
+ 260: 0424: 
+ 261: 0424:        FILE.OPERATION$     = "W"                                            !CMW
+ 262: 0433:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 263: 0441:        CURRENT.CODE$       = IMSTC.BAR.CODE$
+ 264: 0457: 
+ 265: 0457: END FUNCTION
+ 266: 0466: 
+ 267: 0466: FUNCTION WRITE.IMSTC.UNLOCK.HOLD PUBLIC
+ 268: 047a: 
+ 269: 047a:     INTEGER*1   WRITE.IMSTC.UNLOCK.HOLD
+ 270: 047a:     STRING      FORMAT.STRING$                                              !CMW
+ 271: 047a: 
+ 272: 047a:     WRITE.IMSTC.UNLOCK.HOLD = 1
+ 273: 047e:     
+ 274: 047e:     FORMAT.STRING$ = "C11,5I4,C1,I2,C1,I4,C1"                               !CMW
+ 275: 048b: 
+ 276: 048b:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.UNLOCK.HOLD.ERROR
+ 277: 049f:     WRITE FORM FORMAT.STRING$; HOLD #IMSTC.SESS.NUM% AUTOUNLOCK;        \   !CMW
+ 278: 0561:         IMSTC.BAR.CODE$,                \ Barcode                       \
+ 279: 0561:         IMSTC.RESTART%,                 \ Restart pointer               \
+ 280: 0561:         IMSTC.NUMITEMS%,                \ Number of items sold          \
+ 281: 0561:         IMSTC.AMTSALE%,                 \ Amount of items sold          \
+ 282: 0561:         IMSTC.TSL.RESTART%,             \ TSL Restart pointer           \   !EMW
+ 283: 0561:         IMSTC.STKMQ.RESTART%,           \ STKMQ Restart pointer         \
+ 284: 0561:         IMSTC.STATUS.FLAG$,             \ Status flags                  \
+ 285: 0561:         IMSTC.STOCK.FIGURE%,            \ Stock Figure                  \
+ 286: 0561:         IMSTC.REASON.ITEM.REMOVED$,     \ Deletion Reason               \
+ 287: 0561:         IMSTC.SID%,                     \ Sequence ID                   \   !CMW
+ 288: 0561:         IMSTC.FILLER$                   ! Filler
+ 289: 0561:         
+ 290: 0561:     WRITE.IMSTC.UNLOCK.HOLD = 0
+ 291: 0565:     
+ 292: 0565:     EXIT FUNCTION
+ 293: 0567: 
+ 294: 0567: WRITE.IMSTC.UNLOCK.HOLD.ERROR:
+ 295: 0567: 
+ 296: 0567:        FILE.OPERATION$     = "W"                                            !CMW
+ 297: 0576:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 298: 0584:        CURRENT.CODE$       = IMSTC.BAR.CODE$
+ 299: 059a: 
+ 300: 059a: END FUNCTION
+ 301: 05a9: 
+ 302: 05a9: FUNCTION WRITE.IMSTC.UNLOCK PUBLIC
+ 303: 05bd: 
+ 304: 05bd:     INTEGER*1   WRITE.IMSTC.UNLOCK
+ 305: 05bd:     STRING      FORMAT.STRING$                                              !CMW
+ 306: 05bd: 
+ 307: 05bd:     WRITE.IMSTC.UNLOCK = 1
+ 308: 05c1:     
+ 309: 05c1:     FORMAT.STRING$ = "C11,5I4,C1,I2,C1,I4,C1"                               !CMW
+ 310: 05ce: 
+ 311: 05ce:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.UNLOCK.ERROR
+ 312: 05e2:     WRITE FORM FORMAT.STRING$;  #IMSTC.SESS.NUM% AUTOUNLOCK;            \   !CMW
+ 313: 06a4:         IMSTC.BAR.CODE$,                \ Barcode                       \
+ 314: 06a4:         IMSTC.RESTART%,                 \ Restart pointer               \
+ 315: 06a4:         IMSTC.NUMITEMS%,                \ Number of items sold          \
+ 316: 06a4:         IMSTC.AMTSALE%,                 \ Amount of items sold          \
+ 317: 06a4:         IMSTC.TSL.RESTART%,             \ TSL Restart pointer           \   !EMW
+ 318: 06a4:         IMSTC.STKMQ.RESTART%,           \ STKMQ Restart pointer         \
+ 319: 06a4:         IMSTC.STATUS.FLAG$,             \ Status flags                  \
+ 320: 06a4:         IMSTC.STOCK.FIGURE%,            \ Stock Figure                  \
+ 321: 06a4:         IMSTC.REASON.ITEM.REMOVED$,     \ Deletion Reason               \
+ 322: 06a4:         IMSTC.SID%,                     \ Sequence ID                   \   !CMW
+ 323: 06a4:         IMSTC.FILLER$                   ! Filler
+ 324: 06a4:         
+ 325: 06a4:     WRITE.IMSTC.UNLOCK = 0
+ 326: 06a8:     
+ 327: 06a8:     EXIT FUNCTION
+ 328: 06aa: 
+ 329: 06aa: WRITE.IMSTC.UNLOCK.ERROR:
+ 330: 06aa: 
+ 331: 06aa:        FILE.OPERATION$     = "W"                                            !CMW
+ 332: 06b9:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 333: 06c7:        CURRENT.CODE$       = IMSTC.BAR.CODE$
+ 334: 06dd: 
+ 335: 06dd: END FUNCTION
+ 336: 06ec: 
+ 337: 06ec: FUNCTION WRITE.IMSTC.HOLD PUBLIC
+ 338: 0700: 
+ 339: 0700:     INTEGER*1   WRITE.IMSTC.HOLD
+ 340: 0700:     STRING      FORMAT.STRING$                                              !CMW
+ 341: 0700: 
+ 342: 0700:     WRITE.IMSTC.HOLD = 1
+ 343: 0704: 
+ 344: 0704:     FORMAT.STRING$ = "C11,5I4,C1,I2,C1,I4,C1"                               !CMW
+ 345: 0711:     
+ 346: 0711:     IF END #IMSTC.SESS.NUM% THEN WRITE.IMSTC.HOLD.ERROR
+ 347: 0725:     WRITE FORM FORMAT.STRING$; HOLD #IMSTC.SESS.NUM%;                   \   !CMW
+ 348: 07e7:         IMSTC.BAR.CODE$,                \ Barcode                       \
+ 349: 07e7:         IMSTC.RESTART%,                 \ Restart pointer               \
+ 350: 07e7:         IMSTC.NUMITEMS%,                \ Number of items sold          \
+ 351: 07e7:         IMSTC.AMTSALE%,                 \ Amount of items sold          \
+ 352: 07e7:         IMSTC.TSL.RESTART%,             \ TSL Restart pointer           \   !EMW
+ 353: 07e7:         IMSTC.STKMQ.RESTART%,           \ STKMQ Restart pointer         \
+ 354: 07e7:         IMSTC.STATUS.FLAG$,             \ Status flags                  \
+ 355: 07e7:         IMSTC.STOCK.FIGURE%,            \ Stock Figure                  \
+ 356: 07e7:         IMSTC.REASON.ITEM.REMOVED$,     \ Deletion Reason               \
+ 357: 07e7:         IMSTC.SID%,                     \ Sequence ID                   \   !CMW
+ 358: 07e7:         IMSTC.FILLER$                   ! Filler
+ 359: 07e7:              
+ 360: 07e7:     WRITE.IMSTC.HOLD = 0
+ 361: 07eb:     
+ 362: 07eb:     EXIT FUNCTION
+ 363: 07ed: 
+ 364: 07ed: WRITE.IMSTC.HOLD.ERROR:
+ 365: 07ed: 
+ 366: 07ed:        FILE.OPERATION$     = "W"                                            !CMW
+ 367: 07fc:        CURRENT.REPORT.NUM% = IMSTC.REPORT.NUM%
+ 368: 080a:        CURRENT.CODE$       = IMSTC.BAR.CODE$
+ 369: 0820: 
+ 370: 0820: END FUNCTION
+ 371: 082f: 
+ 372: 082f: End of Compilation

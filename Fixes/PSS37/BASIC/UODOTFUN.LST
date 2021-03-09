@@ -1,0 +1,1029 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \***
+   3: 0000: \***    UOD Outers File Functions
+   4: 0000: \***
+   5: 0000: \***    REFERENCE   : UODOTFUN.BAS
+   6: 0000: \***
+   7: 0000: \***    VERSION A.              Stuart Highley                  11th Jul 2008
+   8: 0000: \***
+   9: 0000: \***    VERSION B.              Harpal Matharu                   3rd Nov 2008
+  10: 0000: \***    Added UODOT key length.
+  11: 0000: \***
+  12: 0000: \***    VERSION C.              Mark Goode                      10th Dec 2008
+  13: 0000: \***    Add summary record read/write functionality.
+  14: 0000: \***
+  15: 0000: \***    VERSION D.              Stuart Highley                   5th Feb 2009
+  16: 0000: \***    Correctly trim the summary record.
+  17: 0000: \***    Correctly conserve the summary filler on a write.
+  18: 0000: \***
+  19: 0000: \***    REVISION 1.8.           Robert Cowey                    14th Jan 2009
+  20: 0000: \***    Changes for 10A PosUOD fixes creating SSC04.286 Rv 1.3.
+  21: 0000: \***    Defined new function UODOT.REC$ based on WRITE.UODOT.
+  22: 0000: \***    Creates UODOT record string UODOT.REC$ from constituent variables.
+  23: 0000: \***
+  24: 0000: \***    VERSION E.              Mark Walker                      6th Mar 2015
+  25: 0000: \***    F391 HUMSS UOD Messaging
+  26: 0000: \***    Includes the following changes:
+  27: 0000: \***    - Added UOD number field.
+  28: 0000: \***    - Modified initialisation of filler field.
+  29: 0000: \***    - Various coding standards related changes (uncommented).
+  30: 0000: \***
+  31: 0000: \*******************************************************************************
+  32: 0000: 
+  33: 0000:     INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  34: 0000: 
+  35: 0000:     STRING GLOBAL    CURRENT.CODE$,                                     \
+  36: 0000:                      FILE.OPERATION$,                                   \
+  37: 0000:                      FORMAT.STRING$                                         !EMW
+  38: 0000:                      
+  39: 0000:     INTEGER*1 LOCK%                                                         !CMG
+  40: 0000:     
+  41: 0000:     %INCLUDE UODOTDEC.J86
+  42: 0000: \*******************************************************************************
+  43: 0000: \***
+  44: 0000: \***    UOD Outers FILE GLOBAl VARIABLE DECLARATIONS
+  45: 0000: \***
+  46: 0000: \***    REFERENCE   : UODOTDEC.J86
+  47: 0000: \***
+  48: 0000: \***    VERSION A.              Stuart Highley                  14th Jul 2008
+  49: 0000: \***
+  50: 0000: \***    VERSION B.              Mark Goode                      10th Dec 2008
+  51: 0000: \***    Add summary record read/write functionality.
+  52: 0000: \***
+  53: 0000: \***    REVISION 1.8.           Robert Cowey                    14th Jan 2009
+  54: 0000: \***    Changes for 10A PosUOD fixes creating SSC04.286 Rv 1.3.
+  55: 0000: \***    No new variables but defined new function UODOT.REC$.
+  56: 0000: \***
+  57: 0000: \***    VERSION C.              Mark Walker                     18th Feb 2015
+  58: 0000: \***    F391 HUMSS UOD Messaging
+  59: 0000: \***    Includes the following changes:
+  60: 0000: \***    - Defined UOD number field.
+  61: 0000: \***    - Various coding standards related changes (uncommented).
+  62: 0000: \***
+  63: 0000: \*******************************************************************************
+  64: 0000: 
+  65: 0000:     STRING GLOBAL                                                       \
+  66: 0000:         UODOT.AUDIT.OP.ID$,                                             \
+  67: 0000:         UODOT.BOOKED.DATE$,                                             \
+  68: 0000:         UODOT.BOOKED.TIME$,                                             \
+  69: 0000:         UODOT.CHILD.LICENCE$(1),                                        \
+  70: 0000:         UODOT.CHILD.TYPE$(1),                                           \
+  71: 0000:         UODOT.DESPATCH.DATE$,                                           \
+  72: 0000:         UODOT.DRVR.DEL.DATE$,                                           \
+  73: 0000:         UODOT.DRVR.DEL.TIME$,                                           \
+  74: 0000:         UODOT.DRVR.ID$,                                                 \
+  75: 0000:         UODOT.EST.DEL.DATE$,                                            \
+  76: 0000:         UODOT.FILE.NAME$,                                               \
+  77: 0000:         UODOT.FILLER$,                                                  \
+  78: 0000:         UODOT.IMMEDIATE.PARENT$,                                        \
+  79: 0000:         UODOT.LEVEL$,                                                   \
+  80: 0000:         UODOT.LICENCE$,                                                 \
+  81: 0000:         UODOT.OPEN.FLAG$,                                               \
+  82: 0000:         UODOT.REASON$,                                                  \
+  83: 0000:         UODOT.STATUS$,                                                  \
+  84: 0000:         UODOT.STORE.OP.ID$,                                             \
+  85: 0000:         UODOT.SUMMARY.STATUS$,                                          \   !BMG
+  86: 0000:         UODOT.TYPE$,                                                    \
+  87: 0000:         UODOT.ULTIMATE.PARENT$,                                         \
+  88: 0000:         UODOT.UOD.NUMBER$,                                              \   !CMW
+  89: 0000:         UODOT.WAREHOUSE.AREA$
+  90: 0000: 
+  91: 0000:     INTEGER*1 GLOBAL                                                    \
+  92: 0000:         UODOT.BOL,                                                      \
+  93: 0000:         UODOT.SDPD
+  94: 0000: 
+  95: 0000:     INTEGER*2 GLOBAL                                                    \
+  96: 0000:         UODOT.AUDITED,                                                  \
+  97: 0000:         UODOT.AUTO,                                                     \
+  98: 0000:         UODOT.BOOKED,                                                   \
+  99: 0000:         UODOT.CONTROLLER,                                               \
+ 100: 0000:         UODOT.GIT.MISMATCH,                                             \
+ 101: 0000:         UODOT.KEYL%,                                                    \
+ 102: 0000:         UODOT.MAX.CHILDREN%,                                            \
+ 103: 0000:         UODOT.MC70,                                                     \
+ 104: 0000:         UODOT.NUM.CHILDREN%,                                            \
+ 105: 0000:         UODOT.NUM.ITEMS%,                                               \
+ 106: 0000:         UODOT.PARTIAL,                                                  \
+ 107: 0000:         UODOT.PDT,                                                      \
+ 108: 0000:         UODOT.RECL%,                                                    \
+ 109: 0000:         UODOT.REPORT.NUM%,                                              \
+ 110: 0000:         UODOT.RF,                                                       \
+ 111: 0000:         UODOT.SEQ%,                                                     \
+ 112: 0000:         UODOT.SESS.NUM%,                                                \
+ 113: 0000:         UODOT.STOCK.UPDATED
+ 114: 0000: 
+ 115: 0000: 
+ 116: 0000:     %INCLUDE BTCMEM.J86
+ 117: 0000: !********************************************************************
+ 118: 0000: !***
+ 119: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+ 120: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 121: 0000: !***    DATE:           26th February 2006
+ 122: 0000: !***
+ 123: 0000: !********************************************************************
+ 124: 0000: !***
+ 125: 0000: !***    Controller CBASIC Memory Functions
+ 126: 0000: !***
+ 127: 0000: !********************************************************************
+ 128: 0000: 
+ 129: 0000: !Get a single byte integer from a string offset
+ 130: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 131: 0000:     STRING S$
+ 132: 0000:     INTEGER*2 P%
+ 133: 0000:     INTEGER*2 GETN1
+ 134: 0000: END FUNCTION
+ 135: 0000: 
+ 136: 0000: !Get a two byte integer from a string offset
+ 137: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 138: 0000:     STRING S$
+ 139: 0000:     INTEGER*2 P%
+ 140: 0000:     INTEGER*2 GETN2
+ 141: 0000: END FUNCTION
+ 142: 0000: 
+ 143: 0000: !Get a four byte integer from a string offset
+ 144: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 145: 0000:     STRING S$
+ 146: 0000:     INTEGER*2 P%
+ 147: 0000:     INTEGER*4 GETN4
+ 148: 0000: END FUNCTION
+ 149: 0000: 
+ 150: 0000: !Get a 10 byte CBASIC real from a string offset
+ 151: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 152: 0000:     STRING S$
+ 153: 0000:     INTEGER*2 P%
+ 154: 0000:     REAL GETR10
+ 155: 0000: END FUNCTION
+ 156: 0000: 
+ 157: 0000: !Put a single byte integer into a string at offset
+ 158: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 159: 0000:     STRING S$
+ 160: 0000:     INTEGER*2 P%
+ 161: 0000:     INTEGER*1 N%
+ 162: 0000:     INTEGER*1 PUTN1
+ 163: 0000: END FUNCTION
+ 164: 0000: 
+ 165: 0000: !Put a two byte integer into a string at offset
+ 166: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 167: 0000:     STRING S$
+ 168: 0000:     INTEGER*2 P%
+ 169: 0000:     INTEGER*2 N%
+ 170: 0000:     INTEGER*1 PUTN2
+ 171: 0000: END FUNCTION
+ 172: 0000: 
+ 173: 0000: !Put a four byte integer into a string at offset
+ 174: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 175: 0000:     STRING S$
+ 176: 0000:     INTEGER*2 P%
+ 177: 0000:     INTEGER*4 N%
+ 178: 0000:     INTEGER*1 PUTN4
+ 179: 0000: END FUNCTION
+ 180: 0000: 
+ 181: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 182: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 183: 0000:     STRING S$
+ 184: 0000:     INTEGER*2 P%
+ 185: 0000:     REAL R
+ 186: 0000:     INTEGER*1 PUTR10
+ 187: 0000: END FUNCTION
+ 188: 0000: 
+ 189: 0000: !Peek a two byte integer from a memory address
+ 190: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 191: 0000:     INTEGER*4 A%
+ 192: 0000:     INTEGER*2 PEEKN2
+ 193: 0000: END FUNCTION
+ 194: 0000: 
+ 195: 0000: !Peek a four byte integer from a memory address
+ 196: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 197: 0000:     INTEGER*4 A%
+ 198: 0000:     INTEGER*4 PEEKN4
+ 199: 0000: END FUNCTION
+ 200: 0000: 
+ 201: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 202: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 203: 0000:     INTEGER*4 A%
+ 204: 0000:     REAL PEEKR10
+ 205: 0000: END FUNCTION
+ 206: 0000: 
+ 207: 0000: !Poke a two byte integer to a memory address
+ 208: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 209: 0000:     INTEGER*4 A%
+ 210: 0000:     INTEGER*2 N%
+ 211: 0000:     INTEGER*1 POKEN2
+ 212: 0000: END FUNCTION
+ 213: 0000: 
+ 214: 0000: !Poke a four byte integer to a memory address
+ 215: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 216: 0000:     INTEGER*4 A%
+ 217: 0000:     INTEGER*4 N%
+ 218: 0000:     INTEGER*1 POKEN4
+ 219: 0000: END FUNCTION
+ 220: 0000: 
+ 221: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 222: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 223: 0000:     INTEGER*4 A%
+ 224: 0000:     REAL R
+ 225: 0000:     INTEGER*1 POKER10
+ 226: 0000: END FUNCTION
+ 227: 0000: 
+ 228: 0000: 
+ 229: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 230: 0000: \/* FUNCTION UODOT.KEY$                                            */
+ 231: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 232: 0000:                                   
+ 233: 0000: FUNCTION UODOT.KEY$ PUBLIC
+ 234: 0014: 
+ 235: 0014:     STRING    UODOT.KEY$
+ 236: 0014:     STRING    WORK$
+ 237: 0014: 
+ 238: 0014:     WORK$ = LEFT$(UODOT.LICENCE$ + "       ", 7)
+ 239: 0047:     CALL PUTN2(WORK$, 5, UODOT.SEQ%)
+ 240: 0060: 
+ 241: 0060:     UODOT.KEY$ = WORK$
+ 242: 0072:     WORK$ = ""
+ 243: 007f: 
+ 244: 007f: END FUNCTION
+ 245: 0090:     
+ 246: 0090: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/       !CMG
+ 247: 0090: \/* FUNCTION READ.SUMMARY.STATUS                                   */       !CMG
+ 248: 0090: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/       !CMG
+ 249: 0090:     
+ 250: 0090: FUNCTION READ.SUMMARY.STATUS                                                !CMG
+ 251: 00a4:     
+ 252: 00a4:     INTEGER*1 READ.SUMMARY.STATUS                                           !CMG
+ 253: 00a4:         
+ 254: 00a4:     IF END #UODOT.SESS.NUM% THEN READ.ERROR                                 !CMG
+ 255: 00b8:     IF LOCK% = 0 THEN BEGIN                                                 !CMG
+ 256: 00bf:            
+ 257: 00bf:        READ FORM "T8,C160,C2";                                          \   !CMG
+ 258: 00fa:            #UODOT.SESS.NUM% KEY UODOT.KEY$;                             \   !CMG
+ 259: 00fa:            UODOT.SUMMARY.STATUS$,                                       \   !CMG
+ 260: 00fa:            UODOT.FILLER$                                                    !CMG
+ 261: 00fa:     ENDIF ELSE BEGIN                                                        !CMG
+ 262: 00fa:         READ FORM "T8,C160,C2";                                         \   !CMG
+ 263: 0133:            #UODOT.SESS.NUM% AUTOLOCK KEY UODOT.KEY$;                    \   !CMG
+ 264: 0133:            UODOT.SUMMARY.STATUS$,                                       \   !CMG
+ 265: 0133:            UODOT.FILLER$                                                    !CMG
+ 266: 0133:     ENDIF                                                                   !CMG
+ 267: 0133:         
+ 268: 0133:     WHILE LEN(UODOT.SUMMARY.STATUS$) >= 5 AND                           \   !DSH
+ 269: 0135:           RIGHT$(UODOT.SUMMARY.STATUS$, 5) = "     "                        !DSH 
+ 270: 0135:         UODOT.SUMMARY.STATUS$ = LEFT$(UODOT.SUMMARY.STATUS$,            \   !DSH
+ 271: 0167:                                 LEN(UODOT.SUMMARY.STATUS$) - 5)             !DSH
+ 272: 0167:     WEND                                                                    !DSH
+ 273: 01c3:                                           
+ 274: 01c3:     READ.SUMMARY.STATUS = 0                                                 !CMG
+ 275: 01c7:         
+ 276: 01c7: READ.ERROR:
+ 277: 01c7: 
+ 278: 01c7:     FILE.OPERATION$     = "R"
+ 279: 01d6:     CURRENT.REPORT.NUM% = UODOT.REPORT.NUM%
+ 280: 01e4:     CURRENT.CODE$       = UODOT.KEY$
+ 281: 01f3:                                
+ 282: 01f3: END FUNCTION                                                                !CMG
+ 283: 0202: 
+ 284: 0202: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/       !CMG
+ 285: 0202: \/* FUNCTION WRITE.SUMMARY.STATUS                                  */       !CMG
+ 286: 0202: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/       !CMG
+ 287: 0202:     
+ 288: 0202: FUNCTION WRITE.SUMMARY.STATUS                                               !CMG
+ 289: 0216: 
+ 290: 0216:     INTEGER*1 WRITE.SUMMARY.STATUS                                          !CMG
+ 291: 0216:     
+ 292: 0216:     UODOT.SUMMARY.STATUS$ = LEFT$(UODOT.SUMMARY.STATUS$ +               \   !DSH
+ 293: 025f:                                   STRING$(160, " "), 160)                   !DSH
+ 294: 025f:                                   
+ 295: 025f:     IF END #UODOT.SESS.NUM% THEN WRITE.ERROR                                !CMG
+ 296: 0273:     IF LOCK% = 0 THEN BEGIN                                                 !CMG
+ 297: 027a:         WRITE FORM "C7 C160 C2";                                        \   !DSH
+ 298: 02ba:            #UODOT.SESS.NUM%;                                            \   !CMG
+ 299: 02ba:            UODOT.KEY$,                                                  \   !CMG
+ 300: 02ba:            UODOT.SUMMARY.STATUS$,                                       \   !DSH
+ 301: 02ba:            UODOT.FILLER$                                                    !DSH 
+ 302: 02ba:     ENDIF ELSE BEGIN                                                        !CMG
+ 303: 02ba:         WRITE FORM "C7 C160 C2";                                        \   !DSH
+ 304: 02f8:            #UODOT.SESS.NUM% AUTOUNLOCK;                                 \   !CMG
+ 305: 02f8:            UODOT.KEY$,                                                  \   !CMG
+ 306: 02f8:            UODOT.SUMMARY.STATUS$,                                       \   !DSH
+ 307: 02f8:            UODOT.FILLER$                                                    !DSH 
+ 308: 02f8:     ENDIF                                                                   !CMG
+ 309: 02f8:                                       
+ 310: 02f8:     WRITE.SUMMARY.STATUS = 0                                                !CMG
+ 311: 02fc: 
+ 312: 02fc: WRITE.ERROR:
+ 313: 02fc: 
+ 314: 02fc:     FILE.OPERATION$ = "W"
+ 315: 030b:     CURRENT.REPORT.NUM% = UODOT.REPORT.NUM%
+ 316: 0319:     CURRENT.CODE$ = UODOT.KEY$        
+ 317: 0328:         
+ 318: 0328: END FUNCTION                                                                !CMG
+ 319: 0337: 
+ 320: 0337: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 321: 0337: \/* FUNCTION UODOT.SET                                             */
+ 322: 0337: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 323: 0337: 
+ 324: 0337: FUNCTION UODOT.SET PUBLIC
+ 325: 034b: 
+ 326: 034b:     INTEGER*1 UODOT.SET
+ 327: 034b: 
+ 328: 034b:     UODOT.REPORT.NUM% = 766
+ 329: 0354:     UODOT.RECL%       = 169
+ 330: 035d:     UODOT.KEYL%       = 7                                                  !BHSM
+ 331: 0366:     UODOT.FILE.NAME$  = "UODOT"
+ 332: 0375:     UODOT.MAX.CHILDREN% = 15
+ 333: 037e: !   UODOT.FILLER$ = STRING$(21,CHR$(0FFH))                                  !EMW
+ 334: 037e:     UODOT.FILLER$ = STRING$(16,CHR$(0FFH))                                  !EMW
+ 335: 0398:     DIM UODOT.CHILD.LICENCE$(UODOT.MAX.CHILDREN%)
+ 336: 03c4:     DIM UODOT.CHILD.TYPE$(UODOT.MAX.CHILDREN%)
+ 337: 03f0: 
+ 338: 03f0: END FUNCTION
+ 339: 03ff: 
+ 340: 03ff: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 341: 03ff: \/* FUNCTION READ.UODOT                                            */
+ 342: 03ff: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 343: 03ff: 
+ 344: 03ff: FUNCTION READ.UODOT PUBLIC
+ 345: 0413: 
+ 346: 0413:     STRING    CHILD.LIST$
+ 347: 0413:     INTEGER*1 UODOT.INDICAT1%
+ 348: 0413:     INTEGER*2 I%
+ 349: 0413:     INTEGER*2 READ.UODOT
+ 350: 0413:     INTEGER*2 UODOT.STATUS%
+ 351: 0413: 
+ 352: 0413:     READ.UODOT = 1
+ 353: 0418: 
+ 354: 0418:     DIM UODOT.CHILD.LICENCE$(UODOT.MAX.CHILDREN%)
+ 355: 0444:     DIM UODOT.CHILD.TYPE$(UODOT.MAX.CHILDREN%)
+ 356: 0470: 
+ 357: 0470:     IF UODOT.KEY$ = STRING$(7, CHR$(0FFH)) THEN BEGIN                       !CMG
+ 358: 0498:        LOCK% = 0                                                            !CMG
+ 359: 049d:        READ.UODOT = READ.SUMMARY.STATUS                                     !CMG
+ 360: 04a5:        EXIT FUNCTION                                                        !CMG
+ 361: 04a8:     ENDIF                                                                   !CMG
+ 362: 04a8:     
+ 363: 04a8:     FORMAT.STRING$ = "T8,C3,I1,C3,C3,C2,C1,C1,C3,I2,C5,C5,C3,C2,C4," +  \   !EMW
+ 364: 04be:                      "C4,C1,C4,C5,C16,I2,I2,C90"                            !EMW
+ 365: 04be:     
+ 366: 04be:     IF END #UODOT.SESS.NUM% THEN READ.ERROR
+ 367: 04d2:     READ FORM FORMAT.STRING$;                                           \   !EMW
+ 368: 05e8:         #UODOT.SESS.NUM% KEY UODOT.KEY$;                                \
+ 369: 05e8:         UODOT.DESPATCH.DATE$,                                           \
+ 370: 05e8:         UODOT.INDICAT1%,                                                \
+ 371: 05e8:         UODOT.EST.DEL.DATE$,                                            \
+ 372: 05e8:         UODOT.DRVR.DEL.DATE$,                                           \
+ 373: 05e8:         UODOT.DRVR.DEL.TIME$,                                           \
+ 374: 05e8:         UODOT.TYPE$,                                                    \
+ 375: 05e8:         UODOT.REASON$,                                                  \
+ 376: 05e8:         UODOT.WAREHOUSE.AREA$,                                          \
+ 377: 05e8:         UODOT.STATUS%,                                                  \
+ 378: 05e8:         UODOT.ULTIMATE.PARENT$,                                         \
+ 379: 05e8:         UODOT.IMMEDIATE.PARENT$,                                        \
+ 380: 05e8:         UODOT.BOOKED.DATE$,                                             \
+ 381: 05e8:         UODOT.BOOKED.TIME$,                                             \
+ 382: 05e8:         UODOT.STORE.OP.ID$,                                             \
+ 383: 05e8:         UODOT.DRVR.ID$,                                                 \
+ 384: 05e8:         UODOT.LEVEL$,                                                   \
+ 385: 05e8:         UODOT.AUDIT.OP.ID$,                                             \
+ 386: 05e8:         UODOT.UOD.NUMBER$,                                              \   !EMW
+ 387: 05e8:         UODOT.FILLER$,                                                  \
+ 388: 05e8:         UODOT.NUM.ITEMS%,                                               \
+ 389: 05e8:         UODOT.NUM.CHILDREN%,                                            \
+ 390: 05e8:         CHILD.LIST$
+ 391: 05e8: 
+ 392: 05e8:     FOR I% = 1 TO UODOT.MAX.CHILDREN%
+ 393: 05f0:         UODOT.CHILD.LICENCE$(I%) =                                      \   !EMW
+ 394: 0621:             MID$(CHILD.LIST$,((I% - 1) * 6) + 1, 5)
+ 395: 0621:         UODOT.CHILD.TYPE$(I%) =                                         \   !EMW
+ 396: 0654:             MID$(CHILD.LIST$, ((I% - 1) * 6) + 6, 1)
+ 397: 0654:     NEXT I%
+ 398: 0668: 
+ 399: 0668:     IF (UODOT.STATUS% AND 0001H) <> 0 THEN BEGIN
+ 400: 0673:         UODOT.BOOKED = -1
+ 401: 067e:     ENDIF ELSE BEGIN
+ 402: 067e:         UODOT.BOOKED = 0
+ 403: 0687:     ENDIF
+ 404: 0687: 
+ 405: 0687:     IF (UODOT.STATUS% AND 0002H) <> 0 THEN BEGIN
+ 406: 0692:         UODOT.STOCK.UPDATED = -1
+ 407: 069d:     ENDIF ELSE BEGIN
+ 408: 069d:         UODOT.STOCK.UPDATED = 0
+ 409: 06a6:     ENDIF
+ 410: 06a6: 
+ 411: 06a6:     IF (UODOT.STATUS% AND 0004H) <> 0 THEN BEGIN
+ 412: 06b1:         UODOT.AUTO = -1
+ 413: 06bc:     ENDIF ELSE BEGIN
+ 414: 06bc:         UODOT.AUTO = 0
+ 415: 06c5:     ENDIF
+ 416: 06c5: 
+ 417: 06c5:     IF (UODOT.STATUS% AND 0008H) <> 0 THEN BEGIN
+ 418: 06d0:         UODOT.AUDITED = -1
+ 419: 06db:     ENDIF ELSE BEGIN
+ 420: 06db:         UODOT.AUDITED = 0
+ 421: 06e4:     ENDIF
+ 422: 06e4: 
+ 423: 06e4:     IF (UODOT.STATUS% AND 0010H) <> 0 THEN BEGIN
+ 424: 06ef:         UODOT.PARTIAL = -1
+ 425: 06fa:     ENDIF ELSE BEGIN
+ 426: 06fa:         UODOT.PARTIAL = 0
+ 427: 0703:     ENDIF
+ 428: 0703: 
+ 429: 0703:    IF (UODOT.STATUS% AND 0100H) <> 0 THEN BEGIN
+ 430: 070e:         UODOT.GIT.MISMATCH = -1
+ 431: 0719:     ENDIF ELSE BEGIN
+ 432: 0719:         UODOT.GIT.MISMATCH = 0
+ 433: 0722:     ENDIF
+ 434: 0722: 
+ 435: 0722:     IF (UODOT.STATUS% AND 0200H) <> 0 THEN BEGIN
+ 436: 072d:         UODOT.RF = -1
+ 437: 0738:     ENDIF ELSE BEGIN
+ 438: 0738:         UODOT.RF = 0
+ 439: 0741:     ENDIF
+ 440: 0741: 
+ 441: 0741:     IF (UODOT.STATUS% AND 0400H) <> 0 THEN BEGIN
+ 442: 074c:         UODOT.PDT = -1
+ 443: 0757:     ENDIF ELSE BEGIN
+ 444: 0757:         UODOT.PDT = 0
+ 445: 0760:     ENDIF
+ 446: 0760: 
+ 447: 0760:     IF (UODOT.STATUS% AND 0800H) <> 0 THEN BEGIN
+ 448: 076b:         UODOT.MC70 = -1
+ 449: 0776:     ENDIF ELSE BEGIN
+ 450: 0776:         UODOT.MC70 = 0
+ 451: 077f:     ENDIF
+ 452: 077f: 
+ 453: 077f:     IF (UODOT.STATUS% AND 1000H) <> 0 THEN BEGIN
+ 454: 078a:         UODOT.CONTROLLER = -1
+ 455: 0795:     ENDIF ELSE BEGIN
+ 456: 0795:         UODOT.CONTROLLER = 0
+ 457: 079e:     ENDIF
+ 458: 079e: 
+ 459: 079e:     IF (UODOT.INDICAT1% AND 01H) <> 0 THEN BEGIN
+ 460: 07a7:         UODOT.BOL = -1
+ 461: 07b1:     ENDIF ELSE BEGIN
+ 462: 07b1:         UODOT.BOL = 0
+ 463: 07b9:     ENDIF
+ 464: 07b9: 
+ 465: 07b9:     IF (UODOT.INDICAT1% AND 02H) <> 0 THEN BEGIN
+ 466: 07c2:         UODOT.SDPD = -1
+ 467: 07cc:     ENDIF ELSE BEGIN
+ 468: 07cc:         UODOT.SDPD = 0
+ 469: 07d4:     ENDIF
+ 470: 07d4: 
+ 471: 07d4:     CHILD.LIST$ = ""
+ 472: 07e1:     READ.UODOT = 0
+ 473: 07e6:     EXIT FUNCTION
+ 474: 07e8: 
+ 475: 07e8: READ.ERROR:
+ 476: 07e8: 
+ 477: 07e8:     FILE.OPERATION$     = "R"
+ 478: 07f7:     CURRENT.REPORT.NUM% = UODOT.REPORT.NUM%
+ 479: 0805:     CURRENT.CODE$       = UODOT.KEY$
+ 480: 0814: 
+ 481: 0814: END FUNCTION
+ 482: 0823: 
+ 483: 0823: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 484: 0823: \/* FUNCTION READ.UODOT.ON.DESPATCH                                */
+ 485: 0823: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 486: 0823: 
+ 487: 0823: FUNCTION READ.UODOT.ON.DESPATCH PUBLIC
+ 488: 0837: 
+ 489: 0837:     STRING TEMP$
+ 490: 0837:     INTEGER*2 RC%
+ 491: 0837:     INTEGER*2 READ.UODOT.ON.DESPATCH
+ 492: 0837: 
+ 493: 0837:     TEMP$ = UODOT.DESPATCH.DATE$
+ 494: 084b: 
+ 495: 084b:     UODOT.SEQ% = 0
+ 496: 0854:     RC% = READ.UODOT
+ 497: 085b:     WHILE RC% = 0 AND UODOT.DESPATCH.DATE$ <> TEMP$
+ 498: 085d:         UODOT.SEQ% = UODOT.SEQ% + 1
+ 499: 0864:         RC% = READ.UODOT
+ 500: 086b:     WEND
+ 501: 08a0: 
+ 502: 08a0:     TEMP$ = ""
+ 503: 08ad:     READ.UODOT.ON.DESPATCH = RC%
+ 504: 08b3: 
+ 505: 08b3: END FUNCTION
+ 506: 08c2: 
+ 507: 08c2: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 508: 08c2: \/* FUNCTION READ.UODOT.LOCK                                       */
+ 509: 08c2: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 510: 08c2: 
+ 511: 08c2: FUNCTION READ.UODOT.LOCK PUBLIC
+ 512: 08d6: 
+ 513: 08d6:     STRING    CHILD.LIST$
+ 514: 08d6:     INTEGER*1 UODOT.INDICAT1%
+ 515: 08d6:     INTEGER*2 I%
+ 516: 08d6:     INTEGER*2 READ.UODOT.LOCK
+ 517: 08d6:     INTEGER*2 UODOT.STATUS%
+ 518: 08d6: 
+ 519: 08d6:     READ.UODOT.LOCK = 1
+ 520: 08db: 
+ 521: 08db:     DIM UODOT.CHILD.LICENCE$(UODOT.MAX.CHILDREN%)
+ 522: 0907:     DIM UODOT.CHILD.TYPE$(UODOT.MAX.CHILDREN%)
+ 523: 0933: 
+ 524: 0933:     IF UODOT.KEY$ = STRING$(7, CHR$(0FFH)) THEN BEGIN                       !CMG
+ 525: 095b:        LOCK% = 1                                                            !CMG
+ 526: 0960:        READ.UODOT.LOCK = READ.SUMMARY.STATUS                                !CMG
+ 527: 0968:        EXIT FUNCTION                                                        !CMG
+ 528: 096b:     ENDIF                                                                   !CMG
+ 529: 096b: 
+ 530: 096b:     FORMAT.STRING$ = "T8,C3,I1,C3,C3,C2,C1,C1,C3,I2,C5,C5,C3,C2,C4," +  \   !EMW
+ 531: 0981:                      "C4,C1,C4,C5,C16,I2,I2,C90"                            !EMW
+ 532: 0981:     
+ 533: 0981:     IF END #UODOT.SESS.NUM% THEN READ.ERROR
+ 534: 0995:     READ FORM FORMAT.STRING$;                                           \   !EMW
+ 535: 0aab:         #UODOT.SESS.NUM% AUTOLOCK KEY UODOT.KEY$;                       \
+ 536: 0aab:         UODOT.DESPATCH.DATE$,                                           \
+ 537: 0aab:         UODOT.INDICAT1%,                                                \
+ 538: 0aab:         UODOT.EST.DEL.DATE$,                                            \
+ 539: 0aab:         UODOT.DRVR.DEL.DATE$,                                           \
+ 540: 0aab:         UODOT.DRVR.DEL.TIME$,                                           \
+ 541: 0aab:         UODOT.TYPE$,                                                    \
+ 542: 0aab:         UODOT.REASON$,                                                  \
+ 543: 0aab:         UODOT.WAREHOUSE.AREA$,                                          \
+ 544: 0aab:         UODOT.STATUS%,                                                  \
+ 545: 0aab:         UODOT.ULTIMATE.PARENT$,                                         \
+ 546: 0aab:         UODOT.IMMEDIATE.PARENT$,                                        \
+ 547: 0aab:         UODOT.BOOKED.DATE$,                                             \
+ 548: 0aab:         UODOT.BOOKED.TIME$,                                             \
+ 549: 0aab:         UODOT.STORE.OP.ID$,                                             \
+ 550: 0aab:         UODOT.DRVR.ID$,                                                 \
+ 551: 0aab:         UODOT.LEVEL$,                                                   \
+ 552: 0aab:         UODOT.AUDIT.OP.ID$,                                             \
+ 553: 0aab:         UODOT.UOD.NUMBER$,                                              \   !EMW
+ 554: 0aab:         UODOT.FILLER$,                                                  \
+ 555: 0aab:         UODOT.NUM.ITEMS%,                                               \
+ 556: 0aab:         UODOT.NUM.CHILDREN%,                                            \
+ 557: 0aab:         CHILD.LIST$
+ 558: 0aab: 
+ 559: 0aab:     FOR I% = 1 TO UODOT.MAX.CHILDREN%
+ 560: 0ab3:         UODOT.CHILD.LICENCE$(I%) =                                      \   !EMW
+ 561: 0ae4:             MID$(CHILD.LIST$, ((I% - 1) * 6) + 1, 5)
+ 562: 0ae4:         UODOT.CHILD.TYPE$(I%) =                                         \   !EMW
+ 563: 0b17:             MID$(CHILD.LIST$, ((I% - 1) * 6) + 6, 1)
+ 564: 0b17:     NEXT I%
+ 565: 0b2b: 
+ 566: 0b2b:     IF (UODOT.STATUS% AND 0001H) <> 0 THEN BEGIN
+ 567: 0b36:         UODOT.BOOKED = -1
+ 568: 0b41:     ENDIF ELSE BEGIN
+ 569: 0b41:         UODOT.BOOKED = 0
+ 570: 0b4a:     ENDIF
+ 571: 0b4a: 
+ 572: 0b4a:     IF (UODOT.STATUS% AND 0002H) <> 0 THEN BEGIN
+ 573: 0b55:         UODOT.STOCK.UPDATED = -1
+ 574: 0b60:     ENDIF ELSE BEGIN
+ 575: 0b60:         UODOT.STOCK.UPDATED = 0
+ 576: 0b69:     ENDIF
+ 577: 0b69: 
+ 578: 0b69:     IF (UODOT.STATUS% AND 0004H) <> 0 THEN BEGIN
+ 579: 0b74:         UODOT.AUTO = -1
+ 580: 0b7f:     ENDIF ELSE BEGIN
+ 581: 0b7f:         UODOT.AUTO = 0
+ 582: 0b88:     ENDIF
+ 583: 0b88: 
+ 584: 0b88:     IF (UODOT.STATUS% AND 0008H) <> 0 THEN BEGIN
+ 585: 0b93:         UODOT.AUDITED = -1
+ 586: 0b9e:     ENDIF ELSE BEGIN
+ 587: 0b9e:         UODOT.AUDITED = 0
+ 588: 0ba7:     ENDIF
+ 589: 0ba7: 
+ 590: 0ba7:     IF (UODOT.STATUS% AND 0010H) <> 0 THEN BEGIN
+ 591: 0bb2:         UODOT.PARTIAL = -1
+ 592: 0bbd:     ENDIF ELSE BEGIN
+ 593: 0bbd:         UODOT.PARTIAL = 0
+ 594: 0bc6:     ENDIF
+ 595: 0bc6: 
+ 596: 0bc6:    IF (UODOT.STATUS% AND 0100H) <> 0 THEN BEGIN
+ 597: 0bd1:         UODOT.GIT.MISMATCH = -1
+ 598: 0bdc:     ENDIF ELSE BEGIN
+ 599: 0bdc:         UODOT.GIT.MISMATCH = 0
+ 600: 0be5:     ENDIF
+ 601: 0be5: 
+ 602: 0be5:     IF (UODOT.STATUS% AND 0200H) <> 0 THEN BEGIN
+ 603: 0bf0:         UODOT.RF = -1
+ 604: 0bfb:     ENDIF ELSE BEGIN
+ 605: 0bfb:         UODOT.RF = 0
+ 606: 0c04:     ENDIF
+ 607: 0c04: 
+ 608: 0c04:     IF (UODOT.STATUS% AND 0400H) <> 0 THEN BEGIN
+ 609: 0c0f:         UODOT.PDT = -1
+ 610: 0c1a:     ENDIF ELSE BEGIN
+ 611: 0c1a:         UODOT.PDT = 0
+ 612: 0c23:     ENDIF
+ 613: 0c23: 
+ 614: 0c23:     IF (UODOT.STATUS% AND 0800H) <> 0 THEN BEGIN
+ 615: 0c2e:         UODOT.MC70 = -1
+ 616: 0c39:     ENDIF ELSE BEGIN
+ 617: 0c39:         UODOT.MC70 = 0
+ 618: 0c42:     ENDIF
+ 619: 0c42: 
+ 620: 0c42:     IF (UODOT.STATUS% AND 1000H) <> 0 THEN BEGIN
+ 621: 0c4d:         UODOT.CONTROLLER = -1
+ 622: 0c58:     ENDIF ELSE BEGIN
+ 623: 0c58:         UODOT.CONTROLLER = 0
+ 624: 0c61:     ENDIF
+ 625: 0c61: 
+ 626: 0c61:     IF (UODOT.INDICAT1% AND 01H) <> 0 THEN BEGIN
+ 627: 0c6a:         UODOT.BOL = -1
+ 628: 0c74:     ENDIF ELSE BEGIN
+ 629: 0c74:         UODOT.BOL = 0
+ 630: 0c7c:     ENDIF
+ 631: 0c7c: 
+ 632: 0c7c:     IF (UODOT.INDICAT1% AND 02H) <> 0 THEN BEGIN
+ 633: 0c85:         UODOT.SDPD = -1
+ 634: 0c8f:     ENDIF ELSE BEGIN
+ 635: 0c8f:         UODOT.SDPD = 0
+ 636: 0c97:     ENDIF
+ 637: 0c97: 
+ 638: 0c97:     CHILD.LIST$ = ""
+ 639: 0ca4:     READ.UODOT.LOCK = 0
+ 640: 0ca9:     EXIT FUNCTION
+ 641: 0cab: 
+ 642: 0cab: READ.ERROR:
+ 643: 0cab: 
+ 644: 0cab:     FILE.OPERATION$     = "R"
+ 645: 0cba:     CURRENT.REPORT.NUM% = UODOT.REPORT.NUM%
+ 646: 0cc8:     CURRENT.CODE$       = UODOT.KEY$
+ 647: 0cd7: 
+ 648: 0cd7: END FUNCTION
+ 649: 0ce6: 
+ 650: 0ce6: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 651: 0ce6: \/* FUNCTION WRITE.UODOT                                           */
+ 652: 0ce6: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 653: 0ce6: 
+ 654: 0ce6: FUNCTION WRITE.UODOT PUBLIC
+ 655: 0cfa: 
+ 656: 0cfa:     STRING    CHILD.LIST$
+ 657: 0cfa:     INTEGER*1 UODOT.INDICAT1%
+ 658: 0cfa:     INTEGER*2 I%
+ 659: 0cfa:     INTEGER*2 UODOT.STATUS%
+ 660: 0cfa:     INTEGER*2 WRITE.UODOT
+ 661: 0cfa: 
+ 662: 0cfa:     WRITE.UODOT = 1
+ 663: 0cff: 
+ 664: 0cff:     IF UODOT.KEY$ = STRING$(7, CHR$(0FFH)) THEN BEGIN                       !CMG
+ 665: 0d27:        LOCK% = 0                                                            !CMG
+ 666: 0d2c:        WRITE.UODOT = WRITE.SUMMARY.STATUS                                   !CMG
+ 667: 0d34:        EXIT FUNCTION                                                        !CMG
+ 668: 0d37:     ENDIF                                                                   !CMG
+ 669: 0d37: 
+ 670: 0d37:     CHILD.LIST$ = ""
+ 671: 0d44:     FOR I% = 1 TO UODOT.MAX.CHILDREN%
+ 672: 0d4d:         CHILD.LIST$ = CHILD.LIST$ +                                     \
+ 673: 0dd4:             RIGHT$(STRING$(5,CHR$(0)) + " " +                           \
+ 674: 0dd4:                    UODOT.CHILD.LICENCE$(I%) +                           \
+ 675: 0dd4:                    UODOT.CHILD.TYPE$(I%), 6)
+ 676: 0dd4:     NEXT I%
+ 677: 0deb: 
+ 678: 0deb:     UODOT.STATUS% = 0
+ 679: 0df1:     UODOT.INDICAT1% = 0
+ 680: 0df6: 
+ 681: 0df6:     IF UODOT.BOOKED THEN BEGIN
+ 682: 0e01:         UODOT.STATUS% = (UODOT.STATUS% OR 0001H)
+ 683: 0e0a:     ENDIF
+ 684: 0e0a: 
+ 685: 0e0a:     IF UODOT.STOCK.UPDATED THEN BEGIN
+ 686: 0e15:         UODOT.STATUS% = (UODOT.STATUS% OR 0002H)
+ 687: 0e1e:     ENDIF
+ 688: 0e1e: 
+ 689: 0e1e:     IF UODOT.AUTO THEN BEGIN
+ 690: 0e29:         UODOT.STATUS% = (UODOT.STATUS% OR 0004H)
+ 691: 0e32:     ENDIF
+ 692: 0e32: 
+ 693: 0e32:     IF UODOT.AUDITED THEN BEGIN
+ 694: 0e3d:         UODOT.STATUS% = (UODOT.STATUS% OR 0008H)
+ 695: 0e46:     ENDIF
+ 696: 0e46: 
+ 697: 0e46:     IF UODOT.PARTIAL THEN BEGIN
+ 698: 0e51:         UODOT.STATUS% = (UODOT.STATUS% OR 0010H)
+ 699: 0e5a:     ENDIF
+ 700: 0e5a: 
+ 701: 0e5a:     IF UODOT.GIT.MISMATCH THEN BEGIN
+ 702: 0e65:         UODOT.STATUS% = (UODOT.STATUS% OR 0100H)
+ 703: 0e6e:     ENDIF
+ 704: 0e6e: 
+ 705: 0e6e:     IF UODOT.RF THEN BEGIN
+ 706: 0e79:         UODOT.STATUS% = (UODOT.STATUS% OR 0200H)
+ 707: 0e82:     ENDIF
+ 708: 0e82: 
+ 709: 0e82:     IF UODOT.PDT THEN BEGIN
+ 710: 0e8d:         UODOT.STATUS% = (UODOT.STATUS% OR 0400H)
+ 711: 0e96:     ENDIF
+ 712: 0e96: 
+ 713: 0e96:     IF UODOT.MC70 THEN BEGIN
+ 714: 0ea1:         UODOT.STATUS% = (UODOT.STATUS% OR 0800H)
+ 715: 0eaa:     ENDIF
+ 716: 0eaa: 
+ 717: 0eaa:     IF UODOT.CONTROLLER THEN BEGIN
+ 718: 0eb5:         UODOT.STATUS% = (UODOT.STATUS% OR 1000H)
+ 719: 0ebe:     ENDIF
+ 720: 0ebe: 
+ 721: 0ebe:     IF UODOT.BOL THEN BEGIN
+ 722: 0ec8:         UODOT.INDICAT1% = (UODOT.INDICAT1% OR 01H)
+ 723: 0ed0:     ENDIF
+ 724: 0ed0: 
+ 725: 0ed0:     IF UODOT.SDPD THEN BEGIN
+ 726: 0eda:         UODOT.INDICAT1% = (UODOT.INDICAT1% OR 02H)
+ 727: 0ee2:     ENDIF
+ 728: 0ee2: 
+ 729: 0ee2:     FORMAT.STRING$ = "C7,C3,I1,C3,C3,C2,C1,C1,C3,I2,C5,C5,C3,C2,C4," +  \   !EMW
+ 730: 0ef8:                      "C4,C1,C4,C5,C16,I2,I2,C90"                            !EMW
+ 731: 0ef8:     
+ 732: 0ef8:     IF END #UODOT.SESS.NUM% THEN WRITE.ERROR
+ 733: 0f0c:     WRITE FORM FORMAT.STRING$;                                          \   !EMW
+ 734: 1079:         #UODOT.SESS.NUM%;                                               \
+ 735: 1079:         UODOT.KEY$,                                                     \
+ 736: 1079:         UODOT.DESPATCH.DATE$,                                           \
+ 737: 1079:         UODOT.INDICAT1%,                                                \
+ 738: 1079:         UODOT.EST.DEL.DATE$,                                            \
+ 739: 1079:         UODOT.DRVR.DEL.DATE$,                                           \
+ 740: 1079:         UODOT.DRVR.DEL.TIME$,                                           \
+ 741: 1079:         UODOT.TYPE$,                                                    \
+ 742: 1079:         UODOT.REASON$,                                                  \
+ 743: 1079:         UODOT.WAREHOUSE.AREA$,                                          \
+ 744: 1079:         UODOT.STATUS%,                                                  \
+ 745: 1079:         UODOT.ULTIMATE.PARENT$,                                         \
+ 746: 1079:         UODOT.IMMEDIATE.PARENT$,                                        \
+ 747: 1079:         UODOT.BOOKED.DATE$,                                             \
+ 748: 1079:         UODOT.BOOKED.TIME$,                                             \
+ 749: 1079:         UODOT.STORE.OP.ID$,                                             \
+ 750: 1079:         UODOT.DRVR.ID$,                                                 \
+ 751: 1079:         UODOT.LEVEL$,                                                   \
+ 752: 1079:         UODOT.AUDIT.OP.ID$,                                             \
+ 753: 1079:         UODOT.UOD.NUMBER$,                                              \   !EMW
+ 754: 1079:         UODOT.FILLER$,                                                  \
+ 755: 1079:         UODOT.NUM.ITEMS%,                                               \
+ 756: 1079:         UODOT.NUM.CHILDREN%,                                            \
+ 757: 1079:         CHILD.LIST$
+ 758: 1079: 
+ 759: 1079:     CHILD.LIST$ = ""
+ 760: 1086:     WRITE.UODOT = 0
+ 761: 108b:     EXIT FUNCTION
+ 762: 108d: 
+ 763: 108d: WRITE.ERROR:
+ 764: 108d: 
+ 765: 108d:     FILE.OPERATION$ = "W"
+ 766: 109c:     CURRENT.REPORT.NUM% = UODOT.REPORT.NUM%
+ 767: 10aa:     CURRENT.CODE$ = UODOT.KEY$
+ 768: 10b9: 
+ 769: 10b9: END FUNCTION
+ 770: 10c8: 
+ 771: 10c8: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 772: 10c8: \/* FUNCTION WRITE.UODOT.UNLOCK                                    */
+ 773: 10c8: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 774: 10c8: 
+ 775: 10c8: FUNCTION WRITE.UODOT.UNLOCK PUBLIC
+ 776: 10dc: 
+ 777: 10dc:     STRING    CHILD.LIST$
+ 778: 10dc:     INTEGER*1 UODOT.INDICAT1%
+ 779: 10dc:     INTEGER*2 I%
+ 780: 10dc:     INTEGER*2 UODOT.STATUS%
+ 781: 10dc:     INTEGER*2 WRITE.UODOT.UNLOCK
+ 782: 10dc: 
+ 783: 10dc:     WRITE.UODOT.UNLOCK = 1
+ 784: 10e1: 
+ 785: 10e1:     IF UODOT.KEY$ = STRING$(7, CHR$(0FFH)) THEN BEGIN                       !CMG
+ 786: 1109:        LOCK% = 1                                                            !CMG
+ 787: 110e:        WRITE.UODOT.UNLOCK = WRITE.SUMMARY.STATUS                            !CMG
+ 788: 1116:        EXIT FUNCTION                                                        !CMG
+ 789: 1119:     ENDIF                                                                   !CMG
+ 790: 1119: 
+ 791: 1119:     CHILD.LIST$ = ""
+ 792: 1126:     FOR I% = 1 TO UODOT.MAX.CHILDREN%
+ 793: 112f:         CHILD.LIST$ = CHILD.LIST$ +                                     \
+ 794: 11b6:             RIGHT$(STRING$(5,CHR$(0)) + " " +                           \
+ 795: 11b6:                    UODOT.CHILD.LICENCE$(I%) +                           \
+ 796: 11b6:                    UODOT.CHILD.TYPE$(I%), 6)
+ 797: 11b6:     NEXT I%
+ 798: 11cd:     UODOT.STATUS% = 0
+ 799: 11d3:     UODOT.INDICAT1% = 0
+ 800: 11d8: 
+ 801: 11d8:     IF UODOT.BOOKED THEN BEGIN
+ 802: 11e3:         UODOT.STATUS% = (UODOT.STATUS% OR 0001H)
+ 803: 11ec:     ENDIF
+ 804: 11ec: 
+ 805: 11ec:     IF UODOT.STOCK.UPDATED THEN BEGIN
+ 806: 11f7:         UODOT.STATUS% = (UODOT.STATUS% OR 0002H)
+ 807: 1200:     ENDIF
+ 808: 1200: 
+ 809: 1200:     IF UODOT.AUTO THEN BEGIN
+ 810: 120b:         UODOT.STATUS% = (UODOT.STATUS% OR 0004H)
+ 811: 1214:     ENDIF
+ 812: 1214: 
+ 813: 1214:     IF UODOT.AUDITED THEN BEGIN
+ 814: 121f:         UODOT.STATUS% = (UODOT.STATUS% OR 0008H)
+ 815: 1228:     ENDIF
+ 816: 1228: 
+ 817: 1228:     IF UODOT.PARTIAL THEN BEGIN
+ 818: 1233:         UODOT.STATUS% = (UODOT.STATUS% OR 0010H)
+ 819: 123c:     ENDIF
+ 820: 123c: 
+ 821: 123c:     IF UODOT.GIT.MISMATCH THEN BEGIN
+ 822: 1247:         UODOT.STATUS% = (UODOT.STATUS% OR 0100H)
+ 823: 1250:     ENDIF
+ 824: 1250: 
+ 825: 1250:     IF UODOT.RF THEN BEGIN
+ 826: 125b:         UODOT.STATUS% = (UODOT.STATUS% OR 0200H)
+ 827: 1264:     ENDIF
+ 828: 1264: 
+ 829: 1264:     IF UODOT.PDT THEN BEGIN
+ 830: 126f:         UODOT.STATUS% = (UODOT.STATUS% OR 0400H)
+ 831: 1278:     ENDIF
+ 832: 1278: 
+ 833: 1278:     IF UODOT.MC70 THEN BEGIN
+ 834: 1283:         UODOT.STATUS% = (UODOT.STATUS% OR 0800H)
+ 835: 128c:     ENDIF
+ 836: 128c: 
+ 837: 128c:     IF UODOT.CONTROLLER THEN BEGIN
+ 838: 1297:         UODOT.STATUS% = (UODOT.STATUS% OR 1000H)
+ 839: 12a0:     ENDIF
+ 840: 12a0: 
+ 841: 12a0:     IF UODOT.BOL THEN BEGIN
+ 842: 12aa:         UODOT.INDICAT1% = (UODOT.INDICAT1% OR 01H)
+ 843: 12b2:     ENDIF
+ 844: 12b2: 
+ 845: 12b2:     IF UODOT.SDPD THEN BEGIN
+ 846: 12bc:         UODOT.INDICAT1% = (UODOT.INDICAT1% OR 02H)
+ 847: 12c4:     ENDIF
+ 848: 12c4: 
+ 849: 12c4:     FORMAT.STRING$ = "C7,C3,I1,C3,C3,C2,C1,C1,C3,I2,C5,C5,C3,C2,C4," +  \   !EMW
+ 850: 12da:                      "C4,C1,C4,C5,C16,I2,I2,C90"                            !EMW
+ 851: 12da: 
+ 852: 12da:     IF END #UODOT.SESS.NUM% THEN WRITE.ERROR
+ 853: 12ee:     WRITE FORM FORMAT.STRING$;                                          \   !EMW
+ 854: 145b:         #UODOT.SESS.NUM% AUTOUNLOCK;                                    \
+ 855: 145b:         UODOT.KEY$,                                                     \
+ 856: 145b:         UODOT.DESPATCH.DATE$,                                           \
+ 857: 145b:         UODOT.INDICAT1%,                                                \
+ 858: 145b:         UODOT.EST.DEL.DATE$,                                            \
+ 859: 145b:         UODOT.DRVR.DEL.DATE$,                                           \
+ 860: 145b:         UODOT.DRVR.DEL.TIME$,                                           \
+ 861: 145b:         UODOT.TYPE$,                                                    \
+ 862: 145b:         UODOT.REASON$,                                                  \
+ 863: 145b:         UODOT.WAREHOUSE.AREA$,                                          \
+ 864: 145b:         UODOT.STATUS%,                                                  \
+ 865: 145b:         UODOT.ULTIMATE.PARENT$,                                         \
+ 866: 145b:         UODOT.IMMEDIATE.PARENT$,                                        \
+ 867: 145b:         UODOT.BOOKED.DATE$,                                             \
+ 868: 145b:         UODOT.BOOKED.TIME$,                                             \
+ 869: 145b:         UODOT.STORE.OP.ID$,                                             \
+ 870: 145b:         UODOT.DRVR.ID$,                                                 \
+ 871: 145b:         UODOT.LEVEL$,                                                   \
+ 872: 145b:         UODOT.AUDIT.OP.ID$,                                             \
+ 873: 145b:         UODOT.UOD.NUMBER$,                                              \   !EMW
+ 874: 145b:         UODOT.FILLER$,                                                  \
+ 875: 145b:         UODOT.NUM.ITEMS%,                                               \
+ 876: 145b:         UODOT.NUM.CHILDREN%,                                            \
+ 877: 145b:         CHILD.LIST$
+ 878: 145b: 
+ 879: 145b:     CHILD.LIST$ = ""
+ 880: 1468:     WRITE.UODOT.UNLOCK = 0
+ 881: 146d:     EXIT FUNCTION
+ 882: 146f: 
+ 883: 146f: WRITE.ERROR:
+ 884: 146f: 
+ 885: 146f:     FILE.OPERATION$ = "W"
+ 886: 147e:     CURRENT.REPORT.NUM% = UODOT.REPORT.NUM%
+ 887: 148c:     CURRENT.CODE$ = UODOT.KEY$
+ 888: 149b: 
+ 889: 149b:     END FUNCTION
+ 890: 14aa: 
+ 891: 14aa: \/******************************************************************/
+ 892: 14aa: 
+ 893: 14aa: FUNCTION DELETE.UODOT PUBLIC
+ 894: 14be: 
+ 895: 14be:     INTEGER*2 DELETE.UODOT
+ 896: 14be: 
+ 897: 14be:     DELETE.UODOT = 1
+ 898: 14c3:     IF END #UODOT.SESS.NUM% THEN DELETE.ERROR
+ 899: 14d7:     DELREC UODOT.SESS.NUM%; UODOT.KEY$
+ 900: 14ea:     DELETE.UODOT = 0
+ 901: 14ef:     EXIT FUNCTION
+ 902: 14f1: 
+ 903: 14f1: DELETE.ERROR:
+ 904: 14f1: 
+ 905: 14f1:     FILE.OPERATION$     = "D"
+ 906: 1500:     CURRENT.REPORT.NUM% = UODOT.REPORT.NUM%
+ 907: 150e:     CURRENT.CODE$       = UODOT.KEY$
+ 908: 151d: 
+ 909: 151d: END FUNCTION
+ 910: 152c: 
+ 911: 152c: \*****************************************************************************
+ 912: 152c: \***
+ 913: 152c: \***    FUNCTION UODOT.REC$
+ 914: 152c: \***    Creates UODOT record string UODOT.REC$ from its constituent variables.
+ 915: 152c: \***    Function is a modification of WRITE.UODOT.
+ 916: 152c: \***
+ 917: 152c: \***..........................................................................
+ 918: 152c: 
+ 919: 152c: FUNCTION UODOT.REC$ PUBLIC ! Entire function new of Rv 1.8               !1.8 RC
+ 920: 1540: 
+ 921: 1540:     INTEGER*1 UODOT.INDICAT1%
+ 922: 1540:     
+ 923: 1540:     INTEGER*2 UODOT.STATUS%
+ 924: 1540:     INTEGER*2 I%
+ 925: 1540:     
+ 926: 1540:     STRING    CHILD.LIST$
+ 927: 1540:     STRING    UODOT.REC$
+ 928: 1540:     STRING    WORK$
+ 929: 1540: 
+ 930: 1540:     
+ 931: 1540:     CHILD.LIST$ = ""
+ 932: 154d:     FOR I% = 1 TO UODOT.MAX.CHILDREN%
+ 933: 1556:         CHILD.LIST$ = CHILD.LIST$ +                                     \
+ 934: 15dd:             RIGHT$(STRING$(5,CHR$(0)) + " " +                           \
+ 935: 15dd:                    UODOT.CHILD.LICENCE$(I%) +                           \
+ 936: 15dd:                    UODOT.CHILD.TYPE$(I%), 6)
+ 937: 15dd:     NEXT I%
+ 938: 15f4: 
+ 939: 15f4:     UODOT.STATUS% = 0
+ 940: 15fa:     UODOT.INDICAT1% = 0
+ 941: 15ff: 
+ 942: 15ff:     IF UODOT.BOOKED THEN BEGIN
+ 943: 160a:         UODOT.STATUS% = (UODOT.STATUS% OR 0001H)
+ 944: 1613:     ENDIF
+ 945: 1613: 
+ 946: 1613:     IF UODOT.STOCK.UPDATED THEN BEGIN
+ 947: 161e:         UODOT.STATUS% = (UODOT.STATUS% OR 0002H)
+ 948: 1627:     ENDIF
+ 949: 1627: 
+ 950: 1627:     IF UODOT.AUTO THEN BEGIN
+ 951: 1632:         UODOT.STATUS% = (UODOT.STATUS% OR 0004H)
+ 952: 163b:     ENDIF
+ 953: 163b: 
+ 954: 163b:     IF UODOT.AUDITED THEN BEGIN
+ 955: 1646:         UODOT.STATUS% = (UODOT.STATUS% OR 0008H)
+ 956: 164f:     ENDIF
+ 957: 164f: 
+ 958: 164f:     IF UODOT.PARTIAL THEN BEGIN
+ 959: 165a:         UODOT.STATUS% = (UODOT.STATUS% OR 0010H)
+ 960: 1663:     ENDIF
+ 961: 1663: 
+ 962: 1663:     IF UODOT.GIT.MISMATCH THEN BEGIN
+ 963: 166e:         UODOT.STATUS% = (UODOT.STATUS% OR 0100H)
+ 964: 1677:     ENDIF
+ 965: 1677: 
+ 966: 1677:     IF UODOT.RF THEN BEGIN
+ 967: 1682:         UODOT.STATUS% = (UODOT.STATUS% OR 0200H)
+ 968: 168b:     ENDIF
+ 969: 168b: 
+ 970: 168b:     IF UODOT.PDT THEN BEGIN
+ 971: 1696:         UODOT.STATUS% = (UODOT.STATUS% OR 0400H)
+ 972: 169f:     ENDIF
+ 973: 169f: 
+ 974: 169f:     IF UODOT.MC70 THEN BEGIN
+ 975: 16aa:         UODOT.STATUS% = (UODOT.STATUS% OR 0800H)
+ 976: 16b3:     ENDIF
+ 977: 16b3: 
+ 978: 16b3:     IF UODOT.CONTROLLER THEN BEGIN
+ 979: 16be:         UODOT.STATUS% = (UODOT.STATUS% OR 1000H)
+ 980: 16c7:     ENDIF
+ 981: 16c7: 
+ 982: 16c7:     IF UODOT.BOL THEN BEGIN
+ 983: 16d1:         UODOT.INDICAT1% = (UODOT.INDICAT1% OR 01H)
+ 984: 16d9:     ENDIF
+ 985: 16d9: 
+ 986: 16d9:     IF UODOT.SDPD THEN BEGIN
+ 987: 16e3:         UODOT.INDICAT1% = (UODOT.INDICAT1% OR 02H)
+ 988: 16eb:     ENDIF
+ 989: 16eb: 
+ 990: 16eb: !   Create UODOT.REC$ from individual strings (leaving space for integers)
+ 991: 16eb:     WORK$ = \                     Start Length
+ 992: 17ea:       UODOT.LICENCE$          + \    1   5 
+ 993: 17ea:      "  "                     + \    6   2  UODOT.SEQ%
+ 994: 17ea:       UODOT.DESPATCH.DATE$    + \    8   3 
+ 995: 17ea:  CHR$(UODOT.INDICAT1%)        + \   11   1  UODOT.INDICAT1%
+ 996: 17ea:       UODOT.EST.DEL.DATE$     + \   12   3 
+ 997: 17ea:       UODOT.DRVR.DEL.DATE$    + \   15   3 
+ 998: 17ea:       UODOT.DRVR.DEL.TIME$    + \   18   2 
+ 999: 17ea:       UODOT.TYPE$             + \   20   1 
+1000: 17ea:       UODOT.REASON$           + \   21   1 
+1001: 17ea:       UODOT.WAREHOUSE.AREA$   + \   22   3 
+1002: 17ea:      "  "                     + \   25   2  UODOT.STATUS%
+1003: 17ea:       UODOT.ULTIMATE.PARENT$  + \   27   5 
+1004: 17ea:       UODOT.IMMEDIATE.PARENT$ + \   32   5 
+1005: 17ea:       UODOT.BOOKED.DATE$      + \   37   3 
+1006: 17ea:       UODOT.BOOKED.TIME$      + \   40   2 
+1007: 17ea:       UODOT.STORE.OP.ID$      + \   42   4 
+1008: 17ea:       UODOT.DRVR.ID$          + \   46   4 
+1009: 17ea:       UODOT.LEVEL$            + \   50   1 
+1010: 17ea:       UODOT.AUDIT.OP.ID$      + \   51   4 
+1011: 17ea:       UODOT.UOD.NUMBER$       + \   55   5                                  !EMW
+1012: 17ea:       UODOT.FILLER$           + \   60  16                                  !EMW
+1013: 17ea:      "  "                     + \   76   2  UODOT.NUM.ITEMS%
+1014: 17ea:      "  "                     + \   78   2  UODOT.NUM.CHILDREN%
+1015: 17ea:       CHILD.LIST$               !   80  90 
+1016: 17ea: 
+1017: 17ea: !   Insert integers into WORK$ with PUTN2 (using offsets)
+1018: 17ea:     CALL PUTN2(WORK$,  5, UODOT.SEQ%)
+1019: 1803: !   CALL PUTN (WORK$, 10, UODOT.INDICAT1%) ! No PUTN for one byte integer
+1020: 1803:     CALL PUTN2(WORK$, 24, UODOT.STATUS%)
+1021: 1819:     CALL PUTN2(WORK$, 75, UODOT.NUM.ITEMS%)
+1022: 1832:     CALL PUTN2(WORK$, 77, UODOT.NUM.CHILDREN%)
+1023: 184b:     
+1024: 184b: !   Set UODOT.REC$ from WORK$
+1025: 184b:     UODOT.REC$ = WORK$
+1026: 185d: 
+1027: 185d: END FUNCTION
+1028: 186e: 
+1029: 186e: End of Compilation

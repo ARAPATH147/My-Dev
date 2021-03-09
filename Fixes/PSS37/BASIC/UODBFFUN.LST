@@ -1,0 +1,192 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           UOD BUFFER FILE EXTERNAL FILE FUNCTION DEFINITIONS
+   5: 0000: \***
+   6: 0000: \***                    REFERENCE    : UODBFFUN.BAS
+   7: 0000: \***
+   8: 0000: \***    Version A.         Michael Kelsall              08th February 1993
+   9: 0000: \***
+  10: 0000: \*******************************************************************************
+  11: 0000: \*******************************************************************************
+  12: 0000:  
+  13: 0000:   INTEGER*2 GLOBAL              \
+  14: 0000:          CURRENT.REPORT.NUM%
+  15: 0000:          
+  16: 0000:   STRING GLOBAL                 \
+  17: 0000:          CURRENT.CODE$,         \
+  18: 0000:          FILE.OPERATION$
+  19: 0000:          
+  20: 0000:   %INCLUDE UODBFDEC.J86                                                
+  21: 0000: REM \
+  22: 0000: \******************************************************************************
+  23: 0000: \******************************************************************************
+  24: 0000: \***
+  25: 0000: \***      %INCLUDE FOR UOD BUFFER FILE FIELD DECLARATIONS
+  26: 0000: \***                              FILE REFERENCE PARAMETERS
+  27: 0000: \***
+  28: 0000: \***               FILE TYPE    : Sequential
+  29: 0000: \***
+  30: 0000: \***               REFERENCE    : UODBFDEC.J86
+  31: 0000: \***
+  32: 0000: \***      Version A.     Michael Kelsall             8th February 1993
+  33: 0000: \***
+  34: 0000: \******************************************************************************
+  35: 0000: \*******************************************************************************
+  36: 0000: \***
+  37: 0000: \***  The length of the records on this file vary depending on the record
+  38: 0000: \***  transaction type, but they all comprise combinations of the fields
+  39: 0000: \***  defined below.
+  40: 0000: \***
+  41: 0000: \***  Transaction type 0 (Header record) - RECORD DELIMITER, TRANS TYPE,       
+  42: 0000: \***     FIELD DELIMITER, CREATION DATE, CREATION TIME, RECORD DELIMITER,
+  43: 0000: \***     END OF RECORD MARKER.
+  44: 0000: \***
+  45: 0000: \***  Transaction type 21 - RECORD DELIMITER, TRANS TYPE, DATE, TIME, 
+  46: 0000: \***     DISTRIBUTION CENTRE, WAREHOUSE NUMBER, STORE NUMBER, UOD NUMBER,
+  47: 0000: \***     STATUS, RECORD DELIMITER, END OF RECORD MARKER
+  48: 0000: \***
+  49: 0000: \***  Transaction type 23 - RECORD DELIMITER, TRANS TYPE, DATE, TIME,
+  50: 0000: \***     DISTRIBUTION CENTRE, WAREHOUSE NUMBER, STORE NUMBER, UOD NUMBER,
+  51: 0000: \***     STATUS, BOOTS/BAR CODE, BOOTS/BAR CODE FLAG, QUANTITY, 
+  52: 0000: \***     FIELD DELIMITER, FSI, FOLIO YEAR, FOLIO MONTH, STORE SUFFIX, 
+  53: 0000: \***     FOLIO NO, RECORD DELIMITER, END OF RECORD MARKER
+  54: 0000: \***
+  55: 0000: \******************************************************************************
+  56: 0000: 
+  57: 0000:   STRING GLOBAL              \
+  58: 0000:     UODBF.FILE.NAME$,	     \
+  59: 0000:     UODBF.RECORD$,           \ Used to store the whole record which is unstrung
+  60: 0000:                              \ into the fields below
+  61: 0000:     UODBF.RECORD.DELIMITER$, \ 1 byte ASCII set to " (CHR$(34)) 
+  62: 0000:     UODBF.FIELD.DELIMITER$,  \ 1 byte ASCII set to ; (CHR$(59))
+  63: 0000:     UODBF.ENDREC.MARKER$,    \ 2 bytes ASCII set to 0D0Ah
+  64: 0000:     UODBF.TRANS.TYPE$,       \ 1 byte UPD. 00 = Header record
+  65: 0000: 			     \             21 = UOD record
+  66: 0000: 			     \             23 = Item Level UOD record
+  67: 0000:     UODBF.CREATION.DATE$,    \ 3 byte UPD set to current date
+  68: 0000:     UODBF.CREATION.TIME$,    \ 3 byte UPD set to current time
+  69: 0000:     UODBF.DATE$,             \ 3 byte UPD set to current date
+  70: 0000:     UODBF.TIME$,             \ 3 byte UPD set to current time
+  71: 0000:     UODBF.DIST.CENTRE$,      \ 1 byte UPD   
+  72: 0000:     UODBF.WAREHOUSE.NUM$,    \ 1 byte UPD   
+  73: 0000:     UODBF.STORE.NUM$,        \ 2 byte UPD
+  74: 0000:     UODBF.UOD.NUMBER$,       \ 2 byte UPD
+  75: 0000:     UODBF.STATUS$,           \ 1 byte ASC.  "B" = Booked in
+  76: 0000:     			     \		    "M" = Missing
+  77: 0000: 			     \		    "O" = Opened
+  78: 0000: 			     \		    "P" = Picking checked
+  79: 0000: 			     \		    "R" = Retro booked in
+  80: 0000: 			     \		    "D" = Retrospective opened
+  81: 0000: 			     \		    "G" = Retrospective checked
+  82: 0000: 			     \		    "A" = Automatically booked in
+  83: 0000:     UODBF.BOOTS.BAR.CODE$,   \ 6 byte UPD    
+  84: 0000:     UODBF.BOOTS.BAR.CODE.FLAG$, \ 1 byte ASC
+  85: 0000:     UODBF.FSI$,              \ 1 byte ASCII
+  86: 0000:     UODBF.FOLIO.YEAR$,       \ 1 byte UPD
+  87: 0000:     UODBF.FOLIO.MONTH$,      \ 1 byte UPD
+  88: 0000:     UODBF.FOLIO.NUMBER$,     \ 2 bytes UPD
+  89: 0000:     UODBF.STORE.SUFFIX$      ! 1 byte ASCII
+  90: 0000: 
+  91: 0000: 			     			     			     
+  92: 0000:   INTEGER*2 GLOBAL	     \
+  93: 0000:     UODBF.SESS.NUM%,         \
+  94: 0000:     UODBF.REPORT.NUM%,	     \
+  95: 0000:     UODBF.QUANTITY%
+  96: 0000: 			     
+  97: 0000:                                                                      
+  98: 0000:   
+  99: 0000:   FUNCTION UODBF.SET PUBLIC
+ 100: 0014:     INTEGER*2 UODBF.SET
+ 101: 0014:     
+ 102: 0014:     UODBF.SET = 1
+ 103: 0019: 
+ 104: 0019:       UODBF.REPORT.NUM%  = 272
+ 105: 0022:       UODBF.FILE.NAME$ = "UODBF"
+ 106: 0031:     
+ 107: 0031:     UODBF.SET = 0
+ 108: 0036: 
+ 109: 0036:   END FUNCTION
+ 110: 0045: 
+ 111: 0045: 
+ 112: 0045: 
+ 113: 0045:   FUNCTION READ.UODBF PUBLIC
+ 114: 0059:     INTEGER*2 READ.UODBF 
+ 115: 0059:     
+ 116: 0059:     READ.UODBF = 1
+ 117: 005e:     
+ 118: 005e:        IF END #UODBF.SESS.NUM% THEN READ.ERROR
+ 119: 0072:        READ #UODBF.SESS.NUM%; LINE UODBF.RECORD$
+ 120: 008b:        UODBF.TRANS.TYPE$ = UNPACK$(MID$(UODBF.RECORD$,2,1))
+ 121: 00af:        UODBF.TIME$       = UNPACK$(MID$(UODBF.RECORD$,7,3))
+ 122: 00d3:     
+ 123: 00d3:     READ.UODBF = 0
+ 124: 00d8:     EXIT FUNCTION
+ 125: 00da:     
+ 126: 00da:     READ.ERROR:
+ 127: 00da:     
+ 128: 00da:        CURRENT.CODE$ = UNPACK$(MID$(UODBF.RECORD$,2,1))
+ 129: 00fe:        FILE.OPERATION$ = "R"
+ 130: 010d:        CURRENT.REPORT.NUM% = UODBF.REPORT.NUM%
+ 131: 011b:        
+ 132: 011b:        EXIT FUNCTION
+ 133: 011d:                             
+ 134: 011d:   END FUNCTION
+ 135: 012c:   
+ 136: 012c: 
+ 137: 012c: 
+ 138: 012c:   FUNCTION WRITE.UODBF PUBLIC
+ 139: 0140: 
+ 140: 0140:     INTEGER*2 WRITE.UODBF
+ 141: 0140:     
+ 142: 0140:     STRING FORMAT$,                                                   \
+ 143: 0140:            STRING.LENGTH$
+ 144: 0140:             
+ 145: 0140:     WRITE.UODBF = 1  
+ 146: 0145: 
+ 147: 0145:        STRING.LENGTH$ = STR$(LEN(UODBF.RECORD$))
+ 148: 016c:        FORMAT$ = "C" + STRING.LENGTH$                                      
+ 149: 0184:        IF END #UODBF.SESS.NUM% THEN WRITE.ERROR
+ 150: 0198:        WRITE FORM FORMAT$; #UODBF.SESS.NUM%; UODBF.RECORD$                  
+ 151: 01be:        
+ 152: 01be:     WRITE.UODBF = 0
+ 153: 01c3:     EXIT FUNCTION
+ 154: 01c5:     
+ 155: 01c5:     WRITE.ERROR:
+ 156: 01c5:        CURRENT.CODE$ = UODBF.RECORD$
+ 157: 01db:        FILE.OPERATION$= "O"
+ 158: 01ea:        CURRENT.REPORT.NUM% = UODBF.REPORT.NUM%
+ 159: 01f8:        
+ 160: 01f8:        EXIT FUNCTION    
+ 161: 01fa: 
+ 162: 01fa:   END FUNCTION
+ 163: 0209: 
+ 164: 0209:   
+ 165: 0209: 
+ 166: 0209:   FUNCTION WRITE.HOLD.UODBF PUBLIC                                      
+ 167: 021d: 
+ 168: 021d:     INTEGER*2 WRITE.HOLD.UODBF                                          
+ 169: 021d:     
+ 170: 021d:     STRING FORMAT$,                                                     \ 
+ 171: 021d:            STRING.LENGTH$                                               
+ 172: 021d:             
+ 173: 021d:     WRITE.HOLD.UODBF = 1                                                
+ 174: 0222: 
+ 175: 0222:        STRING.LENGTH$ = STR$(LEN(UODBF.RECORD$))                        
+ 176: 0249:        FORMAT$ = "C" + STRING.LENGTH$                                   
+ 177: 0261:        IF END #UODBF.SESS.NUM% THEN WRITE.HOLD.ERROR                    
+ 178: 0275:        WRITE FORM FORMAT$; HOLD #UODBF.SESS.NUM%; UODBF.RECORD$         
+ 179: 029b:        
+ 180: 029b:     WRITE.HOLD.UODBF = 0                                                
+ 181: 02a0:     EXIT FUNCTION                                                       
+ 182: 02a2:     
+ 183: 02a2:     WRITE.HOLD.ERROR:                                                   
+ 184: 02a2:     
+ 185: 02a2:        CURRENT.CODE$ = UODBF.RECORD$                                    
+ 186: 02b8:        FILE.OPERATION$= "O"                                             
+ 187: 02c7:        CURRENT.REPORT.NUM% = UODBF.REPORT.NUM%                          
+ 188: 02d5:        
+ 189: 02d5:        EXIT FUNCTION                                                    
+ 190: 02d7: 
+ 191: 02d7:   END FUNCTION                                                          
+ 192: 02e6: End of Compilation

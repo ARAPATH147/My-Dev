@@ -1,0 +1,231 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***                     SLEEPER CONTROL FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***      Version A           Steve Windsor               5th Jan 1993
+   7: 0000: \***
+   8: 0000: \***      Version b           Richard Foster              28th Jun 1993
+   9: 0000: \***
+  10: 0000: \***      Version C         Jaya Kumar Inbaraj               28/04/2014
+  11: 0000: \***      FOD260 - Enhanced Backup and Recovery
+  12: 0000: \***      Filler variable usage has been updated. Added two variables
+  13: 0000: \***      related to SLPCF Filler variable. Also added boiler plates
+  14: 0000: \***      for all the functions
+  15: 0000: \***
+  16: 0000: \*****************************************************************************
+  17: 0000: \*****************************************************************************
+  18: 0000: 
+  19: 0000: 
+  20: 0000:    INTEGER*2 GLOBAL                  \
+  21: 0000:       CURRENT.REPORT.NUM%
+  22: 0000: 
+  23: 0000:    STRING GLOBAL                     \
+  24: 0000:       CURRENT.CODE$,                 \
+  25: 0000:       FILE.OPERATION$
+  26: 0000: 
+  27: 0000:    %INCLUDE SLPCFDEC.J86                                        !BRCF
+  28: 0000: \*****************************************************************************
+  29: 0000: \*****************************************************************************
+  30: 0000: \***
+  31: 0000: \***             %INCLUDE FOR SLEEPER CHECK FILE - FIELD DECLARATIONS
+  32: 0000: \***                                          FILE REFERENCE PARAMETERS
+  33: 0000: \***
+  34: 0000: \***                      FILE TYPE    :
+  35: 0000: \***
+  36: 0000: \***                      REFERENCE    : slpcfdeb.J86
+  37: 0000: \***
+  38: 0000: \***      Version A             Steve Windsor          8.2.93
+  39: 0000: \***
+  40: 0000: \***      Version B             Richard Foster         28.6.93
+  41: 0000: \***
+  42: 0000: \***      Version C             Mark Goode             6.03.00
+  43: 0000: \***
+  44: 0000: \***      Version D         Jaya Kumar Inbaraj               28/04/2014
+  45: 0000: \***      FOD260 - Enhanced Backup and Recovery
+  46: 0000: \***      Updated Filler variable usage has been explained. Added two
+  47: 0000: \***      variables related to SLPCF Filler variable.
+  48: 0000: \***
+  49: 0000: \*****************************************************************************
+  50: 0000: \*****************************************************************************
+  51: 0000: 
+  52: 0000: 
+  53: 0000:   STRING GLOBAL          \
+  54: 0000:     SLPCF.FILE.NAME$
+  55: 0000: 
+  56: 0000:   INTEGER*2 GLOBAL        \
+  57: 0000:     SLPCF.REPORT.NUM%,    \
+  58: 0000:     SLPCF.SESS.NUM%
+  59: 0000: 
+  60: 0000:   STRING GLOBAL              \
+  61: 0000:     SLPCF.APP.NAME$,         \ 21 bytes - Application to be started
+  62: 0000:     SLPCF.RUN.FREQUENCY$,    \ 1 byte   - d=daily, m=monthly              !BRCF
+  63: 0000:     SLPCF.DAY.NUM$,          \ 6 bytes  - blank = evry day                !BRCF
+  64: 0000:                              \            1 = sun  2 = mon                !BRCF
+  65: 0000:               \            3 = tue  4 = wed                !BRCF
+  66: 0000:               \            5 = thu  6 = fri                !BRCF
+  67: 0000:               \            7 = sat                         !BRCF
+  68: 0000:               \         OR nn = date (monthly run) up to   !BRCF
+  69: 0000:               \                 3 2-digit numbers          !BRCF
+  70: 0000:     SLPCF.RUN.TIME$,         \ 6 bytes  - time due to be started (HHMMSS) !BRCF
+  71: 0000:     SLPCF.LAST.RUN.DATE$,    \ 6 bytes  - Date last run (YYMMDD)          !BRCF
+  72: 0000:     SLPCF.FILE.PRESENT$,     \ 3 bytes  - Report number of file which must!BRCRF
+  73: 0000:                              \            be present                      !BRCF
+  74: 0000:     SLPCF.FILE.PRESENT.NAME$,\ 8 bytes  - Name of above file              !BRCF
+  75: 0000:     SLPCF.FILE.ABSENT$,      \ 3 bytes  - Report number of file which must!BRCF
+  76: 0000:                              \            not be present                  !BRCF
+  77: 0000:     SLPCF.FILE.ABSENT.NAME$, \ 8 bytes  - Name of above file              !BRCF
+  78: 0000:     SLPCF.NODE.ID$,          \ 2 bytes  - Node on which to run application!BRCF
+  79: 0000:                              \            CE = Master only                !BRCF
+  80: 0000:               \            CF = File Server only           !BRCF
+  81: 0000:               \            DE = Single only                !BRCF
+  82: 0000:               \            SM = Single and Master          !BRCF
+  83: 0000:               \            SF = Single and File Server     !BRCF
+  84: 0000:     SLPCF.SOFTS.REC$,        \ 4 bytes  - The record number on the SOFTS file !LMG
+  85: 0000:     SLPCF.FILLER$,           \ 12 bytes - Format can be xYYYYYYYYY      !DJK LMG
+  86: 0000:               \ where; If x is 1-9 then the first x characters of Y are !DJK
+  87: 0000:               \ passed to the starting application as a start parameter !DJK
+  88: 0000:               \ and a CrLf                                              !DJK
+  89: 0000:     SLPCF.PARM$              ! Value Y from SLPCF.FILLER                !DJK
+  90: 0000: 
+  91: 0000:   INTEGER*2 GLOBAL        \
+  92: 0000:     SLPCF.RECL%           ! Length of record
+  93: 0000: 
+  94: 0000:   INTEGER*1 GLOBAL        \                                             !DJK
+  95: 0000:     SLPCF.PARM.LEN%       ! Value X from SLPCF.FILLER                   !DJK
+  96: 0000: 
+  97: 0000:   INTEGER*4 GLOBAL        \
+  98: 0000:     SLPCF.REC.NO%         ! Record Number
+  99: 0000: 
+ 100: 0000: 
+ 101: 0000: \***********************************************************************
+ 102: 0000: \*
+ 103: 0000: \*  SLPCF.SET: SLPCF set function
+ 104: 0000: \*
+ 105: 0000: \***********************************************************************
+ 106: 0000: 
+ 107: 0000:    FUNCTION SLPCF.SET PUBLIC
+ 108: 0014: 
+ 109: 0014:     SLPCF.REPORT.NUM%  = 60
+ 110: 001d:     SLPCF.FILE.NAME$   = "SLPCF"
+ 111: 002c:     SLPCF.RECL%        = 80                                     !BRCF
+ 112: 0035:    END FUNCTION
+ 113: 0041: 
+ 114: 0041: \***********************************************************************
+ 115: 0041: \*
+ 116: 0041: \*  READ.SLPCF: SLPCF Read function
+ 117: 0041: \*
+ 118: 0041: \***********************************************************************
+ 119: 0041: 
+ 120: 0041:   FUNCTION READ.SLPCF PUBLIC
+ 121: 0055: 
+ 122: 0055:    STRING SLPCF.FILLER.X$                                               !CJK
+ 123: 0055: 
+ 124: 0055:    INTEGER*2 READ.SLPCF
+ 125: 0055: 
+ 126: 0055:    READ.SLPCF = 1
+ 127: 005a: 
+ 128: 005a:    IF END #SLPCF.SESS.NUM% THEN READ.SLPCF.ERROR                        !CJK
+ 129: 006e: 
+ 130: 006e:     READ FORM "C21,C1,C6,C6,C6,C3,C8,C3,C8,C2,C4,C12";                   \LMG
+ 131: 0119:              #SLPCF.SESS.NUM%,SLPCF.REC.NO%;                             \
+ 132: 0119:              SLPCF.APP.NAME$,                                            \
+ 133: 0119:              SLPCF.RUN.FREQUENCY$,                                       \BRCF
+ 134: 0119:              SLPCF.DAY.NUM$,                                             \BRCF
+ 135: 0119:              SLPCF.RUN.TIME$,                                            \BRCF
+ 136: 0119:              SLPCF.LAST.RUN.DATE$,                                       \BRCF
+ 137: 0119:              SLPCF.FILE.PRESENT$,                                        \
+ 138: 0119:              SLPCF.FILE.PRESENT.NAME$,                                   \
+ 139: 0119:              SLPCF.FILE.ABSENT$,                                         \
+ 140: 0119:              SLPCF.FILE.ABSENT.NAME$,                                    \BRCF
+ 141: 0119:              SLPCF.NODE.ID$,                                             \BRCF
+ 142: 0119:              SLPCF.SOFTS.REC$,                                           \LMG
+ 143: 0119:              SLPCF.FILLER$
+ 144: 0119: 
+ 145: 0119:     ! Storing the first letter of Filler variable                       !CJK
+ 146: 0119:     SLPCF.FILLER.X$ = LEFT$(SLPCF.FILLER$,1)                            !CJK
+ 147: 0136: 
+ 148: 0136:     ! Initializing values                                               !CJK
+ 149: 0136:     SLPCF.PARM.LEN% = 0                                                 !CJK
+ 150: 013e:     SLPCF.PARM$     = ""                                                !CJK
+ 151: 014d: 
+ 152: 014d:     ! Checking whether the 1st letter of the filler variable is numeric !CJK
+ 153: 014d:     IF MATCH("#",SLPCF.FILLER.X$ ,1) <> 0 THEN BEGIN                    !CJK
+ 154: 0165:         ! Converting the 1st letter of Filler to an Integer             !CJK
+ 155: 0165:         SLPCF.PARM.LEN% = VAL(SLPCF.FILLER.X$)                          !CJK
+ 156: 017b:                                                                         !CJK
+ 157: 017b:         ! If SLPCF Filler parameter length is greater than zero         !CJK
+ 158: 017b:         IF SLPCF.PARM.LEN% > 0 THEN BEGIN                               !CJK
+ 159: 0185:             ! Storing the SLPCF Filler parameter                        !CJK
+ 160: 0185:             SLPCF.PARM$ = MID$(SLPCF.FILLER$,2,SLPCF.PARM.LEN%)         !CJK
+ 161: 01ab:         ENDIF                                                           !CJK
+ 162: 01ab:     ENDIF                                                               !CJK
+ 163: 01ab: 
+ 164: 01ab:    READ.SLPCF = 0
+ 165: 01b0:    EXIT FUNCTION
+ 166: 01b2: 
+ 167: 01b2:    READ.SLPCF.ERROR:
+ 168: 01b2: 
+ 169: 01b2:    CURRENT.REPORT.NUM% = SLPCF.REPORT.NUM%
+ 170: 01c0:    FILE.OPERATION$ = "R"
+ 171: 01cf:    CURRENT.CODE$ = ""
+ 172: 01de: 
+ 173: 01de:    EXIT FUNCTION
+ 174: 01e0:   END FUNCTION
+ 175: 01ef: 
+ 176: 01ef: \***********************************************************************
+ 177: 01ef: \*
+ 178: 01ef: \*  WRITE.SLPCF: SLPCF Write function
+ 179: 01ef: \*
+ 180: 01ef: \***********************************************************************
+ 181: 01ef: 
+ 182: 01ef:   FUNCTION WRITE.SLPCF PUBLIC
+ 183: 0203: 
+ 184: 0203:    INTEGER*2 WRITE.SLPCF
+ 185: 0203: 
+ 186: 0203:    WRITE.SLPCF = 1
+ 187: 0208: 
+ 188: 0208:    ! SLPCF.FILLER record is considered as 'XYYYYYYYYY' + CRLF
+ 189: 0208: 
+ 190: 0208:    ! Defining SLPCF Filler variable from Parameter length
+ 191: 0208:    IF SLPCF.PARM.LEN% > 0 THEN BEGIN                                    !CJK
+ 192: 0215:       SLPCF.FILLER$ = STR$(SLPCF.PARM.LEN%)              + \ X record   !CJK
+ 193: 02a1:                       LEFT$(SLPCF.PARM$,SLPCF.PARM.LEN%) + \ Y record   !CJK
+ 194: 02a1:                       STRING$((9 - SLPCF.PARM.LEN%),"-") + \ Remaining  !CJK
+ 195: 02a1:                       CHR$(13) + CHR$(10)                  ! "-" & CRLF !CJK
+ 196: 02a1:    ENDIF ELSE BEGIN                                                     !CJK
+ 197: 02a1:       ! By Default 10 hyphen and a CRLF                                 !CJK
+ 198: 02a1:       SLPCF.FILLER$ = STRING$(10,"-") + CHR$(13) + CHR$(10)             !CJK
+ 199: 02de:    ENDIF                                                                !CJK
+ 200: 02de: 
+ 201: 02de:    IF END #SLPCF.SESS.NUM% THEN WRITE.SLPCF.ERROR                       !CJK
+ 202: 02f2: 
+ 203: 02f2:    WRITE FORM "C21,C1,C6,C6,C6,C3,C8,C3,C8,C2,C4,C12";                 \LMG
+ 204: 03d4:              #SLPCF.SESS.NUM%,SLPCF.REC.NO%;                           \
+ 205: 03d4:              SLPCF.APP.NAME$,                                          \
+ 206: 03d4:              SLPCF.RUN.FREQUENCY$,                                     \BRCF
+ 207: 03d4:              SLPCF.DAY.NUM$,                                           \BRCF
+ 208: 03d4:              SLPCF.RUN.TIME$,                                          \BRCF
+ 209: 03d4:              SLPCF.LAST.RUN.DATE$,                                     \BRCF
+ 210: 03d4:              SLPCF.FILE.PRESENT$,                                      \
+ 211: 03d4:              SLPCF.FILE.PRESENT.NAME$,                                 \
+ 212: 03d4:              SLPCF.FILE.ABSENT$,                                       \
+ 213: 03d4:              SLPCF.FILE.ABSENT.NAME$,                                  \BRCF
+ 214: 03d4:              SLPCF.NODE.ID$,                                           \BRCF
+ 215: 03d4:              SLPCF.SOFTS.REC$,                                         \LMG
+ 216: 03d4:              SLPCF.FILLER$
+ 217: 03d4: 
+ 218: 03d4:    WRITE.SLPCF = 0
+ 219: 03d9:    EXIT FUNCTION
+ 220: 03db: 
+ 221: 03db:    WRITE.SLPCF.ERROR:
+ 222: 03db: 
+ 223: 03db:    CURRENT.REPORT.NUM% = SLPCF.REPORT.NUM%
+ 224: 03e9:    FILE.OPERATION$ = "W"
+ 225: 03f8:    CURRENT.CODE$ = ""
+ 226: 0407: 
+ 227: 0407:    EXIT FUNCTION
+ 228: 0409:   END FUNCTION
+ 229: 0418: 
+ 230: 0418: 
+ 231: 0418: End of Compilation

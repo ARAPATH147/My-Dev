@@ -1,0 +1,2020 @@
+   1: 0003: \******************************************************************************
+   2: 0003: \******************************************************************************
+   3: 0003: \******************************************************************************
+   4: 0003: \******************************************************************************
+   5: 0003: \*******************************************************************************
+   6: 0003: \*******************************************************************************
+   7: 0003: \***                                                                         ***
+   8: 0003: \***                                                                         ***
+   9: 0003: \***            PROGRAM       : BLOCKITM.286                                 ***
+  10: 0003: \***                                                                         ***
+  11: 0003: \***            TITLE         : Block Item From Sale Fiddle Program          ***
+  12: 0003: \***                                                                         ***
+  13: 0003: \***            AUTHOR        : Charles Skadorwa                             ***
+  14: 0003: \***                                                                         ***
+  15: 0003: \***            DATE WRITTEN  : 13th Jun 2008                                ***
+  16: 0003: \***                                                                         ***
+  17: 0003: \***            MODULE        : BLOCKITM.BAS                                 ***
+  18: 0003: \***                                                                         ***
+  19: 0003: \***                                                                         ***
+  20: 0003: \***                                                                         ***
+  21: 0003: \*******************************************************************************
+  22: 0003: \***  Description
+  23: 0003: \***  ===========
+  24: 0003: \***  The purpose of this program is to read in a file containing a list of
+  25: 0003: \***  BOOTS item codes and set two BIT flags on the IRF for those items.
+  26: 0003: \***
+  27: 0003: \***     IRF.INDICAT0% Bit 5 - Item not authorised for sale (recall active)
+  28: 0003: \***     IRF.INDICAT8% Bit 6 - Withdrawn Recall
+  29: 0003: \***
+  30: 0003: \***  This action will prevent the sale of these items at the till
+  31: 0003: \***
+  32: 0003: \***
+  33: 0003: \***  Ver A     Charles Skadorwa                                    13 Jun 2008
+  34: 0003: \***            Initial Version.
+  35: 0003: \***
+  36: 0003: \***  Ver B     Charles Skadorwa                                    20 Jun 2008
+  37: 0003: \***            Defect: Program changed to update all associated barcodes
+  38: 0003: \***                    by reading the IDF to get no. of barcodes and IEF
+  39: 0003: \***                    in order to trawl down the chain of barcodes.
+  40: 0003: \***
+  41: 0003: \***  Ver C     Charles Skadorwa                                    6  Aug 2008
+  42: 0003: \***            Defect: Program changed to update first barcode if only
+  43: 0003: \***                    one barcode exists eg. Insurance items
+  44: 0003: \***
+  45: 0003: \***  Ver D     Charles Skadorwa                                    17 Oct 2008
+  46: 0003: \***            Enhancement: Ensure that only real program failures will
+  47: 0003: \***                         result in a .ERR file ie. we don't want to
+  48: 0003: \***                         report a failure for items not on file. Also,
+  49: 0003: \***                         a .WRN file is created which will list any items
+  50: 0003: \***                         not on file.
+  51: 0003: \***
+  52: 0003: \***  Ver E     Charles Skadorwa                                    10 Oct 2009
+  53: 0003: \***            This program assumed that the IDF, IRF and IDF files are
+  54: 0003: \***            synchronised with no corruptions. However, in some instances
+  55: 0003: \***            an item can exist on the IRF and not the IDF. This change
+  56: 0003: \***            ensures that if a there is a read failure on the IDF, then the
+  57: 0003: \***            IRF is scanned for all occurrences of that item and the recall
+  58: 0003: \***            bit flags set. This is to resolve the issue whereby Blockitm is
+  59: 0003: \***            run but the PPC's still report items being on recall because
+  60: 0003: \***            Transact reads the IRF directly and not the IDF.
+  61: 0003: \***
+  62: 0003: \***  Ver F     David Griffiths                                    12 July 2017
+  63: 0003: \***            There is now a new block from sale on the irf in indicat1 bit 5
+  64: 0003: \***            functionality needed to remove block on this flag.
+  65: 0003: \***
+  66: 0003: \***  Ver G     Arjun  Muraleedharan                               09 Oct  2017
+  67: 0003: \***            At present there is no mechanism to track if an item block is
+  68: 0003: \***            failed or not other than manually checking it. It becomes 
+  69: 0003: \***            increasingly difficult to identify if there hundreads of item 
+  70: 0003: \***            block at one go. Added some error trapping in the code so that 
+  71: 0003: \***            it will tell the number of failes and failed item code at the 
+  72: 0003: \***            end
+  73: 0003: \*******************************************************************************
+  74: 0003: \*******************************************************************************
+  75: 0003: \*******************************************************************************
+  76: 0003: \***
+  77: 0003: \***   Define variables
+  78: 0003: \***
+  79: 0003: \***---------------------------------------------------------------------------
+  80: 0003: 
+  81: 0003: %INCLUDE IDFDEC.J86     ! IDF Variables                                      !BCS
+  82: 0003: REM \
+  83: 0003: \******************************************************************************
+  84: 0003: \******************************************************************************
+  85: 0003: \***
+  86: 0003: \***         %INCLUDE FOR ITEM DATA FILE - FIELD DECLARATIONS
+  87: 0003: \***                                       FILE REFERENCE PARAMETERS
+  88: 0003: \***
+  89: 0003: \***                  FILE TYPE    : Keyed
+  90: 0003: \***
+  91: 0003: \***                  REFERENCE    : IDFDEC.J86
+  92: 0003: \***
+  93: 0003: \***         VERSION A : Andrew Wedgeworth  29th June 1992    
+  94: 0003: \***
+  95: 0003: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+  96: 0003: \***    Replaced un-used RANK$ with BSNS.CNTR$ and FILLER$.
+  97: 0003: \***
+  98: 0003: \***    VERSION D.              Andrew Wedgeworth               15th March 1995
+  99: 0003: \***    Comments updated to reflect the fact that some bits on the file are
+ 100: 0003: \***    no longer used.
+ 101: 0003: \***
+ 102: 0003: \*******************************************************************************
+ 103: 0003: \*******************************************************************************
+ 104: 0003: 
+ 105: 0003:   STRING GLOBAL           \
+ 106: 0003:     IDF.FILE.NAME$,       \  
+ 107: 0003:     IDF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+ 108: 0003:     IDF.FIRST.BAR.CODE$,  \ 6 byte UPD without check digit
+ 109: 0003:     IDF.SECOND.BAR.CODE$, \ 6 byte UPD without check digit
+ 110: 0003:     IDF.NO.OF.BAR.CODES$, \ 2 byte UPD. Total number of bar codes for this item
+ 111: 0003:     IDF.PRODUCT.GRP$,     \ 3 byte UPD. The first two digits are the concept
+ 112: 0003:                           \ group and the last four the concept sequence
+ 113: 0003:     IDF.STNDRD.DESC$,     \ 24 bytes
+ 114: 0003:     IDF.STATUS.1$,        \ 1 byte, values B,C,D,P,X,Z and blank
+ 115: 0003:     IDF.INTRO.DATE$,      \ 3 byte UPD YYMMDD. Date first added to this file
+ 116: 0003:     IDF.BSNS.CNTR$,       \ 1 byte ASC. Business Centre ID letter      ! CRC
+ 117: 0003:     IDF.FILLER$,          \ 1 byte un-used                             ! CRC
+ 118: 0003:     IDF.PARENT.CODE$,     \ 4 byte UPD with check digit ; may be zero if no
+ 119: 0003:                           \ flashpacks, current IDF.BOOTS.CODE$ if parent line
+ 120: 0003:                           \ or Boots Code of parent line if a flashpack.
+ 121: 0003:     IDF.DATE.OF.LAST.SALE$! 3 byte UPD. Date of last sale.
+ 122: 0003: 
+ 123: 0003:   INTEGER*1 GLOBAL        \
+ 124: 0003:     IDF.BIT.FLAGS.1%,     \ 1 byte - bit values
+ 125: 0003:                           \ X"80"  - Group code flag
+ 126: 0003:                           \ X"40"  - Keylines flag
+ 127: 0003:                           \ X"20"  - Markdown flag
+ 128: 0003:                           \ X"10"  - Warehouse flag
+ 129: 0003:                           \ X"08"  - CSR flag
+ 130: 0003:                           \ X"04"  - Directs A flag
+ 131: 0003:                           \ X"02"  - Directs B flag
+ 132: 0003:                           \ X"01"  - Directs C flag
+ 133: 0003:     IDF.BIT.FLAGS.2%      \ 1 byte - bit values
+ 134: 0003:                           \ X"80"  - Own brand line flag
+ 135: 0003:                           \ X"40"  - Exclusive line flag
+ 136: 0003:                           \ X"20"  - Unused 
+ 137: 0003:                           \ X"10"  - Unused
+ 138: 0003:                           \ X"08"  - Stock system flag
+ 139: 0003:                           \ X"04"  - Pending count flag
+ 140: 0003:                           \ X"02"  - Reserved
+ 141: 0003:                           ! X"01"  - Reserved
+ 142: 0003: 
+ 143: 0003:   INTEGER*2 GLOBAL        \
+ 144: 0003:     IDF.RECL%,            \  
+ 145: 0003:     IDF.REPORT.NUM%,      \ 
+ 146: 0003:     IDF.SESS.NUM%
+ 147: 0003: %INCLUDE IEFDEC.J86     ! IEF Variables                                      !BCS
+ 148: 0003: REM \
+ 149: 0003: \******************************************************************************
+ 150: 0003: \******************************************************************************
+ 151: 0003: \***
+ 152: 0003: \***         %INCLUDE FOR ITEM EAN CODES FILE - FIELD DECLARATIONS
+ 153: 0003: \***                                            FILE REFERENCE PARAMETERS
+ 154: 0003: \***
+ 155: 0003: \***               FILE TYPE    : Keyed
+ 156: 0003: \***
+ 157: 0003: \***               REFERENCE    : IEFDEC.J86
+ 158: 0003: \***
+ 159: 0003: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+ 160: 0003: \***    No changes to this file.
+ 161: 0003: \***
+ 162: 0003: \*******************************************************************************
+ 163: 0003: \*******************************************************************************
+ 164: 0003: 
+ 165: 0003:   STRING GLOBAL                      \
+ 166: 0003:     IEF.FILE.NAME$,		     \
+ 167: 0003:     IEF.BOOTS.CODE.BAR.CODE$,        \ 9 byte UPD -                        BBAAS
+ 168: 0003:                                      \ 3 bytes UPD boots code              BBAAS   
+ 169: 0003:                                      \ + 6 UPD bar code,                   BBAAS
+ 170: 0003:                                      \ no check digits. (key)              BBAAS
+ 171: 0003:     IEF.NEXT.BAR.CODE$               ! 6 byte UPD without check digit
+ 172: 0003: 
+ 173: 0003:   INTEGER*2 GLOBAL        \
+ 174: 0003:     IEF.REPORT.NUM%,	  \
+ 175: 0003:     IEF.SESS.NUM%,	  \ 
+ 176: 0003:     IEF.RECL%
+ 177: 0003: %INCLUDE IRFDEC.J86     ! IRF Variables
+ 178: 0003: \*******************************************************************************
+ 179: 0003: \***
+ 180: 0003: \***       %INCLUDE FOR ITEM RECORD FILE - FIELD DECLARATIONS
+ 181: 0003: \***                                     - FILE REFERENCE PARAMETERS
+ 182: 0003: \***
+ 183: 0003: \***                      FILE TYPE    : Keyed
+ 184: 0003: \***
+ 185: 0003: \***                      REFERENCE    : IRFDEC.J86
+ 186: 0003: \***
+ 187: 0003: \***     Version A               Andrew Wedgeworth            29th June 1992
+ 188: 0003: \***
+ 189: 0003: \***     Version B               Andrew Wedgeworth        14th December 1992
+ 190: 0003: \***     Version letter incremented to match other IRF code.
+ 191: 0003: \***
+ 192: 0003: \***     Version C             Steve Windsor          12.02.93
+ 193: 0003: \***     Version letter incremented to match other IRF code.
+ 194: 0003: \***
+ 195: 0003: \***     Version D             Steve Windsor          12.05.93
+ 196: 0003: \***     Version letter incremented to match other IRF code.
+ 197: 0003: \***
+ 198: 0003: \***     Version E           Steve Perkins       20th September 1993
+ 199: 0003: \***     Deals project : Handling of Converted/Unconverted records
+ 200: 0003: \***     ++   Anything with 'Delete' after initials should be   ++
+ 201: 0003: \***     ++   deleted once the IRF has been converted in all    ++
+ 202: 0003: \***     ++   stores.                                           ++
+ 203: 0003: \***
+ 204: 0003: \***     Version F           Mark Walker            5th January 1994
+ 205: 0003: \***     Version letter incremented to match other IRF code.
+ 206: 0003: \***
+ 207: 0003: \***     Version 96A         Mark Walker               22nd May 1995
+ 208: 0003: \***     Definition for IRF.POINTS% added.
+ 209: 0003: \***
+ 210: 0003: \***                     Stuart McConnachie           12th June 1995
+ 211: 0003: \***     INDICAT3% comments added for discount/loyalty flags.
+ 212: 0003: \***
+ 213: 0003: \***     Version for 96C  Andrew Wedgeworth            22nd May 1996
+ 214: 0003: \***     Removed IRF.FILLER$ field, as this is now redundant.
+ 215: 0003: \***
+ 216: 0003: \***     Version G     Stuart William McConnachie      11th February 2000
+ 217: 0003: \***     Converted IRF.INDICAT2$ to integer flag byte.
+ 218: 0003: \***
+ 219: 0003: \***     REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+ 220: 0003: \***     Major changes for 2002 Deals Rewrite project.
+ 221: 0003: \***     Incorporated up to date record layout to assist development work
+ 222: 0003: \***     (placed in the IRFDEC.J86 to make it visible from ...LST files).
+ 223: 0003: \***     Moved various comments against variables to record layout.
+ 224: 0003: \***     Relisted variables in alphabetical order.
+ 225: 0003: \***     Deleted redundant variables associated with the old deals system ...
+ 226: 0003: \***     DEAL.NUM$, DEAL.SAVING$
+ 227: 0003: \***     Retained variables that are otherwise redundant (to be set to null X'00'
+ 228: 0003: \***     within file functions) ...
+ 229: 0003: \***     INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+ 230: 0003: \***     Defined variables to hold interpreted deals data for new deals system ...
+ 231: 0003: \***     DEAL.NUM$(n) and LIST.ID%(n) (where 'n' represents entry 0, 1 and 2).
+ 232: 0003: \***     These two variables are interpretations of DEAL.DATA% which is defined
+ 233: 0003: \***     locally within IRFFUN.BAS to keep underlying data invisible to programs.
+ 234: 0003: \***
+ 235: 0003: \***     REVISION 1.7                ROBERT COWEY.               5 AUG 2002.
+ 236: 0003: \***     Further changes for 2002 Deals Rewrite project (PSBF19 related).
+ 237: 0003: \***     Defined NEW.IRF.DATA$ as a global variable for use with new functions
+ 238: 0003: \***     CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+ 239: 0003: \***
+ 240: 0003: \***     REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+ 241: 0003: \***     Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+ 242: 0003: \***     No changes to this file other than description.
+ 243: 0003: \***     No changes to IRF file functions.
+ 244: 0003: \***
+ 245: 0003: \***     REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+ 246: 0003: \***     Changes to remove limit of 3 deals per item.
+ 247: 0003: \***     Declaration of new variables for IRF Deal Extension file (IRFDEX).
+ 248: 0003: \***
+ 249: 0003: \***     REVISION 2.0.            ALAN CARR                       9 FEB 2006.
+ 250: 0003: \***     Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+ 251: 0003: \***
+ 252: 0003: \***     REVISION 2.1              TITTOO THOMAS                  01 July 2011
+ 253: 0003: \***     The IRF.UNUSED field is disintegrated to 2 new indicator fields
+ 254: 0003: \***                      IRF.INDICAT9%   1 INT
+ 255: 0003: \***                      IRF.INDICAT10%  1 INT
+ 256: 0003: \***
+ 257: 0003: \***    Version H.              Mark Walker                 20th Feb 2017
+ 258: 0003: \***    PRJ1269 UNICA Interact
+ 259: 0003: \***    - Removed references to redundant ancient IRF fields.
+ 260: 0003: \***    - Added definitions for new product group and filler fields.
+ 261: 0003: \***
+ 262: 0003: \***............................................................................
+ 263: 0003: 
+ 264: 0003: 
+ 265: 0003: \*******************************************************************************
+ 266: 0003: \***
+ 267: 0003: \***    IRF RECORD LAYOUT
+ 268: 0003: \***
+ 269: 0003: \***     1 11  UPD  BAR.CODE$   Without check digit - File KEY
+ 270: 0003: \***    12  1  INT  INDICAT0%
+ 271: 0003: \***                    X"01" - Contains statins                        ! 2.2 TT
+ 272: 0003: \***                    X"02" - Item not priced (giveaway)
+ 273: 0003: \***                    X"04" - Item not returnable
+ 274: 0003: \***                    X"08" - Item contains alcohol
+ 275: 0003: \***                    X"10" - Blocked from sale                       ! 2.2 TT
+ 276: 0003: \***                    X"20" - Enforced price entry
+ 277: 0003: \***                    X"40" - Enforced quantity entry
+ 278: 0003: \***                    X"80" - Movement kept
+ 279: 0003: \***    13  1  INT  INDICAT1%
+ 280: 0003: \***                    X"01" - Asprin
+ 281: 0003: \***                    X"02" - Paracetamol
+ 282: 0003: \***                    X"04" - TPLU inclusion flag
+ 283: 0003: \***                    X"08" - Giftcard item                           ! 2.2 TT
+ 284: 0003: \***                    X"10" - Withdrawn Block from sale               ! 2.2 TT
+ 285: 0003: \***                    X"20" - Non-solid dose painkiller               ! 2.2 TT
+ 286: 0003: \***                    X"40" - Insurance policy item                   ! 2.2 TT
+ 287: 0003: \***                    X"80" - Ibuprofen
+ 288: 0003: \***    14  2  INT  DEAL.DATA%(0)   Interpreted into sub-variables ...
+ 289: 0003: \***                    X'3F' - into DEAL.NUM$(0) "0000" to "9999" (2 byte UPD)
+ 290: 0003: \***                    X'C0' - into LIST.ID%(0) X'00' X
+ 291: 0003: \***                                             X'01' A
+ 292: 0003: \***                                             X'10' B
+ 293: 0003: \***                                             X'11' C                ! 1.9 RC
+ 294: 0003: \***    16  1  INT  INDICAT8%                                           ! 2.0AJC
+ 295: 0003: \***                    X"01" - Chlamydia NHS test kit                  ! 2.2 TT
+ 296: 0003: \***                    X"02" - Chlamydia open sell test kit            ! 2.2 TT
+ 297: 0003: \***                    X"04" - Unrestricted group code                 ! 2.2 TT
+ 298: 0003: \***                    X"08" - Nightingale Till prompt                 ! 2.2 TT
+ 299: 0003: \***                    X"10" - Contains Ephedrine                      ! 2.2 TT
+ 300: 0003: \***                    X"60" -  X'00' - If also Blocked From Sale      ! 2.2 TT
+ 301: 0003: \***                                        Recall, Emergency           ! 2.2 TT
+ 302: 0003: \***                             X'00' - If NOT Blocked From Sale       ! 2.2 TT
+ 303: 0003: \***                                        Recall, No recall           ! 2.2 TT
+ 304: 0003: \***                             X'20' 100% returns                     ! 2.2 TT
+ 305: 0003: \***                             X'40' Withdrawn recall                 ! 2.2 TT
+ 306: 0003: \***                             X'60' Reverse Logistics                ! 2.2 TT
+ 307: 0003: \***                    X"80" - WEEE item flag                          ! 2.0AJC
+ 308: 0003: \***    17  1  INT  INDICAT9%
+ 309: 0003: \***                    X'3F' - Disposal special instruction (0-63)
+ 310: 0003: \***                    X"40" - Resaleable Indicator
+ 311: 0003: \***                    X"80" - Boots.com Extended Indicator
+ 312: 0003: \***    18  1  INT  INDICAT10%
+ 313: 0003: \***                    X'07' - Age restrictions
+ 314: 0003: \***                             X'00' - No Age restriction
+ 315: 0003: \***                             X'01' - Age 12 or over
+ 316: 0003: \***                             X'02' - Age 15 or over
+ 317: 0003: \***                             X'03' - Age 16 or over
+ 318: 0003: \***                             X'04' - Age 18 or over
+ 319: 0003: \***                             X'05' - Age 21 or over
+ 320: 0003: \***                             X'06' - Reserved
+ 321: 0003: \***                             X'07' - Reserved
+ 322: 0003: \***                    X'38' - Ethical classification
+ 323: 0003: \***                             X'00' - No ethical classification
+ 324: 0003: \***                             X'08' - Pharmacy medicine (P)
+ 325: 0003: \***                             X'10' - General Sale License (GSL)
+ 326: 0003: \***                             X'18' - Prescription Only Medicine (POM)
+ 327: 0003: \***                             X'20' - Reserved
+ 328: 0003: \***                             X'28' - Reserved
+ 329: 0003: \***                             X'30' - Reserved
+ 330: 0003: \***                             X'38' - Reserved
+ 331: 0003: \***                    X'C0' - Returns route
+ 332: 0003: \***                             X'00' - Not Returnable (Destroy)
+ 333: 0003: \***                             X'40' - Returns & Recovery
+ 334: 0003: \***                             X'80' - Direct
+ 335: 0003: \***                             X'C0' - Semi-centralised
+ 336: 0003: \***    19  5  UPD  SALEPRIC$   Current price in pence
+ 337: 0003: \***    24  1  INT  INDICAT5%   Guarantee duration
+ 338: 0003: \***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+ 339: 0003: \***                    X'40' - Contains Pseudoephedrine                ! 2.2 TT
+ 340: 0003: \***                    X'80' - Guarantee Duration Type                 ! 2.2 TT
+ 341: 0003: \***                              (1 = Months, 0 = Years)               ! 2.2 TT
+ 342: 0003: \***    25 18  ASC  ITEMNAME$   Description used by till
+ 343: 0003: \***    43  3  UPD  BOOTS.CODE$ Without check digit
+ 344: 0003: \***    46  2  INT  DEAL.DATA%(1)   Similar structure to DEAL.DATA%(0)
+ 345: 0003: \***    48  2  INT  DEAL.DATA%(2)   Similar structure to DEAL.DATA%(0)
+ 346: 0003: \***    50  1  INT  INDICAT3%
+ 347: 0003: \***                    X"01" - Discount exempt (item exempt from discount)
+ 348: 0003: \***                    X"02" - Boots brand item
+ 349: 0003: \***                    X"04" - Item redeemable for loyalty
+ 350: 0003: \***                    X"08" - Loyalty exempt (item exempt from loyalty)
+ 351: 0003: \***                    X"10" - **Redundant                             ! 2.2 TT
+ 352: 0003: \***                    X"20" - Local Price active
+ 353: 0003: \***                    X"40" - Stock system item
+ 354: 0003: \***                    X"80" - **Redundant                             ! 2.2 TT
+ 355: 0003: \***    51  3 UPD   PRODUCT.GRP$ Product Group                          !HMW
+ 356: 0003: \***    54 19 UPD   FILLER$      Filler                                 !HMW
+ 357: 0003: \***
+ 358: 0003: \***    Record Length 72                                                !HMW
+ 359: 0003: \***
+ 360: 0003: \***
+ 361: 0003: \***    IRF DEAL EXTENSION RECORD LAYOUT
+ 362: 0003: \***
+ 363: 0003: \***     1  3  UPD  BOOTS.CODE$
+ 364: 0003: \***     4  2  INT  IRF.DEAL.DATA%(3)   Similar structure to DEAL.DATA%(0)
+ 365: 0003: \***     6  2  INT  IRF.DEAL.DATA%(4)   Similar structure to DEAL.DATA%(0)
+ 366: 0003: \***     8  2  INT  IRF.DEAL.DATA%(5)   Similar structure to DEAL.DATA%(0)
+ 367: 0003: \***    10  2  INT  IRF.DEAL.DATA%(6)   Similar structure to DEAL.DATA%(0)
+ 368: 0003: \***    12  2  INT  IRF.DEAL.DATA%(7)   Similar structure to DEAL.DATA%(0)
+ 369: 0003: \***    14  2  INT  IRF.DEAL.DATA%(8)   Similar structure to DEAL.DATA%(0)
+ 370: 0003: \***    16  2  INT  IRF.DEAL.DATA%(9)   Similar structure to DEAL.DATA%(0)
+ 371: 0003: \***    18  2  INT  IRF.DEAL.DATA%(10)  Similar structure to DEAL.DATA%(0)
+ 372: 0003: \***    20  2  INT  IRF.DEAL.DATA%(11)  Similar structure to DEAL.DATA%(0)
+ 373: 0003: \***    22  2  INT  IRF.DEAL.DATA%(12)  Similar structure to DEAL.DATA%(0)
+ 374: 0003: \***    24  2  INT  IRF.DEAL.DATA%(13)  Similar structure to DEAL.DATA%(0)
+ 375: 0003: \***    26  2  INT  IRF.DEAL.DATA%(14)  Similar structure to DEAL.DATA%(0)
+ 376: 0003: \***    28  2  INT  IRF.DEAL.DATA%(15)  Similar structure to DEAL.DATA%(0)
+ 377: 0003: \***    30  2  INT  IRF.DEAL.DATA%(16)  Similar structure to DEAL.DATA%(0)
+ 378: 0003: \***    32  2  INT  IRF.DEAL.DATA%(17)  Similar structure to DEAL.DATA%(0)
+ 379: 0003: \***    34  2  INT  IRF.DEAL.DATA%(18)  Similar structure to DEAL.DATA%(0)
+ 380: 0003: \***    36  2  INT  IRF.DEAL.DATA%(19)  Similar structure to DEAL.DATA%(0)
+ 381: 0003: \***    38  2  INT  IRF.DEAL.DATA%(20)  Similar structure to DEAL.DATA%(0)
+ 382: 0003: \***    40  2  INT  IRF.DEAL.DATA%(21)  Similar structure to DEAL.DATA%(0)
+ 383: 0003: \***    42  2  INT  IRF.DEAL.DATA%(22)  Similar structure to DEAL.DATA%(0)
+ 384: 0003: \***    44  2  INT  IRF.DEAL.DATA%(23)  Similar structure to DEAL.DATA%(0)
+ 385: 0003: \***    46  2  INT  IRF.DEAL.DATA%(24)  Similar structure to DEAL.DATA%(0)
+ 386: 0003: \***    48  2  INT  IRF.DEAL.DATA%(25)  Similar structure to DEAL.DATA%(0)
+ 387: 0003: \***    50  2  INT  IRF.DEAL.DATA%(26)  Similar structure to DEAL.DATA%(0)
+ 388: 0003: \***    52  2  INT  IRF.DEAL.DATA%(27)  Similar structure to DEAL.DATA%(0)
+ 389: 0003: \***    54  2  INT  IRF.DEAL.DATA%(28)  Similar structure to DEAL.DATA%(0)
+ 390: 0003: \***    56  2  INT  IRF.DEAL.DATA%(29)  Similar structure to DEAL.DATA%(0)
+ 391: 0003: \***    58  2  INT  IRF.DEAL.DATA%(30)  Similar structure to DEAL.DATA%(0)
+ 392: 0003: \***    60  2  INT  IRF.DEAL.DATA%(31)  Similar structure to DEAL.DATA%(0)
+ 393: 0003: \***    62  2  INT  IRF.DEAL.DATA%(32)  Similar structure to DEAL.DATA%(0)
+ 394: 0003: \***    64  2  INT  IRF.DEAL.DATA%(33)  Similar structure to DEAL.DATA%(0)
+ 395: 0003: \***    66  2  INT  IRF.DEAL.DATA%(34)  Similar structure to DEAL.DATA%(0)
+ 396: 0003: \***    68  2  INT  IRF.DEAL.DATA%(35)  Similar structure to DEAL.DATA%(0)
+ 397: 0003: \***    70  2  INT  IRF.DEAL.DATA%(36)  Similar structure to DEAL.DATA%(0)
+ 398: 0003: \***    72  2  INT  IRF.DEAL.DATA%(37)  Similar structure to DEAL.DATA%(0)
+ 399: 0003: \***    74  2  INT  IRF.DEAL.DATA%(38)  Similar structure to DEAL.DATA%(0)
+ 400: 0003: \***    76  2  INT  IRF.DEAL.DATA%(39)  Similar structure to DEAL.DATA%(0)
+ 401: 0003: \***    78  7  ASC  FILLER$             Filler
+ 402: 0003: \***
+ 403: 0003: \***    Record Length 84
+ 404: 0003: \***
+ 405: 0003: \*******************************************************************************
+ 406: 0003: 
+ 407: 0003: 
+ 408: 0003:     STRING GLOBAL            \
+ 409: 0003: \!!!!!!!IRF.ALT.FILE.NAME$,  \                                          !HMW
+ 410: 0003:         IRF.BAR.CODE$,       \
+ 411: 0003:         IRF.BOOTS.CODE$,     \
+ 412: 0003:         IRF.DEAL.SAVING$,    \ 2 byte - deal saving amount (0 - 99.99) ! ESP
+ 413: 0003: \!!!!!!!IRF.DEPARTME$,       \ 3 byte UPD. Department number            !HMW
+ 414: 0003:         IRF.FILE.NAME$,      \
+ 415: 0003:         IRF.FILLER$,         \ Filler                                   !HMW
+ 416: 0003: \!!!!!!!IRF.HOLDING.PRICE$,  \ 4 byte UPD. Current HO price in pence    !HMW
+ 417: 0003:         IRF.ITEMNAME$,       \
+ 418: 0003:         IRF.PRODUCT.GRP$,    \ 3 byte UPD product group                 !HMW
+ 419: 0003: \!!!!!!!IRF.RECORD$,         \                                          !HMW
+ 420: 0003:         IRF.SALEPRIC$,       \
+ 421: 0003: \!!!!!!!IRF.SALEQUAN$,       \                                          !HMW
+ 422: 0003: \!!!!!!!IRF.UNUSED$,         \                                          !HMW
+ 423: 0003:         NEW.IRF.DATA$        !                                          ! 1.7 RC
+ 424: 0003: 
+ 425: 0003:     STRING GLOBAL            \                                          ! 1.6 RC
+ 426: 0003:         IRF.DEAL.NUM$(1)                                                ! 1.6 RC
+ 427: 0003: 
+ 428: 0003:     INTEGER*1 GLOBAL         \
+ 429: 0003: \!!!!!!!IRF.DD.SUB%,         \ IRF.DEAL.DATA% subscript                 !HMW
+ 430: 0003:         IRF.INDICAT0%,       \
+ 431: 0003:         IRF.INDICAT1%,       \
+ 432: 0003: \!!!!!!!IRF.INDICAT2%,       \                                          !HMW
+ 433: 0003:         IRF.INDICAT3%,       \
+ 434: 0003: \!!!!!!!IRF.INDICAT4%,       \                                          !HMW
+ 435: 0003:         IRF.INDICAT5%,       \                                          ! 2.0AJC
+ 436: 0003:         IRF.INDICAT8%,       \                                          ! 2.0AJC
+ 437: 0003:         IRF.INDICAT9%,       \                                          ! 2.2 TT
+ 438: 0003:         IRF.INDICAT10%                                                  ! 2.2 TT
+ 439: 0003: 
+ 440: 0003:     INTEGER*1 GLOBAL         \                                          ! 1.6 RC
+ 441: 0003:         IRF.LIST.ID%(1)                                                 ! 1.6 RC
+ 442: 0003: 
+ 443: 0003:     INTEGER*2 GLOBAL         \
+ 444: 0003: \!!!!!!!IRF.ALT.REPORT.NUM%, \                                          !HMW
+ 445: 0003: \!!!!!!!IRF.ALT.SESS.NUM%,   \                                          !HMW
+ 446: 0003: \!!!!!!!IRF.POINTS%,         \                                          !HMW
+ 447: 0003:         IRF.RECL%,           \
+ 448: 0003:         IRF.REPORT.NUM%,     \
+ 449: 0003:         IRF.SESS.NUM%,       \
+ 450: 0003:         IRF.MAX.DEALS%       !                                          ! 1.9 SM
+ 451: 0003:     
+ 452: 0003:     STRING GLOBAL IRFDEX.FILE.NAME$                                     ! 1.9 SM
+ 453: 0003: 
+ 454: 0003:     INTEGER*2 GLOBAL IRFDEX.SESS.NUM%                                   ! 1.9 SM
+ 455: 0003:     INTEGER*2 GLOBAL IRFDEX.REPORT.NUM%                                 ! 1.9 SM
+ 456: 0003:     INTEGER*2 GLOBAL IRFDEX.RECL%                                       ! 1.9 SM
+ 457: 0003: 
+ 458: 0003: %INCLUDE PSBF01G.J86    ! APPLICATION.LOG
+ 459: 0003: REM \
+ 460: 0003: \*******************************************************************************
+ 461: 0003: \*******************************************************************************
+ 462: 0003: \***
+ 463: 0003: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+ 464: 0003: \***
+ 465: 0003: \***                FUNCTION NUMBER    : PSBF01
+ 466: 0003: \***
+ 467: 0003: \***                REFERENCE          : PSBF01G.J86
+ 468: 0003: \***
+ 469: 0003: \***                DATE OF LAST AMENDMENT  - 27/2/86
+ 470: 0003: \***
+ 471: 0003: \***
+ 472: 0003: \*******************************************************************************
+ 473: 0003: 
+ 474: 0003:       INTEGER GLOBAL  F01.RETURN.CODE%
+ 475: 0003: 
+ 476: 0003: 
+ 477: 0003: %INCLUDE PSBF11G.J86    ! Gets next barcode in an IEF chain                  !BCS
+ 478: 0003: REM \
+ 479: 0003: \*******************************************************************************
+ 480: 0003: \*******************************************************************************
+ 481: 0003: \***
+ 482: 0003: \***    %INCLUDE FOR GLOBALS DEFINITIONS FOR FUNCTION READ.NEXT.IEF
+ 483: 0003: \***
+ 484: 0003: \***            FUNCTION NUMBER    : PSBF11
+ 485: 0003: \***
+ 486: 0003: \***            REFERENCE          : PSBF11G.J86
+ 487: 0003: \***
+ 488: 0003: \***    Version B            Bruce Scriver             11th December 1986 
+ 489: 0003: \***
+ 490: 0003: \***    Version C            Andrew Wedgeworth             15th July 1992
+ 491: 0003: \***    Redundant return code field removed.
+ 492: 0003: \***
+ 493: 0003: \*******************************************************************************
+ 494: 0003: \*******************************************************************************
+ 495: 0003: 
+ 496: 0003:       STRING    GLOBAL  F11.ERROR.FLAG$,                               \ BBAAS
+ 497: 0003:                         F11.NEXT.BAR.CODE$                             ! BBAAS
+ 498: 0003: 
+ 499: 0003:       INTEGER*2 GLOBAL  F11.CURRENT.COUNT%
+ 500: 0003: 
+ 501: 0003: 
+ 502: 0003: %INCLUDE PSBF20G.J86    ! GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 503: 0003: REM\
+ 504: 0003: \*******************************************************************************
+ 505: 0003: \*******************************************************************************
+ 506: 0003: \***
+ 507: 0003: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 508: 0003: \***
+ 509: 0003: \***                       REFERENCE     : PSBF20G.J86
+ 510: 0003: \*** 
+ 511: 0003: \***     Version A              Bruce Scrive                   5th May 1988   
+ 512: 0003: \*** 
+ 513: 0003: \***     Version B              Robert Cowey                   7th May 1991
+ 514: 0003: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 515: 0003: \***     to two byte integer.
+ 516: 0003: \***
+ 517: 0003: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 518: 0003: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 519: 0003: \***
+ 520: 0003: \*******************************************************************************
+ 521: 0003: \*******************************************************************************
+ 522: 0003: 
+ 523: 0003:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 524: 0003:                        F20.STRING.FILE.NO$,                            \
+ 525: 0003:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 526: 0003:                        SESS.NUM.TABLE$(1)
+ 527: 0003: 
+ 528: 0003:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 529: 0003: 
+ 530: 0003:       ! 1 line deleted from here                                       ! DAW 
+ 531: 0003: 
+ 532: 0003: 
+ 533: 0003: 
+ 534: 0003: STRING GLOBAL                             \
+ 535: 0003:      CURRENT.CODE$,                       \
+ 536: 0003:      FILE.OPERATION$                      !
+ 537: 0003: 
+ 538: 0003: INTEGER*1 TRUE,                           \
+ 539: 0003:           FALSE,                          \
+ 540: 0003:           EVENT.NUM%                      !
+ 541: 0003: 
+ 542: 0003: INTEGER*2 I%,                             \
+ 543: 0003:           J%,                             \
+ 544: 0003:           CURRENT.REPORT.NUM%,            \
+ 545: 0003:           DATE.FORMAT%,                   \
+ 546: 0003:           ERROR.COUNT%,                   \
+ 547: 0003:           ERR.REPORT.NUM%,                \
+ 548: 0003:           ERR.SESS.NUM%,                  \
+ 549: 0003:           EXPCTD.NO.CODES%,               \                                  !BCS
+ 550: 0003:           FAILED.ARRAY.INDEX%,            \                                  !GAM
+ 551: 0003:           FAILED.ARRAY.MAX%,              \ !                                !GAM
+ 552: 0003:           FAILED.STATUS%,                 \                                  !GAM        
+ 553: 0003:           INDEX%,                         \                                  !BCS
+ 554: 0003:           MESSAGE.NUMBER%,                \
+ 555: 0003:           BLOCKITM.SESS.NUM%,             \
+ 556: 0003:           INPUT.RECL%,                    \
+ 557: 0003:           INPUT.REPORT.NUM%,              \
+ 558: 0003:           INPUT.SESS.NUM%,                \
+ 559: 0003:           OK.REPORT.NUM%,                 \
+ 560: 0003:           OK.SESS.NUM%,                   \
+ 561: 0003:           LOG.REPORT.NUM%,                \
+ 562: 0003:           LOG.SESS.NUM%,                  \
+ 563: 0003:           WRN.REPORT.NUM%,                \                                  !DCS
+ 564: 0003:           WRN.SESS.NUM%,                  \                                  !DCS
+ 565: 0003:           SB.FILE.REP.NUM%,               \
+ 566: 0003:           SB.FILE.SESS.NUM%,              \
+ 567: 0003:           SB.INTEGER%                     !
+ 568: 0003: 
+ 569: 0003: 
+ 570: 0003: INTEGER*4 ADXSERVE.RET.CODE%,             \
+ 571: 0003:           ADX.RC%,                        \
+ 572: 0003:           INPUT.REC.NO%,                  \
+ 573: 0003:           RC%                             !
+ 574: 0003: 
+ 575: 0003: STRING    ADXSERVE.DATA$,                 \
+ 576: 0003:           ADX.DATA$,                      \
+ 577: 0003:           BMESG$,                         \
+ 578: 0003:           CMD.LINE$,                      \
+ 579: 0003:           COMM.MODE.FLAG$,                \
+ 580: 0003:           CURRENT.IEF.BAR.CODE$,          \                                  !BCS
+ 581: 0003:           CURRENT.IDF.CODE$,              \                                  !GAM
+ 582: 0003:           ERROR.OVERRIDE.FLAG$,           \
+ 583: 0003:           GENUINE.ERROR.FLAG$,            \                                  !DCS
+ 584: 0003:           BLOCKITM.COMPLETION.MSG$,       \
+ 585: 0003:           BLOCKITM.ERR.PATH$,             \
+ 586: 0003:           BLOCKITM.INPUT.PATH$,           \
+ 587: 0003:           BLOCKITM.OK.PATH$,              \
+ 588: 0003:           BLOCKITM.LOG.PATH$,             \
+ 589: 0003:           BLOCKITM.WRN.PATH$,             \                                  !DCS
+ 590: 0003:           BLOCKITM.PATH$,                 \
+ 591: 0003:           FAILED.BOOTS.CODES$(1),         \ ! Failed item codes              !GAM
+ 592: 0003:           INPUT.FILLER$,                  \
+ 593: 0003:           INPUT.BOOTS.CODE$,              \
+ 594: 0003:           MSG$,                           \                                  !DCS
+ 595: 0003:           MODULE$,                        \
+ 596: 0003:           MODULE.NUMBER$,                 \
+ 597: 0003:           NULL.BAR.CODE$,                 \                                  !BCS
+ 598: 0003:           PARAM$,                         \
+ 599: 0003:           PROGRAM$,                       \
+ 600: 0003:           LOG.FILE.OPEN$,                 \
+ 601: 0003:           RUN.DATE$,                      \
+ 602: 0003:           RUN.TIME$,                      \
+ 603: 0003:           SB.ACTION$,                     \
+ 604: 0003:           SB.STRING$,                     \
+ 605: 0003:           SB.FILE.NAME$,                  \
+ 606: 0003:           SKIP.PAST.ITEM.DUE.TO.ERROR$,   \                                  !BCS
+ 607: 0003:           UPD.BAR.CODE$,                  \                                  !BCS
+ 608: 0003:           VAR.STRING.1$,                  \
+ 609: 0003:           VAR.STRING.2$,                  \
+ 610: 0003:           VERSION$                        !                                  !DCS
+ 611: 0003: 
+ 612: 0003: 
+ 613: 0003: %INCLUDE ADXSERVE.J86
+ 614: 0003: \******************************************************************************
+ 615: 0003: \******************************************************************************
+ 616: 0003: \***                                                                        ***
+ 617: 0003: \***    %INCLUDE FOR FUNCTION ADXSERVE (an I.B.M. system function)          ***
+ 618: 0003: \***                                                                        ***
+ 619: 0003: \***         AUTHOR        :  Bruce Scriver                                 ***
+ 620: 0003: \***                                                                        ***
+ 621: 0003: \***         DATE WRITTEN  :  14th March 1986                               ***
+ 622: 0003: \***                                                                        ***
+ 623: 0003: \***         DATE OF LAST REVISION  - 14th March 1986                       ***
+ 624: 0003: \***                                                                        ***
+ 625: 0003: \***                                                                        ***
+ 626: 0003: \******************************************************************************
+ 627: 0003: \******************************************************************************
+ 628: 0003: 
+ 629: 0003:    SUB ADXSERVE (RETURN.CODE%,                                                \
+ 630: 0003:                  ADX.FUNCTION%,                                               \
+ 631: 0003:                  ADX.PARM.1%,                                                 \
+ 632: 0003:                  ADX.PARM.2$)                                                 \
+ 633: 0003:    EXTERNAL
+ 634: 0003:   
+ 635: 0003:       STRING     ADX.PARM.2$
+ 636: 0003: 
+ 637: 0003:       INTEGER*2  ADX.FUNCTION%,                                               \
+ 638: 0003:                  ADX.PARM.1%
+ 639: 0003: 
+ 640: 0003:       INTEGER*4  RETURN.CODE%                                                 \
+ 641: 0003: 
+ 642: 0003:    END SUB     
+ 643: 0003: 
+ 644: 0003: %INCLUDE ERRNH.J86      ! Hex Error Number
+ 645: 0003: \******************************************************************************
+ 646: 0003: \***
+ 647: 0003: \***	FUNCTION ERRNH
+ 648: 0003: \***
+ 649: 0003: \***	Convert the 4-byte error number to an 8-byte ASCII string
+ 650: 0003: \***
+ 651: 0003: \******************************************************************************
+ 652: 0003: 
+ 653: 0003: 	FUNCTION ERRNH PUBLIC
+ 654: 0027: 
+ 655: 0027: 	STRING			ERRNH,					\
+ 656: 0027: 				E$
+ 657: 0027: 
+ 658: 0027: 	INTEGER*2		I%
+ 659: 0027: 	INTEGER*4		H%
+ 660: 0027: 
+ 661: 0027: 	E$ = ""
+ 662: 003c: 	H% = ERRN
+ 663: 0056: 
+ 664: 0056: 	FOR I% = 28 TO 0 STEP -4
+ 665: 0066: 	    E$ = E$ + CHR$((SHIFT(H%,I%) AND 000FH) + 48)
+ 666: 00c2: 	NEXT I%
+ 667: 00da: 
+ 668: 00da: 	ERRNH = TRANSLATE$(E$,":;<=>?","ABCDEF")
+ 669: 0101: 
+ 670: 0101: 	END FUNCTION
+ 671: 011a: %INCLUDE IDFEXT.J86     ! IDF FILE FUNCTIONS                                 !BCS
+ 672: 011a: \*******************************************************************************
+ 673: 011a: \***                                                                         ***
+ 674: 011a: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM DESCRIPTION FILE        ***
+ 675: 011a: \***                                                                         ***
+ 676: 011a: \***                       REFERENCE : IDFEXT.J86                            ***
+ 677: 011a: \***                                                                         ***
+ 678: 011a: \***      Version A           Andrew Wedgeworth         9th July 1992        ***
+ 679: 011a: \***
+ 680: 011a: \***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+ 681: 011a: \***    No changes to this file.
+ 682: 011a: \***
+ 683: 011a: \***   VERSION D               Nik Sen                 22nd December 1994
+ 684: 011a: \***   WRITE.IDF.HOLD added
+ 685: 011a: \***
+ 686: 011a: \*******************************************************************************
+ 687: 011a: 
+ 688: 011a:        FUNCTION IDF.SET EXTERNAL                                      
+ 689: 011a:        END FUNCTION                                                   
+ 690: 011a: 
+ 691: 011a: 
+ 692: 011a:        FUNCTION READ.IDF EXTERNAL                                     
+ 693: 011a:           INTEGER*2 READ.IDF                                          
+ 694: 011a:        END FUNCTION                                                   
+ 695: 011a: 
+ 696: 011a: 
+ 697: 011a:        FUNCTION READ.IDF.LOCK EXTERNAL                                
+ 698: 011a:           INTEGER*2 READ.IDF.LOCK                                     
+ 699: 011a:        END FUNCTION                                                   
+ 700: 011a: 
+ 701: 011a:        FUNCTION WRITE.IDF EXTERNAL
+ 702: 011a:           INTEGER*2 WRITE.IDF
+ 703: 011a:        END FUNCTION	       
+ 704: 011a: 
+ 705: 011a:        FUNCTION WRITE.IDF.HOLD EXTERNAL
+ 706: 011a:           INTEGER*2 WRITE.IDF.HOLD
+ 707: 011a:        END FUNCTION
+ 708: 011a: 
+ 709: 011a:        FUNCTION WRITE.IDF.UNLOCK EXTERNAL                                  
+ 710: 011a:           INTEGER*2 WRITE.IDF.UNLOCK                                      
+ 711: 011a:        END FUNCTION                                                   
+ 712: 011a: %INCLUDE IEFEXT.J86     ! IEF FILE FUNCTIONS                                 !BCS
+ 713: 011a: \*****************************************************************************
+ 714: 011a: \*****************************************************************************
+ 715: 011a: \***
+ 716: 011a: \***         EXTERNAL FUNCTION DEFINITIONS FOR IEF
+ 717: 011a: \***
+ 718: 011a: \***         REFERENCE: IEFEXT.J86
+ 719: 011a: \***
+ 720: 011a: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+ 721: 011a: \***    No changes to this file.
+ 722: 011a: \***
+ 723: 011a: \*******************************************************************************
+ 724: 011a: \*******************************************************************************
+ 725: 011a: 
+ 726: 011a:    FUNCTION IEF.SET EXTERNAL
+ 727: 011a:    END FUNCTION
+ 728: 011a:    
+ 729: 011a:    FUNCTION READ.IEF EXTERNAL
+ 730: 011a:       INTEGER*2 READ.IEF
+ 731: 011a:    END FUNCTION
+ 732: 011a:    
+ 733: 011a:    FUNCTION WRITE.IEF EXTERNAL
+ 734: 011a:       INTEGER*2 WRITE.IEF
+ 735: 011a:    END FUNCTION
+ 736: 011a:    
+ 737: 011a:    
+ 738: 011a: %INCLUDE IRFEXT.J86     ! IRF FILE FUNCTIONS
+ 739: 011a: \*********************************************************************************
+ 740: 011a: \***
+ 741: 011a: \***      EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM REFERENCE FILE
+ 742: 011a: \***
+ 743: 011a: \***                    REFERENCE : IRFEXT.J86
+ 744: 011a: \***
+ 745: 011a: \***    Version A          Andrew Wedgeworth        9th July 1992
+ 746: 011a: \***
+ 747: 011a: \***    Version B          Andrew Wedgeworth        14th December 1992
+ 748: 011a: \***    Version letter incremented to match other IRF code.
+ 749: 011a: \***
+ 750: 011a: \***    Version C           Steve Windsor        12.02.93
+ 751: 011a: \***    Added external reference to read the alternate IRF.
+ 752: 011a: \***
+ 753: 011a: \***    Version D           Steve Windsor        12.05.93
+ 754: 011a: \***    Added all external references that wre in the original FNS.
+ 755: 011a: \***
+ 756: 011a: \***    Version E           Steve Perkins        21.09.93
+ 757: 011a: \***    Deals project: Fields changed for new deals project
+ 758: 011a: \*** 
+ 759: 011a: \***    Version F           Mark Walker          5th January 1994
+ 760: 011a: \***    Version letter incremented to match other IRF code.           
+ 761: 011a: \***                                                                  
+ 762: 011a: \***    Version G     Stuart William McConnachie      11th February 2000
+ 763: 011a: \***    Converted IRF.INDICAT2$ to integer flag byte.
+ 764: 011a: \***
+ 765: 011a: \***    REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+ 766: 011a: \***    Major changes to IRF layout for 2002 Deals Rewrite project.
+ 767: 011a: \***    No changes to this particular file for this revision.
+ 768: 011a: \***
+ 769: 011a: \***    REVISION 1.7.               ROBERT COWEY.               5 AUG 2002.
+ 770: 011a: \***    Further changes for 2002 Deals Rewrite project (PSBF19 related).
+ 771: 011a: \***    Defined new functions CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+ 772: 011a: \***
+ 773: 011a: \***    REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+ 774: 011a: \***    Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+ 775: 011a: \***    No changes to this file other than description.
+ 776: 011a: \***    No changes to IRF file functions.
+ 777: 011a: \***
+ 778: 011a: \***    REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+ 779: 011a: \***    Changes to remove limit of 3 deals per item.
+ 780: 011a: \***    No changes to this file.
+ 781: 011a: \***
+ 782: 011a: \***    REVISION 2.0.             ALAN CARR                      9 FEB 2006.
+ 783: 011a: \***    Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+ 784: 011a: \***    No changes to this file.
+ 785: 011a: \***
+ 786: 011a: \***    Version H.              Mark Walker                 20th Feb 2017
+ 787: 011a: \***    PRJ1269 UNICA Interact
+ 788: 011a: \***    - Removed references to redundant alternate IRF functions.
+ 789: 011a: \***
+ 790: 011a: \***..............................................................................
+ 791: 011a:    
+ 792: 011a:    FUNCTION IRF.SET EXTERNAL
+ 793: 011a:    END FUNCTION
+ 794: 011a: 
+ 795: 011a:   FUNCTION CONCAT.NEW.IRF.DATA$ EXTERNAL                                ! 1.7 RC
+ 796: 011a:   END FUNCTION                                                          ! 1.7 RC
+ 797: 011a: 
+ 798: 011a:   FUNCTION SPLIT.NEW.IRF.DATA$ EXTERNAL                                 ! 1.7 RC
+ 799: 011a:   END FUNCTION                                                          ! 1.7 RC
+ 800: 011a:   
+ 801: 011a:   FUNCTION READ.IRF EXTERNAL
+ 802: 011a:    INTEGER*2 READ.IRF
+ 803: 011a:   END FUNCTION
+ 804: 011a: 
+ 805: 011a: !!FUNCTION READ.IRF.ALT EXTERNAL                                        !HMW
+ 806: 011a: !!!INTEGER*2 READ.IRF.ALT                                               !HMW
+ 807: 011a: !!END FUNCTION                                                          !HMW
+ 808: 011a: 
+ 809: 011a:   FUNCTION READ.IRF.LOCK EXTERNAL
+ 810: 011a:    INTEGER*2 READ.IRF.LOCK
+ 811: 011a:   END FUNCTION
+ 812: 011a: 
+ 813: 011a:   FUNCTION WRITE.IRF EXTERNAL
+ 814: 011a:    INTEGER*2 WRITE.IRF
+ 815: 011a:   END FUNCTION
+ 816: 011a: 
+ 817: 011a:   FUNCTION WRITE.IRF.UNLOCK EXTERNAL
+ 818: 011a:    INTEGER*2 WRITE.IRF.UNLOCK
+ 819: 011a:   END FUNCTION
+ 820: 011a: 
+ 821: 011a:   FUNCTION WRITE.IRF.HOLD EXTERNAL
+ 822: 011a:    INTEGER*2 WRITE.IRF.HOLD
+ 823: 011a:   END FUNCTION
+ 824: 011a: 
+ 825: 011a:   FUNCTION WRITE.IRF.HOLD.UNLOCK EXTERNAL
+ 826: 011a:    INTEGER*2 WRITE.IRF.HOLD.UNLOCK
+ 827: 011a:   END FUNCTION
+ 828: 011a: 
+ 829: 011a: %INCLUDE PSBF01E.J86    ! APPLICATION.LOG
+ 830: 011a: REM \
+ 831: 011a: \*******************************************************************************
+ 832: 011a: \*******************************************************************************
+ 833: 011a: \***
+ 834: 011a: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 835: 011a: \***
+ 836: 011a: \***                      FUNCTION NUMBER   : PSBF01
+ 837: 011a: \***
+ 838: 011a: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 839: 011a: \*** 
+ 840: 011a: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 841: 011a: \***      Three parameters which passed to the function have been removed.
+ 842: 011a: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 843: 011a: \***      return code).
+ 844: 011a: \***
+ 845: 011a: \*******************************************************************************
+ 846: 011a: 
+ 847: 011a: 
+ 848: 011a:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 849: 011a:                              VAR.STRING.1$,                                   \
+ 850: 011a:                              VAR.STRING.2$,                                   \
+ 851: 011a:                              EVENT.NO%)  EXTERNAL
+ 852: 011a: 
+ 853: 011a:       INTEGER*1 EVENT.NO%
+ 854: 011a: 
+ 855: 011a:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 856: 011a:                 MESSAGE.NO%
+ 857: 011a: 
+ 858: 011a:       STRING VAR.STRING.1$,                                            \
+ 859: 011a:              VAR.STRING.2$
+ 860: 011a: 
+ 861: 011a:    END FUNCTION
+ 862: 011a: 
+ 863: 011a: \*******************************************************************************
+ 864: 011a: %INCLUDE PSBF11E.J86    ! Gets next barcode in an IEF chain                  !BCS
+ 865: 011a: REM \
+ 866: 011a: \*******************************************************************************
+ 867: 011a: \*******************************************************************************
+ 868: 011a: \***
+ 869: 011a: \***    %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION READ.NEXT.IEF
+ 870: 011a: \***
+ 871: 011a: \***
+ 872: 011a: \***            FUNCTION NUMBER       : PSBF11
+ 873: 011a: \***
+ 874: 011a: \***            INCLUDE REFERENCE     : PSBF11E.J86
+ 875: 011a: \***
+ 876: 011a: \***            DATE OF LAST AMENDMENT -  3rd March 1986
+ 877: 011a: \***
+ 878: 011a: \***     Version B             Andrew Wedgeworth          15th July 1992
+ 879: 011a: \***     Removal of redundant function parameters.  READ.NEXT.IEF defined as
+ 880: 011a: \***     a variable to hold the return code.
+ 881: 011a: \***
+ 882: 011a: \*******************************************************************************
+ 883: 011a: \*******************************************************************************
+ 884: 011a: 
+ 885: 011a: REM \
+ 886: 011a: \*******************************************************************************
+ 887: 011a: \*******************************************************************************
+ 888: 011a: \***
+ 889: 011a: \***
+ 890: 011a: \***            FUNCTION OVERVIEW
+ 891: 011a: \***            -----------------
+ 892: 011a: \***
+ 893: 011a: \***   This function finds and retreives the next bar code in an IEF chain.
+ 894: 011a: \***   If the code found is the last code in the chain, the function checks that
+ 895: 011a: \***   the number of codes in the chain is equal to the expected number.  If it
+ 896: 011a: \***   is not, a message is displayed and logged.  If an error occurs in reading
+ 897: 011a: \***   the IEF, a message is displayed and logged, and the function returns to
+ 898: 011a: \***   the calling program with a return code of 1.
+ 899: 011a: \***
+ 900: 011a: \***
+ 901: 011a: \*******************************************************************************
+ 902: 011a: \*******************************************************************************
+ 903: 011a: 
+ 904: 011a:    FUNCTION READ.NEXT.IEF (LAST.BAR.CODE$,                             \
+ 905: 011a:                            TOTAL.COUNT%,                               \
+ 906: 011a:                            BOOTS.CODE$)  EXTERNAL
+ 907: 011a:    ! 3 parameters deleted from here                                    ! BAW			   
+ 908: 011a: 
+ 909: 011a:       STRING  BOOTS.CODE$,                                             \
+ 910: 011a:               LAST.BAR.CODE$
+ 911: 011a:       ! 3 variables removed from here                                  ! BAW
+ 912: 011a: 
+ 913: 011a:       INTEGER*2 READ.NEXT.IEF,                                         \ BAW
+ 914: 011a:                 TOTAL.COUNT%
+ 915: 011a:              
+ 916: 011a: 
+ 917: 011a: 
+ 918: 011a:    END FUNCTION
+ 919: 011a: 
+ 920: 011a: \*******************************************************************************
+ 921: 011a: %INCLUDE PSBF20E.J86    ! GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 922: 011a: REM\
+ 923: 011a: \*******************************************************************************
+ 924: 011a: \*******************************************************************************
+ 925: 011a: \***
+ 926: 011a: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 927: 011a: \***
+ 928: 011a: \***                  REFERENCE     : PSBF20E.J86
+ 929: 011a: \***
+ 930: 011a: \***     VERSION C            Janet Smith                13th May 1992
+ 931: 011a: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 932: 011a: \***     128 files.
+ 933: 011a: \***
+ 934: 011a: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 935: 011a: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 936: 011a: \***     as a variable.  This new variable contains the function's return
+ 937: 011a: \***     code.
+ 938: 011a: \***
+ 939: 011a: \*******************************************************************************
+ 940: 011a: \*******************************************************************************
+ 941: 011a: 
+ 942: 011a:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 943: 011a:                               PASSED.INTEGER%,                         \
+ 944: 011a:                               PASSED.STRING$)                          \
+ 945: 011a:    EXTERNAL
+ 946: 011a: 
+ 947: 011a:    STRING    FUNCTION.FLAG$,                                           \
+ 948: 011a:              PASSED.STRING$
+ 949: 011a:    ! 3 variables removed from here                                     ! CAW
+ 950: 011a: 
+ 951: 011a: 
+ 952: 011a:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 953: 011a:              PASSED.INTEGER%				               ! CJAS
+ 954: 011a: 
+ 955: 011a:    END FUNCTION
+ 956: 011a: 
+ 957: 011a: %INCLUDE PSBF24E.J86    ! STANDARD.ERROR.DETECTED
+ 958: 011a: REM \
+ 959: 011a: \*******************************************************************************
+ 960: 011a: \*******************************************************************************
+ 961: 011a: \***
+ 962: 011a: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 963: 011a: \***
+ 964: 011a: \***                      REFERENCE     : PSBF24E.J86
+ 965: 011a: \***
+ 966: 011a: \***    Version A                 Janet Smith                  13th May 1992
+ 967: 011a: \***
+ 968: 011a: \*******************************************************************************
+ 969: 011a: \*******************************************************************************
+ 970: 011a: 
+ 971: 011a:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 972: 011a: 				    ERRFILE%,              \
+ 973: 011a: 				    ERRL%,                 \
+ 974: 011a: 				    ERR$)        EXTERNAL
+ 975: 011a: 				    
+ 976: 011a:           STRING    ERR$
+ 977: 011a: 
+ 978: 011a:           INTEGER*2 ERRFILE%,              \
+ 979: 011a: 	            ERRL%,                 \
+ 980: 011a: 		    STANDARD.ERROR.DETECTED
+ 981: 011a: 		    
+ 982: 011a:           INTEGER*4 ERRN%
+ 983: 011a: 	  		    
+ 984: 011a:    END FUNCTION
+ 985: 011a: 
+ 986: 011a: 
+ 987: 011a: %INCLUDE PSBF30E.J86    ! PROCESS KEYED FILE                                 !ECS
+ 988: 011a: \*****************************************************************************
+ 989: 011a: \*****************************************************************************
+ 990: 011a: \***
+ 991: 011a: \***                 EXTERNAL FUNCTION DEFINITION PSBF30
+ 992: 011a: \***
+ 993: 011a: \*****************************************************************************
+ 994: 011a: \*****************************************************************************
+ 995: 011a: 
+ 996: 011a: \*****************************************************************************
+ 997: 011a: \*****************************************************************************
+ 998: 011a: \***
+ 999: 011a: \***   Version 96A              Mark Walker                31st May 1995
+1000: 011a: \***   Original version.
+1001: 011a: \***
+1002: 011a: \***   Version B                Andrew Wedgeworth          17th March 1997
+1003: 011a: \***   Added READONLY$ variable.  This parameter may be used to specify 
+1004: 011a: \***   whether the file is to be opened with the READONLY option.
+1005: 011a: \***
+1006: 011a: \*****************************************************************************
+1007: 011a: \*****************************************************************************
+1008: 011a:  
+1009: 011a:        FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \ 
+1010: 011a:                                    REPORT.NUM%,                        \  
+1011: 011a:                                    READONLY$) EXTERNAL
+1012: 011a: 
+1013: 011a:        STRING FILE.NAME$,READONLY$
+1014: 011a:        INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+1015: 011a: 
+1016: 011a:        END FUNCTION
+1017: 011a: 
+1018: 011a: 
+1019: 011a: 
+1020: 011a: 
+1021: 011a: 
+1022: 011a: \******************************************************************************
+1023: 011a: \***
+1024: 011a: \***    DO.MESSAGE
+1025: 011a: \***
+1026: 011a: \******************************************************************************
+1027: 011a: 
+1028: 011a: SUB DO.MESSAGE(MESG$)
+1029: 013e: 
+1030: 013e:     INTEGER*2 STATUS%
+1031: 013e:     STRING MESG$
+1032: 013e: 
+1033: 013e: 
+1034: 013e:     IF STATUS% = 0 THEN BEGIN
+1035: 0150:         CALL ADXSERVE (ADXSERVE.RET.CODE%,26,0,MESG$)
+1036: 0189:         IF ADXSERVE.RET.CODE% <> 0 THEN BEGIN
+1037: 01a4:             STATUS% = 1 !FOREGROUND
+1038: 01b2:             PRINT MESG$
+1039: 01cb:         ENDIF ELSE BEGIN
+1040: 01d3:             STATUS% = 2 !BACKGROUND
+1041: 01e1:         ENDIF
+1042: 01eb:     ENDIF ELSE IF STATUS% = 1 THEN BEGIN
+1043: 01fa:         PRINT MESG$
+1044: 0213:     ENDIF ELSE BEGIN
+1045: 021b:         CALL ADXSERVE (ADXSERVE.RET.CODE%,26,0,MESG$)
+1046: 0254:     ENDIF
+1047: 025c: 
+1048: 025c:     IF LOG.FILE.OPEN$ = "Y" THEN BEGIN
+1049: 0277:           PRINT # LOG.SESS.NUM%; MESG$
+1050: 0299:     ENDIF
+1051: 02a1: 
+1052: 02a1: END SUB
+1053: 02b5: 
+1054: 02b5: 
+1055: 02b5: \******************************************************************************
+1056: 02b5: \***
+1057: 02b5: \***    GETN1
+1058: 02b5: \***
+1059: 02b5: \******************************************************************************
+1060: 02b5: 
+1061: 02b5: FUNCTION GETN1 (S$, OFFSET%)
+1062: 02de:     INTEGER*2 GETN1
+1063: 02de:     STRING S$
+1064: 02de:     INTEGER*2 OFFSET%
+1065: 02de:     GETN1 = ASC(MID$(S$, OFFSET%+1, 1))
+1066: 0303: END FUNCTION
+1067: 031f: 
+1068: 031f: 
+1069: 031f: \******************************************************************************
+1070: 031f: \***
+1071: 031f: \***    Format date    YYYYMMDD --> DD/MM/YYYY
+1072: 031f: \***
+1073: 031f: \******************************************************************************
+1074: 031f: 
+1075: 031f: FUNCTION FORMAT.DATE$ (FIELD$)
+1076: 0348: 
+1077: 0348:     STRING      FIELD$
+1078: 0348:     STRING      FORMAT.DATE$
+1079: 0348: 
+1080: 0348:     FORMAT.DATE$ = MID$(FIELD$, 5, 2) + "/" +                     \
+1081: 03a8:                    MID$(FIELD$, 3, 2) + "/20" +                   \
+1082: 03a8:                    MID$(FIELD$, 1, 2)
+1083: 03a8: 
+1084: 03a8: END FUNCTION
+1085: 03c6: 
+1086: 03c6: 
+1087: 03c6: \******************************************************************************
+1088: 03c6: \***
+1089: 03c6: \***    Format Time      HHMMSS --> HH:MM
+1090: 03c6: \***
+1091: 03c6: \******************************************************************************
+1092: 03c6: 
+1093: 03c6: FUNCTION FORMAT.TIME$ (FIELD$)
+1094: 03ef: 
+1095: 03ef:     STRING      FIELD$
+1096: 03ef:     STRING      FORMAT.TIME$
+1097: 03ef: 
+1098: 03ef: 
+1099: 03ef:     FORMAT.TIME$ = MID$(FIELD$, 1, 2) +   \
+1100: 0431:                    ":"                +   \
+1101: 0431:                    MID$(FIELD$, 3, 2)
+1102: 0431: 
+1103: 0431: END FUNCTION
+1104: 044f: 
+1105: 044f: 
+1106: 044f: \******************************************************************************
+1107: 044f: \***                                                                          *
+1108: 044f: \***   FUNCTION : READ.INPUT                                                  *
+1109: 044f: \***                                                                          *
+1110: 044f: \******************************************************************************
+1111: 044f: \***                                                                          *
+1112: 044f: \***  Reads the Input file.                                                   *
+1113: 044f: \***                                                                          *
+1114: 044f: \******************************************************************************
+1115: 044f: 
+1116: 044f: FUNCTION READ.INPUT PUBLIC
+1117: 0473: 
+1118: 0473:       INTEGER*2 READ.INPUT
+1119: 0473: 
+1120: 0473:       READ.INPUT = 1
+1121: 0480: 
+1122: 0480:       IF END # INPUT.SESS.NUM% THEN READ.ERROR
+1123: 0499:       READ FORM "C7,C2"; #INPUT.SESS.NUM%, INPUT.REC.NO%;   \
+1124: 04d4:                INPUT.BOOTS.CODE$, \
+1125: 04d4:                INPUT.FILLER$
+1126: 04d4: 
+1127: 04d4:       READ.INPUT = 0
+1128: 04e1:    EXIT FUNCTION
+1129: 04eb: 
+1130: 04eb: 
+1131: 04eb: READ.ERROR:
+1132: 04fb: 
+1133: 04fb:       FILE.OPERATION$     = "R"
+1134: 0512:       CURRENT.REPORT.NUM% = INPUT.REPORT.NUM%
+1135: 0520:       CURRENT.CODE$       = ""
+1136: 0537: 
+1137: 0537: END FUNCTION
+1138: 054e: 
+1139: 054e: 
+1140: 054e: \********************************************************************************
+1141: 054e: \***                                                                     !ECS   *
+1142: 054e: \***      READ.AND.UPDATE.IRF                                                   *
+1143: 054e: \***                                                                            *
+1144: 054e: \***                                                                            *
+1145: 054e: \********************************************************************************
+1146: 054e: 
+1147: 054e: SUB READ.AND.UPDATE.IRF
+1148: 0572: 
+1149: 0572:     IRF.BAR.CODE$ = UPD.BAR.CODE$
+1150: 058d: 
+1151: 058d:     RC% = READ.IRF.LOCK
+1152: 05a6: 
+1153: 05a6:     IF RC% = 0 THEN BEGIN ! Item exists on IRF file
+1154: 05c4:         IF CMD.LINE$ = "YES" THEN BEGIN
+1155: 05df:             ! Set Item Not Authorised for Sale Bit flag 5
+1156: 05df:             IRF.INDICAT0% = IRF.INDICAT0% OR 00010000B
+1157: 05f7:             ! Set Recall Reason Type Bit flags 6 & 7
+1158: 05f7:             IRF.INDICAT8% = IRF.INDICAT8% OR 01100000B
+1159: 0611:         ENDIF ELSE BEGIN ! "NO"
+1160: 0619:             ! Reset Item Not Authorised for Sale Bit flag 5
+1161: 0619:             IRF.INDICAT0% = IRF.INDICAT0% AND 11101111B
+1162: 0631:             ! Reset Recall Reason Type Bit flags 6 & 7
+1163: 0631:             IRF.INDICAT8% = IRF.INDICAT8% AND 10011111B
+1164: 0649:             ! Reset withdrawn block from sale bit flag 5             ! FDG
+1165: 0649:             IRF.INDICAT1% = IRF.INDICAT1% AND 11101111B              ! FDG
+1166: 0661:         ENDIF
+1167: 0669: 
+1168: 0669:         RC% = WRITE.IRF.UNLOCK
+1169: 0682: 
+1170: 0682:         IF RC% = 0 THEN BEGIN ! Item updated successfully on IRF file
+1171: 069d:             CALL DO.MESSAGE(STR$(INPUT.REC.NO%) + ":" + UNPACK$(UPD.BAR.CODE$) + " " + BMESG$)
+1172: 070d:         ENDIF ELSE BEGIN
+1173: 0715:             MSG$ = STR$(INPUT.REC.NO%) + ":" + UNPACK$(UPD.BAR.CODE$) + " ERROR - CANNOT UPDATE"  !DCS
+1174: 0761:             CALL DO.MESSAGE(MSG$)                                                                 !DCS
+1175: 0774:             PRINT # WRN.SESS.NUM%; MSG$                                                           !DCS
+1176: 0794:             ! Carry on processing but set error override flag so that error is captured
+1177: 0794:             ! ie. BLOCKITM.ERR file is produced
+1178: 0794:             ERROR.OVERRIDE.FLAG$ = "Y"
+1179: 07a9:             SKIP.PAST.ITEM.DUE.TO.ERROR$ = "Y"
+1180: 07be:             GENUINE.ERROR.FLAG$  = "Y"                                                            !DCS
+1181: 07d3:         ENDIF
+1182: 07de: 
+1183: 07de:     ENDIF ELSE BEGIN
+1184: 07e6:         MSG$ = STR$(INPUT.REC.NO%) + ":" + UNPACK$(UPD.BAR.CODE$) + " ** NOT ON FILE **"      !DCS
+1185: 0832:         CALL DO.MESSAGE(MSG$)                                                                 !DCS
+1186: 0845:         PRINT # WRN.SESS.NUM%; MSG$                                                           !DCS
+1187: 0865: 
+1188: 0865:         ! There is no tracking to know if IRF read is failed, it makes difficult to track     !GAM
+1189: 0865:         ! if there are large number of items to block or unblock. Below check will make       !GAM
+1190: 0865:         ! Sure failures are reported with item code status at the end of the file             !GAM
+1191: 0865: 
+1192: 0865:         IF CURRENT.IDF.CODE$ <> INPUT.BOOTS.CODE$ THEN BEGIN                                  !GAM
+1193: 0884:             FAILED.STATUS% = FAILED.STATUS% + 1                                               !GAM
+1194: 0890:             CURRENT.IDF.CODE$ = INPUT.BOOTS.CODE$                                             !GAM
+1195: 08a9:             FAILED.BOOTS.CODES$(FAILED.STATUS%) = INPUT.BOOTS.CODE$                           !GAM
+1196: 08cf:         ENDIF                                                                                 !GAM
+1197: 08d7: 		
+1198: 08d7:     ENDIF
+1199: 08df: 
+1200: 08df: END SUB
+1201: 08f3: 
+1202: 08f3: 
+1203: 08f3: 
+1204: 08f3: \********************************************************************************
+1205: 08f3: \***                                                                     !ECS   *
+1206: 08f3: \***      PROCESS.KEYED.RECORD$                                                 *
+1207: 08f3: \***                                                                            *
+1208: 08f3: \***      'User exit' for PROCESS.KEYED.FILE (PSBF30)                           *
+1209: 08f3: \***                                                                            *
+1210: 08f3: \********************************************************************************
+1211: 08f3: 
+1212: 08f3: FUNCTION PROCESS.KEYED.RECORD$(RECORD$) PUBLIC
+1213: 091c: 
+1214: 091c:     STRING PROCESS.KEYED.RECORD$,  \
+1215: 091c:            RECORD$
+1216: 091c: 
+1217: 091c:     IF MID$(RECORD$,43, 3) = IRF.BOOTS.CODE$ THEN BEGIN
+1218: 0956: 
+1219: 0956:         CALL DO.MESSAGE("    Updating Barcode: " + UNPACK$(LEFT$(RECORD$,11)) )
+1220: 099b: 
+1221: 099b:         IRF.INDICAT0% = ASC(MID$(RECORD$,12, 1))
+1222: 09c1:         IRF.INDICAT8% = ASC(MID$(RECORD$,16, 1))
+1223: 09e7:         UPD.BAR.CODE$ = LEFT$(RECORD$,11)
+1224: 0a07: 
+1225: 0a07:         CALL READ.AND.UPDATE.IRF
+1226: 0a13:     ENDIF
+1227: 0a1b: 
+1228: 0a1b:     PROCESS.KEYED.RECORD$ = RECORD$
+1229: 0a33: 
+1230: 0a33: END FUNCTION
+1231: 0a51: 
+1232: 0a51: 
+1233: 0a51: 
+1234: 0a51: !****************************************************************************
+1235: 0a51: !****************************************************************************
+1236: 0a51: !****************************************************************************
+1237: 0a51: !****************************************************************************
+1238: 0a51: !****************************************************************************
+1239: 0a51: !****                                                                    ****
+1240: 0a51: !****             S T A R T   O F   M A I N   P R O G R A M              ****
+1241: 0a51: !****                                                                    ****
+1242: 0a51: !****************************************************************************
+1243: 0a51: !****************************************************************************
+1244: 0a51: !****************************************************************************
+1245: 0a51: !****************************************************************************
+1246: 0a51: !****************************************************************************
+1247: 0a51: 
+1248: 0a51: ON ERROR GOTO ERROR.DETECTED
+1249: 0a80: 
+1250: 0a80:     GOSUB INITIALISATION
+1251: 0a92: 
+1252: 0a92:     GOSUB MAIN.PROCESSING
+1253: 0aa4: 
+1254: 0aa4:     GOSUB TERMINATION
+1255: 0ab6: 
+1256: 0ab6: ABORT.PROGRAM:
+1257: 0ac6: 
+1258: 0ac6:     STOP
+1259: 0ad3: 
+1260: 0ad3: 
+1261: 0ad3: !**************************************************************************
+1262: 0ad3: !***
+1263: 0ad3: !***    INITIALISATION:
+1264: 0ad3: !***
+1265: 0ad3: !***    Set up global variables.
+1266: 0ad3: !***    Display initial message.
+1267: 0ad3: !***    Determine if running in background.
+1268: 0ad3: !***
+1269: 0ad3: !**************************************************************************
+1270: 0ad3: 
+1271: 0ad3: INITIALISATION:
+1272: 0ae3: 
+1273: 0ae3: 
+1274: 0ae3:       PROGRAM$           EQ "BLOCKITM"
+1275: 0af8:       MODULE$            EQ ""
+1276: 0b0d:       MODULE.NUMBER$     EQ  PROGRAM$ + MODULE$
+1277: 0b31: 
+1278: 0b31: 
+1279: 0b31: 
+1280: 0b31:       VERSION$ = "5.0  14/10/09"                                             !DCS !ECS
+1281: 0b46: 
+1282: 0b46:       ERROR.OVERRIDE.FLAG$ = "N"
+1283: 0b5b:       GENUINE.ERROR.FLAG$  = "N"                                             !DCS
+1284: 0b70:       LOG.FILE.OPEN$ = "N"
+1285: 0b85:       TRUE  = -1
+1286: 0b92:       FALSE = 0
+1287: 0b9f: 
+1288: 0b9f:       ERROR.COUNT% = 0
+1289: 0bad:       INPUT.RECL%  = 9  ! 7-digit Boots Item code + CRLF
+1290: 0bbb: 
+1291: 0bbb:       NULL.BAR.CODE$ = PACK$(STRING$(12,"0"))                                !BCS
+1292: 0bdc: 
+1293: 0bdc:       !------------------------
+1294: 0bdc:       ! Check Parameters passed
+1295: 0bdc:       !------------------------
+1296: 0bdc:       CMD.LINE$ = COMMAND$
+1297: 0bf2:       CMD.LINE$ = UCASE$(CMD.LINE$)
+1298: 0c10: 
+1299: 0c10:       CLEARS
+1300: 0c1f: 
+1301: 0c1f:       IF CMD.LINE$ <> "" THEN BEGIN  ! Only display if parameter passed      !DCS
+1302: 0c3d:           CALL DO.MESSAGE("BLOCKITM.286 (ver: " + VERSION$ + ")")            !DCS
+1303: 0c7a:           CALL DO.MESSAGE("Initialisation")                                  !DCS
+1304: 0ca8:           CALL DO.MESSAGE("CMD.LINE$: " + CMD.LINE$)                         !DCS
+1305: 0ce1:       ENDIF                                                                  !DCS
+1306: 0ce9: 
+1307: 0ce9:       IF CMD.LINE$ <> "YES" AND CMD.LINE$ <> "NO" THEN BEGIN
+1308: 0d38:           CALL DO.MESSAGE("                              BLOCKITM.286 (ver: " + VERSION$ + ")")
+1309: 0d75:           CALL DO.MESSAGE("                              ============")
+1310: 0da3:           CALL DO.MESSAGE(" This program blocks or unblocks items for sale at the till.")
+1311: 0dd1:           CALL DO.MESSAGE("")
+1312: 0dff:           CALL DO.MESSAGE("               USAGE: BLOCKITM YES")
+1313: 0e2d:           CALL DO.MESSAGE("                      BLOCKITM NO")
+1314: 0e5b:           CALL DO.MESSAGE("")
+1315: 0e89:           CALL DO.MESSAGE(" This program reads an input text file:- ADXLXAAN::C:\BLOCKITM.DAT")
+1316: 0eb7:           CALL DO.MESSAGE(" which contains a list of 7-digit Boots item codes.")
+1317: 0ee5:           CALL DO.MESSAGE(" The following bit flags are set to 1 (YES) or 0 (NO) on the IRF for ")
+1318: 0f13:           CALL DO.MESSAGE(" each item code within the input file & associated barcodes :")
+1319: 0f41:           CALL DO.MESSAGE("")
+1320: 0f6f:           CALL DO.MESSAGE("     Item Not Authorised for Sale (INDICAT0%, Bit flag  5)")
+1321: 0f9d:           CALL DO.MESSAGE("     Recall Reason Type           (INDICAT8%, Bit flags 6 & 7)")
+1322: 0fcb:           CALL DO.MESSAGE("")
+1323: 0ff9:           CALL DO.MESSAGE(" C:\BLOCKITM.OK  is created if successful")
+1324: 1027:           CALL DO.MESSAGE(" C:\BLOCKITM.ERR is created if failed or could not update an item(s).")
+1325: 1055:           CALL DO.MESSAGE("                 In this case, run it again or apply update manually.")
+1326: 1083:           CALL DO.MESSAGE(" C:\BLOCKITM.LOG is created which logs all processing activity.")
+1327: 10b1:           CALL DO.MESSAGE(" C:\BLOCKITM.WRN is created which logs any items not on file.")
+1328: 10df:           CALL DO.MESSAGE("")
+1329: 110d:           CALL DO.MESSAGE("     NB: NO files are created if the incorrect parameters are passed.")
+1330: 113b:           GOTO ABORT.PROGRAM
+1331: 1146:       ENDIF
+1332: 114e: 
+1333: 114e:       BMESG$ = "Unblocked"
+1334: 1163:       IF CMD.LINE$ = "YES" THEN BEGIN
+1335: 117e:           BMESG$ = "Blocked"
+1336: 1193:       ENDIF
+1337: 119b:       !--------------------------
+1338: 119b:       ! Clear up OK and ERR files
+1339: 119b:       !--------------------------
+1340: 119b:       CALL IDF.SET                                                           !BCS
+1341: 11b6:       CALL IEF.SET                                                           !BCS
+1342: 11d1:       CALL IRF.SET
+1343: 11ec: 
+1344: 11ec:       GOSUB ALLOCATE.SESSION.NUMBERS
+1345: 11fe: 
+1346: 11fe:       BLOCKITM.OK.PATH$    = "ADXLXAAN::C:\BLOCKITM.OK"
+1347: 1213:       BLOCKITM.ERR.PATH$   = "ADXLXAAN::C:\BLOCKITM.ERR"
+1348: 1228:       BLOCKITM.PATH$ = BLOCKITM.ERR.PATH$
+1349: 1241:       BLOCKITM.SESS.NUM% = ERR.SESS.NUM%
+1350: 124f:       BLOCKITM.COMPLETION.MSG$ = "BLOCKITM has failed. Check C:\BLOCKITM.LOG and EVENT LOG"
+1351: 1264: 
+1352: 1264:       BLOCKITM.INPUT.PATH$ = "ADXLXAAN::C:\BLOCKITM.DAT"
+1353: 1279:       BLOCKITM.LOG.PATH$   = "ADXLXAAN::C:\BLOCKITM.LOG"
+1354: 128e:       BLOCKITM.WRN.PATH$   = "ADXLXAAN::C:\BLOCKITM.WRN"                      !DCS
+1355: 12a3:       FAILED.STATUS%       = 0                                                !GAM
+1356: 12b1:       FAILED.ARRAY.MAX%    = 2000                                             !GAM
+1357: 12bf:       FAILED.ARRAY.INDEX%  = 1                                                !GAM
+1358: 12cd:       DIM FAILED.BOOTS.CODES$(FAILED.ARRAY.MAX%)                              !GAM
+1359: 12f8: 
+1360: 12f8:       GOSUB DELETE.COMPLETION.FILES
+1361: 130a:       GOSUB CREATE.COMPLETION.FILE   ! Create .ERR at start
+1362: 131c: 
+1363: 131c:       RUN.DATE$   = FORMAT.DATE$(DATE$)
+1364: 1336:       RUN.TIME$   = FORMAT.TIME$(TIME$)
+1365: 1350: 
+1366: 1350:       IF END # LOG.SESS.NUM% THEN FILE.ERROR
+1367: 1369: 
+1368: 1369:         CREATE POSFILE BLOCKITM.LOG.PATH$ AS LOG.SESS.NUM%    \
+1369: 138a:                BUFFSIZE 32768 LOCKED LOCAL
+1370: 138a: 
+1371: 138a:       LOG.FILE.OPEN$ = "Y"
+1372: 139f: 
+1373: 139f:       IF END # WRN.SESS.NUM% THEN FILE.ERROR                                  !DCS
+1374: 13b8:                                                                               !DCS
+1375: 13b8:         CREATE POSFILE BLOCKITM.WRN.PATH$ AS WRN.SESS.NUM%    \               !DCS
+1376: 13d9:                BUFFSIZE 32768 LOCKED LOCAL                                    !DCS
+1377: 13d9: 
+1378: 13d9:       CALL DO.MESSAGE("BLOCKITM.286 (ver: " + VERSION$ + ")" + " started: " + RUN.DATE$ + " @ " + RUN.TIME$)
+1379: 142e: 
+1380: 142e:       GOSUB OPEN.FILES
+1381: 1440: 
+1382: 1440: RETURN
+1383: 1450: 
+1384: 1450: 
+1385: 1450: !**************************************************************************
+1386: 1450: !***
+1387: 1450: !***    MAIN.PROCESSING
+1388: 1450: !***
+1389: 1450: !**************************************************************************
+1390: 1450: 
+1391: 1450: MAIN.PROCESSING:
+1392: 1460: 
+1393: 1460:     CALL DO.MESSAGE("MAIN PROCESSING")
+1394: 148e: 
+1395: 148e:     IF END #INPUT.SESS.NUM% THEN FILE.ERROR
+1396: 14a7: 
+1397: 14a7:     INPUT.REC.NO% = 1
+1398: 14bc: 
+1399: 14bc:     RC% = READ.INPUT
+1400: 14d4: 
+1401: 14d4:     WHILE RC% <> 1
+1402: 14df: 
+1403: 14df:         SKIP.PAST.ITEM.DUE.TO.ERROR$ = "N"  ! Reset flag                     !BCS
+1404: 14f4: 
+1405: 14f4:         GOSUB GET.NO.OF.BARCODES                                             !BCS
+1406: 1506: 
+1407: 1506:         IF SKIP.PAST.ITEM.DUE.TO.ERROR$ = "N" THEN BEGIN                     !BCS
+1408: 1521:             GOSUB TRAWL.THROUGH.ALL.ASSOCIATED.BARCODES.ON.IEF               !BCS
+1409: 1536:         ENDIF ELSE BEGIN                                                     !BCS!ECS
+1410: 153e:             CALL DO.MESSAGE("Scanning through IRF")                              !ECS
+1411: 156c:             IRF.BOOTS.CODE$ = PACK$(MID$(UNPACK$(IDF.BOOTS.CODE$),2, 6))         !ECS
+1412: 15a8: 
+1413: 15a8:             RC% = PROCESS.KEYED.FILE(IRF.FILE.NAME$, \                           !ECS
+1414: 15da:                                      IRF.REPORT.NUM%,\                           !ECS
+1415: 15da:                                      "N")  ! READONLY = N                        !ECS
+1416: 15da: 
+1417: 15da:             IF RC% <> 0 THEN BEGIN                                               !ECS
+1418: 15f5:                 CALL DO.MESSAGE("PSBF30 ERROR - continuing")                     !ECS
+1419: 1623:                 GOSUB PSBF30.ERROR         ! Log Non-zero return code from ext func   !ECS
+1420: 1635:             ENDIF                                                                !ECS
+1421: 163d:         ENDIF                                                                !ECS
+1422: 1645: 
+1423: 1645:         INPUT.REC.NO% = INPUT.REC.NO% + 1    ! Next input record
+1424: 165e: 
+1425: 165e:         RC% = READ.INPUT
+1426: 1676: 
+1427: 1676:     WEND
+1428: 1694: 
+1429: 1694: RETURN
+1430: 16a4: 
+1431: 16a4: 
+1432: 16a4: !**************************************************************************
+1433: 16a4: !***                                                                  !BCS
+1434: 16a4: !***    GET.NO.OF.BARCODES
+1435: 16a4: !***
+1436: 16a4: !**************************************************************************
+1437: 16a4: 
+1438: 16a4: GET.NO.OF.BARCODES:
+1439: 16b4: 
+1440: 16b4:     EXPCTD.NO.CODES% = 0
+1441: 16c2:     IDF.BOOTS.CODE$ = PACK$("0" + INPUT.BOOTS.CODE$)
+1442: 16ee:     RC% = READ.IDF
+1443: 1707: 
+1444: 1707:     IF RC% = 0 THEN BEGIN ! Item read successfully from IDF file
+1445: 1725:         EXPCTD.NO.CODES% = VAL(UNPACK$(IDF.NO.OF.BAR.CODES$))
+1446: 174a:         CALL DO.MESSAGE(STR$(INPUT.REC.NO%) + ":" + INPUT.BOOTS.CODE$ + \
+1447: 17b1:                         " " + "Read IDF OK. No. of Barcodes: " + STR$(EXPCTD.NO.CODES%))
+1448: 17b1:     ENDIF ELSE BEGIN
+1449: 17b9:         MSG$ = STR$(INPUT.REC.NO%) + ":" + INPUT.BOOTS.CODE$ + " IDF read FAILED"     !DCS
+1450: 17f5:         CALL DO.MESSAGE(MSG$)                                                         !DCS
+1451: 1808:         PRINT # WRN.SESS.NUM%; MSG$                                                   !DCS
+1452: 1828:         ! Carry on processing but set error override flag so that error is captured
+1453: 1828:         ! Nb. BLOCKITM.ERR file only produced for catastrophic failures
+1454: 1828:         ERROR.OVERRIDE.FLAG$ = "Y"
+1455: 183d:         SKIP.PAST.ITEM.DUE.TO.ERROR$ = "Y"
+1456: 1852:         FAILED.STATUS% = FAILED.STATUS% + 1                             !GAM
+1457: 185e:         FAILED.BOOTS.CODES$(FAILED.STATUS%) = INPUT.BOOTS.CODE$         !GAM
+1458: 1884:         FAILED.ARRAY.INDEX% = FAILED.ARRAY.INDEX% + 1                   !GAM
+1459: 1890:     ENDIF
+1460: 1898: 
+1461: 1898: RETURN
+1462: 18a8: 
+1463: 18a8: 
+1464: 18a8: !**************************************************************************
+1465: 18a8: !***                                                                  !BCS
+1466: 18a8: !***    TRAWL.THROUGH.ALL.ASSOCIATED.BARCODES.ON.IEF
+1467: 18a8: !***
+1468: 18a8: !**************************************************************************
+1469: 18a8: 
+1470: 18a8: TRAWL.THROUGH.ALL.ASSOCIATED.BARCODES.ON.IEF:
+1471: 18b8: 
+1472: 18b8:    IF IDF.FIRST.BAR.CODE$ = NULL.BAR.CODE$ THEN BEGIN
+1473: 18dd:         MSG$ = STR$(INPUT.REC.NO%) + ":" + INPUT.BOOTS.CODE$ + " ERROR - NULL 1st Barcode on IDF"     !DCS
+1474: 1919:         CALL DO.MESSAGE(MSG$)                                                                         !DCS
+1475: 192c:         PRINT # WRN.SESS.NUM%; MSG$                                                                   !DCS
+1476: 194c:            ! Carry on processing but set error override flag so that error is captured
+1477: 194c:            ! ie. BLOCKITM.ERR file is produced
+1478: 194c:            ERROR.OVERRIDE.FLAG$ = "Y"
+1479: 1961:            SKIP.PAST.ITEM.DUE.TO.ERROR$ = "Y"
+1480: 1976:            GENUINE.ERROR.FLAG$  = "Y"                                                                 !DCS
+1481: 198b:        RETURN
+1482: 199b:    ENDIF
+1483: 19a3: 
+1484: 19a3:    UPD.BAR.CODE$ = PACK$("0000000000") + IDF.FIRST.BAR.CODE$ ! Convert 6-bytes packed to 11-bytes packed
+1485: 19d6: 
+1486: 19d6:                                                                                 !CCS
+1487: 19d6:    IF EXPCTD.NO.CODES% = 1 THEN BEGIN                                           !CCS
+1488: 19e5:             !------------------------                                           !CCS
+1489: 19e5:             ! Update 1st Barcode ONLY                                           !CCS
+1490: 19e5:             !-----------------------                                            !CCS
+1491: 19e5: 
+1492: 19e5: 
+1493: 19e5:             CALL READ.AND.UPDATE.IRF                                            !CCS !ECS
+1494: 19f1:    ENDIF                                                                        !CCS
+1495: 19f9: 
+1496: 19f9: 
+1497: 19f9:    IF EXPCTD.NO.CODES% > 1 THEN BEGIN
+1498: 1a0b: 
+1499: 1a0b:        IF IDF.SECOND.BAR.CODE$ = NULL.BAR.CODE$ THEN BEGIN
+1500: 1a30:            MSG$ = STR$(INPUT.REC.NO%) + ":" + INPUT.BOOTS.CODE$ + " ERROR - NULL 2nd Barcode on IDF"     !DCS
+1501: 1a6c:            CALL DO.MESSAGE(MSG$)                                                                         !DCS
+1502: 1a7f:            PRINT # WRN.SESS.NUM%; MSG$                                                                   !DCS
+1503: 1a9f:            ! Carry on processing but set error override flag so that error is captured
+1504: 1a9f:            ! ie. BLOCKITM.ERR file is produced
+1505: 1a9f:            ERROR.OVERRIDE.FLAG$ = "Y"
+1506: 1ab4:            SKIP.PAST.ITEM.DUE.TO.ERROR$ = "Y"
+1507: 1ac9:            GENUINE.ERROR.FLAG$  = "Y"                                                                 !DCS
+1508: 1ade:            RETURN
+1509: 1af0:        ENDIF ELSE BEGIN
+1510: 1af8:             !-------------------
+1511: 1af8:             ! Update 1st Barcode
+1512: 1af8:             !-------------------
+1513: 1af8:             CALL READ.AND.UPDATE.IRF                                            !ECS
+1514: 1b04:             !-------------------
+1515: 1b04:             ! Update 2nd Barcode
+1516: 1b04:             !-------------------
+1517: 1b04:             UPD.BAR.CODE$ = PACK$("0000000000") + IDF.SECOND.BAR.CODE$ ! Convert 6-bytes packed to 11-bytes packed
+1518: 1b37: 
+1519: 1b37:             CALL READ.AND.UPDATE.IRF                                            !ECS
+1520: 1b43:        ENDIF
+1521: 1b4b: 
+1522: 1b4b: 
+1523: 1b4b:        IF EXPCTD.NO.CODES% > 2 THEN BEGIN
+1524: 1b5d:              !-------------------------------------
+1525: 1b5d:              ! Update all other associated Barcodes
+1526: 1b5d:              !-------------------------------------
+1527: 1b5d:              RC% = READ.NEXT.IEF (IDF.SECOND.BAR.CODE$,   \
+1528: 1b90:                                   EXPCTD.NO.CODES%,       \
+1529: 1b90:                                   INPUT.BOOTS.CODE$)
+1530: 1b90:              IF RC% = 1 THEN BEGIN
+1531: 1bae:                  MSG$ = STR$(INPUT.REC.NO%) + ":" + INPUT.BOOTS.CODE$ + " ERROR - reading 3rd Barcode on IDF"  !DCS
+1532: 1bea:                  CALL DO.MESSAGE(MSG$)                                                                         !DCS
+1533: 1bfd:                  PRINT # WRN.SESS.NUM%; MSG$                                                                   !DCS
+1534: 1c1d:                  ! Carry on processing but set error override flag so that error is captured
+1535: 1c1d:                  ! ie. BLOCKITM.ERR file is produced
+1536: 1c1d:                  ERROR.OVERRIDE.FLAG$ = "Y"
+1537: 1c32:                  SKIP.PAST.ITEM.DUE.TO.ERROR$ = "Y"
+1538: 1c47:                  RETURN
+1539: 1c57: 
+1540: 1c57:              ENDIF
+1541: 1c5f: 
+1542: 1c5f:              F11.CURRENT.COUNT% = 1
+1543: 1c70:              INDEX% = 3
+1544: 1c7e: 
+1545: 1c7e:              WHILE VAL(UNPACK$(F11.NEXT.BAR.CODE$)) <> 0
+1546: 1c89: 
+1547: 1c89:                  !--------------------------
+1548: 1c89:                  ! Update associated Barcode
+1549: 1c89:                  !--------------------------
+1550: 1c89:                  UPD.BAR.CODE$ = PACK$("0000000000") + F11.NEXT.BAR.CODE$ ! Convert 6-bytes packed to 11-bytes packed
+1551: 1cbc:                  CALL READ.AND.UPDATE.IRF                                            !ECS
+1552: 1cc8: 
+1553: 1cc8: 
+1554: 1cc8:                  CURRENT.IEF.BAR.CODE$ = F11.NEXT.BAR.CODE$
+1555: 1ce4: 
+1556: 1ce4:                  RC% = READ.NEXT.IEF (CURRENT.IEF.BAR.CODE$,  \
+1557: 1d14:                                      EXPCTD.NO.CODES%,    \
+1558: 1d14:                                      INPUT.BOOTS.CODE$)
+1559: 1d14:                  IF RC% = 1 THEN BEGIN
+1560: 1d32:                      MSG$ = STR$(INPUT.REC.NO%) + ":" + UNPACK$(F11.NEXT.BAR.CODE$) + " ERROR - Associated Barcode " + STR$(INDEX%) + " on IDF"  !DCS
+1561: 1d9b:                      CALL DO.MESSAGE(MSG$)                                                                                                       !DCS
+1562: 1dae:                      PRINT # WRN.SESS.NUM%; MSG$                                                                                                 !DCS
+1563: 1dce:                      ! Carry on processing but set error override flag so that error is captured
+1564: 1dce:                      ! ie. BLOCKITM.ERR file is produced
+1565: 1dce:                      ERROR.OVERRIDE.FLAG$ = "Y"
+1566: 1de3:                      SKIP.PAST.ITEM.DUE.TO.ERROR$ = "Y"
+1567: 1df8:                      GENUINE.ERROR.FLAG$  = "Y"                                                                                                  !DCS
+1568: 1e0d:                      RETURN
+1569: 1e1d:                  ENDIF
+1570: 1e25: 
+1571: 1e25:                  INDEX% = INDEX% + 1
+1572: 1e31:              WEND
+1573: 1e7c:        ENDIF
+1574: 1e84:    ENDIF
+1575: 1e8c: 
+1576: 1e8c: RETURN
+1577: 1e9c: 
+1578: 1e9c: 
+1579: 1e9c: 
+1580: 1e9c: !**************************************************************************
+1581: 1e9c: !***
+1582: 1e9c: !***    TERMINATION
+1583: 1e9c: !***
+1584: 1e9c: !**************************************************************************
+1585: 1e9c: 
+1586: 1e9c: TERMINATION:
+1587: 1eac: 
+1588: 1eac:     CALL DO.MESSAGE("Termination")
+1589: 1eda: 
+1590: 1eda:     GOSUB RENAME.COMPLETION.FILE
+1591: 1eec: 
+1592: 1eec:     RUN.DATE$   = FORMAT.DATE$(DATE$)
+1593: 1f06:     RUN.TIME$   = FORMAT.TIME$(TIME$)
+1594: 1f20: 
+1595: 1f20:     CALL DO.MESSAGE("BLOCKITM ended: " + RUN.DATE$ + " @ " + RUN.TIME$)
+1596: 1f65: 
+1597: 1f65:     IF FAILED.STATUS% = 0 THEN BEGIN                                    !GAM
+1598: 1f74:     CALL DO.MESSAGE("Completed Successfully")                           
+1599: 1fa2:     ENDIF                                                               !GAM
+1600: 1faa: 
+1601: 1faa: 
+1602: 1faa:     IF FAILED.STATUS% > 0 THEN BEGIN                                    !GAM
+1603: 1fbc:         CALL DO.MESSAGE( STR$(FAILED.STATUS%) +" Items have either " +  \GAM
+1604: 2007:                + "IDF or IRF read issues please check the status")      !GAM
+1605: 2007:         FAILED.ARRAY.INDEX% = 1                                         !GAM
+1606: 2015:         FOR FAILED.ARRAY.INDEX% = 1 TO FAILED.STATUS%                   !GAM
+1607: 2025: 
+1608: 2025:             CALL DO.MESSAGE(LEFT$(FAILED.BOOTS.CODES$                   \GAM
+1609: 206e:                                             (FAILED.ARRAY.INDEX%),7))   !GAM
+1610: 206e:         NEXT FAILED.ARRAY.INDEX%                                        !GAM
+1611: 2086:     ENDIF                                                               !GAM
+1612: 208e: 
+1613: 208e: 
+1614: 208e:     GOSUB CLOSE.FILES
+1615: 20a0: 
+1616: 20a0: 
+1617: 20a0: 
+1618: 20a0: 
+1619: 20a0: RETURN
+1620: 20b0: 
+1621: 20b0: 
+1622: 20b0: !**************************************************************************
+1623: 20b0: !***
+1624: 20b0: !***    ALLOCATE.SESSION.NUMBERS
+1625: 20b0: !***
+1626: 20b0: !**************************************************************************
+1627: 20b0: 
+1628: 20b0: ALLOCATE.SESSION.NUMBERS:
+1629: 20c0: 
+1630: 20c0:       CALL DO.MESSAGE("Allocate Session Numbers")
+1631: 20ee:       SB.ACTION$ = "O"
+1632: 2103: 
+1633: 2103:       SB.INTEGER% = IDF.REPORT.NUM%                                           !BCS
+1634: 2115:       SB.STRING$ = IDF.FILE.NAME$                                             !BCS
+1635: 2131:       GOSUB SB.FILE.UTILS                                                     !BCS
+1636: 2143:       IDF.SESS.NUM% = SB.FILE.SESS.NUM%                                       !BCS
+1637: 2155: 
+1638: 2155:       SB.INTEGER% = IEF.REPORT.NUM%                                           !BCS
+1639: 2167:       SB.STRING$ = IEF.FILE.NAME$                                             !BCS
+1640: 2183:       GOSUB SB.FILE.UTILS                                                     !BCS
+1641: 2195:       IEF.SESS.NUM% = SB.FILE.SESS.NUM%                                       !BCS
+1642: 21a7: 
+1643: 21a7:       SB.INTEGER% = IRF.REPORT.NUM%
+1644: 21b9:       SB.STRING$ = IRF.FILE.NAME$
+1645: 21d5:       GOSUB SB.FILE.UTILS
+1646: 21e7:       IRF.SESS.NUM% = SB.FILE.SESS.NUM%
+1647: 21f9: 
+1648: 21f9: 
+1649: 21f9:       WRN.REPORT.NUM% = 995                                                   !DCS
+1650: 2207:       SB.INTEGER% = WRN.REPORT.NUM%                                           !DCS
+1651: 2215:       SB.STRING$  = BLOCKITM.WRN.PATH$                                        !DCS
+1652: 222e:       GOSUB SB.FILE.UTILS                                                     !DCS
+1653: 2240:       WRN.SESS.NUM% = SB.FILE.SESS.NUM%                                       !DCS
+1654: 224e: 
+1655: 224e:       INPUT.REPORT.NUM% = 996
+1656: 225c:       SB.INTEGER% = INPUT.REPORT.NUM%
+1657: 226a:       SB.STRING$  = BLOCKITM.INPUT.PATH$
+1658: 2283:       GOSUB SB.FILE.UTILS
+1659: 2295:       INPUT.SESS.NUM% = SB.FILE.SESS.NUM%
+1660: 22a3: 
+1661: 22a3:       OK.SESS.NUM% = SB.FILE.SESS.NUM%
+1662: 22b1:       OK.REPORT.NUM% = 997
+1663: 22bf:       SB.INTEGER% = OK.REPORT.NUM%
+1664: 22cd:       SB.STRING$  = BLOCKITM.OK.PATH$
+1665: 22e6:       GOSUB SB.FILE.UTILS
+1666: 22f8:       OK.SESS.NUM% = SB.FILE.SESS.NUM%
+1667: 2306: 
+1668: 2306:       ERR.REPORT.NUM% = 998
+1669: 2314:       SB.INTEGER% = ERR.REPORT.NUM%
+1670: 2322:       SB.STRING$  = BLOCKITM.ERR.PATH$
+1671: 233b:       GOSUB SB.FILE.UTILS
+1672: 234d:       ERR.SESS.NUM% = SB.FILE.SESS.NUM%
+1673: 235b: 
+1674: 235b:       LOG.REPORT.NUM% = 999
+1675: 2369:       SB.INTEGER% = LOG.REPORT.NUM%
+1676: 2377:       SB.STRING$  = BLOCKITM.LOG.PATH$
+1677: 2390:       GOSUB SB.FILE.UTILS
+1678: 23a2:       LOG.SESS.NUM% = SB.FILE.SESS.NUM%
+1679: 23b0: 
+1680: 23b0: RETURN
+1681: 23c0: 
+1682: 23c0: 
+1683: 23c0: \*******************************************************************************
+1684: 23c0: \***
+1685: 23c0: \***    DELETE.COMPLETION.FILES:
+1686: 23c0: \***
+1687: 23c0: \***    Deletes BLOCKITM.OK  if it exists.
+1688: 23c0: \***    Deletes BLOCKITM.ERR if it exists.
+1689: 23c0: \***    Deletes BLOCKITM.LOG if it exists.
+1690: 23c0: \***
+1691: 23c0: \***............................................................................
+1692: 23c0: 
+1693: 23c0: 
+1694: 23c0: DELETE.COMPLETION.FILES:
+1695: 23d0: 
+1696: 23d0:     IF END # OK.SESS.NUM% THEN BLOCKITM.OK.DELETED
+1697: 23e9:     OPEN BLOCKITM.OK.PATH$ DIRECT RECL 40 AS OK.SESS.NUM%
+1698: 240a:     DELETE OK.SESS.NUM%
+1699: 241b: 
+1700: 241b:   BLOCKITM.OK.DELETED:
+1701: 242b: 
+1702: 242b:     IF END # ERR.SESS.NUM% THEN BLOCKITM.ERR.DELETED
+1703: 2444:     OPEN BLOCKITM.ERR.PATH$ DIRECT RECL 40 AS ERR.SESS.NUM%
+1704: 2465:     DELETE ERR.SESS.NUM%
+1705: 2476: 
+1706: 2476:   BLOCKITM.ERR.DELETED:
+1707: 2486: 
+1708: 2486:     IF END # LOG.SESS.NUM% THEN BLOCKITM.LOG.DELETED
+1709: 249f:     OPEN BLOCKITM.LOG.PATH$ DIRECT RECL 40 AS LOG.SESS.NUM%
+1710: 24c0:     DELETE LOG.SESS.NUM%
+1711: 24d1: 
+1712: 24d1:   BLOCKITM.LOG.DELETED:
+1713: 24e1: 
+1714: 24e1:     IF END # WRN.SESS.NUM% THEN BLOCKITM.WRN.DELETED                           !DCS
+1715: 24fa:     OPEN BLOCKITM.WRN.PATH$ DIRECT RECL 40 AS WRN.SESS.NUM%                    !DCS
+1716: 251b:     DELETE WRN.SESS.NUM%                                                       !DCS
+1717: 252c:                                                                                !DCS
+1718: 252c:   BLOCKITM.WRN.DELETED:                                                        !DCS
+1719: 253c: 
+1720: 253c: RETURN
+1721: 254c: 
+1722: 254c: 
+1723: 254c: \*****************************************************************************
+1724: 254c: \*** CREATE.COMPLETION.FILE
+1725: 254c: \*** Creates BLOCKITM.ERR completion file.
+1726: 254c: \***............................................................................
+1727: 254c: 
+1728: 254c: CREATE.COMPLETION.FILE:
+1729: 255c: 
+1730: 255c:    CURRENT.REPORT.NUM% = 999
+1731: 256a: 
+1732: 256a:    IF END # BLOCKITM.SESS.NUM% THEN FILE.ERROR
+1733: 2583: 
+1734: 2583:    CREATE POSFILE BLOCKITM.PATH$ DIRECT 1 RECL 60 \
+1735: 25a9:           AS BLOCKITM.SESS.NUM% LOCAL
+1736: 25a9: 
+1737: 25a9: RETURN
+1738: 25b9: 
+1739: 25b9: 
+1740: 25b9: \*****************************************************************************
+1741: 25b9: \*** RENAME.COMPLETION.FILE
+1742: 25b9: \*** Writes a message to completion file and renames the completion file from
+1743: 25b9: \*** .ERR to .OK
+1744: 25b9: \***............................................................................
+1745: 25b9: 
+1746: 25b9: RENAME.COMPLETION.FILE:
+1747: 25c9: 
+1748: 25c9:     ! When set to "Y", the override flag indicates that some of the updates
+1749: 25c9:     ! to the IRF were NOT successful for some reason or other and needs
+1750: 25c9:     ! investigating further.
+1751: 25c9:     IF ERROR.OVERRIDE.FLAG$ = "N" THEN BEGIN
+1752: 25e4:         BLOCKITM.COMPLETION.MSG$ = "BLOCKITM completed successfully!"
+1753: 25fb:     ENDIF ELSE BEGIN                                                                          !DCS
+1754: 2603:         BLOCKITM.COMPLETION.MSG$ = "BLOCKITM completed with WARNINGS - check C:\BLOCKITM.WRN" !DCS
+1755: 2618:     ENDIF                                                                                     !DCS
+1756: 2620: 
+1757: 2620:    CURRENT.REPORT.NUM% = 999
+1758: 262e: 
+1759: 262e:    IF END # BLOCKITM.SESS.NUM% THEN FILE.ERROR
+1760: 2647: 
+1761: 2647:    WRITE FORM "C60"; \
+1762: 2678:          # BLOCKITM.SESS.NUM%, 1;  \
+1763: 2678:            BLOCKITM.COMPLETION.MSG$
+1764: 2678: 
+1765: 2678:     !IF ERROR.OVERRIDE.FLAG$ = "N" THEN BEGIN  ! Only rename to .OK if no errors
+1766: 2678:     IF GENUINE.ERROR.FLAG$ = "N" THEN BEGIN  ! Only rename to .OK if no genuine errors     !DCS
+1767: 2696:         RC% = RENAME(BLOCKITM.OK.PATH$, BLOCKITM.PATH$)
+1768: 26bf: 
+1769: 26bf: 
+1770: 26bf:         IF RC% THEN BEGIN
+1771: 26d2:             CALL DO.MESSAGE("Renaming of BLOCKITM.ERR to BLOCKITM.OK ** SUCCESSFUL **")
+1772: 2702:         ENDIF ELSE BEGIN
+1773: 270a:             CALL DO.MESSAGE("Renaming of BLOCKITM.ERR to BLOCKITM.OK ** FAILED **")
+1774: 2738:         ENDIF
+1775: 2740:     ENDIF
+1776: 2748: 
+1777: 2748:    CLOSE BLOCKITM.SESS.NUM%
+1778: 2759: 
+1779: 2759: 
+1780: 2759: RETURN
+1781: 2769: 
+1782: 2769: 
+1783: 2769: \******************************************************************************
+1784: 2769: \***
+1785: 2769: \***   SB.FILE.UTILS:
+1786: 2769: \***
+1787: 2769: \***   Allocate/report/de-allocate a file session number
+1788: 2769: \***
+1789: 2769: \******************************************************************************
+1790: 2769: 
+1791: 2769: SB.FILE.UTILS:
+1792: 2779: 
+1793: 2779:        RC% = SESS.NUM.UTILITY(SB.ACTION$,                              \
+1794: 27a9:                               SB.INTEGER%,                             \
+1795: 27a9:                               SB.STRING$)
+1796: 27a9: 
+1797: 27a9:        IF SB.ACTION$ = "O" THEN BEGIN
+1798: 27c4:           SB.FILE.SESS.NUM% = F20.INTEGER.FILE.NO%
+1799: 27d8:        ENDIF ELSE BEGIN
+1800: 27e0:           IF SB.ACTION$ = "R" THEN BEGIN
+1801: 27fb:              SB.FILE.REP.NUM% = F20.INTEGER.FILE.NO%
+1802: 280d:              SB.FILE.NAME$ = F20.FILE.NAME$
+1803: 2829:           ENDIF
+1804: 2831:        ENDIF
+1805: 2839: 
+1806: 2839: RETURN
+1807: 2849: 
+1808: 2849: \******************************************************************************
+1809: 2849: \***
+1810: 2849: \***   OPEN.FILES:
+1811: 2849: \***
+1812: 2849: \******************************************************************************
+1813: 2849: OPEN.FILES:
+1814: 2859: 
+1815: 2859:     CALL DO.MESSAGE("Open Files")
+1816: 2887: 
+1817: 2887: !RESUME.PROCESSING:
+1818: 2887: 
+1819: 2887:     CURRENT.CODE$ = " "
+1820: 289e:     FILE.OPERATION$ = "O"
+1821: 28b5:                                               !--------!
+1822: 28b5:     CURRENT.REPORT.NUM% = INPUT.REPORT.NUM%   ! INPUT  !
+1823: 28c3:     IF END #INPUT.SESS.NUM% THEN FILE.ERROR   !--------!
+1824: 28dc:     OPEN BLOCKITM.INPUT.PATH$ DIRECT RECL INPUT.RECL% AS INPUT.SESS.NUM% BUFFSIZE 32767
+1825: 2900: 
+1826: 2900:                                               !--------!                     !BCS
+1827: 2900:     CURRENT.REPORT.NUM% = IDF.REPORT.NUM%     ! IDF    !                     !BCS
+1828: 2912:     IF END #IDF.SESS.NUM% THEN FILE.ERROR     !--------!                     !BCS
+1829: 292e:     OPEN IDF.FILE.NAME$ KEYED RECL IDF.RECL% AS IDF.SESS.NUM%  NOWRITE NODEL !BCS
+1830: 295b: 
+1831: 295b:                                               !--------!                     !BCS
+1832: 295b:     CURRENT.REPORT.NUM% = IEF.REPORT.NUM%     ! IEF    !                     !BCS
+1833: 296d:     IF END #IEF.SESS.NUM% THEN FILE.ERROR     !--------!                     !BCS
+1834: 2989:     OPEN IEF.FILE.NAME$ KEYED RECL IEF.RECL% AS IEF.SESS.NUM%  NOWRITE NODEL !BCS
+1835: 29b6: 
+1836: 29b6:                                               !--------!
+1837: 29b6:     CURRENT.REPORT.NUM% = IRF.REPORT.NUM%     ! IRF    !
+1838: 29c8:     IF END #IRF.SESS.NUM% THEN FILE.ERROR     !--------!
+1839: 29e4:     OPEN IRF.FILE.NAME$ KEYED RECL IRF.RECL% AS IRF.SESS.NUM% NODEL
+1840: 2a11: 
+1841: 2a11: 
+1842: 2a11: RETURN
+1843: 2a21: 
+1844: 2a21: \******************************************************************************
+1845: 2a21: \***
+1846: 2a21: \***   CLOSE.FILES:
+1847: 2a21: \***
+1848: 2a21: \******************************************************************************
+1849: 2a21: CLOSE.FILES:
+1850: 2a31: 
+1851: 2a31:     CALL DO.MESSAGE("Closing Files")
+1852: 2a5f: 
+1853: 2a5f:     CURRENT.CODE$ = " "
+1854: 2a76:     FILE.OPERATION$ = "C"
+1855: 2a8d: 
+1856: 2a8d:     CURRENT.REPORT.NUM% = INPUT.REPORT.NUM%
+1857: 2a9b:     CLOSE INPUT.SESS.NUM%
+1858: 2aac: 
+1859: 2aac:     CURRENT.REPORT.NUM% = IDF.REPORT.NUM%                                    !BCS
+1860: 2abe:     CLOSE IDF.SESS.NUM%                                                      !BCS
+1861: 2ad2: 
+1862: 2ad2:     CURRENT.REPORT.NUM% = IEF.REPORT.NUM%                                    !BCS
+1863: 2ae4:     CLOSE IEF.SESS.NUM%                                                      !BCS
+1864: 2af8: 
+1865: 2af8:     CURRENT.REPORT.NUM% = IRF.REPORT.NUM%
+1866: 2b0a:     CLOSE IRF.SESS.NUM%
+1867: 2b1e: 
+1868: 2b1e:     CURRENT.REPORT.NUM% = LOG.REPORT.NUM%
+1869: 2b2c:     CLOSE LOG.SESS.NUM%
+1870: 2b3d: 
+1871: 2b3d:     CURRENT.REPORT.NUM% = WRN.REPORT.NUM%                                    !DCS
+1872: 2b4b:     CLOSE WRN.SESS.NUM%                                                      !DCS
+1873: 2b5c: 
+1874: 2b5c: RETURN
+1875: 2b6c: 
+1876: 2b6c: \*******************************************************************************
+1877: 2b6c: \***
+1878: 2b6c: \***   FILE.ERROR:
+1879: 2b6c: \***
+1880: 2b6c: \***   Open Read or Write File error
+1881: 2b6c: \***
+1882: 2b6c: \-------------------------------------------------------------------------------
+1883: 2b6c: 
+1884: 2b6c: FILE.ERROR:
+1885: 2b7c: 
+1886: 2b7c:     CALL DO.MESSAGE("File Error")
+1887: 2baa: 
+1888: 2baa:     GOSUB LOG.EVENT.106
+1889: 2bbc: 
+1890: 2bbc: GOTO PROGRAM.ABEND
+1891: 2bc7: 
+1892: 2bc7: 
+1893: 2bc7: !!!*************************************************************************
+1894: 2bc7: !!!*************************************************************************
+1895: 2bc7: !!!
+1896: 2bc7: !!!   PSBF30.ERROR
+1897: 2bc7: !!!
+1898: 2bc7: !!!   Process keyed file error
+1899: 2bc7: !!!
+1900: 2bc7: !!!*************************************************************************
+1901: 2bc7: !!!*************************************************************************
+1902: 2bc7: 
+1903: 2bc7: PSBF30.ERROR:
+1904: 2bd7: 
+1905: 2bd7:     CALL DO.MESSAGE("Processed Keyed File Error")
+1906: 2c05:     EVENT.NUM% = 89
+1907: 2c12:     VAR.STRING.1$ = "PSBF30: " + STR$(RC%)
+1908: 2c37:     VAR.STRING.2$ = " "
+1909: 2c4c:     RC% = APPLICATION.LOG (MESSAGE.NUMBER%,  \
+1910: 2c81:                            VAR.STRING.1$,    \
+1911: 2c81:                            VAR.STRING.2$,    \
+1912: 2c81:                            EVENT.NUM%)
+1913: 2c81:     CALL DO.MESSAGE("Update Failed - " + VAR.STRING.1$)
+1914: 2cba: 
+1915: 2cba: RETURN
+1916: 2cca: 
+1917: 2cca: 
+1918: 2cca: 
+1919: 2cca: \*******************************************************************************
+1920: 2cca: \***
+1921: 2cca: \***   LOG.EVENT.106 open,read,write error
+1922: 2cca: \***
+1923: 2cca: \-------------------------------------------------------------------------------
+1924: 2cca: 
+1925: 2cca: LOG.EVENT.106:
+1926: 2cda: 
+1927: 2cda:     EVENT.NUM% = 106
+1928: 2ce7: 
+1929: 2ce7:     VAR.STRING.1$ = FILE.OPERATION$                    +  \
+1930: 2d51:                     CHR$(SHIFT(CURRENT.REPORT.NUM%,8)) +  \
+1931: 2d51:                     CHR$(SHIFT(CURRENT.REPORT.NUM%,0)) +  \
+1932: 2d51:                     CURRENT.CODE$
+1933: 2d51: 
+1934: 2d51:     VAR.STRING.2$ = ""
+1935: 2d66:     GOSUB CALL.APPLICATION.LOG
+1936: 2d78: 
+1937: 2d78: RETURN
+1938: 2d88: 
+1939: 2d88: 
+1940: 2d88: 
+1941: 2d88: \******************************************************************************
+1942: 2d88: \***
+1943: 2d88: \***   CALL.APPLICATION.LOG:
+1944: 2d88: \***
+1945: 2d88: \***
+1946: 2d88: \------------------------------------------------------------------------------
+1947: 2d88: 
+1948: 2d88: CALL.APPLICATION.LOG:
+1949: 2d98: 
+1950: 2d98:           RC% = APPLICATION.LOG (MESSAGE.NUMBER%,  \
+1951: 2dcd:                                  VAR.STRING.1$,    \
+1952: 2dcd:                                  VAR.STRING.2$,    \
+1953: 2dcd:                                  EVENT.NUM%)
+1954: 2dcd: 
+1955: 2dcd: RETURN
+1956: 2ddd: 
+1957: 2ddd: \*****************************************************************************
+1958: 2ddd: \***                                                                         *
+1959: 2ddd: \***   ERROR ROUTINE  :  ERROR.DETECTED                                      *
+1960: 2ddd: \***                                                                         *
+1961: 2ddd: \***                                                                         *
+1962: 2ddd: \***   IF another error detected then EXIT PROGRAM                           *
+1963: 2ddd: \***                                                                         *
+1964: 2ddd: \***   call STANDARD.ERROR.DETECTED                                          *
+1965: 2ddd: \***   gosub DISPLAY.ERROR.MESSAGE                                           *
+1966: 2ddd: \***                                                                         *
+1967: 2ddd: \*****************************************************************************
+1968: 2ddd: 
+1969: 2ddd: ERROR.DETECTED:
+1970: 2ded: 
+1971: 2ded:     ERROR.COUNT% = ERROR.COUNT% + 1
+1972: 2df9: 
+1973: 2df9:     IF ERROR.COUNT% <= 3 THEN BEGIN
+1974: 2e0b: 
+1975: 2e0b:         IF (ERRN AND 0000FFFFH) = 0000400CH THEN BEGIN \   ! Trap all other file access conflicts
+1976: 2e48: 
+1977: 2e48:             IF CURRENT.REPORT.NUM% = IDF.REPORT.NUM% OR \                            !BCS
+1978: 2e89:                CURRENT.REPORT.NUM% = IEF.REPORT.NUM% OR \                            !BCS
+1979: 2e89:                CURRENT.REPORT.NUM% = IRF.REPORT.NUM% THEN BEGIN                      !BCS
+1980: 2e89:                  CALL DO.MESSAGE("IDF/IEF/IRF File is locked - Retry " + STR$(ERROR.COUNT%) + " of 3") !BCS
+1981: 2ed6:             ENDIF ELSE BEGIN
+1982: 2ede:                  CALL DO.MESSAGE("A File is locked - Retry " + STR$(ERROR.COUNT%) + " of 3")
+1983: 2f29:             ENDIF
+1984: 2f31: 
+1985: 2f31:             WAIT ;20000    ! Wait for 20 seconds and then retry
+1986: 2f48: 
+1987: 2f48:         ENDIF
+1988: 2f50: 
+1989: 2f50:         RESUME RETRY
+1990: 2f67: 
+1991: 2f67:     ENDIF
+1992: 2f6f: 
+1993: 2f6f:     IF (ERRN AND 0000FFFFH) = 0000400CH THEN BEGIN \   ! Log Event 106 for file access conflicts
+1994: 2fa9:         GOSUB LOG.EVENT.106
+1995: 2fbb:     ENDIF
+1996: 2fc3: 
+1997: 2fc3:     \*****************************************************************************
+1998: 2fc3:     \***                                                                         *
+1999: 2fc3:     \***   PROGRAM.ABEND                                                         *
+2000: 2fc3:     \***                                                                         *
+2001: 2fc3:     \*****************************************************************************
+2002: 2fc3: 
+2003: 2fc3:     PROGRAM.ABEND:
+2004: 2fd3: 
+2005: 2fd3:     PRINT "ERR:  "; ERR
+2006: 2ff1:     PRINT "ERRN: "; ERRNH
+2007: 300e:     PRINT "ERRF: "; ERRF%
+2008: 302a:     PRINT "ERRL: "; ERRL
+2009: 3046: 
+2010: 3046:     CALL DO.MESSAGE("Program BLOCKITM has abended. Check App. Log")
+2011: 3074: 
+2012: 3074:     ! Catch any uncaught events
+2013: 3074:     RC% = STANDARD.ERROR.DETECTED(ERRN,   \
+2014: 30b2:                                   ERRF%,  \
+2015: 30b2:                                   ERRL,   \
+2016: 30b2:                                   ERR)
+2017: 30b2: 
+2018: 30b2: END
+2019: 30b2: 
+2020: 30b2: End of Compilation

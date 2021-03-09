@@ -1,0 +1,280 @@
+\*******************************************************************************
+\***
+\***       %INCLUDE FOR ITEM RECORD FILE - FIELD DECLARATIONS
+\***                                     - FILE REFERENCE PARAMETERS
+\***
+\***                      FILE TYPE    : Keyed
+\***
+\***                      REFERENCE    : IRFDEC.J86
+\***
+\***     Version A               Andrew Wedgeworth            29th June 1992
+\***
+\***     Version B               Andrew Wedgeworth        14th December 1992
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version C             Steve Windsor          12.02.93
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version D             Steve Windsor          12.05.93
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version E           Steve Perkins       20th September 1993
+\***     Deals project : Handling of Converted/Unconverted records
+\***     ++   Anything with 'Delete' after initials should be   ++
+\***     ++   deleted once the IRF has been converted in all    ++
+\***     ++   stores.                                           ++
+\***
+\***     Version F           Mark Walker            5th January 1994
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version 96A         Mark Walker               22nd May 1995
+\***     Definition for IRF.POINTS% added.
+\***
+\***                     Stuart McConnachie           12th June 1995
+\***     INDICAT3% comments added for discount/loyalty flags.
+\***
+\***     Version for 96C  Andrew Wedgeworth            22nd May 1996
+\***     Removed IRF.FILLER$ field, as this is now redundant.
+\***
+\***     Version G     Stuart William McConnachie      11th February 2000
+\***     Converted IRF.INDICAT2$ to integer flag byte.
+\***
+\***     REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+\***     Major changes for 2002 Deals Rewrite project.
+\***     Incorporated up to date record layout to assist development work
+\***     (placed in the IRFDEC.J86 to make it visible from ...LST files).
+\***     Moved various comments against variables to record layout.
+\***     Relisted variables in alphabetical order.
+\***     Deleted redundant variables associated with the old deals system ...
+\***     DEAL.NUM$, DEAL.SAVING$
+\***     Retained variables that are otherwise redundant (to be set to null X'00'
+\***     within file functions) ...
+\***     INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+\***     Defined variables to hold interpreted deals data for new deals system ...
+\***     DEAL.NUM$(n) and LIST.ID%(n) (where 'n' represents entry 0, 1 and 2).
+\***     These two variables are interpretations of DEAL.DATA% which is defined
+\***     locally within IRFFUN.BAS to keep underlying data invisible to programs.
+\***
+\***     REVISION 1.7                ROBERT COWEY.               5 AUG 2002.
+\***     Further changes for 2002 Deals Rewrite project (PSBF19 related).
+\***     Defined NEW.IRF.DATA$ as a global variable for use with new functions
+\***     CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+\***
+\***     REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+\***     Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+\***     No changes to this file other than description.
+\***     No changes to IRF file functions.
+\***
+\***     REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+\***     Changes to remove limit of 3 deals per item.
+\***     Declaration of new variables for IRF Deal Extension file (IRFDEX).
+\***
+\***     REVISION 2.0.            ALAN CARR                       9 FEB 2006.
+\***     Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+\***
+\***     REVISION 2.1              TITTOO THOMAS                  01 July 2011
+\***     The IRF.UNUSED field is disintegrated to 2 new indicator fields
+\***                      IRF.INDICAT9%   1 INT
+\***                      IRF.INDICAT10%  1 INT
+\***
+\***    Version H.              Mark Walker                 20th Feb 2017
+\***    PRJ1269 UNICA Interact
+\***    - Removed references to redundant ancient IRF fields.
+\***    - Added definitions for new product group and filler fields.
+\***
+\***............................................................................
+
+
+\*******************************************************************************
+\***
+\***    IRF RECORD LAYOUT
+\***
+\***     1 11  UPD  BAR.CODE$   Without check digit - File KEY
+\***    12  1  INT  INDICAT0%
+\***                    X"01" - Contains statins                        ! 2.2 TT
+\***                    X"02" - Item not priced (giveaway)
+\***                    X"04" - Item not returnable
+\***                    X"08" - Item contains alcohol
+\***                    X"10" - Blocked from sale                       ! 2.2 TT
+\***                    X"20" - Enforced price entry
+\***                    X"40" - Enforced quantity entry
+\***                    X"80" - Movement kept
+\***    13  1  INT  INDICAT1%
+\***                    X"01" - Asprin
+\***                    X"02" - Paracetamol
+\***                    X"04" - TPLU inclusion flag
+\***                    X"08" - Giftcard item                           ! 2.2 TT
+\***                    X"10" - Withdrawn Block from sale               ! 2.2 TT
+\***                    X"20" - Non-solid dose painkiller               ! 2.2 TT
+\***                    X"40" - Insurance policy item                   ! 2.2 TT
+\***                    X"80" - Ibuprofen
+\***    14  2  INT  DEAL.DATA%(0)   Interpreted into sub-variables ...
+\***                    X'3F' - into DEAL.NUM$(0) "0000" to "9999" (2 byte UPD)
+\***                    X'C0' - into LIST.ID%(0) X'00' X
+\***                                             X'01' A
+\***                                             X'10' B
+\***                                             X'11' C                ! 1.9 RC
+\***    16  1  INT  INDICAT8%                                           ! 2.0AJC
+\***                    X"01" - Chlamydia NHS test kit                  ! 2.2 TT
+\***                    X"02" - Chlamydia open sell test kit            ! 2.2 TT
+\***                    X"04" - Unrestricted group code                 ! 2.2 TT
+\***                    X"08" - Nightingale Till prompt                 ! 2.2 TT
+\***                    X"10" - Contains Ephedrine                      ! 2.2 TT
+\***                    X"60" -  X'00' - If also Blocked From Sale      ! 2.2 TT
+\***                                        Recall, Emergency           ! 2.2 TT
+\***                             X'00' - If NOT Blocked From Sale       ! 2.2 TT
+\***                                        Recall, No recall           ! 2.2 TT
+\***                             X'20' 100% returns                     ! 2.2 TT
+\***                             X'40' Withdrawn recall                 ! 2.2 TT
+\***                             X'60' Reverse Logistics                ! 2.2 TT
+\***                    X"80" - WEEE item flag                          ! 2.0AJC
+\***    17  1  INT  INDICAT9%
+\***                    X'3F' - Disposal special instruction (0-63)
+\***                    X"40" - Resaleable Indicator
+\***                    X"80" - Boots.com Extended Indicator
+\***    18  1  INT  INDICAT10%
+\***                    X'07' - Age restrictions
+\***                             X'00' - No Age restriction
+\***                             X'01' - Age 12 or over
+\***                             X'02' - Age 15 or over
+\***                             X'03' - Age 16 or over
+\***                             X'04' - Age 18 or over
+\***                             X'05' - Age 21 or over
+\***                             X'06' - Reserved
+\***                             X'07' - Reserved
+\***                    X'38' - Ethical classification
+\***                             X'00' - No ethical classification
+\***                             X'08' - Pharmacy medicine (P)
+\***                             X'10' - General Sale License (GSL)
+\***                             X'18' - Prescription Only Medicine (POM)
+\***                             X'20' - Reserved
+\***                             X'28' - Reserved
+\***                             X'30' - Reserved
+\***                             X'38' - Reserved
+\***                    X'C0' - Returns route
+\***                             X'00' - Not Returnable (Destroy)
+\***                             X'40' - Returns & Recovery
+\***                             X'80' - Direct
+\***                             X'C0' - Semi-centralised
+\***    19  5  UPD  SALEPRIC$   Current price in pence
+\***    24  1  INT  INDICAT5%   Guarantee duration
+\***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+\***                    X'40' - Contains Pseudoephedrine                ! 2.2 TT
+\***                    X'80' - Guarantee Duration Type                 ! 2.2 TT
+\***                              (1 = Months, 0 = Years)               ! 2.2 TT
+\***    25 18  ASC  ITEMNAME$   Description used by till
+\***    43  3  UPD  BOOTS.CODE$ Without check digit
+\***    46  2  INT  DEAL.DATA%(1)   Similar structure to DEAL.DATA%(0)
+\***    48  2  INT  DEAL.DATA%(2)   Similar structure to DEAL.DATA%(0)
+\***    50  1  INT  INDICAT3%
+\***                    X"01" - Discount exempt (item exempt from discount)
+\***                    X"02" - Boots brand item
+\***                    X"04" - Item redeemable for loyalty
+\***                    X"08" - Loyalty exempt (item exempt from loyalty)
+\***                    X"10" - **Redundant                             ! 2.2 TT
+\***                    X"20" - Local Price active
+\***                    X"40" - Stock system item
+\***                    X"80" - **Redundant                             ! 2.2 TT
+\***    51  3 UPD   PRODUCT.GRP$ Product Group                          !HMW
+\***    54 19 UPD   FILLER$      Filler                                 !HMW
+\***
+\***    Record Length 72                                                !HMW
+\***
+\***
+\***    IRF DEAL EXTENSION RECORD LAYOUT
+\***
+\***     1  3  UPD  BOOTS.CODE$
+\***     4  2  INT  IRF.DEAL.DATA%(3)   Similar structure to DEAL.DATA%(0)
+\***     6  2  INT  IRF.DEAL.DATA%(4)   Similar structure to DEAL.DATA%(0)
+\***     8  2  INT  IRF.DEAL.DATA%(5)   Similar structure to DEAL.DATA%(0)
+\***    10  2  INT  IRF.DEAL.DATA%(6)   Similar structure to DEAL.DATA%(0)
+\***    12  2  INT  IRF.DEAL.DATA%(7)   Similar structure to DEAL.DATA%(0)
+\***    14  2  INT  IRF.DEAL.DATA%(8)   Similar structure to DEAL.DATA%(0)
+\***    16  2  INT  IRF.DEAL.DATA%(9)   Similar structure to DEAL.DATA%(0)
+\***    18  2  INT  IRF.DEAL.DATA%(10)  Similar structure to DEAL.DATA%(0)
+\***    20  2  INT  IRF.DEAL.DATA%(11)  Similar structure to DEAL.DATA%(0)
+\***    22  2  INT  IRF.DEAL.DATA%(12)  Similar structure to DEAL.DATA%(0)
+\***    24  2  INT  IRF.DEAL.DATA%(13)  Similar structure to DEAL.DATA%(0)
+\***    26  2  INT  IRF.DEAL.DATA%(14)  Similar structure to DEAL.DATA%(0)
+\***    28  2  INT  IRF.DEAL.DATA%(15)  Similar structure to DEAL.DATA%(0)
+\***    30  2  INT  IRF.DEAL.DATA%(16)  Similar structure to DEAL.DATA%(0)
+\***    32  2  INT  IRF.DEAL.DATA%(17)  Similar structure to DEAL.DATA%(0)
+\***    34  2  INT  IRF.DEAL.DATA%(18)  Similar structure to DEAL.DATA%(0)
+\***    36  2  INT  IRF.DEAL.DATA%(19)  Similar structure to DEAL.DATA%(0)
+\***    38  2  INT  IRF.DEAL.DATA%(20)  Similar structure to DEAL.DATA%(0)
+\***    40  2  INT  IRF.DEAL.DATA%(21)  Similar structure to DEAL.DATA%(0)
+\***    42  2  INT  IRF.DEAL.DATA%(22)  Similar structure to DEAL.DATA%(0)
+\***    44  2  INT  IRF.DEAL.DATA%(23)  Similar structure to DEAL.DATA%(0)
+\***    46  2  INT  IRF.DEAL.DATA%(24)  Similar structure to DEAL.DATA%(0)
+\***    48  2  INT  IRF.DEAL.DATA%(25)  Similar structure to DEAL.DATA%(0)
+\***    50  2  INT  IRF.DEAL.DATA%(26)  Similar structure to DEAL.DATA%(0)
+\***    52  2  INT  IRF.DEAL.DATA%(27)  Similar structure to DEAL.DATA%(0)
+\***    54  2  INT  IRF.DEAL.DATA%(28)  Similar structure to DEAL.DATA%(0)
+\***    56  2  INT  IRF.DEAL.DATA%(29)  Similar structure to DEAL.DATA%(0)
+\***    58  2  INT  IRF.DEAL.DATA%(30)  Similar structure to DEAL.DATA%(0)
+\***    60  2  INT  IRF.DEAL.DATA%(31)  Similar structure to DEAL.DATA%(0)
+\***    62  2  INT  IRF.DEAL.DATA%(32)  Similar structure to DEAL.DATA%(0)
+\***    64  2  INT  IRF.DEAL.DATA%(33)  Similar structure to DEAL.DATA%(0)
+\***    66  2  INT  IRF.DEAL.DATA%(34)  Similar structure to DEAL.DATA%(0)
+\***    68  2  INT  IRF.DEAL.DATA%(35)  Similar structure to DEAL.DATA%(0)
+\***    70  2  INT  IRF.DEAL.DATA%(36)  Similar structure to DEAL.DATA%(0)
+\***    72  2  INT  IRF.DEAL.DATA%(37)  Similar structure to DEAL.DATA%(0)
+\***    74  2  INT  IRF.DEAL.DATA%(38)  Similar structure to DEAL.DATA%(0)
+\***    76  2  INT  IRF.DEAL.DATA%(39)  Similar structure to DEAL.DATA%(0)
+\***    78  7  ASC  FILLER$             Filler
+\***
+\***    Record Length 84
+\***
+\*******************************************************************************
+
+
+    STRING GLOBAL            \
+\!!!!!!!IRF.ALT.FILE.NAME$,  \                                          !HMW
+        IRF.BAR.CODE$,       \
+        IRF.BOOTS.CODE$,     \
+        IRF.DEAL.SAVING$,    \ 2 byte - deal saving amount (0 - 99.99) ! ESP
+\!!!!!!!IRF.DEPARTME$,       \ 3 byte UPD. Department number            !HMW
+        IRF.FILE.NAME$,      \
+        IRF.FILLER$,         \ Filler                                   !HMW
+\!!!!!!!IRF.HOLDING.PRICE$,  \ 4 byte UPD. Current HO price in pence    !HMW
+        IRF.ITEMNAME$,       \
+        IRF.PRODUCT.GRP$,    \ 3 byte UPD product group                 !HMW
+\!!!!!!!IRF.RECORD$,         \                                          !HMW
+        IRF.SALEPRIC$,       \
+\!!!!!!!IRF.SALEQUAN$,       \                                          !HMW
+\!!!!!!!IRF.UNUSED$,         \                                          !HMW
+        NEW.IRF.DATA$        !                                          ! 1.7 RC
+
+    STRING GLOBAL            \                                          ! 1.6 RC
+        IRF.DEAL.NUM$(1)                                                ! 1.6 RC
+
+    INTEGER*1 GLOBAL         \
+\!!!!!!!IRF.DD.SUB%,         \ IRF.DEAL.DATA% subscript                 !HMW
+        IRF.INDICAT0%,       \
+        IRF.INDICAT1%,       \
+\!!!!!!!IRF.INDICAT2%,       \                                          !HMW
+        IRF.INDICAT3%,       \
+\!!!!!!!IRF.INDICAT4%,       \                                          !HMW
+        IRF.INDICAT5%,       \                                          ! 2.0AJC
+        IRF.INDICAT8%,       \                                          ! 2.0AJC
+        IRF.INDICAT9%,       \                                          ! 2.2 TT
+        IRF.INDICAT10%                                                  ! 2.2 TT
+
+    INTEGER*1 GLOBAL         \                                          ! 1.6 RC
+        IRF.LIST.ID%(1)                                                 ! 1.6 RC
+
+    INTEGER*2 GLOBAL         \
+\!!!!!!!IRF.ALT.REPORT.NUM%, \                                          !HMW
+\!!!!!!!IRF.ALT.SESS.NUM%,   \                                          !HMW
+\!!!!!!!IRF.POINTS%,         \                                          !HMW
+        IRF.RECL%,           \
+        IRF.REPORT.NUM%,     \
+        IRF.SESS.NUM%,       \
+        IRF.MAX.DEALS%       !                                          ! 1.9 SM
+    
+    STRING GLOBAL IRFDEX.FILE.NAME$                                     ! 1.9 SM
+
+    INTEGER*2 GLOBAL IRFDEX.SESS.NUM%                                   ! 1.9 SM
+    INTEGER*2 GLOBAL IRFDEX.REPORT.NUM%                                 ! 1.9 SM
+    INTEGER*2 GLOBAL IRFDEX.RECL%                                       ! 1.9 SM
+

@@ -1,0 +1,757 @@
+   1: 0000: rem\
+   2: 0000: \*******************************************************************************
+   3: 0000: \*******************************************************************************
+   4: 0000: \***
+   5: 0000: \***
+   6: 0000: \***         FUNCTION      : CALC.BOOTS.CODE.CHECK.DIGIT
+   7: 0000: \***         AUTHOR        : Barbara Holbrook (Pseudocode)
+   8: 0000: \***                       :                  (Basic Code)
+   9: 0000: \***         DATE WRITTEN  : 29th January 1987  (Pseudocode)
+  10: 0000: \***                       :                    (Basic Code)
+  11: 0000: \***
+  12: 0000: \***         REFERENCE     : PSBF18
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***         VERSION C.    B.A.A.SCRIVER       19th May 1988
+  16: 0000: \***         STOCK SYSTEM VERSION.
+  17: 0000: \***         Change to set file session number part of unique data for error
+  18: 0000: \***         calls to zero, as no files are accessed.
+  19: 0000: \***         New message number 550 replaces message number 551.
+  20: 0000: \***
+  21: 0000: \***         VERSION D.    D.S. O'DARE (Pseudocode)    24th November 1988
+  22: 0000: \***                       B.C. WILLIS (Basic)          1st December 1988
+  23: 0000: \***         89A MERGE (ie. small stores changes added to stocks changes).
+  24: 0000: \***         Replace the CHAIN statement with the new included code 
+  25: 0000: \***         (PSBCHNE.J86) and CHAIN.FILE.NAME$ with PSBCHN.PRG.  Amend
+  26: 0000: \***         program-to-chain-to from "01" to "50".
+  27: 0000: \***
+  28: 0000: \***         VERSION E.    A. WEDGEWORTH                   7th July 1992
+  29: 0000: \***         Redundant function parameters removed.
+  30: 0000: \***
+  31: 0000: \***         VERSION F.    Jamie Thorpe                    4th August 2000
+  32: 0000: \***         Amended code so that international check digits can now be
+  33: 0000: \***         calculated. The program reads in a new value from the SOPTS
+  34: 0000: \***         file. If this value is set to 0, this implies that the UK
+  35: 0000: \***         check digit is in operation.
+  36: 0000: \***         Any non-zero value is the check digit for that country.
+  37: 0000: \***
+  38: 0000: \***         VERSION G.  Stuart William McConnachie       18th September 2000
+  39: 0000: \***         No error checking reading Store Options!
+  40: 0000: \***         No deallocate of Store Options session number!
+  41: 0000: \***         Corrected these errors.
+  42: 0000: \***
+  43: 0000: \***         Version H.      Stuart William McConnachie     31st Oct 2006
+  44: 0000: \***         Chain back to PSB50.286, instead of xxx50.286 derived from
+  45: 0000: \***         first three letters of MODULE.NUMBER$.  Doesn't work for
+  46: 0000: \***         PSD and SRP applications.
+  47: 0000: \***
+  48: 0000: \***         Version I.       Mark Walker                   19th Jul 2014
+  49: 0000: \***         Removed redundant international check digit processing.
+  50: 0000: \***
+  51: 0000: \*******************************************************************************
+  52: 0000: \*******************************************************************************
+  53: 0000: 
+  54: 0000: REM \
+  55: 0000: \*******************************************************************************
+  56: 0000: \*******************************************************************************
+  57: 0000: \***
+  58: 0000: \***
+  59: 0000: \***                      FUNCTION OVERVIEW
+  60: 0000: \***                      -----------------
+  61: 0000: \***
+  62: 0000: \***         This function receives a 6 digit numeric string, and
+  63: 0000: \***      calculates the Boots check digit for the string following a
+  64: 0000: \***      modulus 11 checking routine.
+  65: 0000: \***      The value of the check digit is then returned to the calling
+  66: 0000: \***      program.
+  67: 0000: \***
+  68: 0000: \***
+  69: 0000: \*******************************************************************************
+  70: 0000: \*******************************************************************************
+  71: 0000: 
+  72: 0000: REM PSEUDOCODE for this function follows......
+  73: 0000: 
+  74: 0000: \*******************************************************************************
+  75: 0000: \*******************************************************************************
+  76: 0000: \***
+  77: 0000: \***
+  78: 0000: \*** %INCLUDE of globals for public function CALC.BOOTS.CODE.CHECK.DIGIT
+  79: 0000: \*** %INCLUDE of globals for public function CONV.TO.HEX
+  80: 0000: \*** %INCLUDE of globals for public function CONV.TO.STRING
+  81: 0000: \*** %INCLUDE of globals for screen chaining parameters (PSBUSEG.J86)
+  82: 0000: \*** %INCLUDE of statements for external function APPLICATION.LOG
+  83: 0000: \*** %INCLUDE of statements for external function ADXERROR
+  84: 0000: \*** %INCLUDE of statements for external function CONV.TO.HEX
+  85: 0000: \*** %INCLUDE of statements for external function CONV.TO.STRING
+  86: 0000: \***
+  87: 0000: \***
+  88: 0000: \-------------------------------------------------------------------------------
+  89: 0000: 
+  90: 0000:     %INCLUDE PSBF16G.J86
+  91: 0000: REM\
+  92: 0000: \*******************************************************************************
+  93: 0000: \*******************************************************************************
+  94: 0000: \***
+  95: 0000: \***           %INCLUDE GLOBAL DEFINITIONS FOR CONV.TO.HEX FUNCTION
+  96: 0000: \***
+  97: 0000: \***                       REFERENCE     : PSBF16G.J86
+  98: 0000: \*** 
+  99: 0000: \***       Version A           Bruce Scriver            25th February 1986
+ 100: 0000: \***
+ 101: 0000: \***       Version B         Andrew Wedgeworth               2nd July 1992
+ 102: 0000: \***       Removal of now redundant F16.RETURN.CODE%.
+ 103: 0000: \***
+ 104: 0000: \*******************************************************************************
+ 105: 0000: \*******************************************************************************
+ 106: 0000: 
+ 107: 0000:       STRING   GLOBAL F16.HEX.STRING$
+ 108: 0000: 
+ 109: 0000:       ! 1 line deleted from here                                       ! BAW
+ 110: 0000:     %INCLUDE PSBF17G.J86
+ 111: 0000: REM \
+ 112: 0000: \*******************************************************************************
+ 113: 0000: \*******************************************************************************
+ 114: 0000: \***
+ 115: 0000: \***
+ 116: 0000: \***        %INCLUDE GLOBAL DEFINITIONS FOR CONV.TO.STRING FUNCTION
+ 117: 0000: \***
+ 118: 0000: \***                    REFERENCE     : PSBF17G.J86
+ 119: 0000: \***
+ 120: 0000: \***        Version A         Bruce Scriver      24th February 1986
+ 121: 0000: \***
+ 122: 0000: \***        Version B       Andrew Wedgeworth         2nd July 1992
+ 123: 0000: \***        Removal of now redundant F17.RETURN.CODE%
+ 124: 0000: \***
+ 125: 0000: \*******************************************************************************
+ 126: 0000: \*******************************************************************************
+ 127: 0000: 
+ 128: 0000:       STRING   GLOBAL F17.RETURNED.STRING$
+ 129: 0000: 
+ 130: 0000:       ! 1 line deleted from here                                       ! BAW
+ 131: 0000: 
+ 132: 0000:     %INCLUDE PSBF18G.J86
+ 133: 0000: REM\
+ 134: 0000: \*******************************************************************************
+ 135: 0000: \*******************************************************************************
+ 136: 0000: \***
+ 137: 0000: \***        INCLUDE       : CALC.BOOTS.CODE.CHECK.DIGIT globals
+ 138: 0000: \***
+ 139: 0000: \***        REFERENCE     : PSBF18G.J86
+ 140: 0000: \***
+ 141: 0000: \***        Version A     Stephen Kelsey                  23rd March 1987
+ 142: 0000: \***
+ 143: 0000: \***        Version B     Andrew Wedgeworth                 7th July 1992
+ 144: 0000: \***        Removal of return code field which no longer required.
+ 145: 0000: \***
+ 146: 0000: \*******************************************************************************
+ 147: 0000: \*******************************************************************************
+ 148: 0000: 
+ 149: 0000:       STRING   GLOBAL F18.CHECK.DIGIT$
+ 150: 0000:     
+ 151: 0000:       ! 1 line deleted from here                                       ! BAW    
+ 152: 0000: 
+ 153: 0000: !   %INCLUDE PSBF20G.J86       !SESS.NUM.UTILITY                            !IMW
+ 154: 0000:     %INCLUDE PSBUSEG.J86
+ 155: 0000: \/*********************************************************************/ PSBUSEG
+ 156: 0000: \/*                                                                   */ PSBUSEG
+ 157: 0000: \/* PSBUSEG.J86  -  Definitions for Chain/Use with PSB Screen Program */ PSBUSEG
+ 158: 0000: \/* ----------------------------------------------------------------- */ PSBUSEG
+ 159: 0000: \/*                                                                   */ PSBUSEG
+ 160: 0000: \/*********************************************************************/ PSBUSEG
+ 161: 0000:                                                                        ! PSBUSEG
+ 162: 0000:         STRING GLOBAL  PSBCHN.PRG,      \ Program to chain to          ! PSBUSEG
+ 163: 0000:                        PSBCHN.OP,       \ Operator Id                  ! PSBUSEG
+ 164: 0000:                        PSBCHN.APP,      \ Program chained from         ! PSBUSEG
+ 165: 0000:                        PSBCHN.MENCON,   \ Menu Control                 ! PSBUSEG
+ 166: 0000:                        PSBCHN.U1,       \ User parameter               ! PSBUSEG
+ 167: 0000:                        PSBCHN.U2,       \ User parameter               ! PSBUSEG
+ 168: 0000:                        PSBCHN.U3        ! User parameter               ! PSBUSEG
+ 169: 0000:                                                                        ! PSBUSEG
+ 170: 0000: !   %INCLUDE SOPTSDEC.J86      !STORE OPTIONS FILE DECLARATIONS             !IMW
+ 171: 0000: 
+ 172: 0000:     STRING GLOBAL                                                       \   !EAW
+ 173: 0000:         BATCH.SCREEN.FLAG$,                                             \   !EAW
+ 174: 0000:         MODULE.NUMBER$                                                      !EAW
+ 175: 0000: !       F18.SOPTS.READ$                                                     !IMW
+ 176: 0000: 
+ 177: 0000:     %INCLUDE ADXERROR.J86
+ 178: 0000: \******************************************************************************
+ 179: 0000: \******************************************************************************
+ 180: 0000: \***                                                                        ***
+ 181: 0000: \***    %INCLUDE FOR FUNCTION ADXERROR (an I.B.M. system function)          ***
+ 182: 0000: \***                                                                        ***
+ 183: 0000: \***         AUTHOR        :  Stephen Kelsey                                ***
+ 184: 0000: \***                                                                        ***
+ 185: 0000: \***         DATE WRITTEN  :  21st February 1986                            ***
+ 186: 0000: \***                                                                        ***
+ 187: 0000: \***         DATE OF LAST REVISION  - 21st February 1986                    ***
+ 188: 0000: \***                                                                        ***
+ 189: 0000: \***         VERSION B     :  Stuart William McConnachie  18th March 1997   ***
+ 190: 0000: \***    Define size of ADXERROR return value from function.  This change    ***
+ 191: 0000: \***    was introduced by IBM in the 4690 Programming Guide.  Not defining  ***
+ 192: 0000: \***    this variable can cause Memory Protection Violations at run time.   ***
+ 193: 0000: \***                                                                        ***
+ 194: 0000: \******************************************************************************
+ 195: 0000: \******************************************************************************
+ 196: 0000: 
+ 197: 0000:    FUNCTION ADXERROR (TERM%,                                                  \
+ 198: 0000:                       MSGGRP%,                                                \
+ 199: 0000:                       MSGNUM%,                                                \
+ 200: 0000:                       SEVERITY%,                                              \
+ 201: 0000:                       EVENT.NUM%,                                             \
+ 202: 0000:                       UNIQUE$) EXTERNAL
+ 203: 0000: 
+ 204: 0000:       INTEGER*2  MSGNUM%,                                                     \
+ 205: 0000:                  TERM%,                                                       \
+ 206: 0000:                  ADXERROR                                                     !BSWM
+ 207: 0000: 
+ 208: 0000:       INTEGER*1 EVENT.NUM%,                                                   \
+ 209: 0000:                 MSGGRP%,                                                      \
+ 210: 0000:                 SEVERITY%
+ 211: 0000: 
+ 212: 0000:       STRING  UNIQUE$
+ 213: 0000: 
+ 214: 0000:    END FUNCTION
+ 215: 0000: 
+ 216: 0000:     %INCLUDE PSBF01E.J86
+ 217: 0000: REM \
+ 218: 0000: \*******************************************************************************
+ 219: 0000: \*******************************************************************************
+ 220: 0000: \***
+ 221: 0000: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 222: 0000: \***
+ 223: 0000: \***                      FUNCTION NUMBER   : PSBF01
+ 224: 0000: \***
+ 225: 0000: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 226: 0000: \*** 
+ 227: 0000: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 228: 0000: \***      Three parameters which passed to the function have been removed.
+ 229: 0000: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 230: 0000: \***      return code).
+ 231: 0000: \***
+ 232: 0000: \*******************************************************************************
+ 233: 0000: 
+ 234: 0000: 
+ 235: 0000:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 236: 0000:                              VAR.STRING.1$,                                   \
+ 237: 0000:                              VAR.STRING.2$,                                   \
+ 238: 0000:                              EVENT.NO%)  EXTERNAL
+ 239: 0000: 
+ 240: 0000:       INTEGER*1 EVENT.NO%
+ 241: 0000: 
+ 242: 0000:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 243: 0000:                 MESSAGE.NO%
+ 244: 0000: 
+ 245: 0000:       STRING VAR.STRING.1$,                                            \
+ 246: 0000:              VAR.STRING.2$
+ 247: 0000: 
+ 248: 0000:    END FUNCTION
+ 249: 0000: 
+ 250: 0000: \*******************************************************************************
+ 251: 0000:     %INCLUDE PSBF16E.J86
+ 252: 0000: REM\
+ 253: 0000: \*******************************************************************************
+ 254: 0000: \*******************************************************************************
+ 255: 0000: \***
+ 256: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.HEX FUNCTION
+ 257: 0000: \***
+ 258: 0000: \***                  REFERENCE     : PSBF16E.J86
+ 259: 0000: \***
+ 260: 0000: \***       Version A            Bruce Scriver          25th February 1986
+ 261: 0000: \***
+ 262: 0000: \***       Version B           Andrew Wedgeworth            2nd July 1992
+ 263: 0000: \***       Removal of redundant parameters, and CONV.TO.HEX defined as a 
+ 264: 0000: \***       variable to hold the return code. 
+ 265: 0000: \***
+ 266: 0000: \*******************************************************************************
+ 267: 0000: \*******************************************************************************
+ 268: 0000: 
+ 269: 0000:    FUNCTION CONV.TO.HEX (INTEGER4%)                                            \
+ 270: 0000:    EXTERNAL
+ 271: 0000:    ! 3 parameters removed from here                                    ! BAW
+ 272: 0000: 
+ 273: 0000:    ! 3 lines deleted from here                                         ! BAW
+ 274: 0000:    
+ 275: 0000:       INTEGER*2 CONV.TO.HEX                                            ! BAW
+ 276: 0000: 
+ 277: 0000:       INTEGER*4 INTEGER4%
+ 278: 0000: 
+ 279: 0000:    END FUNCTION
+ 280: 0000: 
+ 281: 0000:     %INCLUDE PSBF17E.J86
+ 282: 0000: REM \
+ 283: 0000: \*******************************************************************************
+ 284: 0000: \*******************************************************************************
+ 285: 0000: \***
+ 286: 0000: \***
+ 287: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF CONV.TO.STRING FUNCTION
+ 288: 0000: \***
+ 289: 0000: \***                     REFERENCE     : PSBF17E.J86
+ 290: 0000: \***
+ 291: 0000: \***       Version A            Bruce Scriver       24th February 1986           
+ 292: 0000: \***
+ 293: 0000: \***       Version B          Andrew Wedgeworth          2nd July 1992
+ 294: 0000: \***       Redundant parameters removed, and the function's name is 
+ 295: 0000: \***       is defined as a variable to hold the return code. 
+ 296: 0000: \***
+ 297: 0000: \*******************************************************************************
+ 298: 0000: \*******************************************************************************
+ 299: 0000: 
+ 300: 0000:    FUNCTION CONV.TO.STRING (EVENT.NUMBER%,                                     \
+ 301: 0000:                             INTEGER4%)                                         \
+ 302: 0000:    EXTERNAL
+ 303: 0000: ! 3 parameters removed from here                                       ! BAW
+ 304: 0000: 
+ 305: 0000: ! 3 lines deleted from here                                            ! BAW
+ 306: 0000: 
+ 307: 0000:       INTEGER*1 EVENT.NUMBER%
+ 308: 0000: 
+ 309: 0000:       INTEGER*2 CONV.TO.STRING                                         ! BAW
+ 310: 0000: 
+ 311: 0000:       INTEGER*4 INTEGER4%
+ 312: 0000: 
+ 313: 0000:    END FUNCTION
+ 314: 0000: 
+ 315: 0000: !   %INCLUDE PSBF20E.J86       !SESS.NUM.UTILITY                            !IMW
+ 316: 0000: !   %INCLUDE SOPTSEXT.J86      !STORE OPTIONS FILE                          !IMW
+ 317: 0000: 
+ 318: 0000: \-------------------------------------------------------------------------------
+ 319: 0000: \*******************************************************************************
+ 320: 0000: \*******************************************************************************
+ 321: 0000: \***
+ 322: 0000: \***   Define function parameters and other variables used in the function.
+ 323: 0000: \***
+ 324: 0000: \-------------------------------------------------------------------------------
+ 325: 0000: 
+ 326: 0000: FUNCTION CALC.BOOTS.CODE.CHECK.DIGIT (BOOTS.CODE.6.DIGIT$) PUBLIC
+ 327: 0019: 
+ 328: 0019:     STRING                                                              \
+ 329: 0019:         BOOTS.CODE.6.DIGIT$,                                            \
+ 330: 0019:         CHECK.BYTE$,                                                    \
+ 331: 0019:         ERR.IN.CODE$,                                                   \
+ 332: 0019: \       F20.FUNCTION$,                                                  \   !IMW
+ 333: 0019: \       F20.STRING$,                                                    \   !IMW
+ 334: 0019:         MODULE.LETTER$,                                                 \
+ 335: 0019: \       SOPTS.CHECK.DIGIT$,                                             \   !IMW
+ 336: 0019:         STRING.ERRL$,                                                   \
+ 337: 0019:         STRING.ERRN$,                                                   \
+ 338: 0019:         UNIQUE$,                                                        \
+ 339: 0019:         VAR.STRING.1$,                                                  \
+ 340: 0019:         VAR.STRING.2$
+ 341: 0019:                 
+ 342: 0019:                 
+ 343: 0019:     INTEGER*1                                                           \
+ 344: 0019:         EVENT.NUM%,                                                     \
+ 345: 0019:         MSGGRP%,                                                        \
+ 346: 0019:         SEVERITY%
+ 347: 0019: 
+ 348: 0019:     INTEGER*2                                                           \
+ 349: 0019:         CALC.BOOTS.CODE.CHECK.DIGIT,                                    \   !EAW
+ 350: 0019:         F17.RETURN.CODE%,                                               \   !EAW
+ 351: 0019: \       F20.INTEGER%,                                                   \   !IMW
+ 352: 0019:         MESSAGE.NO%,                                                    \
+ 353: 0019:         MSGNUM%,                                                        \
+ 354: 0019: \       RC%,                                                            \   !IMW
+ 355: 0019:         RET.CODE%,                                                      \
+ 356: 0019:         TERM%
+ 357: 0019: 
+ 358: 0019:     INTEGER*4                                                           \
+ 359: 0019:         COUNT%,                                                         \
+ 360: 0019:         CHECK.DIGIT%,                                                   \
+ 361: 0019:         DIGIT.COUNT%,                                                   \
+ 362: 0019:         DIGIT.TOTAL%,                                                   \
+ 363: 0019:         DIGIT.VALUE%,                                                   \
+ 364: 0019:         INTEGER4%
+ 365: 0019: 
+ 366: 0019:      REAL                                                               \
+ 367: 0019:          BOOTS.CODE.VAL
+ 368: 0019: 
+ 369: 0019: \-------------------------------------------------------------------------------
+ 370: 0019: \*******************************************************************************
+ 371: 0019: \***
+ 372: 0019: \***   ON ERROR detected GOTO ERROR.DETECTED
+ 373: 0019: \***
+ 374: 0019: \***   REM set up storage areas for ADXERROR required fields in case of memory
+ 375: 0019: \***   overflow
+ 376: 0019: \***   set variable string 1 to 10 spaces
+ 377: 0019: \***
+ 378: 0019: \***   set F18.CHECK.DIGIT$ to space
+ 379: 0019: \***   set CALC.BOOTS.CODE.CHECK.DIGIT to 0
+ 380: 0019: \***
+ 381: 0019: \***   IF the length of string <> 6
+ 382: 0019: \***
+ 383: 0019: \***      set message number to 704
+ 384: 0019: \***      set event to 4
+ 385: 0019: \***      GOSUB to the label LOG.INTERNAL.ERROR
+ 386: 0019: \***      EXIT FUNCTION
+ 387: 0019: \***
+ 388: 0019: \***   endif
+ 389: 0019: \-------------------------------------------------------------------------------
+ 390: 0019: 
+ 391: 0019:     ON ERROR GOTO ERROR.DETECTED
+ 392: 0026: 
+ 393: 0026:     UNIQUE$ = "          "
+ 394: 0033:     STRING.ERRN$ = "    "
+ 395: 0040:     STRING.ERRL$ = "      "
+ 396: 004d:     MODULE.LETTER$ = MID$(MODULE.NUMBER$,3,1)
+ 397: 006a:    
+ 398: 006a: !   GOSUB PROCESS.SOPTS                                                     !IMW
+ 399: 006a:    
+ 400: 006a:     CALC.BOOTS.CODE.CHECK.DIGIT = 0
+ 401: 006f:     F18.CHECK.DIGIT$ = " "
+ 402: 007e: 
+ 403: 007e:     IF LEN(BOOTS.CODE.6.DIGIT$) <> 6 THEN BEGIN
+ 404: 008f:         MESSAGE.NO% = 704
+ 405: 0095:         EVENT.NUM% = 4
+ 406: 009a:         GOSUB LOG.INTERNAL.ERROR
+ 407: 00a4:         EXIT FUNCTION
+ 408: 00a7:     ENDIF
+ 409: 00a7: 
+ 410: 00a7: \-------------------------------------------------------------------------------
+ 411: 00a7: \***
+ 412: 00a7: \***   set count to 0
+ 413: 00a7: \***   set error in code flag to "N"
+ 414: 00a7: \***
+ 415: 00a7: \***   WHILE error in code flag = "N"
+ 416: 00a7: \***     AND count < 6
+ 417: 00a7: \***
+ 418: 00a7: \***      ADD 1 to count
+ 419: 00a7: \***      set check field to part of string starting at count for 1
+ 420: 00a7: \***      IF check field = "+" or "-" or " " or "."
+ 421: 00a7: \***         set event to 4
+ 422: 00a7: \***         set message number to 704
+ 423: 00a7: \***         GOSUB to the label LOG.INTERNAL.ERROR
+ 424: 00a7: \***         set error in code flag to "Y"
+ 425: 00a7: \***      endif
+ 426: 00a7: \***
+ 427: 00a7: \***   WEND
+ 428: 00a7: \***
+ 429: 00a7: \***   IF error in code flag  = "N" THEN
+ 430: 00a7: \***      determine the real value of the 6 digit Boots code
+ 431: 00a7: \***         (VAL(6 digit Boots code))
+ 432: 00a7: \***   ELSE
+ 433: 00a7: \***      EXIT FUNCTION
+ 434: 00a7: \***   endif
+ 435: 00a7: \***
+ 436: 00a7: \-------------------------------------------------------------------------------
+ 437: 00a7: 
+ 438: 00a7:     COUNT% = 0
+ 439: 00b4:     ERR.IN.CODE$ = "N"
+ 440: 00c1: 
+ 441: 00c1:     WHILE ERR.IN.CODE$ = "N" AND COUNT% < 6
+ 442: 00c4: 
+ 443: 00c4:         COUNT% = COUNT% + 1
+ 444: 00d5:         CHECK.BYTE$ = MID$(BOOTS.CODE.6.DIGIT$,COUNT%,1)
+ 445: 00f3:         IF CHECK.BYTE$ = "+" OR CHECK.BYTE$ = "-" OR                     \
+ 446: 0181:             CHECK.BYTE$ = " " OR CHECK.BYTE$ = "." THEN BEGIN
+ 447: 0181:             MESSAGE.NO% = 704
+ 448: 0187:             EVENT.NUM% = 4
+ 449: 018c:             GOSUB LOG.INTERNAL.ERROR
+ 450: 0196:             ERR.IN.CODE$ = "Y"
+ 451: 01a3:         ENDIF
+ 452: 01a3: 
+ 453: 01a3:     WEND
+ 454: 01e2: 
+ 455: 01e2:     IF ERR.IN.CODE$ = "N" THEN BEGIN
+ 456: 01f5:         BOOTS.CODE.VAL = VAL(BOOTS.CODE.6.DIGIT$)
+ 457: 0210:     ENDIF ELSE BEGIN
+ 458: 0210:         EXIT FUNCTION
+ 459: 0213:     ENDIF
+ 460: 0213: 
+ 461: 0213: \-------------------------------------------------------------------------------
+ 462: 0213: \***
+ 463: 0213: \***   set DIGIT.TOTAL% TO 0
+ 464: 0213: \***   FOR digit count 1 to 6
+ 465: 0213: \***
+ 466: 0213: \***       set DIGIT.VALUE% to ((part of Boots code starting at digit
+ 467: 0213: \***                      count for 1) * (8 - digit count))
+ 468: 0213: \***       add DIGIT.VALUE% to DIGIT.TOTAL%
+ 469: 0213: \***
+ 470: 0213: \***   NEXT digit count
+ 471: 0213: \***   calculate CHECK.DIGIT% = 11 - (remainder of DIGIT.TOTAL% / 11)
+ 472: 0213: \***
+ 473: 0213: \***   IF CHECK.DIGIT% = 11
+ 474: 0213: \***      set F18.CHECK.DIGIT$ to "0"
+ 475: 0213: \***   ELSE
+ 476: 0213: \***      IF CHECK.DIGIT% = 10
+ 477: 0213: \***         set F18.CHECK.DIGIT$ to "A"
+ 478: 0213: \***      ELSE
+ 479: 0213: \***         set F18.CHECK.DIGIT$ to CHECK.DIGIT%
+ 480: 0213: \***      endif
+ 481: 0213: \***   endif
+ 482: 0213: \***
+ 483: 0213: \***   EXIT FUNCTION
+ 484: 0213: \***
+ 485: 0213: \***
+ 486: 0213: \-------------------------------------------------------------------------------
+ 487: 0213: 
+ 488: 0213:     DIGIT.TOTAL% = 0
+ 489: 0220: 
+ 490: 0220:     FOR DIGIT.COUNT% = 1 TO 6 STEP 1
+ 491: 0230: 
+ 492: 0230:         DIGIT.VALUE% = VAL(MID$(BOOTS.CODE.6.DIGIT$,DIGIT.COUNT%,1))    \
+ 493: 028e:                      * (8 - DIGIT.COUNT%)
+ 494: 028e:         DIGIT.TOTAL% = DIGIT.TOTAL% + DIGIT.VALUE%
+ 495: 029f: 
+ 496: 029f:     NEXT DIGIT.COUNT%
+ 497: 02c4: 
+ 498: 02c4:     CHECK.DIGIT% = 11 - MOD(DIGIT.TOTAL%,11)
+ 499: 02e0: 
+ 500: 02e0:     IF CHECK.DIGIT% = 11 THEN BEGIN                                    
+ 501: 02f3:         F18.CHECK.DIGIT$ = "0"                                              !IMW
+ 502: 0304:     ENDIF ELSE BEGIN
+ 503: 0304:         IF CHECK.DIGIT% = 10 THEN BEGIN
+ 504: 0317: !           IF VAL(SOPTS.CHECK.DIGIT$) <> 0 THEN BEGIN                      !IMW
+ 505: 0317: !               F18.CHECK.DIGIT$ = SOPTS.CHECK.DIGIT$                       !IMW
+ 506: 0317: !           ENDIF ELSE BEGIN                                                !IMW
+ 507: 0317: !               F18.CHECK.DIGIT$ = "A"                                      !IMW
+ 508: 0317: !           ENDIF                                                           !IMW
+ 509: 0317:             F18.CHECK.DIGIT$ = "A"                                          !IMW
+ 510: 0328:         ENDIF ELSE BEGIN    
+ 511: 0328:             F18.CHECK.DIGIT$ = STR$(CHECK.DIGIT%)
+ 512: 0340:         ENDIF
+ 513: 0340:     ENDIF
+ 514: 0340:        
+ 515: 0340:     EXIT FUNCTION
+ 516: 0343: 
+ 517: 0343: 
+ 518: 0343: \*******************************************************************************
+ 519: 0343: \************************ subroutines follow ***********************************
+ 520: 0343: 
+ 521: 0343: !\**************************************************************************!IMW
+ 522: 0343: !\***                                                                       !IMW
+ 523: 0343: !\***   SUBROUTINE: PROCESS.SOPTS                                           !IMW
+ 524: 0343: !\***                                                                       !IMW
+ 525: 0343: !\**************************************************************************!IMW
+ 526: 0343: !                                                                           !IMW
+ 527: 0343: !   PROCESS.SOPTS:                                                          !IMW
+ 528: 0343: !                                                                           !IMW
+ 529: 0343: !   IF F18.SOPTS.READ$ <> "Y" THEN BEGIN                                    !IMW
+ 530: 0343: !                                                                           !IMW
+ 531: 0343: !       SOPTS.CHECK.DIGIT$ = "0"                                            !IMW
+ 532: 0343: !                                                                           !IMW
+ 533: 0343: !       CALL SOPTS.SET                                                      !IMW
+ 534: 0343: !                                                                           !IMW
+ 535: 0343: !       F20.FUNCTION$ = "O"                                                 !IMW
+ 536: 0343: !       F20.STRING$   = SOPTS.FILE.NAME$                                    !IMW
+ 537: 0343: !       F20.INTEGER%  = SOPTS.REPORT.NUM%                                   !IMW
+ 538: 0343: !       GOSUB CALL.SESS.NUM.UTILITY                                         !IMW
+ 539: 0343: !       SOPTS.SESS.NUM% = F20.INTEGER.FILE.NO%                              !IMW
+ 540: 0343: !                                                                           !IMW
+ 541: 0343: !       IF END # SOPTS.SESS.NUM% THEN NO.SOPTS.FILE                         !IMW
+ 542: 0343: !       OPEN SOPTS.FILE.NAME$ RECL SOPTS.RECL% AS                           !IMW
+ 543: 0343: !            SOPTS.SESS.NUM% NOWRITE NODEL                                  !IMW
+ 544: 0343: !                                                                           !IMW
+ 545: 0343: !       SOPTS.REC.NUM% = 96                                                 !IMW
+ 546: 0343: !       RC% = READ.SOPTS                                                    !IMW
+ 547: 0343: !                                                                           !IMW
+ 548: 0343: !       IF RC% = 0 THEN BEGIN                                               !IMW
+ 549: 0343: !           SOPTS.CHECK.DIGIT$ = LEFT$(SOPTS.RECORD$,1)                     !IMW
+ 550: 0343: !       ENDIF                                                               !IMW
+ 551: 0343: !                                                                           !IMW
+ 552: 0343: !       CLOSE SOPTS.SESS.NUM%                                               !IMW
+ 553: 0343: !                                                                           !IMW
+ 554: 0343: !   NO.SOPTS.FILE:                                                          !IMW
+ 555: 0343: !       F20.FUNCTION$ = "C"                                                 !IMW
+ 556: 0343: !       F20.STRING$   = ""                                                  !IMW
+ 557: 0343: !       F20.INTEGER%  = SOPTS.SESS.NUM%                                     !IMW
+ 558: 0343: !       GOSUB CALL.SESS.NUM.UTILITY                                         !IMW
+ 559: 0343: !                                                                           !IMW
+ 560: 0343: !       F18.SOPTS.READ$ = "Y"                                               !IMW
+ 561: 0343: !                                                                           !IMW
+ 562: 0343: !   ENDIF                                                                   !IMW
+ 563: 0343: !                                                                           !IMW
+ 564: 0343: !                                                                           !IMW
+ 565: 0343: !   RETURN                                                                  !IMW
+ 566: 0343: !                                                                           !IMW
+ 567: 0343: !\**************************************************************************!IMW
+ 568: 0343: !\***                                                                       !IMW
+ 569: 0343: !\***    SUBROUTINE: CALL.SESS.NUM.UTILITY                                  !IMW
+ 570: 0343: !\***                                                                       !IMW
+ 571: 0343: !\**************************************************************************!IMW
+ 572: 0343: !                                                                           !IMW
+ 573: 0343: !                                                                           !IMW
+ 574: 0343: !   CALL.SESS.NUM.UTILITY:                                                  !IMW
+ 575: 0343: !                                                                           !IMW
+ 576: 0343: !   RC% = SESS.NUM.UTILITY(F20.FUNCTION$,                               \   !IMW
+ 577: 0343: !                          F20.INTEGER%,                                \   !IMW
+ 578: 0343: !                          F20.STRING$ )                                    !IMW
+ 579: 0343: !                                                                           !IMW
+ 580: 0343: !   RETURN                                                                  !IMW
+ 581: 0343: 
+ 582: 0343: \*******************************************************************************
+ 583: 0343: \***
+ 584: 0343: \*** ERROR.DETECTED
+ 585: 0343: \***
+ 586: 0343: \***   set CALC.BOOTS.CODE.CHECK.DIGIT to 1 to indicate unsuccessful processing
+ 587: 0343: \***
+ 588: 0343: \***   IF ERR is "IH" THEN                         \REM non numeric digit
+ 589: 0343: \***      set event to 4
+ 590: 0343: \***      set message number to 704
+ 591: 0343: \***      GOSUB LOG.INTERNAL.ERROR
+ 592: 0343: \***      EXIT FUNCTION
+ 593: 0343: \***   endif
+ 594: 0343: \***
+ 595: 0343: \***   IF ERR is not "CM" or "CT" THEN
+ 596: 0343: \***      CALL CONV.TO.STRING function to set string errn to ERRN
+ 597: 0343: \***      IF F17.RETURN.CODE% = 0 THEN
+ 598: 0343: \***         set string errn to F17.RETURNED.STRING$
+ 599: 0343: \***         set string errl to STR$ of errl
+ 600: 0343: \***         pad string errl to the left with zeroes until it is 6 bytes long
+ 601: 0343: \***      endif
+ 602: 0343: \***   endif
+ 603: 0343: \***
+ 604: 0343: \***   IF ERR is "OM" THEN                         \REM out of memory
+ 605: 0343: \***      IF F17.RETURN.CODE% = 0 THEN
+ 606: 0343: \***         set up variables for ADXERROR call
+ 607: 0343: \***         set unique data to string errn and CHR$ of 0 and ERR
+ 608: 0343: \***                            and packed string errl
+ 609: 0343: \***         CALL ADXERROR to log the error
+ 610: 0343: \***      endif
+ 611: 0343: \***   endif
+ 612: 0343: \***
+ 613: 0343: \***   IF ERR is "CM" or "CT" THEN                 \REM chain failure
+ 614: 0343: \***      set VAR.STRING.1$ to "BF18 " + MODULE.LETTER$ + "50  "
+ 615: 0343: \***      set VAR.STRING.2$ to "PS" + MODULE.LETTER$ + "50"
+ 616: 0343: \***      CALL APPLICATION.LOG function to log event 18, message number 553
+ 617: 0343: \***   endif
+ 618: 0343: \***
+ 619: 0343: \***   IF ERR is not "OM", "CM", "CT" or "IH" THEN
+ 620: 0343: \***      IF F17.RETURN.CODE% = 0 THEN
+ 621: 0343: \***         set variable string 1 to string errn and CHR$ of 0 and ERR
+ 622: 0343: \***                                packed string errl
+ 623: 0343: \***         CALL CONV.TO.HEX function to obtain hex equivalent of ERRN
+ 624: 0343: \***         IF F16.RETURN.CODE% = 0 THEN
+ 625: 0343: \***            set variable string 2 to ERR and F16.HEX.STRING$
+ 626: 0343: \***            CALL APPLICATION.LOG to log event 1, message 550
+ 627: 0343: \***         endif
+ 628: 0343: \***      endif
+ 629: 0343: \***   endif
+ 630: 0343: \***
+ 631: 0343: \***
+ 632: 0343: \***   IF program is not screen program THEN
+ 633: 0343: \***      STOP
+ 634: 0343: \***   ENDIF
+ 635: 0343: \*** 
+ 636: 0343: \***   set PSBCHN.PRG to "ADX_UPGM:" + (leftmost 3 bytes of MODULE.NUMBER$)
+ 637: 0343: \***                                      + "50.286"
+ 638: 0343: \***
+ 639: 0343: \***   %INCLUDE PSBCHNE.J86
+ 640: 0343: \***
+ 641: 0343: \-------------------------------------------------------------------------------
+ 642: 0343: 
+ 643: 0343: ERROR.DETECTED:
+ 644: 0343: 
+ 645: 0343:    CALC.BOOTS.CODE.CHECK.DIGIT = 1                                     ! EAW
+ 646: 0348: 
+ 647: 0348:     IF ERR = "IH" THEN                              \REM non numeric digit
+ 648: 0366:        MESSAGE.NO% = 704                                               :\
+ 649: 036c:        EVENT.NUM% = 4                                                  :\
+ 650: 0371:        GOSUB LOG.INTERNAL.ERROR                                        :\
+ 651: 037b:        EXIT FUNCTION
+ 652: 037e: 
+ 653: 037e:    IF ERR <> "CM" AND ERR <> "CT" THEN                                 \
+ 654: 03d8:       INTEGER4% = ERRN                                                :\
+ 655: 03ea:       F17.RETURN.CODE% = CONV.TO.STRING (EVENT.NUM%,                   \ EAW
+ 656: 0402:                                          INTEGER4%)                   :\
+ 657: 0402:       IF F17.RETURN.CODE% = 0 THEN                                     \
+ 658: 0407:          STRING.ERRN$ = F17.RETURNED.STRING$                          :\
+ 659: 041b:          STRING.ERRL$ = PACK$(RIGHT$(STRING$(6,"0") + STR$(ERRL),6))   ! CBAAS
+ 660: 0470: 
+ 661: 0470:    IF ERR = "OM" THEN                         \REM out of memory
+ 662: 0491:       IF F17.RETURN.CODE% = 0 THEN                                     \
+ 663: 049b:          TERM%      = 0                                               :\
+ 664: 04a1:          MSGGRP%    = ASC("J")                                        :\
+ 665: 04ad:          MSGNUM%    = 0                                               :\
+ 666: 04b3:          SEVERITY%  = 3                                               :\
+ 667: 04b8:          EVENT.NUM% = 1                                               :\
+ 668: 04bd:          UNIQUE$    = STRING.ERRN$ + CHR$(0) + ERR + STRING.ERRL$     :\ CBAAS
+ 669: 04fb:          RET.CODE%  = ADXERROR (TERM%,                                 \
+ 670: 0525:                                 MSGGRP%,                               \
+ 671: 0525:                                 MSGNUM%,                               \
+ 672: 0525:                                 SEVERITY%,                             \
+ 673: 0525:                                 EVENT.NUM%,                            \
+ 674: 0525:                                 UNIQUE$)
+ 675: 0525: 
+ 676: 0525:    IF ERR = "CM" OR ERR = "CT" THEN                \REM chain failure
+ 677: 057c:       MESSAGE.NO% = 553                                               :\
+ 678: 0582:       VAR.STRING.1$ = "BF18 " + MODULE.LETTER$ + "50  "               :\ DBCW
+ 679: 059e:       VAR.STRING.2$ = "PS" + MODULE.LETTER$ + "50"                    :\ DBCW
+ 680: 05ba:       EVENT.NUM% = 18                                                 :\
+ 681: 05bf:       RET.CODE% = APPLICATION.LOG (MESSAGE.NO%,                        \ EAW
+ 682: 05e3:                                    VAR.STRING.1$,                      \
+ 683: 05e3:                                    VAR.STRING.2$,                      \
+ 684: 05e3:                                    EVENT.NUM%)
+ 685: 05e3: 
+ 686: 05e3:    IF ERR <> "OM" AND ERR <> "CM" AND ERR <> "CT" AND ERR <> "IH" THEN \
+ 687: 0697:       IF F17.RETURN.CODE% = 0 THEN                                     \
+ 688: 06a1:          MESSAGE.NO% = 550                                            :\ CBAAS
+ 689: 06a7:          VAR.STRING.1$ = STRING.ERRN$ + CHR$(0) + ERR + STRING.ERRL$  :\ CBAAS
+ 690: 06e5:          INTEGER4% = ERRN                                             :\
+ 691: 06f7:          RET.CODE% = CONV.TO.HEX (INTEGER4%)                          :\ EAW
+ 692: 070a:          IF RET.CODE% = 0 THEN                                         \ EAW
+ 693: 070f:             VAR.STRING.2$ = ERR + F16.HEX.STRING$ +                    \
+ 694: 0747:                             "  0" + STR$(ERRL)                        :\ CBAAS
+ 695: 0747:             EVENT.NUM% = 1                                            :\
+ 696: 074c:             RET.CODE% = APPLICATION.LOG (MESSAGE.NO%,                  \ EAW
+ 697: 0770:                                          VAR.STRING.1$,                \
+ 698: 0770:                                          VAR.STRING.2$,                \
+ 699: 0770:                                          EVENT.NUM%)
+ 700: 0770: 
+ 701: 0770:       IF BATCH.SCREEN.FLAG$ <> "S" THEN STOP                           ! DBCW
+ 702: 078b: 
+ 703: 078b:       PSBCHN.PRG = "ADX_UPGM:PSB50.286"                               ! HSWM
+ 704: 079a:       %INCLUDE PSBCHNE.J86                                            ! DBCW
+ 705: 079a: \/*********************************************************************/ PSBCHNE
+ 706: 079a: \/*                                                                   */ PSBCHNE
+ 707: 079a: \/*      PSBCHNE.J86  -  Chain to PSB Application Program             */ PSBCHNE
+ 708: 079a: \/*      ------------------------------------------------             */ PSBCHNE
+ 709: 079a: \/*                                                                   */ PSBCHNE
+ 710: 079a: \/*********************************************************************/ PSBCHNE
+ 711: 079a:                                                                        ! PSBCHNE
+ 712: 079a:         CHAIN  PSBCHN.PRG , PSBCHN.OP , PSBCHN.APP , PSBCHN.MENCON ,   \ PSBCHNE
+ 713: 0812:                             PSBCHN.U1 , PSBCHN.U2  , PSBCHN.U3         ! PSBCHNE
+ 714: 0812:                                                                        ! PSBCHNE
+ 715: 0812: 
+ 716: 0812: \*******************************************************************************
+ 717: 0812: \***
+ 718: 0812: \*** LOG.INTERNAL.ERROR:
+ 719: 0812: \***
+ 720: 0812: \***   CALL APPLICATION.LOG function to log error number 704, event 4
+ 721: 0812: \***
+ 722: 0812: \***   set CALC.BOOTS.CODE.CHECK.DIGIT to 1
+ 723: 0812: \***
+ 724: 0812: \***   RETURN
+ 725: 0812: \***
+ 726: 0812: \-------------------------------------------------------------------------------
+ 727: 0812: 
+ 728: 0812: LOG.INTERNAL.ERROR:
+ 729: 0812: 
+ 730: 0812:    INTEGER4% = MESSAGE.NO%                                            :\
+ 731: 0821:    F17.RETURN.CODE% = CONV.TO.STRING (EVENT.NUM%,                      \ EAW
+ 732: 0839:                                       INTEGER4%)
+ 733: 0839:    IF F17.RETURN.CODE% = 0 THEN                                        \
+ 734: 0841:       VAR.STRING.1$ = RIGHT$(F17.RETURNED.STRING$,2) +                 \
+ 735: 08ce:                       CHR$(LEN(BOOTS.CODE.6.DIGIT$)) +                 \
+ 736: 08ce:                       LEFT$(BOOTS.CODE.6.DIGIT$ +                      \
+ 737: 08ce:                             PACK$(STRING$(14," ")),7)                 :\
+ 738: 08ce:       VAR.STRING.2$ = "18" +                                           \
+ 739: 0930:                     RIGHT$("00" + STR$(LEN(BOOTS.CODE.6.DIGIT$)),2) +  \
+ 740: 0930:                     BOOTS.CODE.6.DIGIT$                               :\
+ 741: 0930:       RET.CODE% = APPLICATION.LOG (MESSAGE.NO%,                        \ EAW
+ 742: 0954:                                    VAR.STRING.1$,                      \
+ 743: 0954:                                    VAR.STRING.2$,                      \
+ 744: 0954:                                    EVENT.NUM%)
+ 745: 0954: 
+ 746: 0954:    CALC.BOOTS.CODE.CHECK.DIGIT = 1                                     ! EAW
+ 747: 0959: 
+ 748: 0959:    RETURN
+ 749: 0961: 
+ 750: 0961: \-------------------------------------------------------------------------------
+ 751: 0961: \***
+ 752: 0961: \*** END FUNCTION
+ 753: 0961: \***
+ 754: 0961: \-------------------------------------------------------------------------------
+ 755: 0961: 
+ 756: 0961: END FUNCTION
+ 757: 0975: End of Compilation

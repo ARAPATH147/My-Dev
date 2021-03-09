@@ -1,0 +1,634 @@
+    1: 	    \*******************************************************************
+>***
+    2: 	    \*
+    3: 	    \* OPENCHK.286
+    4: 	    \*
+    5: 	    \* Version 1.0 - 02/02/2009 - David Artiss
+    6: 	    \*
+    7: 	    \* This program checks whether a store are trading or not by checkin
+>g
+    8: 	    \* the date and time stamp on the TSL.
+    9: 	    \* There is only one parameter and this is the hour of today that th
+>ey
+   10: 	    \* must have been trading since to be regarded as open. This must be
+   11: 	    \* between 0 and 23.
+   12: 	    \* A file named either CLOSED or OPEN will be created on C:/ of the
+   13: 	    \* master controller.
+   14: 	    \*
+   15: 	    \* Version 1.1 - 09/02/2009 - David Artiss
+   16: 	    \* 
+   17: 	    \* Now that the snow has died down, I'm taking the opportunity to
+   18: 	    \* pretty much re-write the code to make it a lot more accurate.
+   19: 	    \* Unfortunately, the TSL is updated by store close and simply signi
+>ng
+   20: 	    \* onto a till, so using the timestamp is not 100% accurate.
+   21: 	    \* Instead, this new version will read the TSL itself to look for ty
+>pe
+   22: 	    \* 0 transactions - and, in particular, the date and timestamp withi
+>n
+   23: 	    \* them.
+   24: 	    \* Output messages have been designed for NFM in mind.
+   25: 	    \*
+   26: 	    \* Version 1.2 - 22/11/2010 - David Artiss
+   27: 	    \* Removed output to file - relies on NFM output.
+   28: 	    \*
+   29: 	    \* Version 1.3 - 01/12/2010 - David Artiss
+   30: 	    \* Report whether store have performed a close or not.
+   31: 	    \* Removed previously commented out code
+   32: 	    \*
+   33: 	    \*******************************************************************
+>***
+   34: 	    
+   35: 	    %INCLUDE ENDOKDEC.J86                                               
+>    !1.3 DA
+   36=a	    \*******************************************************************
+>**********
+   37=a	    \*******************************************************************
+>**********
+   38=a	    \***
+   39=a	    \***               %INCLUDE FOR ENDOK -FIELD DECLARATIONS
+   40=a	    \***                                   FILE REFERENCE PARAMETERS
+   41=a	    \***
+   42=a	    \***                      FILE TYPE    : DIRECT
+   43=a	    \***
+   44=a	    \***                      REFERENCE    : ENDOKDEC
+   45=a	    \***
+   46=a	    \***           VERSION A : STEVEN GOULDING  13.10.92
+   47=a	    \***
+   48=a	    \***           Version B : Stephen Windsor  21.01.93
+   49=a	    \***           Add a flag for the store close copy of the security f
+>ile
+   50=a	    \***           .BIN to .WRK and reduce freespace accordingly.
+   51=a	    \***
+   52=a	    \***           Version C : Chris Osborne 11-06-96
+   53=a	    \***           Add flags for gap summary file current and previous.
+   54=a	    \***
+   55=a	    \***           Version D:  Mark Goode  21-01-99
+   56=a	    \***           Add flags for cash accounting files
+   57=a	    \***
+   58=a	    \***           Version E:  Brian Greengield 24/12/99
+   59=a	    \***           ENDOK.PSB90.DATE$ added for last run of PSB90.
+   60=a	    \***           FREESPACE$ reduced to 30 bytes.
+   61=a	    \***           ENDOK.FILLER$ added for CR/LF at the end of the file.
+   62=a	    \***
+   63=a	    \***           Version F:  Amy Hoggard  12/12/2000
+   64=a	    \***           ENDOK.RESET.TBAGK$ added for ECO
+   65=a	    \***           FREESPACE$ reduced to 29 bytes.
+   66=a	    \***
+   67=a	    \***           Version G:  David Artiss 29/01/2002
+   68=a	    \***           ENDOK.RESET.ETULC$ and ENDOK.RESET.ETULP$ added for e
+>Top-Up
+   69=a	    \***           FREESPACE$ reduced to 27 bytes.
+   70=a	    \***
+   71=a	    \***           Version H:  David Artiss 19/07/2002
+   72=a	    \***           Add new fields ENDOK.PSB90.TIME$, ENDOK.PSB04.DATE$ a
+>nd
+   73=a	    \***           ENDOK.PSB04.TIME$.
+   74=a	    \***
+   75=a	    \***           Version I:   Jinju Joshi  26/12/2014
+   76=a	    \***           FOD294 - PCI Phase 2
+   77=a	    \***           ENDOK.RESET.ESPCCSC$ and ENDOK.RESET.ESPCCSP$ added f
+>or
+   78=a	    \***           ESPCCSC and ESPCCSC. FREESPACE$ reduced to 7 bytes
+   79=a	    \***
+   80=a	    \***           Version J   Arun Venugopalan/Mark Walker       23/06/
+>2015
+   81=a	    \***           F392 Retail Stock 5
+   82=a	    \***           Includes the following changes:
+   83=a	    \***           - Added five new flags:
+   84=a	    \***             o ENDOK.RESET.IMSTC$    - IMSTC reset flag
+   85=a	    \***             o ENDOK.UPDATE.STOCK$   - STOCK update flag
+   86=a	    \***             o ENDOK.UPDT.TSFSM$     - Update TSFSM flag
+   87=a	    \***             o ENDOK.BKUP.TOPID$     - Backup TOPID flag
+   88=a	    \***             o ENDOK.CVOS.INIT.LOAD$ - CVOS initial load flag
+   89=a	    \***           - Removed redundant PSB90 and PSB04 date/time fields.
+   90=a	    \***           - Combined ENDOK.FREESPACE$ into ENDOK.FILLER$ and sp
+>lit
+   91=a	    \***             out carriage return/line field into a separate fiel
+>d
+   92=a	    \***             ENDOK.CRLF$.
+   93=a	    \***
+   94=a	    \***           Version K  Lino Jacob                         27/06/2
+>015
+   95=a	    \***           F392 Retail Stock 5
+   96=a	    \***           Includes the following changes:
+   97=a	    \***           - Added three new falgs:
+   98=a	    \***             o ENDOK.PSB90.INIT$     - PSB90 init flag
+   99=a	    \***             o ENDOK.SALES.CLOSE$    - Sales close flag
+  100=a	    \***             o ENDOK.STOCK.CLOSE$    - Stock close flag
+  101=a	    \***
+  102=a	    \***           Version L  Lino Jacob                         29/09/2
+>015
+  103=a	    \***           F392 Retail Stock 5
+  104=a	    \***           Includes the following changes:
+  105=a	    \***           - Removed the following flags:
+  106=a	    \***             o ENDOK.COPY.TERMS$
+  107=a	    \***             o ENDOK.RESET.PSBTERMS$
+  108=a	    \***             o ENDOK.TILL.TAKINGS$
+  109=a	    \***           - Added three new flags:
+  110=a	    \***             o ENDOK.COPY.ACCT.FILE$ - Copy accounting files
+  111=a	    \***             o ENDOK.RESET.ACCTB$    - EALACCTB reset flag
+  112=a	    \***             o ENDOK.RESET.ACCTO$    - EALACCTO reset flag
+  113=a	    \***
+  114=a	    \***           Version M  Lino Jacob                         07/01/2
+>016
+  115=a	    \***           F392 Retail Stock 5
+  116=a	    \***           Includes the following changes:
+  117=a	    \***           - Rolled back redundant changes from previous version
+>.
+  118=a	    \***
+  119=a	    \***           Version N  Lino Jacob                         11/01/2
+>016
+  120=a	    \***           F392 Retail Stock 5
+  121=a	    \***           - Added  date and time fields to track auto store clo
+>se
+  122=a	    \***             o ENDOK.AUTOCLOSE.DATE$
+  123=a	    \***             o ENDOK.AUTOCLOSE.TIME$
+  124=a	    \***
+  125=a	    \***           Version O  Mark Walker                        04/10/2
+>016
+  126=a	    \***           PRB0047008 Stability and logging enhancements
+  127=a	    \***           Includes the following changes:
+  128=a	    \***           - Added two new flags:
+  129=a	    \***             o ENDOK.RESET.AUDIC$
+  130=a	    \***             o ENDOK.RESET.AUDIP$
+  131=a	    \***           - Removed all redundant fields
+  132=a	    \***
+  133=a	    \*******************************************************************
+>**********
+  134=a	    \*******************************************************************
+>**********
+  135=a	    
+  136=a	        STRING GLOBAL                                                   
+>    \
+  137=a	            ENDOK.FILE.NAME$
+  138=a	    
+  139=a	        INTEGER*2 GLOBAL                                                
+>    \
+  140=a	            ENDOK.REPORT.NUM%,                                          
+>    \
+  141=a	            ENDOK.SESS.NUM%
+  142=a	    
+  143=a	        STRING GLOBAL                                                   
+>    \
+  144=a	            ENDOK.AUTOCLOSE.DATE$,\ 6 bytes YYMMDD                      
+>    !NLJ
+  145=a	            ENDOK.AUTOCLOSE.TIME$,\ 6 bytes HHMMSS                      
+>    !NLJ
+  146=a	            ENDOK.BKUP.TOPID$,    \ 1 byte Y or N                       
+>    !JMW
+  147=a	            ENDOK.COPY.TERMS$,    \ 1 byte Y or N                       
+>    !MMW
+  148=a	            ENDOK.CRLF$,          \ 2 bytes for CR/LF                   
+>    !JMW
+  149=a	            ENDOK.CVOS.INIT.LOAD$,\ 1 byte Y or N                       
+>    !JMW
+  150=a	            ENDOK.DATE$,          \ 6 bytes YYMMDD
+  151=a	            ENDOK.DISABLE$,       \ 1 byte Y or N        
+  152=a	            ENDOK.FILLER$,        \ 11 bytes filler                     
+>    !OMW
+  153=a	            ENDOK.FREESPACE$,     \ 1 byte space                        
+>    !OMW
+  154=a	            ENDOK.M.D.TRANS$,     \ 1 byte Y or N                       
+>    !BJAL
+  155=a	    \!!!!!!!ENDOK.MESS.DELETE$,   \ redundant                           
+>    !OMW
+  156=a	            ENDOK.PROCEDURE$,     \ 1 byte D or W  (D=day W=week)
+  157=a	            ENDOK.PSB90.INIT$,    \ 1 byte Y or N                       
+>    !KLJ
+  158=a	            ENDOK.SALES.CLOSE$,   \ 1 byte Y or N                       
+>    !KLJ
+  159=a	            ENDOK.STOCK.CLOSE$,   \ 1 byte Y or N                       
+>    !KLJ
+  160=a	    \!!!!!!!ENDOK.RECOVERY$,      \ redundant                           
+>    !OMW
+  161=a	    \!!!!!!!ENDOK.RERUN$,         \ redundant                           
+>    !OMW
+  162=a	    \!!!!!!!ENDOK.RESET.ACCTC$,   \ redundant                           
+>    !OMW
+  163=a	    \!!!!!!!ENDOK.RESET.ACCTP$,   \ redundant                           
+>    !OMW
+  164=a	            ENDOK.RESET.AUDIC$,   \ 1 byte Y or N                       
+>    !OMW
+  165=a	            ENDOK.RESET.AUDIP$,   \ 1 byte Y or N                       
+>    !OMW
+  166=a	            ENDOK.RESET.BANKP$,   \ 1 byte Y or N                       
+>    !WMG
+  167=a	            ENDOK.RESET.CADF$,    \ 1 byte Y or N                       
+>    !WMG
+  168=a	    \!!!!!!!ENDOK.RESET.CCSC$,    \ redundant                           
+>    !OMW
+  169=a	    \!!!!!!!ENDOK.RESET.CCSP$,    \ redundant                           
+>    !OMW
+  170=a	            ENDOK.RESET.COTTP$,   \ 1 byte Y or N                       
+>    !WMG
+  171=a	            ENDOK.RESET.ESPCCSC$, \ 1 byte Y or N                       
+>    !IJJ
+  172=a	            ENDOK.RESET.ESPCCSP$, \ 1 byte Y or N                       
+>    !IJJ
+  173=a	            ENDOK.RESET.ETULC$,   \ 1 byte Y or N                       
+>    !GDA
+  174=a	            ENDOK.RESET.ETULP$,   \ 1 byte Y or N                       
+>    !GDA
+  175=a	            ENDOK.RESET.GAPSUMC$, \ 1 byte Y or N                       
+>    !CCJO
+  176=a	            ENDOK.RESET.GAPSUMP$, \ 1 byte Y or N                       
+>    !CCJO
+  177=a	            ENDOK.RESET.IMSTC$,   \ 1 byte Y or N                       
+>    !JAV
+  178=a	            ENDOK.RESET.PERFC$,   \ 1 byte Y or N
+  179=a	            ENDOK.RESET.PERFP$,   \ 1 byte Y or N
+  180=a	            ENDOK.RESET.PSBTERMS$,\ 1 byte Y or N                       
+>    !MMW
+  181=a	            ENDOK.RESET.SAFEP$,   \ 1 byte Y or N                       
+>    !WMG
+  182=a	            ENDOK.RESET.SECURITY$,\ 1 byte Y or N
+  183=a	            ENDOK.RESET.STC$,     \ 1 byte Y or N
+  184=a	            ENDOK.RESET.STP$,     \ 1 byte Y or N
+  185=a	    \!!!!!!!ENDOK.RESET.TBAGK$,   \ redundant                           
+>    !OMW
+  186=a	            ENDOK.RESET.TNDDC$,   \ 1 byte Y or N                       
+>    !WMG
+  187=a	            ENDOK.RESET.TNDDP$,   \ 1 byte Y or N                       
+>    !WMG
+  188=a	            ENDOK.RESET.TPROD$,   \ 1 byte Y or N
+  189=a	            ENDOK.RESET.TPROP$,   \ 1 byte Y or N
+  190=a	            ENDOK.RESET.TSF$,     \ 1 byte Y or N
+  191=a	            ENDOK.STC.UPDATE$,    \ 1 byte Y or N
+  192=a	    \!!!!!!!ENDOK.TILL.TAKINGS$,  \ redundant                           
+>    !OMW
+  193=a	            ENDOK.TIME$,          \ 6 bytes HHMMSS
+  194=a	            ENDOK.UPDATE.STOCK$,  \ 1 byte Y or N                       
+>    !JAV
+  195=a	            ENDOK.UPDT.TSFSM$     ! 1 byte Y or N                       
+>    !JMW
+  196=a	    
+  197=a	        INTEGER*2 GLOBAL                                                
+>    \
+  198=a	            ENDOK.RECL%
+  199=a	    
+  200: 	    
+  201: 	    INTEGER*2 CLOSE.FLAG%,           \XDA
+  202: 	              RC%,                   \
+  203: 	              TRADING.FLAG%,         \XDA
+  204: 	              TSL.SESS.NUM%          !1.1 DA
+  205: 	    
+  206: 	    INTEGER*4 FIELD%,                \1.1 DA
+  207: 	              LOOP%
+  208: 	    
+  209: 	    STRING    CLOSE.STATUS$,         \1.3 DA
+  210: 	              CURRENT.DATE$,         \
+  211: 	              CURRENT.HOUR$,         \
+  212: 	              TRADING.STATUS$,       \1.3 DA
+  213: 	              TSL.DATE$,             \
+  214: 	              TSL.FILE.NAME$,        \
+  215: 	              TSL.HOUR$,             \
+  216: 	              TSL.REC$,              \
+  217: 	              VALID$ 
+  218: 	              
+  219: 	    %INCLUDE ENDOKEXT.J86                                               
+>    !1.3 DA
+  220=a	    \*******************************************************************
+>**********
+  221=a	    \*******************************************************************
+>**********
+  222=a	    \***
+  223=a	    \***                  FUNCTION DEFINITIONS FOR ENDOK
+  224=a	    \***
+  225=a	    \***                      REFERENCE    : ENDOKEXA
+  226=a	    \***
+  227=a	    \***           VERSION A : STEVEN GOULDING  13.10.92
+  228=a	    \***
+  229=a	    \***           Version B : Stephen Windsor  21.01.93  
+  230=a	    \***           Keeping versions in step
+  231=a	    \***
+  232=a	    \*******************************************************************
+>**********
+  233=a	    \*******************************************************************
+>**********
+  234=a	    
+  235=a	       FUNCTION ENDOK.SET EXTERNAL
+  236=a	       END FUNCTION
+  237=a	    
+  238=a	      FUNCTION READ.ENDOK EXTERNAL
+  239=a	       INTEGER*1 READ.ENDOK
+  240=a	      END FUNCTION
+  241=a	    
+  242=a	      FUNCTION WRITE.ENDOK EXTERNAL
+  243=a	       INTEGER*1 WRITE.ENDOK
+  244=a	      END FUNCTION
+  245=a	    
+  246: 	    
+  247: 	    FUNCTION READ.TSL PUBLIC                                            
+>    !1.1 DA
+  248: 	    
+  249: 	        INTEGER*2 READ.TSL                                              
+>    !1.1 DA
+  250: 	    
+  251: 	        READ.TSL = 1                                                    
+>    !1.1 DA
+  252: 	        IF END # TSL.SESS.NUM% THEN READ.TSL.ERROR                      
+>    !1.1 DA
+  253: 	        READ # TSL.SESS.NUM% ; TSL.REC$                                 
+>    !1.1 DA
+  254: 	        READ.TSL = 0                                                    
+>    !1.1 DA
+  255: 	    
+  256: 	        EXIT FUNCTION                                                   
+>    !1.1 DA
+  257: 	    
+  258: 	    READ.TSL.ERROR:                                                     
+>    !1.1 DA
+  259: 	    
+  260: 	        EXIT FUNCTION                                                   
+>    !1.1 DA
+  261: 	    
+  262: 	    END FUNCTION                                                        
+>    !1.1 DA
+  263: 	    
+  264: 	    \*
+  265: 	    \* Program Control
+  266: 	    \*
+  267: 	    
+  268: 	       ON ERROR GOTO ERROR.DETECTED
+  269: 	    
+  270: 	       GOSUB INITIALISATION
+  271: 	       
+  272: 	       GOSUB MAIN.PROCESSING
+  273: 	       
+  274: 	       STOP
+  275: 	    
+  276: 	    \*
+  277: 	    \* Initialise variables
+  278: 	    \*
+  279: 	    
+  280: 	    INITIALISATION:
+  281: 	    
+  282: 	       CALL ENDOK.SET                                                   
+>    !1.3 DA
+  283: 	       
+  284: 	       CLOSE.FLAG% = 0                                                  
+>    !XDA
+  285: 	       TRADING.FLAG% = 0                                                
+>    !XDA
+  286: 	    
+  287: 	       VALID$ = "NO"                                                   
+  288: 	       FOR LOOP% = 0 TO 23
+  289: 	          IF STR$(LOOP%) = COMMAND$ THEN VALID$ = "YES"
+  290: 	       NEXT LOOP%
+  291: 	    
+  292: 	       IF COMMAND$ = "" OR VALID$ = "NO" THEN BEGIN
+  293: 	          PRINT "OPENCHK.286 - DA - V1.3"                               
+>    !1.3 DA
+  294: 	          PRINT "======================="
+  295: 	          PRINT "OPENCHK.286 checks whether a store are trading or not "
+> +  \1.1 DA
+  296: 	                "by checking for any"                                   
+>    !1.1 DA
+  297: 	          PRINT "till transaction within the TSL, and then looking at " 
+>+   \1.1 DA
+  298: 	                "their timestamps."                                     
+>    !1.1 DA
+  299: 	          PRINT "There is only one parameter and this is the hour of " +
+>    \1.1 DA
+  300: 	                "today that they must have"                             
+>    !1.1 DA
+  301: 	          PRINT "been trading since to be regarded as open. This must " 
+>+   \1.1 DA
+  302: 	                "be between 0 and 23."                                  
+>    !1.1 DA
+  303: 	          PRINT "A file named either CLOSED or OPEN will be created on "
+> +  \1.1 DA
+  304: 	                "C:/ of the master"                                     
+>    !1.1 DA
+  305: 	          PRINT "controller."
+  306: 	          STOP
+  307: 	       ENDIF
+  308: 	    
+  309: 	       TSL.SESS.NUM%     = 1                                            
+>    !1.3 DA
+  310: 	       TSL.FILE.NAME$    = "ADXLXACN::D:\ADX_IDT1\EALTRANS.DAT"         
+>    !1.1 DA
+  311: 	       
+  312: 	       ENDOK.SESS.NUM%   = 2                                            
+>    !1.3 DA
+  313: 	       ENDOK.REPORT$     = "-"                                          
+>    !1.3 DA
+*** error		   ^8
+  314: 	       
+  315: 	       GOSUB GET.ENDOK.STATUS                                           
+>    !1.3 DA
+  316: 	       
+  317: 	       IF END # TSL.SESS.NUM% THEN TSL.MISSING                          
+>    !1.1 DA
+  318: 	       OPEN TSL.FILE.NAME$ AS TSL.SESS.NUM% NOWRITE NODEL               
+>    !1.1 DA
+  319: 	       
+  320: 	    RETURN
+  321: 	    
+  322: 	    \*
+  323: 	    \* Main Processing 
+  324: 	    \*
+  325: 	    
+  326: 	    MAIN.PROCESSING:
+  327: 	    
+  328: 	       TSL.DATE$ = "------"                                             
+>    !1.1 DA
+  329: 	       TSL.HOUR$ = "--"                                                 
+>    !1.1 DA
+  330: 	       
+  331: 	       RC% = READ.TSL                                                   
+>    !1.1 DA
+  332: 	       WHILE RC% = 0                                                    
+>    !1.1 DA
+  333: 	          IF UNPACK$(LEFT$(TSL.REC$,1)) = "00" THEN BEGIN               
+>    !1.1 DA
+  334: 	             FIELD% = 1                                                 
+>    !1.1 DA
+  335: 	             FOR LOOP% = 1 TO LEN(TSL.REC$)                             
+>    !1.1 DA
+  336: 	                IF MID$(TSL.REC$,LOOP%,1) = ":" THEN BEGIN              
+>    !1.1 DA
+  337: 	                   FIELD% = FIELD% + 1                                  
+>    !1.1 DA
+  338: 	                   IF FIELD% = 12 THEN BEGIN                            
+>    !1.1 DA
+  339: 	                      TSL.DATE$ = UNPACK$(MID$(TSL.REC$,LOOP%+1,3))     
+>    !1.1 DA
+  340: 	                   ENDIF                                                
+>    !1.1 DA
+  341: 	                   IF FIELD% = 13 THEN BEGIN                            
+>    !1.1 DA
+  342: 	                      TSL.HOUR$ = LEFT$(UNPACK$(MID$(TSL.REC$,LOOP%+1,2)
+>),2)!1.1 DA
+  343: 	                   ENDIF
+  344: 	                ENDIF                                                   
+>    !1.1 DA
+  345: 	             NEXT LOOP%                                                 
+>    !1.1 DA
+  346: 	          ENDIF                                                         
+>    !1.1 DA
+  347: 	          RC% = READ.TSL                                                
+>    !1.1 DA
+  348: 	       WEND                                                             
+>    !1.1 DA
+  349: 	       
+  350: 	       CURRENT.HOUR$   = LEFT$(TIME$,2)
+  351: 	       CURRENT.DATE$ = LEFT$(DATE$,2) + MID$(DATE$,3,2) + RIGHT$(DATE$,2
+>)
+  352: 	       
+  353: 	       PRINT TSL.DATE$ + "/" + TSL.HOUR$ + "/"; + ENDOK.REPORT$ + "/";  
+>    !1.3 DA
+*** error							      ^8
+  354: 	       
+  355: 	       IF TSL.DATE$ <> CURRENT.DATE$ THEN BEGIN
+  356: 	          PRINT "CLOSED/DATE"
+  357: 	          PRINT "Store is NOT trading: DIFFERENT DATE"
+  358: 	       ENDIF ELSE BEGIN
+  359: 	          IF VAL(TSL.HOUR$) < VAL(COMMAND$) THEN BEGIN
+  360: 	             PRINT "CLOSED/TIME"
+  361: 	             PRINT "Store is NOT trading: NO ACTIVITY SINCE ";
+  362: 	             IF VAL(COMMAND$) = 0 THEN PRINT "MIDNIGHT"
+  363: 	             IF VAL(COMMAND$) = 12 THEN PRINT "MIDDAY"
+  364: 	             IF VAL(COMMAND$) > 12 THEN PRINT STR$(VAL(COMMAND$)-12) + "
+>PM"
+  365: 	             IF VAL(COMMAND$) < 12 AND VAL(COMMAND$) > 0 THEN           
+>    \
+  366: 	                                                  PRINT COMMAND$ + "AM"
+  367: 	          ENDIF ELSE BEGIN
+  368: 	             PRINT "OPEN"
+  369: 	             PRINT "Store is open and trading"
+  370: 	          ENDIF
+  371: 	       ENDIF       
+  372: 	       
+  373: 	       IF TSL.DATE$ = "------" THEN BEGIN                               
+>    !1.1 DA
+  374: 	          PRINT "No transaction records were found on the TSL"          
+>    !1.1 DA
+  375: 	       ENDIF ELSE BEGIN                                                 
+>    !1.1 DA
+  376: 	          PRINT "The most recent transaction date on the TSL was " +    
+>    \1.1 DA
+  377: 	                TSL.DATE$                                               
+>    !1.1 DA
+  378: 	          PRINT "The most recent transaction hour on the TSL was " +    
+>    \1.1 DA
+  379: 	                TSL.HOUR$                                               
+>    !1.1 DA
+  380: 	       ENDIF
+  381: 	       
+  382: 	       IF ENDOK.REPORT$ = "-" THEN BEGIN                                
+>    !1.3 DA
+*** error		      ^8
+  383: 	           PRINT "Could not work out if store have closed today or not" 
+>    !1.3 DA
+  384: 	       ENDIF ELSE BEGIN                                                 
+>    !1.3 DA
+  385: 	           IF ENDOK.REPORT$ = "Y" THEN BEGIN                            
+>    !1.3 DA
+*** error			  ^8
+  386: 	               PRINT "The store have closed today"                      
+>    !1.3 DA
+  387: 	           ENDIF ELSE BEGIN                                             
+>    !1.3 DA
+  388: 	               PRINT "The store have not closed today"                  
+>    !1.3 DA
+  389: 	           ENDIF                                                        
+>    !1.3 DA
+  390: 	       ENDIF                                                            
+>    !1.3 DA
+  391: 	                  
+  392: 	    RETURN
+  393: 	    
+  394: 	    GET.ENDOK.STATUS:                                                   
+>    !1.3 DA
+  395: 	    
+  396: 	       IF END # ENDOK.RECL% THEN ENDOK.SKIP                             
+>    !1.3 DA
+  397: 	       OPEN ENDOK.FILE.NAME$ RECL ENDOK.RECL% AS ENDOK.SESS.NUM% NOWRITE
+>    \1.3 DA
+  398: 	                                                                 NODEL  
+>    !1.3 DA
+  399: 	                                                                 
+  400: 	       RC% = READ.ENDOK                                                 
+>    !1.3 DA        
+  401: 	       IF RC% = 0 THEN BEGIN                                            
+>    !1.3 DA
+  402: 	           IF DATE$ = ENDOK.DATE$ THEN BEGIN                            
+>    !1.3 DA
+  403: 	               CLOSE.STATUS$ = "Store closed at " + LEFT$(ENDOK.TIME$,2)
+> +  \1.3 DA
+  404: 	                               ":" + MID$(ENDOK.TIME$,3,2)              
+>    !1.3 DA
+  405: 	               CLOSE.FLAG%   = 1                                        
+>    !XDA
+  406: 	           ENDIF ELSE BEGIN                                             
+>    !1.3 DA
+  407: 	               CLOSE.STATUS$ = "Store has not closed today"             
+>    !1.3 DA
+  408: 	               CLOSE.FLAG%   = 2                                        
+>    !XDA
+  409: 	           ENDIF                                                        
+>    !1.3 DA
+  410: 	       ENDIF                                                            
+>    !1.3 DA
+  411: 	       CLOSE ENDOK.SESS.NUM%                                            
+>    !1.3 DA
+  412: 	       
+  413: 	       ENDOK.SKIP:                                                      
+>    !1.3 DA
+  414: 	          
+  415: 	    RETURN                                                              
+>    !1.3 DA
+  416: 	    
+  417: 	    TSL.MISSING:                                                        
+>    !1.1 DA
+  418: 	    
+  419: 	       TRADING.FLAG% = 1                                                
+>    !XDA
+  420: 	       TRADING.STATUS$ = "Store has not traded today"                   
+>    !XDA
+  421: 	       GOSUB NFM.OUTPUT                                                 
+>    !XDA
+  422: 	       
+  423: 	       STOP                                                             
+>    !1.1 DA
+  424: 	          
+  425: 	    RETURN                                                              
+>    !1.1 DA
+  426: 	    
+  427: 	    NFM.OUTPUT:                                                         
+>    !XDA
+  428: 	    
+  429: 	       PRINT "OPENCHK:," + STR$(TRADING.FLAG%) + "," + STR$(CLOSE.FLAG%)
+> +  \XDA
+  430: 	             "," + STORE.NUMBER$ + "," + TRADING.STATUS$ + "," +        
+>    \XDA
+*** error			       ^8
+  431: 	             CLOSE.STATUS$                                              
+>    \XDA
+  432: 	    
+  433: 	    RETURN                                                              
+>    !XDA
+  434: 	    
+  435: 	    \*
+  436: 	    \* Error routine
+  437: 	    \*
+  438: 	    
+  439: 	    ERROR.DETECTED:
+  440: 	    
+  441: 	       TRADING.FLAG% = 0                                                
+>    !XDA
+  442: 	       CLOSE.FLAG% = 0                                                  
+>    !XDA
+  443: 	       TRADING.STATUS$ = "The program has ended abnormally"             
+>    !XDA
+  444: 	       CLOSE.STATUS$ = ""                                               
+>    !XDA
+  445: 	       GOSUB NFM.OUTPUT                                                 
+>    !XDA
+  446: 	    
+  447: 	       STOP
+  448: 	    
+  449: 	    END
+End of Compilation

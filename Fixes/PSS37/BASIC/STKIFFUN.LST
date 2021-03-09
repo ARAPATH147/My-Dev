@@ -1,0 +1,186 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   STKIFFUN.BAS  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.4  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: \******************************************************************************\******************************************************************************
+  10: 0000: \******************************************************************************
+  11: 0000: \***
+  12: 0000: \***              STOCKTAKE ITEM FILE FUNCTIONS
+  13: 0000: \***
+  14: 0000: \***               REFERENCE    : STKIFFUN.BAS
+  15: 0000: \***
+  16: 0000: \***         VERSION A            Nik Sen         19th June 1997
+  17: 0000: \***
+  18: 0000: \***
+  19: 0000: \***         VERSION B            Nik Sen         19th August 1997
+  20: 0000: \***         Added field for STKMF record number.
+  21: 0000: \***
+  22: 0000: \***         VERSION C            Johnnie Cha     11th December 1997
+  23: 0000: \***         Record size increased by one byte for extra digit in location code.
+  24: 0000: \***         Note: Key Length is one larger as a consequence.
+  25: 0000: \***
+  26: 0000: \*******************************************************************************
+  27: 0000: \*******************************************************************************
+  28: 0000: 
+  29: 0000:     INTEGER*2 GLOBAL                \
+  30: 0000:        CURRENT.REPORT.NUM%
+  31: 0000:        
+  32: 0000:     STRING GLOBAL                    \
+  33: 0000:        CURRENT.CODE$,                \
+  34: 0000:        FILE.OPERATION$
+  35: 0000:     
+  36: 0000:     %INCLUDE STKIFDEC.J86                                              
+  37: 0000: \******************************************************************************
+  38: 0000: \******************************************************************************
+  39: 0000: \***
+  40: 0000: \***   $Workfile:   STKIFDEC.J86  $
+  41: 0000: \***
+  42: 0000: \***   $Revision:   1.2  $
+  43: 0000: \***
+  44: 0000: \******************************************************************************
+  45: 0000: \******************************************************************************
+  46: 0000: \***
+  47: 0000: \***   $Log:   V:\archive\j86\stkifdec.j8v  $
+  48: 0000: \***   
+  49: 0000: \***      Rev 1.2   21 Aug 1997 11:20:56   DEV45PS
+  50: 0000: \***    
+  51: 0000: \***   
+  52: 0000: \***      Rev 1.1   19 Aug 1997 11:06:14   DEV45PS
+  53: 0000: \***   Added Stocktake Transmission File Record Number Field
+  54: 0000: \***   
+  55: 0000: \***      Rev 1.0   15 Jul 1997 14:20:48   DEV45PS
+  56: 0000: \***    
+  57: 0000: \***   
+  58: 0000: \***      Rev 1.0   09 Jul 1997 11:05:10   DEV45PS
+  59: 0000: \***   Stocktake System New Files
+  60: 0000: \***   
+  61: 0000: \******************************************************************************
+  62: 0000: \******************************************************************************\******************************************************************************
+  63: 0000: \******************************************************************************
+  64: 0000: \***
+  65: 0000: \***         %INCLUDE FOR STOCKTAKE ITEM FILE FIELD DECLARATIONS
+  66: 0000: \***
+  67: 0000: \***               FILE TYPE    : KEYED
+  68: 0000: \***
+  69: 0000: \***               REFERENCE    : STKIFDEC.J86
+  70: 0000: \***
+  71: 0000: \***    VERSION A.              Nik Sen.               19 Jun 1997.
+  72: 0000: \***    New file for stocktaking system. Holds information about all counted
+  73: 0000: \***    items found on the STOCK and IDF files. Key is Boots Code + Location 
+  74: 0000: \***
+  75: 0000: \***    VERSION B               Nik Sen                19 August 1997
+  76: 0000: \***    Added STKMF Record Number field.
+  77: 0000: \***
+  78: 0000: \*******************************************************************************
+  79: 0000: \*******************************************************************************
+  80: 0000: 
+  81: 0000: STRING GLOBAL                                                  \
+  82: 0000:        STKIF.FILE.NAME$,               \
+  83: 0000:        STKIF.KEY$,                     \
+  84: 0000:        STKIF.ITEM.CODE$,               \
+  85: 0000:        STKIF.LOCATION$,                \
+  86: 0000:        STKIF.BUSINESS.CENTRE$,         \
+  87: 0000:        STKIF.GROUP.SEQUENCE$,          \
+  88: 0000:        STKIF.QUANTITY$,                \
+  89: 0000:        STKIF.DESCRIPTION$,             \
+  90: 0000:        STKIF.STOCKTAKER.NUM$
+  91: 0000: 
+  92: 0000: 
+  93: 0000: 
+  94: 0000: INTEGER*2 GLOBAL                \
+  95: 0000:    STKIF.REPORT.NUM%,           \
+  96: 0000:    STKIF.SESS.NUM%             
+  97: 0000: 
+  98: 0000: 
+  99: 0000: INTEGER*1 GLOBAL                \
+ 100: 0000:    STKIF.RECL%         
+ 101: 0000: 
+ 102: 0000: INTEGER*4 GLOBAL                \
+ 103: 0000:    STKIF.STKMF.RECORD.NUM%
+ 104: 0000: 
+ 105: 0000: 
+ 106: 0000: 
+ 107: 0000: 
+ 108: 0000:   FUNCTION STKIF.SET PUBLIC
+ 109: 0014: \***************************
+ 110: 0014: 
+ 111: 0014:     STKIF.REPORT.NUM% = 526
+ 112: 001d:     STKIF.RECL%       = 49                                             !*Ver C*
+ 113: 0025:     STKIF.FILE.NAME$  = "STKIF"
+ 114: 0034:     
+ 115: 0034:   END FUNCTION
+ 116: 0040:     
+ 117: 0040: \-----------------------------------------------------------------------------
+ 118: 0040: 
+ 119: 0040: FUNCTION READ.STKIF PUBLIC
+ 120: 0054: \****************************
+ 121: 0054: 
+ 122: 0054:     INTEGER*2 READ.STKIF
+ 123: 0054:     
+ 124: 0054:     READ.STKIF = 1
+ 125: 0059:                  
+ 126: 0059:     STKIF.KEY$ = STKIF.ITEM.CODE$ + STKIF.LOCATION$
+ 127: 007d:     IF END #STKIF.SESS.NUM% THEN READ.STKIF.ERROR
+ 128: 0091:     READ FORM "T13,C1,2C3,C24,C2,I4"; #STKIF.SESS.NUM% KEY STKIF.KEY$; \*Ver C*
+ 129: 00fa:        STKIF.BUSINESS.CENTRE$,                                         \
+ 130: 00fa:        STKIF.GROUP.SEQUENCE$,                                          \
+ 131: 00fa:        STKIF.QUANTITY$,                                                \
+ 132: 00fa:        STKIF.DESCRIPTION$,                                             \
+ 133: 00fa:        STKIF.STOCKTAKER.NUM$,                                          \
+ 134: 00fa:        STKIF.STKMF.RECORD.NUM%
+ 135: 00fa:          
+ 136: 00fa: 
+ 137: 00fa:     READ.STKIF = 0
+ 138: 00ff:     EXIT FUNCTION
+ 139: 0101:     
+ 140: 0101: READ.STKIF.ERROR:
+ 141: 0101:     
+ 142: 0101: 
+ 143: 0101:        FILE.OPERATION$ = "R"
+ 144: 0110:        CURRENT.REPORT.NUM% = STKIF.REPORT.NUM%
+ 145: 011e:        
+ 146: 011e:        EXIT FUNCTION
+ 147: 0120: 
+ 148: 0120: END FUNCTION
+ 149: 012f: 
+ 150: 012f: \-----------------------------------------------------------------------------
+ 151: 012f:   
+ 152: 012f: FUNCTION WRITE.STKIF PUBLIC
+ 153: 0143: \****************************
+ 154: 0143: 
+ 155: 0143:     INTEGER*2 WRITE.STKIF
+ 156: 0143:     
+ 157: 0143:     WRITE.STKIF = 1
+ 158: 0148:                  
+ 159: 0148:     STKIF.KEY$ = STKIF.ITEM.CODE$ + STKIF.LOCATION$
+ 160: 016c:     IF END #STKIF.SESS.NUM% THEN WRITE.STKIF.ERROR
+ 161: 0180:     WRITE FORM "C12,C1,2C3,C24,C2,I4"; #STKIF.SESS.NUM%;               \*Ver C*
+ 162: 0202:        STKIF.KEY$,                                                     \
+ 163: 0202:        STKIF.BUSINESS.CENTRE$,                                         \
+ 164: 0202:        STKIF.GROUP.SEQUENCE$,                                          \
+ 165: 0202:        STKIF.QUANTITY$,                                                \
+ 166: 0202:        STKIF.DESCRIPTION$,                                             \
+ 167: 0202:        STKIF.STOCKTAKER.NUM$,                                          \
+ 168: 0202:        STKIF.STKMF.RECORD.NUM%
+ 169: 0202:          
+ 170: 0202: 
+ 171: 0202:     WRITE.STKIF = 0
+ 172: 0207:     EXIT FUNCTION
+ 173: 0209:     
+ 174: 0209: WRITE.STKIF.ERROR:
+ 175: 0209:     
+ 176: 0209: 
+ 177: 0209:        FILE.OPERATION$ = "R"
+ 178: 0218:        CURRENT.REPORT.NUM% = STKIF.REPORT.NUM%
+ 179: 0226:        
+ 180: 0226:        EXIT FUNCTION
+ 181: 0228: 
+ 182: 0228: END FUNCTION
+ 183: 0237: 
+ 184: 0237: 
+ 185: 0237: 
+ 186: 0237: End of Compilation

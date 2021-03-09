@@ -1,0 +1,2583 @@
+   1: 0000: \***********************************************************************
+   2: 0000: \***********************************************************************
+   3: 0000: \***
+   4: 0000: \***    PROGRAM         :       PSU04
+   5: 0000: \***    DESCRIPTION     :       Event log viewer utility
+   6: 0000: \***    AUTHOR          :       Mark Walker
+   7: 0000: \***    DATE            :       26th September 2017
+   8: 0000: \***
+   9: 0000: \***********************************************************************
+  10: 0000: \***********************************************************************
+  11: 0000: \***
+  12: 0000: \***    DESCRIPTION
+  13: 0000: \***
+  14: 0000: \***    This application allows the event logs to be viewed in a
+  15: 0000: \***    more user-friendly manner.
+  16: 0000: \***
+  17: 0000: \***    It relies on the population of a set of daily event log
+  18: 0000: \***    files by the Event Log Monitoring application (EVENTMON).
+  19: 0000: \***    It provides a number of benefits over the standard Toshiba
+  20: 0000: \***    operating system utilities including the following:
+  21: 0000: \***    - Better performance
+  22: 0000: \***    - Combined summary view of all event types
+  23: 0000: \***    - Ability to search on selected application names,
+  24: 0000: \***      severitys and buckets.
+  25: 0000: \***    - Display of associated text descriptions for programs.
+  26: 0000: \***    - Viewing of over 3 months of event logs from a list of
+  27: 0000: \***      selectable daily event log files.
+  28: 0000: \***    - Interpretation of event types including return code
+  29: 0000: \***      descriptions, file names for any file errors and custom
+  30: 0000: \***      comments for many commonly logged event formats.
+  31: 0000: \***    - Ability to dynamically link to command mode sessions
+  32: 0000: \***      to enable viewing of full command history.
+  33: 0000: \***    - Ability to dynamically link to the UTILS file update
+  34: 0000: \***      logs to display manual file sector updates.
+  35: 0000: \***
+  36: 0000: \***    Module 0 initialises variables and populates various static
+  37: 0000: \***    tables used on the summary and detailed event log screens.
+  38: 0000: \***
+  39: 0000: \***    Module 1 contains formatting of the contents of the detail
+  40: 0000: \***    screen for all 4690 operating system related events. This
+  41: 0000: \***    includes controller hardware errors, terminal hardware
+  42: 0000: \***    errors, terminal events, controller events and system events.
+  43: 0000: \***
+  44: 0000: \***    Module 2 contains formatting of the contents of the detail
+  45: 0000: \***    screen for all application events with the exception of
+  46: 0000: \***    Sales Support and the till application.
+  47: 0000: \***
+  48: 0000: \***    Module 3 contains formatting of the contents of the detail
+  49: 0000: \***    screen for GSA application events.
+  50: 0000: \***
+  51: 0000: \***    Module 4 contains formatting of the contents of the detail
+  52: 0000: \***    screen for till application events.
+  53: 0000: \***
+  54: 0000: \***    Module 5 contains handling for all display manager screen flow,
+  55: 0000: \***    including the initial search parameter selection screen,
+  56: 0000: \***    summary screen, event log file lists and selection lists.
+  57: 0000: \***
+  58: 0000: \***    Module 6 contains the display handling for the details screen.
+  59: 0000: \***
+  60: 0000: \***********************************************************************
+  61: 0000: \***********************************************************************
+  62: 0000: \***
+  63: 0000: \***    MODIFICATIONS
+  64: 0000: \***
+  65: 0000: \***    Version A.          Mark Walker                 26th Sep 2017
+  66: 0000: \***    Initial version.
+  67: 0000: \***
+  68: 0000: \***    Version B.          Mark Walker                  2nd Nov 2017
+  69: 0000: \***    - Added support for the source selection list.
+  70: 0000: \***    - Prevent errors in standard functions from attempting to
+  71: 0000: \***      chain back to a calling program when an error is found.
+  72: 0000: \***
+  73: 0000: \***    Version C.          Mark Walker                  6th Nov 2017
+  74: 0000: \***    - Updated handling of bucket and source text descriptions.
+  75: 0000: \***    - Use fast byte matching routine instead of MATCH statement
+  76: 0000: \***      for performance reasons.
+  77: 0000: \***
+  78: 0000: \***    Version D.          Mark Walker                  7th Nov 2017
+  79: 0000: \***    Updated severity descriptions as per 4690 OS messages manual.
+  80: 0000: \***
+  81: 0000: \***    Version E.          Mark Walker                 14th Nov 2017
+  82: 0000: \***    - Added support for local command line log files.
+  83: 0000: \***    - Moved W system messages to a text file.
+  84: 0000: \***
+  85: 0000: \***    Version F.          Mark Walker                 21st Nov 2017
+  86: 0000: \***    Added support for reporting application events logged by
+  87: 0000: \***    the UTILS application.
+  88: 0000: \***
+  89: 0000: \***    Version G.          Mark Walker                  4th Dec 2017
+  90: 0000: \***    Corrected initialisation of the table of Sales Support
+  91: 0000: \***    session numbers.
+  92: 0000: \***
+  93: 0000: \***    Version H.          Mark Walker                  6th Dec 2017
+  94: 0000: \***    Changed some local variables to globals to support moving
+  95: 0000: \***    some local functions from the main screen handling module
+  96: 0000: \***    to public functions in an external subprogram.
+  97: 0000: \***
+  98: 0000: \***    Version I.          Mark Walker                 19th Mar 2018
+  99: 0000: \***    Added support for reporting application events logged by
+ 100: 0000: \***    text file editor applications.
+ 101: 0000: \***
+ 102: 0000: \***********************************************************************
+ 103: 0000: \***********************************************************************
+ 104: 0000: 
+ 105: 0000: \***********************************************************************
+ 106: 0000: \***
+ 107: 0000: \***    Global variable declarations
+ 108: 0000: \***
+ 109: 0000: \***********************************************************************
+ 110: 0000: 
+ 111: 0000: %INCLUDE PSU04G.J86
+ 112: 0000: \***********************************************************************
+ 113: 0000: \***********************************************************************
+ 114: 0000: \***
+ 115: 0000: \***    GLOBAL VARIABLE DEFINITIONS FOR PSU04
+ 116: 0000: \***
+ 117: 0000: \***********************************************************************
+ 118: 0000: \***********************************************************************
+ 119: 0000: \***
+ 120: 0000: \***    MODIFICATIONS
+ 121: 0000: \***
+ 122: 0000: \***    Version A.          Mark Walker                 26th Sep 2017
+ 123: 0000: \***    Initial version.
+ 124: 0000: \***
+ 125: 0000: \***    Version B.          Mark Walker                  2nd Nov 2017
+ 126: 0000: \***    Added support for the source selection list.
+ 127: 0000: \***
+ 128: 0000: \***    Version C.          Mark Walker                  6th Nov 2017
+ 129: 0000: \***    Updated handling of bucket and source text descriptions.
+ 130: 0000: \***
+ 131: 0000: \***    Version D.          Mark Walker                 21st Nov 2017
+ 132: 0000: \***    Added support for the UTILS session screen.
+ 133: 0000: \***
+ 134: 0000: \***    Version E.          Mark Walker                  6th Dec 2017
+ 135: 0000: \***    Moved some local variables to globals to support moving
+ 136: 0000: \***    some functions from the main screen handling module to
+ 137: 0000: \***    an external subprogram.
+ 138: 0000: \***
+ 139: 0000: \***    Version F.          Mark Walker                 19th Mar 2017
+ 140: 0000: \***    Added support for reporting application events logged by
+ 141: 0000: \***    text file editor applications.
+ 142: 0000: \***
+ 143: 0000: \***********************************************************************
+ 144: 0000: \***********************************************************************
+ 145: 0000: 
+ 146: 0000:     INTEGER*1 GLOBAL CURRENT.FIELD%                                     !EMW
+ 147: 0000:     INTEGER*1 GLOBAL FALSE
+ 148: 0000:     INTEGER*1 GLOBAL OPEN.EVAPP
+ 149: 0000:     INTEGER*1 GLOBAL TRUE
+ 150: 0000:     INTEGER*1 GLOBAL U0401.APPLICATION%
+ 151: 0000:     INTEGER*1 GLOBAL U0401.APPLICATION.STATUS%
+ 152: 0000:     INTEGER*1 GLOBAL U0401.BUCKET%
+ 153: 0000:     INTEGER*1 GLOBAL U0401.BUCKET.STATUS%
+ 154: 0000:     INTEGER*1 GLOBAL U0401.CONTROLLER.ID%
+ 155: 0000:     INTEGER*1 GLOBAL U0401.CONTROLLER.ID.STATUS%
+ 156: 0000:     INTEGER*1 GLOBAL U0401.EVENT%
+ 157: 0000:     INTEGER*1 GLOBAL U0401.EVENT.STATUS%
+ 158: 0000:     INTEGER*1 GLOBAL U0401.LOG.DESC%
+ 159: 0000:     INTEGER*1 GLOBAL U0401.LOG.NUMBER%
+ 160: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.GROUP%
+ 161: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.GROUP.STATUS%
+ 162: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.NUMBER%
+ 163: 0000:     INTEGER*1 GLOBAL U0401.MESSAGE.NUMBER.STATUS%
+ 164: 0000:     INTEGER*1 GLOBAL U0401.SEVERITY%
+ 165: 0000:     INTEGER*1 GLOBAL U0401.SEVERITY.STATUS%
+ 166: 0000:     INTEGER*1 GLOBAL U0401.SOURCE%
+ 167: 0000:     INTEGER*1 GLOBAL U0401.SOURCE.STATUS%
+ 168: 0000:     INTEGER*1 GLOBAL U0401.TERMINAL%
+ 169: 0000:     INTEGER*1 GLOBAL U0401.TERMINAL.STATUS%
+ 170: 0000:     INTEGER*1 GLOBAL U0402.PAGE%
+ 171: 0000:     INTEGER*1 GLOBAL U0405.PAGE%
+ 172: 0000:     INTEGER*1 GLOBAL U0406.PAGE%
+ 173: 0000:     INTEGER*1 GLOBAL U0411.PAGE%                                        !BMW
+ 174: 0000:     INTEGER*1 GLOBAL U0412.PAGE%                                        !DMW
+ 175: 0000:     INTEGER*1 GLOBAL VALID.INPUT
+ 176: 0000:     INTEGER*1 GLOBAL VALID.KEY
+ 177: 0000: 
+ 178: 0000:     INTEGER*2 GLOBAL APPLICATIONS.PER.PAGE%
+ 179: 0000:     INTEGER*2 GLOBAL COMMAND.TIME.RANGE%
+ 180: 0000:     INTEGER*2 GLOBAL COMMANDS.PER.PAGE%
+ 181: 0000:     INTEGER*2 GLOBAL CURRENT.INDEX%                                     !EMW
+ 182: 0000:     INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+ 183: 0000:     INTEGER*2 GLOBAL EVENT.BUCKET%
+ 184: 0000:     INTEGER*2 GLOBAL EVENT.COUNT%
+ 185: 0000:     INTEGER*2 GLOBAL EVENT.DAY%
+ 186: 0000:     INTEGER*2 GLOBAL EVENT.FORMAT%
+ 187: 0000:     INTEGER*2 GLOBAL EVENT.HOUR%
+ 188: 0000:     INTEGER*2 GLOBAL EVENT.MESSAGE.NUMBER%
+ 189: 0000:     INTEGER*2 GLOBAL EVENT.MIN%
+ 190: 0000:     INTEGER*2 GLOBAL EVENT.MONTH%
+ 191: 0000:     INTEGER*2 GLOBAL EVENT.NODE.ID%
+ 192: 0000:     INTEGER*2 GLOBAL EVENT.NUMBER%
+ 193: 0000:     INTEGER*2 GLOBAL EVENT.SEVERITY%
+ 194: 0000:     INTEGER*2 GLOBAL EVENT.SOURCE%
+ 195: 0000:     INTEGER*2 GLOBAL EVENT.TERMINAL%
+ 196: 0000:     INTEGER*2 GLOBAL EVENT.YEAR%
+ 197: 0000:     INTEGER*2 GLOBAL FILES.PER.PAGE%
+ 198: 0000:     INTEGER*2 GLOBAL LINE.LENGTH%
+ 199: 0000:     INTEGER*2 GLOBAL MAX.FILE.RECORDS%
+ 200: 0000:     INTEGER*2 GLOBAL MAX.SOURCE.RECORDS%                                !BMW
+ 201: 0000:     INTEGER*2 GLOBAL NULL.MAPPING%                                      !BMW
+ 202: 0000:     INTEGER*2 GLOBAL RESULTS.COUNT%                                     !EMW
+ 203: 0000:     INTEGER*2 GLOBAL RESULTS.INDEX%                                     !EMW
+ 204: 0000:     INTEGER*2 GLOBAL RESULTS.LAST.PAGE%                                 !EMW
+ 205: 0000:     INTEGER*2 GLOBAL RESULTS.PAGE%                                      !EMW
+ 206: 0000:     INTEGER*2 GLOBAL RESULTS.PER.PAGE%
+ 207: 0000:     INTEGER*2 GLOBAL RESULTS.THIS.PAGE%                                 !EMW
+ 208: 0000:     INTEGER*2 GLOBAL RESULTS.TOTAL.PAGES%                               !EMW
+ 209: 0000:     INTEGER*2 GLOBAL SOURCES.PER.PAGE%                                  !BMW
+ 210: 0000:     INTEGER*2 GLOBAL ULOG.REPORT.NUM%                                   !DMW
+ 211: 0000:     INTEGER*2 GLOBAL ULOG.SESS.NUM%                                     !DMW
+ 212: 0000: 
+ 213: 0000:     INTEGER*4 GLOBAL EVENT.DATE%
+ 214: 0000:     INTEGER*4 GLOBAL EVENT.TIME%
+ 215: 0000: 
+ 216: 0000:     STRING GLOBAL ALL.APPLICATIONS.TEXT$
+ 217: 0000:     STRING GLOBAL ALL.BUCKETS.TEXT$
+ 218: 0000:     STRING GLOBAL ALL.CONTROLLERS.TEXT$
+ 219: 0000:     STRING GLOBAL ALL.EVENTS.TEXT$
+ 220: 0000:     STRING GLOBAL ALL.MESSAGE.GROUPS.TEXT$
+ 221: 0000:     STRING GLOBAL ALL.MESSAGE.NUMBERS.TEXT$
+ 222: 0000:     STRING GLOBAL ALL.SEVERITYS.TEXT$
+ 223: 0000:     STRING GLOBAL ALL.SOURCES.TEXT$
+ 224: 0000:     STRING GLOBAL ALL.TERMINALS.TEXT$
+ 225: 0000:     STRING GLOBAL BATCH.SCREEN.FLAG$
+ 226: 0000:     STRING GLOBAL BUCKET.TEXT$(1)
+ 227: 0000:     STRING GLOBAL CHAIN.TO.PROG$
+ 228: 0000:     STRING GLOBAL COMMENT$
+ 229: 0000:     STRING GLOBAL CONTROLLER.ID$
+ 230: 0000:     STRING GLOBAL CURRENT.CODE$
+ 231: 0000:     STRING GLOBAL DOW$(1)
+ 232: 0000:     STRING GLOBAL EDITOR.NAME$                                          !FMW
+ 233: 0000:     STRING GLOBAL EDITOR.PATHNAME$                                      !FMW
+ 234: 0000:     STRING GLOBAL EDITOR.PROGRAM$                                       !FMW
+ 235: 0000:     STRING GLOBAL EDITOR.TYPE$                                          !FMW
+ 236: 0000:     STRING GLOBAL EE$(1)
+ 237: 0000:     STRING GLOBAL EVENT.DOW$
+ 238: 0000:     STRING GLOBAL EVENT.MESSAGE.GROUP$
+ 239: 0000:     STRING GLOBAL EVENT.UNIQUE.DATA$
+ 240: 0000:     STRING GLOBAL FILE.OPERATION$
+ 241: 0000:     STRING GLOBAL HIGHWORD.DESCRIPTION$(1)
+ 242: 0000:     STRING GLOBAL HIGHWORD.ERRORCODE$(1)
+ 243: 0000:     STRING GLOBAL LA$(1)
+ 244: 0000:     STRING GLOBAL LE$(1)
+ 245: 0000:     STRING GLOBAL LJ$(1)
+ 246: 0000:     STRING GLOBAL LOG.DESC$
+ 247: 0000:     STRING GLOBAL LOG.NUMBER$
+ 248: 0000:     STRING GLOBAL LOWWORD.DESCRIPTION$(1)
+ 249: 0000:     STRING GLOBAL LOWWORD.ERRORCODE$(1)
+ 250: 0000:     STRING GLOBAL LW$(1)
+ 251: 0000:     STRING GLOBAL MESSAGE.TEXT$
+ 252: 0000:     STRING GLOBAL MODULE.NUMBER$
+ 253: 0000:     STRING GLOBAL NO.APPLICATIONS.TEXT$
+ 254: 0000:     STRING GLOBAL NO.BUCKETS.TEXT$
+ 255: 0000:     STRING GLOBAL NO.SEVERITYS.TEXT$
+ 256: 0000:     STRING GLOBAL NO.SOURCES.TEXT$                                      !BMW
+ 257: 0000:     STRING GLOBAL NONPRINTABLE.CHARS$
+ 258: 0000:     STRING GLOBAL NONPRINTABLE.MAP$
+ 259: 0000:     STRING GLOBAL NULL.FILENAME$
+ 260: 0000:     STRING GLOBAL NULL.PROGRAM$
+ 261: 0000:     STRING GLOBAL PID$
+ 262: 0000:     STRING GLOBAL PRINTABLE.CHARS$
+ 263: 0000:     STRING GLOBAL PROGRAM$
+ 264: 0000:     STRING GLOBAL R$(1)
+ 265: 0000:     STRING GLOBAL RETURN.CODE$
+ 266: 0000:     STRING GLOBAL RETURN.ERR$
+ 267: 0000:     STRING GLOBAL SE$(1)
+ 268: 0000:     STRING GLOBAL SELECTED.APPLICATIONS.TEXT$
+ 269: 0000:     STRING GLOBAL SELECTED.BUCKETS.TEXT$
+ 270: 0000:     STRING GLOBAL SELECTED.SEVERITYS.TEXT$
+ 271: 0000:     STRING GLOBAL SELECTED.SOURCES.TEXT$                                !BMW
+ 272: 0000:     STRING GLOBAL SEVERITY.TEXT$(1)
+ 273: 0000:     STRING GLOBAL SINGLE.APPLICATION.TEXT$
+ 274: 0000:     STRING GLOBAL SINGLE.BUCKET.TEXT$
+ 275: 0000:     STRING GLOBAL SINGLE.CONTROLLER.TEXT$
+ 276: 0000:     STRING GLOBAL SINGLE.EVENT.TEXT$
+ 277: 0000:     STRING GLOBAL SINGLE.MESSAGE.GROUP.TEXT$
+ 278: 0000:     STRING GLOBAL SINGLE.MESSAGE.NUMBER.TEXT$
+ 279: 0000:     STRING GLOBAL SINGLE.SEVERITY.TEXT$
+ 280: 0000:     STRING GLOBAL SINGLE.SOURCE.TEXT$
+ 281: 0000:     STRING GLOBAL SINGLE.TERMINAL.TEXT$
+ 282: 0000:     STRING GLOBAL SUMMARY.RECORD$(1)                                    !EMW
+ 283: 0000:     STRING GLOBAL SOURCE.TEXT$(1)                                       !CMW
+ 284: 0000:     STRING GLOBAL SS$(1)
+ 285: 0000:     STRING GLOBAL SW$(1)
+ 286: 0000:     STRING GLOBAL TILL.NUMBER$
+ 287: 0000:     STRING GLOBAL TS$(1)
+ 288: 0000:     STRING GLOBAL ULOG.FILE.NAME$                                       !DMW
+ 289: 0000:     STRING GLOBAL ULOG.RECORD$(1)                                       !EMW
+ 290: 0000: 
+ 291: 0000: %INCLUDE PSBF20G.J86    ! Session number utility
+ 292: 0000: REM\
+ 293: 0000: \*******************************************************************************
+ 294: 0000: \*******************************************************************************
+ 295: 0000: \***
+ 296: 0000: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+ 297: 0000: \***
+ 298: 0000: \***                       REFERENCE     : PSBF20G.J86
+ 299: 0000: \*** 
+ 300: 0000: \***     Version A              Bruce Scrive                   5th May 1988   
+ 301: 0000: \*** 
+ 302: 0000: \***     Version B              Robert Cowey                   7th May 1991
+ 303: 0000: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+ 304: 0000: \***     to two byte integer.
+ 305: 0000: \***
+ 306: 0000: \***     Version D              Andrew Wedgeworth             1st July 1992
+ 307: 0000: \***     F20.RETURN.CODE% removed as it is no longer required.
+ 308: 0000: \***
+ 309: 0000: \*******************************************************************************
+ 310: 0000: \*******************************************************************************
+ 311: 0000: 
+ 312: 0000:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+ 313: 0000:                        F20.STRING.FILE.NO$,                            \
+ 314: 0000:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+ 315: 0000:                        SESS.NUM.TABLE$(1)
+ 316: 0000: 
+ 317: 0000:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+ 318: 0000: 
+ 319: 0000:       ! 1 line deleted from here                                       ! DAW 
+ 320: 0000: 
+ 321: 0000: 
+ 322: 0000: %INCLUDE EVAPPDEC.J86
+ 323: 0000: \***********************************************************************
+ 324: 0000: \***********************************************************************
+ 325: 0000: \***
+ 326: 0000: \***    GLOBAL VARIABLE DEFINITIONS FOR EVENT APPLICATION FILE (EVAPP)
+ 327: 0000: \***
+ 328: 0000: \***********************************************************************
+ 329: 0000: \***********************************************************************
+ 330: 0000: \***
+ 331: 0000: \***    MODIFICATIONS
+ 332: 0000: \***
+ 333: 0000: \***    Version A.          Mark Walker                 18th Oct 2017
+ 334: 0000: \***    Initial version.
+ 335: 0000: \***
+ 336: 0000: \***********************************************************************
+ 337: 0000: \***********************************************************************
+ 338: 0000: 
+ 339: 0000:     INTEGER*2 GLOBAL EVAPP.RECL%
+ 340: 0000:     INTEGER*2 GLOBAL EVAPP.SESS.NUM%
+ 341: 0000:     INTEGER*2 GLOBAL EVAPP.REPORT.NUM%
+ 342: 0000: 
+ 343: 0000:     STRING GLOBAL EVAPP.FILE.NAME$
+ 344: 0000:     STRING GLOBAL EVAPP.PROGRAM$
+ 345: 0000:     STRING GLOBAL EVAPP.DESC$
+ 346: 0000:     STRING GLOBAL EVAPP.FILLER$
+ 347: 0000: 
+ 348: 0000: %INCLUDE EVLOGDEC.J86
+ 349: 0000: \***********************************************************************
+ 350: 0000: \***********************************************************************
+ 351: 0000: \***
+ 352: 0000: \***    GLOBAL VARIABLE DEFINITIONS FOR EVENT LOG FILE (EVLOG)
+ 353: 0000: \***
+ 354: 0000: \***********************************************************************
+ 355: 0000: \***********************************************************************
+ 356: 0000: \***
+ 357: 0000: \***    MODIFICATIONS
+ 358: 0000: \***
+ 359: 0000: \***    Version A.          Mark Walker                 26th Sep 2017
+ 360: 0000: \***    Initial version.
+ 361: 0000: \***
+ 362: 0000: \***********************************************************************
+ 363: 0000: \***********************************************************************
+ 364: 0000: 
+ 365: 0000:     INTEGER*1 GLOBAL EVLOG.BUCKET%
+ 366: 0000:     INTEGER*1 GLOBAL EVLOG.FORMAT%
+ 367: 0000: 
+ 368: 0000:     INTEGER*2 GLOBAL EVLOG.COUNT%
+ 369: 0000:     INTEGER*2 GLOBAL EVLOG.MAX.FILES%
+ 370: 0000:     INTEGER*2 GLOBAL EVLOG.MAX.RECORDS%
+ 371: 0000:     INTEGER*2 GLOBAL EVLOG.RECL%
+ 372: 0000:     INTEGER*2 GLOBAL EVLOG.SESS.NUM%
+ 373: 0000:     INTEGER*2 GLOBAL EVLOG.REPORT.NUM%
+ 374: 0000: 
+ 375: 0000:     INTEGER*4 GLOBAL EVLOG.RECORD.NUMBER%
+ 376: 0000:     INTEGER*4 GLOBAL EVLOG.FILE.SIZE%
+ 377: 0000:     INTEGER*4 GLOBAL EVLOG.WAIT%
+ 378: 0000: 
+ 379: 0000:     STRING GLOBAL EVLOG.FILE.NAME$
+ 380: 0000:     STRING GLOBAL EVLOG.RECORD$
+ 381: 0000: 
+ 382: 0000: %INCLUDE CLLOGDEC.J86
+ 383: 0000: \***********************************************************************
+ 384: 0000: \***********************************************************************
+ 385: 0000: \***
+ 386: 0000: \***    GLOBAL VARIABLE DEFINITIONS FOR COMMAND LINE LOG FILE (ADXCLLOG)
+ 387: 0000: \***
+ 388: 0000: \***********************************************************************
+ 389: 0000: \***********************************************************************
+ 390: 0000: \***
+ 391: 0000: \***    MODIFICATIONS
+ 392: 0000: \***
+ 393: 0000: \***    Version A.          Mark Walker                 26th Sep 2017
+ 394: 0000: \***    Initial version.
+ 395: 0000: \***
+ 396: 0000: \***    Version B.          Mark Walker                 14th Nov 2017
+ 397: 0000: \***    Added support for local command line log files.
+ 398: 0000: \***
+ 399: 0000: \***********************************************************************
+ 400: 0000: \***********************************************************************
+ 401: 0000: 
+ 402: 0000:     INTEGER*2 GLOBAL CLLOG.SESS.NUM%
+ 403: 0000:     INTEGER*2 GLOBAL CLLOG.REPORT.NUM%
+ 404: 0000:     INTEGER*2 GLOBAL CLLOG.MAX.RECORDS%
+ 405: 0000: 
+ 406: 0000:     STRING GLOBAL CLLOG.FILE.NAME$
+ 407: 0000:     STRING GLOBAL CLLOG.NODE.ID$                                        !BMW
+ 408: 0000:     STRING GLOBAL CLLOG.RECORD$
+ 409: 0000: 
+ 410: 0000: 
+ 411: 0000: \***********************************************************************
+ 412: 0000: \***
+ 413: 0000: \***    Local variable declarations
+ 414: 0000: \***
+ 415: 0000: \***********************************************************************
+ 416: 0000: 
+ 417: 0000:     INTEGER*1 APPLICATION.EVENT
+ 418: 0000:     INTEGER*1 CLLOG.LOCKED
+ 419: 0000:     INTEGER*1 CODE.FOUND
+ 420: 0000:     INTEGER*1 END.OF.DATA
+ 421: 0000:     INTEGER*1 END.OF.FILE
+ 422: 0000:     INTEGER*1 END.OF.SESSION
+ 423: 0000:     INTEGER*1 ERROR.COUNT%
+ 424: 0000: 
+ 425: 0000:     INTEGER*2 CLLOG.COUNT%
+ 426: 0000:     INTEGER*2 CLLOG.FLAGS%
+ 427: 0000:     INTEGER*2 I%
+ 428: 0000:     INTEGER*2 INDEX%,M%
+ 429: 0000:     INTEGER*2 MESSAGES.REPORT.NUM%                                      !EMW
+ 430: 0000:     INTEGER*2 MESSAGES.SESS.NUM%                                        !EMW
+ 431: 0000:     INTEGER*2 RECORD.NUMBER%
+ 432: 0000:     INTEGER*2 REPORT.NUM%
+ 433: 0000:     INTEGER*2 REPORT.REPORT.NUM%
+ 434: 0000:     INTEGER*2 REPORT.SESS.NUM%
+ 435: 0000:     INTEGER*2 RETCODE.REPORT.NUM%
+ 436: 0000:     INTEGER*2 RETCODE.SESS.NUM%
+ 437: 0000:     INTEGER*2 SALESESS.NUM%
+ 438: 0000:     INTEGER*2 SALESESS.REPORT.NUM%
+ 439: 0000:     INTEGER*2 SALESESS.SESS.NUM%
+ 440: 0000:     INTEGER*2 TILLSESS.NUM%
+ 441: 0000:     INTEGER*2 TILLSESS.REPORT.NUM%
+ 442: 0000:     INTEGER*2 TILLSESS.SESS.NUM%
+ 443: 0000: 
+ 444: 0000:     INTEGER*4 NETSTART.RC%                                              !EMW
+ 445: 0000:     INTEGER*4 SRCHDIR.RC%
+ 446: 0000: 
+ 447: 0000:     STRING CLLOG.PATH$
+ 448: 0000:     STRING CODE.TEXT$
+ 449: 0000:     STRING COMMAND.DATE$
+ 450: 0000:     STRING COMMAND.FILE.NAME$
+ 451: 0000:     STRING COMMAND.STRING$
+ 452: 0000:     STRING COMMAND.TIME$
+ 453: 0000:     STRING DTBL.BUFFER$
+ 454: 0000:     STRING ERROR.TEXT$
+ 455: 0000:     STRING FILENAME$
+ 456: 0000:     STRING LOG.FILE.DATE$
+ 457: 0000:     STRING LOG.FILE.NAME$
+ 458: 0000:     STRING LOG.FILE.TIME$
+ 459: 0000:     STRING MATCH.STRING$
+ 460: 0000:     STRING MESSAGE1$
+ 461: 0000:     STRING MESSAGE2$
+ 462: 0000:     STRING MESSAGE3$
+ 463: 0000:     STRING MESSAGES.FILE.NAME$                                          !EMW
+ 464: 0000:     STRING REPORT.FILE.NAME$
+ 465: 0000:     STRING REPORT.NAME$
+ 466: 0000:     STRING REPORT.RECORD$
+ 467: 0000:     STRING RETCODE.FILE.NAME$
+ 468: 0000:     STRING SALESESS.FILE.NAME$
+ 469: 0000:     STRING SALESESS.NAME$
+ 470: 0000:     STRING SALESESS.RECORD$
+ 471: 0000:     STRING SESSION.DATE$
+ 472: 0000:     STRING SESSION.TIME$
+ 473: 0000:     STRING SRCHDIR.FILE.NAME$
+ 474: 0000:     STRING T$
+ 475: 0000:     STRING TILLSESS.FILE.NAME$
+ 476: 0000:     STRING TILLSESS.NAME$
+ 477: 0000:     STRING TILLSESS.RECORD$
+ 478: 0000:     STRING TYPE$
+ 479: 0000: 
+ 480: 0000: \***********************************************************************
+ 481: 0000: \***
+ 482: 0000: \***    Function definitions
+ 483: 0000: \***
+ 484: 0000: \***********************************************************************
+ 485: 0000: 
+ 486: 0000: %INCLUDE PSBF20E.J86    ! Session number utility
+ 487: 0000: REM\
+ 488: 0000: \*******************************************************************************
+ 489: 0000: \*******************************************************************************
+ 490: 0000: \***
+ 491: 0000: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 492: 0000: \***
+ 493: 0000: \***                  REFERENCE     : PSBF20E.J86
+ 494: 0000: \***
+ 495: 0000: \***     VERSION C            Janet Smith                13th May 1992
+ 496: 0000: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 497: 0000: \***     128 files.
+ 498: 0000: \***
+ 499: 0000: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 500: 0000: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 501: 0000: \***     as a variable.  This new variable contains the function's return
+ 502: 0000: \***     code.
+ 503: 0000: \***
+ 504: 0000: \*******************************************************************************
+ 505: 0000: \*******************************************************************************
+ 506: 0000: 
+ 507: 0000:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 508: 0000:                               PASSED.INTEGER%,                         \
+ 509: 0000:                               PASSED.STRING$)                          \
+ 510: 0000:    EXTERNAL
+ 511: 0000: 
+ 512: 0000:    STRING    FUNCTION.FLAG$,                                           \
+ 513: 0000:              PASSED.STRING$
+ 514: 0000:    ! 3 variables removed from here                                     ! CAW
+ 515: 0000: 
+ 516: 0000: 
+ 517: 0000:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 518: 0000:              PASSED.INTEGER%				               ! CJAS
+ 519: 0000: 
+ 520: 0000:    END FUNCTION
+ 521: 0000: 
+ 522: 0000: %INCLUDE PSBF24E.J86    ! Standard error detected
+ 523: 0000: REM \
+ 524: 0000: \*******************************************************************************
+ 525: 0000: \*******************************************************************************
+ 526: 0000: \***
+ 527: 0000: \***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+ 528: 0000: \***
+ 529: 0000: \***                      REFERENCE     : PSBF24E.J86
+ 530: 0000: \***
+ 531: 0000: \***    Version A                 Janet Smith                  13th May 1992
+ 532: 0000: \***
+ 533: 0000: \*******************************************************************************
+ 534: 0000: \*******************************************************************************
+ 535: 0000: 
+ 536: 0000:    FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+ 537: 0000: 				    ERRFILE%,              \
+ 538: 0000: 				    ERRL%,                 \
+ 539: 0000: 				    ERR$)        EXTERNAL
+ 540: 0000: 				    
+ 541: 0000:           STRING    ERR$
+ 542: 0000: 
+ 543: 0000:           INTEGER*2 ERRFILE%,              \
+ 544: 0000: 	            ERRL%,                 \
+ 545: 0000: 		    STANDARD.ERROR.DETECTED
+ 546: 0000: 		    
+ 547: 0000:           INTEGER*4 ERRN%
+ 548: 0000: 	  		    
+ 549: 0000:    END FUNCTION
+ 550: 0000: 
+ 551: 0000: 
+ 552: 0000: 
+ 553: 0000: FUNCTION MATCHB(P1$,P2$,P3) EXTERNAL                                    !CMW
+ 554: 0000:     INTEGER*2 MATCHB                                                    !CMW
+ 555: 0000:     STRING P1$                                                          !CMW
+ 556: 0000:     STRING P2$                                                          !CMW
+ 557: 0000:     INTEGER*2 P3                                                        !CMW
+ 558: 0000: END FUNCTION                                                            !CMW
+ 559: 0000: 
+ 560: 0000: SUB PSU0405 EXTERNAL
+ 561: 0000: END SUB
+ 562: 0000: 
+ 563: 0000: %INCLUDE BTCMEM.J86
+ 564: 0000: !********************************************************************
+ 565: 0000: !***
+ 566: 0000: !***    INCLUDED CODE:  BTCMEM.J86
+ 567: 0000: !***    AUTHOR:         Stuart William McConnachie
+ 568: 0000: !***    DATE:           26th February 2006
+ 569: 0000: !***
+ 570: 0000: !********************************************************************
+ 571: 0000: !***
+ 572: 0000: !***    Controller CBASIC Memory Functions
+ 573: 0000: !***
+ 574: 0000: !********************************************************************
+ 575: 0000: 
+ 576: 0000: !Get a single byte integer from a string offset
+ 577: 0000: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 578: 0000:     STRING S$
+ 579: 0000:     INTEGER*2 P%
+ 580: 0000:     INTEGER*2 GETN1
+ 581: 0000: END FUNCTION
+ 582: 0000: 
+ 583: 0000: !Get a two byte integer from a string offset
+ 584: 0000: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 585: 0000:     STRING S$
+ 586: 0000:     INTEGER*2 P%
+ 587: 0000:     INTEGER*2 GETN2
+ 588: 0000: END FUNCTION
+ 589: 0000: 
+ 590: 0000: !Get a four byte integer from a string offset
+ 591: 0000: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 592: 0000:     STRING S$
+ 593: 0000:     INTEGER*2 P%
+ 594: 0000:     INTEGER*4 GETN4
+ 595: 0000: END FUNCTION
+ 596: 0000: 
+ 597: 0000: !Get a 10 byte CBASIC real from a string offset
+ 598: 0000: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 599: 0000:     STRING S$
+ 600: 0000:     INTEGER*2 P%
+ 601: 0000:     REAL GETR10
+ 602: 0000: END FUNCTION
+ 603: 0000: 
+ 604: 0000: !Put a single byte integer into a string at offset
+ 605: 0000: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 606: 0000:     STRING S$
+ 607: 0000:     INTEGER*2 P%
+ 608: 0000:     INTEGER*1 N%
+ 609: 0000:     INTEGER*1 PUTN1
+ 610: 0000: END FUNCTION
+ 611: 0000: 
+ 612: 0000: !Put a two byte integer into a string at offset
+ 613: 0000: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 614: 0000:     STRING S$
+ 615: 0000:     INTEGER*2 P%
+ 616: 0000:     INTEGER*2 N%
+ 617: 0000:     INTEGER*1 PUTN2
+ 618: 0000: END FUNCTION
+ 619: 0000: 
+ 620: 0000: !Put a four byte integer into a string at offset
+ 621: 0000: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 622: 0000:     STRING S$
+ 623: 0000:     INTEGER*2 P%
+ 624: 0000:     INTEGER*4 N%
+ 625: 0000:     INTEGER*1 PUTN4
+ 626: 0000: END FUNCTION
+ 627: 0000: 
+ 628: 0000: !Put a 10 byte CBASIC real into a string at offset
+ 629: 0000: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 630: 0000:     STRING S$
+ 631: 0000:     INTEGER*2 P%
+ 632: 0000:     REAL R
+ 633: 0000:     INTEGER*1 PUTR10
+ 634: 0000: END FUNCTION
+ 635: 0000: 
+ 636: 0000: !Peek a two byte integer from a memory address
+ 637: 0000: FUNCTION PEEKN2 (A%) EXTERNAL
+ 638: 0000:     INTEGER*4 A%
+ 639: 0000:     INTEGER*2 PEEKN2
+ 640: 0000: END FUNCTION
+ 641: 0000: 
+ 642: 0000: !Peek a four byte integer from a memory address
+ 643: 0000: FUNCTION PEEKN4 (A%) EXTERNAL
+ 644: 0000:     INTEGER*4 A%
+ 645: 0000:     INTEGER*4 PEEKN4
+ 646: 0000: END FUNCTION
+ 647: 0000: 
+ 648: 0000: !Peek a 10 byte CBASIC real from a memory address
+ 649: 0000: FUNCTION PEEKR10 (A%) EXTERNAL
+ 650: 0000:     INTEGER*4 A%
+ 651: 0000:     REAL PEEKR10
+ 652: 0000: END FUNCTION
+ 653: 0000: 
+ 654: 0000: !Poke a two byte integer to a memory address
+ 655: 0000: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 656: 0000:     INTEGER*4 A%
+ 657: 0000:     INTEGER*2 N%
+ 658: 0000:     INTEGER*1 POKEN2
+ 659: 0000: END FUNCTION
+ 660: 0000: 
+ 661: 0000: !Poke a four byte integer to a memory address
+ 662: 0000: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 663: 0000:     INTEGER*4 A%
+ 664: 0000:     INTEGER*4 N%
+ 665: 0000:     INTEGER*1 POKEN4
+ 666: 0000: END FUNCTION
+ 667: 0000: 
+ 668: 0000: !Poke a 10 byte CBASIC real to a memory address
+ 669: 0000: FUNCTION POKER10 (A%, R) EXTERNAL
+ 670: 0000:     INTEGER*4 A%
+ 671: 0000:     REAL R
+ 672: 0000:     INTEGER*1 POKER10
+ 673: 0000: END FUNCTION
+ 674: 0000: 
+ 675: 0000: %INCLUDE BASROUT.J86    ! OSSHELL function
+ 676: 0000: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+ 677: 0000: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+ 678: 0000: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+ 679: 0000: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+ 680: 0000: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+ 681: 0000: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+ 682: 0000: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+ 683: 0000: !   the BASROUT.OBJ routines.  These routines were written
+ 684: 0000: !  using Metaware C and are intended to provide functions which
+ 685: 0000: !         are either not available in 4680 CBASIC or which can be more
+ 686: 0000: !               efficiently handled by the C language.  Their usage is
+ 687: 0000: !  offered on an "AT YOUR OWN RISK" basis.
+ 688: 0000: !
+ 689: 0000: !               The insert/extract routines usefulness may not be immediately
+ 690: 0000: !               apparent.  Their intention is that they be used in conjunction
+ 691: 0000: !               with a read/write form command.  They can more efficiently
+ 692: 0000: !               parse a string into many different variables than can the
+ 693: 0000: !               read form statement.  So instead of a long list of data var's
+ 694: 0000: !               it may be more efficient to just read/write one long string
+ 695: 0000: !               and then use the insert/extract routines to parse out the
+ 696: 0000: !   data.
+ 697: 0000: 
+ 698: 0000: ! ******************* SUB PROCESS FUNCTIONS *********************************
+ 699: 0000: 
+ 700: 0000: function osshell(cmd.line$) external   ! routine to start
+ 701: 0000:        ! another program.
+ 702: 0000:            integer*4    osshell    ! Upon completion of
+ 703: 0000:            string       cmd.line$   ! program, control is
+ 704: 0000:        ! returned to calling
+ 705: 0000: end function      ! program.
+ 706: 0000: !
+ 707: 0000: ! NOTES:  Program must be a 286 type file.  This does not exclude
+ 708: 0000: !         the capability to execute a batch file however.  Simply pass the
+ 709: 0000: !         following:
+ 710: 0000: !              c:\adx_spgm\command.286 batfile
+ 711: 0000: !         where batfile is the name of the batch file to be executed.
+ 712: 0000: !
+ 713: 0000: ! IMPORTANT: When using osshell to execute a batch file as described above,
+ 714: 0000: !            the final command in the batch file must be "exit".  If not,
+ 715: 0000: !       control is never given back to the calling program.
+ 716: 0000: 
+ 717: 0000: ! ************************ MEMORY RELATED FUNCTIONS ************************
+ 718: 0000: 
+ 719: 0000: function memfree(choice) external   ! routine to que the
+ 720: 0000:        ! status of the
+ 721: 0000:  integer*4 memfree    ! machine's memory:
+ 722: 0000:  integer*2 choice    ! Options:
+ 723: 0000:        !    1 - free
+ 724: 0000: end function      !    2 - total
+ 725: 0000:        !    3 - system
+ 726: 0000: 
+ 727: 0000: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+ 728: 0000: 
+ 729: 0000: function timedate(choice) external   ! routine to que the
+ 730: 0000:        ! OS's timedate table
+ 731: 0000:  integer*4 timedate   ! Choices:
+ 732: 0000:  integer*2 choice    !    1 - millisec's
+ 733: 0000:        !        since midnight
+ 734: 0000: end function      !    2 - minutes from
+ 735: 0000:        !  UCT (timezone)
+ 736: 0000:        !    3 - day of week
+ 737: 0000:        !   0-Sunday
+ 738: 0000:        !  6-Saturday
+ 739: 0000: 
+ 740: 0000: function settime(msecs) external   ! routine to set the
+ 741: 0000:        ! time on the controller
+ 742: 0000:  integer*4  settime    ! msecs is the desired
+ 743: 0000:  integer*4 msecs    ! number of milliseconds
+ 744: 0000:        ! since midnight
+ 745: 0000: end function      ! Returns negative on
+ 746: 0000:        ! error
+ 747: 0000: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+ 748: 0000: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+ 749: 0000: ! At 1 AM the controller broadcasts the new time to all terminals.
+ 750: 0000: ! Insure this is taken into consideration when using this routine.
+ 751: 0000: 
+ 752: 0000: !******************** DISK FILE RELATED FUNCTIONS *************************
+ 753: 0000: 
+ 754: 0000: function truncate(name,length) external   ! routine to truncate
+ 755: 0000:        ! the specified file
+ 756: 0000:  integer*4 truncate   ! to a given length.
+ 757: 0000:  string  name
+ 758: 0000:  integer*4 length
+ 759: 0000: 
+ 760: 0000: end function
+ 761: 0000: 
+ 762: 0000: !******************** STRING VALUE RELATED FUNCTIONS **********************
+ 763: 0000: 
+ 764: 0000: function isalpha(bstrn) external   ! routine to identify
+ 765: 0000:        ! if the specified
+ 766: 0000:  integer*1 isalpha    ! string contains all
+ 767: 0000:  string  bstrn    ! alphabetic char's
+ 768: 0000:        ! Returns:
+ 769: 0000: end function      !     0 - all alpha
+ 770: 0000:        !     X - byte of 1st
+ 771: 0000:        !         non-alpha
+ 772: 0000:        !   char
+ 773: 0000: 
+ 774: 0000: function isdigit(bstrn) external   ! routine to identify
+ 775: 0000:        ! if the specified
+ 776: 0000:  integer*1 isdigit    ! string contains all
+ 777: 0000:  string  bstrn    ! numeric char's
+ 778: 0000:        ! Returns:
+ 779: 0000: end function      !     0 - all numeric
+ 780: 0000:        !     X - byte of 1st
+ 781: 0000:        !         non-numeric
+ 782: 0000:        !   char
+ 783: 0000: 
+ 784: 0000: function islower(bstrn) external   ! routine to identify
+ 785: 0000:        ! if the specified
+ 786: 0000:  integer*1 islower    ! string contains all
+ 787: 0000:  string  bstrn    ! lower case char's
+ 788: 0000:        ! Returns:
+ 789: 0000: end function      !     0 - all lowercase
+ 790: 0000:        !     X - byte of 1st
+ 791: 0000:        !         non-lowercase
+ 792: 0000:        !   char
+ 793: 0000: 
+ 794: 0000: function isupper(bstrn) external   ! routine to identify
+ 795: 0000:        ! if the specified
+ 796: 0000:  integer*1 isupper    ! string contains all
+ 797: 0000:  string  bstrn    ! upper case char's
+ 798: 0000:        ! Returns:
+ 799: 0000: end function      !     0 - all uppercase
+ 800: 0000:        !     X - byte of 1st
+ 801: 0000:        !         non-uppercase
+ 802: 0000:        !   char
+ 803: 0000: 
+ 804: 0000: function toalpha(bstrn) external   ! routine to convert
+ 805: 0000:        ! non-alpha or non-num
+ 806: 0000:    integer*2 toalpha    ! char's to spaces
+ 807: 0000:  string  bstrn    ! Returns:
+ 808: 0000: end function      !   x - no. of char's
+ 809: 0000:        !       changed
+ 810: 0000: 
+ 811: 0000: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+ 812: 0000: 
+ 813: 0000: function idlecount(choice) external   ! routine to either
+ 814: 0000:        ! set to zero or queue
+ 815: 0000:  integer*4 idlecount   ! the value of the
+ 816: 0000:  integer*1 choice    ! processor's idlecount
+ 817: 0000:        ! Choice:
+ 818: 0000: end function      !     0 - set to zero
+ 819: 0000: !       !     1 - get value
+ 820: 0000: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+ 821: 0000: ! TO WORK - This level is not available unless  !     X - idlecount
+ 822: 0000: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+ 823: 0000: ! is highly unrecommended.
+ 824: 0000: 
+ 825: 0000: function logical(actname,logname,choice) external ! routine to set a
+ 826: 0000:        ! a logical name.
+ 827: 0000:  integer*4 logical    ! parms are self
+ 828: 0000:         string  logname    ! explanatory except
+ 829: 0000:  string  actname    ! for choice:
+ 830: 0000:  integer*1 choice    !   0 - set process
+ 831: 0000:        !   1 - set system
+ 832: 0000: end function      !   2 - get process
+ 833: 0000:        !   3 - get system
+ 834: 0000: 
+ 835: 0000: ! NOTE:  Only the setting of a system level of logical name requires
+ 836: 0000: ! user/group zero level of authorization.  Any application may query any
+ 837: 0000: ! logical name.  Setting of a system logical name is only applicable until
+ 838: 0000: ! the system is IPL'd.  A process logical name is only active when that
+ 839: 0000: ! process is active.
+ 840: 0000: 
+ 841: 0000: !******************** STRING PARSING FUNCTIONS *****************************
+ 842: 0000: 
+ 843: 0000: function inserts(whole,part,offset) external  ! routine to insert a
+ 844: 0000:        ! string (part) into
+ 845: 0000:  integer*2 INSERTS    ! another string (whole)
+ 846: 0000:  string  whole    ! starting at specified
+ 847: 0000:  string  part    ! character (offset)
+ 848: 0000:  integer*2 offset
+ 849: 0000: 
+ 850: 0000: end function
+ 851: 0000: 
+ 852: 0000: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+ 853: 0000:        ! a 4-byte integer into
+ 854: 0000:  integer*1 cinsert4   ! a string starting at
+ 855: 0000:  integer*4 integer4   ! byte specified by
+ 856: 0000:  string  bstring    ! offset (1-based)
+ 857: 0000:  integer*2 offset    ! Returns:
+ 858: 0000:        !     0 - Success
+ 859: 0000: end function      !    -1 - String overrun
+ 860: 0000: 
+ 861: 0000: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+ 862: 0000:        ! a 2-byte integer into
+ 863: 0000:  integer*1 cinsert2   ! a string starting at
+ 864: 0000:  integer*2 integer2   ! byte specified by
+ 865: 0000:  string  bstring    ! offset (1-based)
+ 866: 0000:  integer*2 offset    ! Returns:
+ 867: 0000:        !     0 - Success
+ 868: 0000: end function      !    -1 - String overrun
+ 869: 0000: 
+ 870: 0000: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+ 871: 0000:        ! a 1-byte integer into
+ 872: 0000:  integer*1 cinsert1   ! a string starting at
+ 873: 0000:  integer*1 integer1   ! byte specified by
+ 874: 0000:  string  bstring    ! offset (1-based)
+ 875: 0000:  integer*2 offset    ! Returns:
+ 876: 0000:        !     0 - Success
+ 877: 0000: end function      !    -1 - String overrun
+ 878: 0000: 
+ 879: 0000: function extracts(whole,part,offset) external  ! routine to extract a
+ 880: 0000:        ! string (part) from
+ 881: 0000:  integer*2 EXTRACTS   ! another string (whole)
+ 882: 0000:  string  whole    ! starting at specified
+ 883: 0000:  string  part    ! character (offset)
+ 884: 0000:  integer*2 offset
+ 885: 0000: 
+ 886: 0000: end function
+ 887: 0000: 
+ 888: 0000: function cextract4(bstring,offset) external  ! routine to extract
+ 889: 0000:        ! a 4-byte integer from
+ 890: 0000:  integer*4 cextract4   ! a string starting at
+ 891: 0000:                        ! byte specified by
+ 892: 0000:  string  bstring    ! offset (1-based)
+ 893: 0000:  integer*2 offset    ! Returns:
+ 894: 0000:        !     X - 4 byte integer
+ 895: 0000: end function      !    -1 - String overrun
+ 896: 0000: 
+ 897: 0000: function cextract2(bstring,offset) external  ! routine to extract
+ 898: 0000:        ! a 2-byte integer from
+ 899: 0000:  integer*2 cextract2   ! a string starting at
+ 900: 0000:                        ! byte specified by
+ 901: 0000:  string  bstring    ! offset (1-based)
+ 902: 0000:  integer*2 offset    ! Returns:
+ 903: 0000:        !     X - 2 byte integer
+ 904: 0000: end function      !    -1 - String overrun
+ 905: 0000: 
+ 906: 0000: function cextract1(bstring,offset) external  ! routine to extract
+ 907: 0000:        ! a 1-byte integer from
+ 908: 0000:  integer*1 cextract1   ! a string starting at
+ 909: 0000:                        ! byte specified by
+ 910: 0000:  string  bstring    ! offset (1-based)
+ 911: 0000:  integer*2 offset    ! Returns:
+ 912: 0000:        !     X - 1 byte integer
+ 913: 0000: end function      !    -1 - String overrun
+ 914: 0000: 
+ 915: 0000: 
+ 916: 0000: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+ 917: 0000:        ! file names and sizes
+ 918: 0000:        ! Return values:
+ 919: 0000:        !    -1  no matches
+ 920: 0000:        !        found on first
+ 921: 0000:        !        call
+ 922: 0000:        !    0   no matches
+ 923: 0000:        !        found on sub-
+ 924: 0000:        !        sequent calls
+ 925: 0000:        !    Pos Success
+ 926: 0000:        !    Neg OS Rtn Code
+ 927: 0000: ! Usage Note:  If searching for all occurences of a particular file name,
+ 928: 0000: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+ 929: 0000: ! to srchdir.  If any matches are found, a positive value will be returned.
+ 930: 0000: ! To see if any more matches exist, just issue another call to srchdir without
+ 931: 0000: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+ 932: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 933: 0000: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+ 934: 0000: ! of this data is defined below.
+ 935: 0000: 
+ 936: 0000:  integer*4 srchdir
+ 937: 0000: 
+ 938: 0000:  string  file.name$   ! file name to start
+ 939: 0000:        ! search (18 bytes max)
+ 940: 0000:        ! Wild cards and logical
+ 941: 0000:        ! names supported.
+ 942: 0000: 
+ 943: 0000:  string  dtbl.buffer$   ! must be initialized
+ 944: 0000:        ! to 48 bytes.  Contains
+ 945: 0000:        ! all of directory info
+ 946: 0000:        ! Initialize to nulls
+ 947: 0000:        ! each time a new file
+ 948: 0000:        ! name is used.
+ 949: 0000: 
+ 950: 0000: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+ 951: 0000: !
+ 952: 0000: ! Offs  Type                    Description Notes
+ 953: 0000: !  0 integer*4  key  use extract4 to access
+ 954: 0000: !  4  string (18 bytes) file name
+ 955: 0000: ! 22 integer*2  attributes use extract2 to access
+ 956: 0000: !      0x01 - Read Only
+ 957: 0000: !      0x02 - Hidden
+ 958: 0000: !      0x04 - System
+ 959: 0000: !      0x08 - Volume Label
+ 960: 0000: !      0x10 - Subdirectory
+ 961: 0000: !      0x20 - Archive (Files)
+ 962: 0000: !      0x40 - Security enabled
+ 963: 0000: !      0x80 - Reserved
+ 964: 0000: !      0x0000 - Local
+ 965: 0000: !      0x4000 - Mirrored/Update
+ 966: 0000: !      0xC000 - Mirrored/Close
+ 967: 0000: !
+ 968: 0000: !      0x6000 - Compound/Update
+ 969: 0000: !      0xE000 - Compound/Close
+ 970: 0000: ! 24 integer*2  record size use extract2 to access
+ 971: 0000: ! 26 integer*1  User ID of Owner
+ 972: 0000: ! 27 integer*1  Group ID of Owner
+ 973: 0000: ! 28 integer*2  File Security
+ 974: 0000: ! 30 string (6 bytes) Reserved
+ 975: 0000: ! 36 integer*4  File Size use extract4 to access
+ 976: 0000: ! 40 integer*2  Year  use extract2 to access
+ 977: 0000: ! 42 integer*1  Month
+ 978: 0000: ! 43 integer*1  Day
+ 979: 0000: ! 44 integer*1  Hour
+ 980: 0000: ! 45 integer*1  Minute
+ 981: 0000: ! 46 integer*1  Second
+ 982: 0000: ! 47 integer*1  Reserved
+ 983: 0000: 
+ 984: 0000: end function
+ 985: 0000: 
+ 986: 0000: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+ 987: 0000:        ! process names and
+ 988: 0000:        ! status.  Handy to
+ 989: 0000:        ! determine if a
+ 990: 0000:        ! program is currently
+ 991: 0000:        ! running.
+ 992: 0000:        ! Return values:
+ 993: 0000:        !    -1  no matches
+ 994: 0000:        !        found on first
+ 995: 0000:        !        call
+ 996: 0000:        !    0   no matches
+ 997: 0000:        !        found on sub-
+ 998: 0000:        !        sequent calls
+ 999: 0000:        !    Pos Success
+1000: 0000:        !    Neg Failure
+1001: 0000:        !        OS Rtn Code
+1002: 0000:        ! 80000001h - Insuff
+1003: 0000:         !        ptbl buffer
+1004: 0000:        !        Length
+1005: 0000: ! Usage Note:  If searching for all occurences of a particular process name,
+1006: 0000: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+1007: 0000: ! to srchproc.  If any matches are found, a positive value will be returned.
+1008: 0000: ! To see if any more matches exist, just issue another call to srchproc without
+1009: 0000: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+1010: 0000: ! will be returned.  This can be repeated until a Zero is returned.  All data
+1011: 0000: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+1012: 0000: ! of this data is defined as follows:
+1013: 0000: !
+1014: 0000: !       --------------------------------------------------------
+1015: 0000: !   0   |                         PID                          |
+1016: 0000: !       --------------------------------------------------------
+1017: 0000: !   4   |           FID             |   CID        |   VCID    |
+1018: 0000: !       --------------------------------------------------------
+1019: 0000: !   8   |                         NAME                         |
+1020: 0000: !       --------------------------------------------------------
+1021: 0000: !  12   |                         NAME cont'd                  |
+1022: 0000: !       --------------------------------------------------------
+1023: 0000: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+1024: 0000: !       --------------------------------------------------------
+1025: 0000: !  20   |                         MAXMEM                       |
+1026: 0000: !       --------------------------------------------------------
+1027: 0000: !  24   |       FLAGS               |   USER        |  GROUP   |
+1028: 0000: !       --------------------------------------------------------
+1029: 0000: !  28   |                         PARENT                       |
+1030: 0000: !       --------------------------------------------------------
+1031: 0000: !  32   |                         EVENTS                       |
+1032: 0000: !       --------------------------------------------------------
+1033: 0000: !  36   |                         CODE                         |
+1034: 0000: !       --------------------------------------------------------
+1035: 0000: !  40   |                         CSIZE                        |
+1036: 0000: !       --------------------------------------------------------
+1037: 0000: !  44   |                         DATA                         |
+1038: 0000: !       --------------------------------------------------------
+1039: 0000: !  48   |                         DSIZE                        |
+1040: 0000: !       --------------------------------------------------------
+1041: 0000: !  52   |                         HEAP                         |
+1042: 0000: !       --------------------------------------------------------
+1043: 0000: !  56   |                         HSIZE                        |
+1044: 0000: !       --------------------------------------------------------
+1045: 0000: !
+1046: 0000: !       PID   Process ID
+1047: 0000: !       FID  Process's Family ID
+1048: 0000: !       CID   Physical Console Device Number
+1049: 0000: !       VCID  Process's Virtual Console Number
+1050: 0000: !       NAME  Process Name (Application Running)
+1051: 0000: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+1052: 0000: ! PRIOR    Priority
+1053: 0000: !       MAXMEM  Maximum Memory Allowed
+1054: 0000: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+1055: 0000: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+1056: 0000: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+1057: 0000: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+1058: 0000: ! USER  User Number
+1059: 0000: ! GROUP  Group Number
+1060: 0000: !       PARENT   Parent Process ID
+1061: 0000: !       EVENTS   Bit Map of events that have completed but not retrieved
+1062: 0000: !       CODE  Start of code area in user space
+1063: 0000: ! CSIZE  Size in bytes of code area
+1064: 0000: !       DATA  Start of data area in user space
+1065: 0000: ! DSIZE  Size in bytes of data area
+1066: 0000: !       HEAP  Start of heap area in user space
+1067: 0000: ! HSIZE  Size in bytes of heap area
+1068: 0000: !
+1069: 0000:  integer*4 srchproc
+1070: 0000: 
+1071: 0000:  string  proc.name$   ! process name to start
+1072: 0000:        ! search (10 bytes max)
+1073: 0000:        ! Wild cards and logical
+1074: 0000:        ! names supported.
+1075: 0000: 
+1076: 0000:  string  ptbl.buffer$   ! must be initialized
+1077: 0000:        ! to 60 bytes.  Contains
+1078: 0000:        ! all of process info
+1079: 0000:        ! Initialize to nulls
+1080: 0000:        ! each time a new
+1081: 0000:        ! process name is used.
+1082: 0000: 
+1083: 0000: end function
+1084: 0000: 
+1085: 0000: function cconstat(timeout) external       ! function similar
+1086: 0000:                                               ! to BASIC constat%
+1087: 0000:  integer*2 cconstat   ! waits for either a
+1088: 0000:  integer*4 timeout    ! key being hit or
+1089: 0000:        ! the timer expiring
+1090: 0000:        ! before returning
+1091: 0000:        ! returns:
+1092: 0000:        !   -1 error
+1093: 0000:        !    0 timer expired
+1094: 0000:        !    x scan code of
+1095: 0000:        !      key hit
+1096: 0000: end function
+1097: 0000: 
+1098: 0000: function disksize(disk.name$) external   ! function to find
+1099: 0000:        ! the total size of
+1100: 0000:  integer*4 disksize   ! the specified disk
+1101: 0000:  string  disk.name$   ! name (e.g. "h0:")
+1102: 0000:        ! if return value is
+1103: 0000:        ! negative, error
+1104: 0000: end function      ! was received
+1105: 0000: 
+1106: 0000: 
+1107: 0000: %INCLUDE BTCSTR.J86     ! String functions
+1108: 0000: !********************************************************************
+1109: 0000: !***
+1110: 0000: !***    INCLUDED CODE:  BTCSTR.J86
+1111: 0000: !***    AUTHOR:         Stuart William McConnachie
+1112: 0000: !***    DATE:           26th February 2006
+1113: 0000: !***
+1114: 0000: !********************************************************************
+1115: 0000: !***
+1116: 0000: !***    Controller CBASIC String Functions
+1117: 0000: !***
+1118: 0000: !********************************************************************
+1119: 0000: 
+1120: 0000: !Swaps to CBASIC strings
+1121: 0000: SUB SWAPSTR (S1$, S2$) EXTERNAL
+1122: 0000:     STRING S1$, S2$
+1123: 0000: END SUB
+1124: 0000: 
+1125: 0000: !Left trim a string of spaces
+1126: 0000: SUB LTRIM (S$) EXTERNAL
+1127: 0000:     STRING S$
+1128: 0000: END SUB
+1129: 0000: 
+1130: 0000: !Right trim a string of spaces
+1131: 0000: SUB RTRIM (S$) EXTERNAL
+1132: 0000:     STRING S$
+1133: 0000: END SUB
+1134: 0000: 
+1135: 0000: !Left and right trim a string of spaces
+1136: 0000: SUB TRIM (S$) EXTERNAL
+1137: 0000:     STRING S$
+1138: 0000: END SUB
+1139: 0000: 
+1140: 0000: !Left trim a string of a given ASCII character
+1141: 0000: SUB LTRIMC (S$, C%) EXTERNAL
+1142: 0000:     STRING S$
+1143: 0000:     INTEGER*1 C%
+1144: 0000: END SUB
+1145: 0000: 
+1146: 0000: !Right trim a string of a given ASCII character
+1147: 0000: SUB RTRIMC (S$, C%) EXTERNAL
+1148: 0000:     STRING S$
+1149: 0000:     INTEGER*1 C%
+1150: 0000: END SUB
+1151: 0000: 
+1152: 0000: !Left and right trim a string of a given ASCII character
+1153: 0000: SUB TRIMC (S$, C%) EXTERNAL
+1154: 0000:     STRING S$
+1155: 0000:     INTEGER*1 C%
+1156: 0000: END SUB
+1157: 0000: 
+1158: 0000: !Insert one string into another
+1159: 0000: FUNCTION SUBSTR(S1$, O1%, S2$, O2%, L2%) EXTERNAL
+1160: 0000:     STRING    S1$, S2$
+1161: 0000:     INTEGER*2 O1%, O2%, L2%
+1162: 0000:     INTEGER*1 SUBSTR
+1163: 0000: END FUNCTION
+1164: 0000:     
+1165: 0000: %INCLUDE DATEEXT.J86    ! Date functions
+1166: 0000: \*******************************************************************************
+1167: 0000: \*******************************************************************************
+1168: 0000: \***
+1169: 0000: \***    REFERENCE   :   DATEEXT
+1170: 0000: \***
+1171: 0000: \*******************************************************************************
+1172: 0000: \***
+1173: 0000: \***    OVERVIEW:
+1174: 0000: \***
+1175: 0000: \***    This module contains common external function and subprogram
+1176: 0000: \***    definitions used for date processing.
+1177: 0000: \***
+1178: 0000: \***    CONTENTS:
+1179: 0000: \***
+1180: 0000: \***    CENTURY$ - Get the current century from the current system date
+1181: 0000: \***    DAY.OF.WEEK - Get day of week value (0=Sun-6=Sat) for specified date
+1182: 0000: \***
+1183: 0000: \*******************************************************************************
+1184: 0000: \***
+1185: 0000: \***    MODIFICATIONS:
+1186: 0000: \***
+1187: 0000: \***    Version A.              Mark Walker                     13th Mar 2015
+1188: 0000: \***    Initial version.
+1189: 0000: \***
+1190: 0000: \***    Version B.              Mark Walker                     25th Jun 2015
+1191: 0000: \***    Added DAY.OF.WEEK function.
+1192: 0000: \***
+1193: 0000: \*******************************************************************************
+1194: 0000: \*******************************************************************************
+1195: 0000: 
+1196: 0000: FUNCTION CENTURY$ EXTERNAL
+1197: 0000:     STRING CENTURY$
+1198: 0000: END FUNCTION
+1199: 0000: 
+1200: 0000: FUNCTION DAY.OF.WEEK(IN.DATE$) EXTERNAL
+1201: 0000:     INTEGER*1 DAY.OF.WEEK
+1202: 0000:     STRING IN.DATE$
+1203: 0000: END FUNCTION
+1204: 0000: 
+1205: 0000: %INCLUDE NETSTDEF.J86   ! NETSTART function                             !EMW
+1206: 0000: FUNCTION NETSTART(NODE$, PROG$, PARMS$) EXTERNAL
+1207: 0000: INTEGER*4 NETSTART
+1208: 0000: STRING NODE$, PROG$, PARMS$
+1209: 0000: END FUNCTION
+1210: 0000: 
+1211: 0000: %INCLUDE EVAPPEXT.J86   ! Event Application File
+1212: 0000: \***********************************************************************
+1213: 0000: \***********************************************************************
+1214: 0000: \***
+1215: 0000: \***    EXTERNAL FUNCTION DEFINITIONS FOR EVENT APPLICATION FILE (EVAPP)
+1216: 0000: \***
+1217: 0000: \***********************************************************************
+1218: 0000: \***********************************************************************
+1219: 0000: \***
+1220: 0000: \***    MODIFICATIONS
+1221: 0000: \***
+1222: 0000: \***    Version A.          Mark Walker                 18th Oct 2017
+1223: 0000: \***    Initial version.
+1224: 0000: \***
+1225: 0000: \***********************************************************************
+1226: 0000: \***********************************************************************
+1227: 0000: 
+1228: 0000: FUNCTION EVAPP.SET EXTERNAL
+1229: 0000: END FUNCTION
+1230: 0000: 
+1231: 0000: FUNCTION READ.EVAPP EXTERNAL
+1232: 0000: INTEGER*1 READ.EVAPP
+1233: 0000: END FUNCTION
+1234: 0000: 
+1235: 0000: FUNCTION WRITE.EVAPP EXTERNAL
+1236: 0000: INTEGER*1 WRITE.EVAPP
+1237: 0000: END FUNCTION
+1238: 0000: 
+1239: 0000: %INCLUDE EVLOGEXT.J86   ! Event log file
+1240: 0000: \***********************************************************************
+1241: 0000: \***********************************************************************
+1242: 0000: \***
+1243: 0000: \***    EXTERNAL FUNCTION DEFINITIONS FOR EVENT LOG FILE (EVLOG)
+1244: 0000: \***
+1245: 0000: \***********************************************************************
+1246: 0000: \***********************************************************************
+1247: 0000: \***
+1248: 0000: \***    MODIFICATIONS
+1249: 0000: \***
+1250: 0000: \***    Version A.          Mark Walker                 26th Sep 2017
+1251: 0000: \***    Initial version.
+1252: 0000: \***
+1253: 0000: \***********************************************************************
+1254: 0000: \***********************************************************************
+1255: 0000: 
+1256: 0000: FUNCTION EVLOG.SET EXTERNAL
+1257: 0000: END FUNCTION
+1258: 0000: 
+1259: 0000: FUNCTION READ.EVLOG EXTERNAL
+1260: 0000: INTEGER*1 READ.EVLOG
+1261: 0000: END FUNCTION
+1262: 0000: 
+1263: 0000: FUNCTION WRITE.EVLOG EXTERNAL
+1264: 0000: INTEGER*1 WRITE.EVLOG
+1265: 0000: END FUNCTION
+1266: 0000: 
+1267: 0000: %INCLUDE CLLOGEXT.J86   ! Command line log file
+1268: 0000: \***********************************************************************
+1269: 0000: \***********************************************************************
+1270: 0000: \***
+1271: 0000: \***    EXTERNAL FUNCTION DEFINITIONS FOR COMMAND LINE LOG FILE
+1272: 0000: \***                       (ADXCLLOG.DAT)
+1273: 0000: \***
+1274: 0000: \***********************************************************************
+1275: 0000: \***********************************************************************
+1276: 0000: \***
+1277: 0000: \***    MODIFICATIONS
+1278: 0000: \***
+1279: 0000: \***    Version A.          Mark Walker                 29th Sep 2017
+1280: 0000: \***    Initial version.
+1281: 0000: \***
+1282: 0000: \***********************************************************************
+1283: 0000: \***********************************************************************
+1284: 0000: 
+1285: 0000: FUNCTION CLLOG.SET EXTERNAL
+1286: 0000: END FUNCTION
+1287: 0000: 
+1288: 0000: FUNCTION READ.CLLOG EXTERNAL
+1289: 0000: INTEGER*1 READ.CLLOG
+1290: 0000: END FUNCTION
+1291: 0000: 
+1292: 0000: 
+1293: 0000: \***********************************************************************
+1294: 0000: \***********************************************************************
+1295: 0000: \***
+1296: 0000: \***        S T A R T   O F   M A I N L I N E   C O D E
+1297: 0000: \***
+1298: 0000: \***********************************************************************
+1299: 0000: \***********************************************************************
+1300: 0000: 
+1301: 0000:     ON ERROR GOTO ERROR.DETECTED
+1302: 0032: 
+1303: 0032:     GOSUB INITIALISATION
+1304: 0044:     GOSUB MAIN.PROCESSING
+1305: 0056:     GOSUB TERMINATION
+1306: 0068: 
+1307: 0068:     STOP
+1308: 0075: 
+1309: 0075: \***********************************************************************
+1310: 0075: \***
+1311: 0075: \***    INITIALISATION
+1312: 0075: \***
+1313: 0075: \***********************************************************************
+1314: 0075: INITIALISATION:
+1315: 0085: 
+1316: 0085:     GOSUB INITIALISE.VARIABLES
+1317: 0097:     GOSUB ALLOCATE.SESSION.NUMBERS
+1318: 00a9:     GOSUB INITIALISE.FILES
+1319: 00bb:     GOSUB CHECK.COMMAND.FILES
+1320: 00cd:     GOSUB BUILD.DATA.TABLES
+1321: 00df: 
+1322: 00df:     RETURN
+1323: 00ef: 
+1324: 00ef: \***********************************************************************
+1325: 00ef: \***
+1326: 00ef: \***    MAIN.PROCESSING
+1327: 00ef: \***
+1328: 00ef: \***********************************************************************
+1329: 00ef: MAIN.PROCESSING:
+1330: 00ff: 
+1331: 00ff:     ! Start selection screen processing
+1332: 00ff:     CALL PSU0405
+1333: 010c: 
+1334: 010c: RETURN
+1335: 011c: 
+1336: 011c: \***********************************************************************
+1337: 011c: \***
+1338: 011c: \***    TERMINATION
+1339: 011c: \***
+1340: 011c: \***********************************************************************
+1341: 011c: TERMINATION:
+1342: 012c: 
+1343: 012c:     ! IF event application file is open
+1344: 012c:     IF OPEN.EVAPP THEN BEGIN
+1345: 013e:         ! Close it
+1346: 013e:         CLOSE EVAPP.SESS.NUM%
+1347: 0152:     ENDIF
+1348: 015a: 
+1349: 015a:     GOSUB DEALLOCATE.SESSION.NUMBERS
+1350: 016c: 
+1351: 016c:     CLEARS
+1352: 017b: 
+1353: 017b:     RETURN
+1354: 018b: 
+1355: 018b: \***********************************************************************
+1356: 018b: \***
+1357: 018b: \***    INITIALISE.VARIABLES
+1358: 018b: \***
+1359: 018b: \***********************************************************************
+1360: 018b: INITIALISE.VARIABLES:
+1361: 019b: 
+1362: 019b:     BATCH.SCREEN.FLAG$ = "B"                                            !BMW
+1363: 01b2:     CHAIN.TO.PROG$     = "PSB50"
+1364: 01c9:     MODULE.NUMBER$     = "PSU04"
+1365: 01e0: 
+1366: 01e0:     TRUE = -1
+1367: 01f0:     FALSE = 0
+1368: 0200: 
+1369: 0200:     CALL EVLOG.SET
+1370: 021b:     CALL CLLOG.SET
+1371: 0236:     CALL EVAPP.SET
+1372: 0251: 
+1373: 0251:     ! Till session numbers text file
+1374: 0251:     TILLSESS.FILE.NAME$  = "ADX_SPGM:TILLSESS.TXT"
+1375: 0266:     TILLSESS.REPORT.NUM% = 426
+1376: 0274: 
+1377: 0274:     ! Sales Support session numbers text file
+1378: 0274:     SALESESS.FILE.NAME$  = "ADX_SPGM:SALESESS.TXT"
+1379: 0289:     SALESESS.REPORT.NUM% = 426
+1380: 0297: 
+1381: 0297:     ! Return codes text file
+1382: 0297:     RETCODE.FILE.NAME$   = "ADX_SPGM:RETCODE.TXT"
+1383: 02ac:     RETCODE.REPORT.NUM%  = 426
+1384: 02ba: 
+1385: 02ba:     ! Report numbers text file
+1386: 02ba:     REPORT.FILE.NAME$    = "ADX_SPGM:REPORT.TXT"
+1387: 02cf:     REPORT.REPORT.NUM%   = 426
+1388: 02dd:     
+1389: 02dd:     ! System messages text file                                         !EMW
+1390: 02dd:     MESSAGES.FILE.NAME$  = "ADX_SPGM:MESSAGES.TXT"                      !EMW
+1391: 02f2:     MESSAGES.REPORT.NUM% = 426                                          !EMW
+1392: 0300: 
+1393: 0300:     ULOG.FILE.NAME$ = "ADXLXAAN::C:\ADX_CLOG\UTILS.LOG"                 !FMW
+1394: 0317:     ULOG.REPORT.NUM% = 426                                              !FMW
+1395: 0328: 
+1396: 0328:     ! Selection screen DM field positions
+1397: 0328:     U0401.LOG.NUMBER%            = 2
+1398: 0338:     U0401.APPLICATION%           = 3
+1399: 0348:     U0401.TERMINAL%              = 4
+1400: 0358:     U0401.CONTROLLER.ID%         = 5
+1401: 0368:     U0401.SEVERITY%              = 6
+1402: 0378:     U0401.BUCKET%                = 7
+1403: 0388:     U0401.SOURCE%                = 8
+1404: 0398:     U0401.EVENT%                 = 9
+1405: 03a8:     U0401.MESSAGE.GROUP%         = 10
+1406: 03b8:     U0401.MESSAGE.NUMBER%        = 11
+1407: 03c8:     U0401.LOG.DESC%              = 20
+1408: 03d8:     U0401.APPLICATION.STATUS%    = 21
+1409: 03e8:     U0401.TERMINAL.STATUS%       = 22
+1410: 03f8:     U0401.CONTROLLER.ID.STATUS%  = 23
+1411: 0408:     U0401.SEVERITY.STATUS%       = 24
+1412: 0418:     U0401.BUCKET.STATUS%         = 25
+1413: 0428:     U0401.SOURCE.STATUS%         = 26
+1414: 0438:     U0401.EVENT.STATUS%          = 27
+1415: 0448:     U0401.MESSAGE.GROUP.STATUS%  = 28
+1416: 0458:     U0401.MESSAGE.NUMBER.STATUS% = 29
+1417: 0468: 
+1418: 0468:     ! Page number DM field positions on other screens
+1419: 0468:     U0402.PAGE% = 2
+1420: 0478:     U0405.PAGE% = 2
+1421: 0488:     U0406.PAGE% = 2
+1422: 0498:     U0411.PAGE% = 2                                                     !BMW
+1423: 04a8:     U0412.PAGE% = 2                                                     !FMW
+1424: 04b8: 
+1425: 04b8:     VALID.KEY = TRUE
+1426: 04ce: 
+1427: 04ce:     LOG.DESC$ = "Current"
+1428: 04e5: 
+1429: 04e5:     COMMAND.TIME.RANGE% = 15 ! Command scan time range (minutes)
+1430: 04f6: 
+1431: 04f6:     ALL.APPLICATIONS.TEXT$      = "All applications"
+1432: 050d:     SELECTED.APPLICATIONS.TEXT$ = "Selected applications only"
+1433: 0524:     SINGLE.APPLICATION.TEXT$    = "Single application only"
+1434: 053b:     NO.APPLICATIONS.TEXT$       = "** No applications selected **"
+1435: 0552: 
+1436: 0552:     ALL.TERMINALS.TEXT$         = "All terminals"
+1437: 0569:     SINGLE.TERMINAL.TEXT$       = "Single terminal only"
+1438: 0580: 
+1439: 0580:     ALL.CONTROLLERS.TEXT$       = "All controllers"
+1440: 0597:     SINGLE.CONTROLLER.TEXT$     = "Single controller only"
+1441: 05ae: 
+1442: 05ae:     ALL.SEVERITYS.TEXT$         = "All severitys"
+1443: 05c5:     SELECTED.SEVERITYS.TEXT$    = "Selected severitys only"
+1444: 05dc:     SINGLE.SEVERITY.TEXT$       = "Single severity only"
+1445: 05f3:     NO.SEVERITYS.TEXT$          = "** No severitys selected **"
+1446: 060a: 
+1447: 060a:     ALL.BUCKETS.TEXT$           = "All buckets"
+1448: 0621:     SELECTED.BUCKETS.TEXT$      = "Selected buckets only"
+1449: 0638:     SINGLE.BUCKET.TEXT$         = "Single bucket only"
+1450: 064f:     NO.BUCKETS.TEXT$            = "** No buckets selected **"
+1451: 0666: 
+1452: 0666:     ALL.SOURCES.TEXT$           = "All sources"
+1453: 067d:     SELECTED.SOURCES.TEXT$      = "Selected sources only"               !BMW
+1454: 0694:     SINGLE.SOURCE.TEXT$         = "Single source only"
+1455: 06ab:     NO.SOURCES.TEXT$            = "** No sources selected **"           !BMW
+1456: 06c2: 
+1457: 06c2:     ALL.EVENTS.TEXT$            = "All events"
+1458: 06d9:     SINGLE.EVENT.TEXT$          = "Single event only"
+1459: 06f0: 
+1460: 06f0:     ALL.MESSAGE.GROUPS.TEXT$    = "All message groups"
+1461: 0707:     SINGLE.MESSAGE.GROUP.TEXT$  = "Single message group only"
+1462: 071e: 
+1463: 071e:     ALL.MESSAGE.NUMBERS.TEXT$   = "All message numbers"
+1464: 0735:     SINGLE.MESSAGE.NUMBER.TEXT$ = "Single message number only"
+1465: 074c: 
+1466: 074c:     FILES.PER.PAGE%        = 18 ! Event log file results per page
+1467: 075d:     RESULTS.PER.PAGE%      = 18 ! Summary result lines per page
+1468: 076e:     COMMANDS.PER.PAGE%     = 18 ! Command session lines per page
+1469: 077f:     APPLICATIONS.PER.PAGE% = 18 ! Application selections per page
+1470: 0790:     SOURCES.PER.PAGE%      = 18 ! Source selections per page            !BMW
+1471: 07a1: 
+1472: 07a1:     ! Screen line length
+1473: 07a1:     LINE.LENGTH% = 80
+1474: 07b2: 
+1475: 07b2:     MAX.FILE.RECORDS%   = 100 ! Maximum number of event log files
+1476: 07c3:     MAX.SOURCE.RECORDS% = 256 ! Maximum number of sources               !BMW
+1477: 07d4: 
+1478: 07d4:     ! Day of week
+1479: 07d4:     DIM DOW$(6)
+1480: 0803: 
+1481: 0803:     DOW$(0) = "Sun"
+1482: 0826:     DOW$(1) = "Mon"
+1483: 0849:     DOW$(2) = "Tue"
+1484: 086c:     DOW$(3) = "Wed"
+1485: 088f:     DOW$(4) = "Thu"
+1486: 08b2:     DOW$(5) = "Fri"
+1487: 08d5:     DOW$(6) = "Sat"
+1488: 08f8: 
+1489: 08f8:     ! Severity list description
+1490: 08f8:     DIM SEVERITY.TEXT$(5)
+1491: 0927: 
+1492: 0927:     SEVERITY.TEXT$(0) = "Unknown Severity"                              !CMW
+1493: 094a:     SEVERITY.TEXT$(1) =                                             \   !DMW
+1494: 096d:         "Multiple terminals or the entire system"                       !DMW
+1495: 096d:     SEVERITY.TEXT$(2) =                                             \   !DMW
+1496: 0990:         "Single terminal or physical I/O device"                        !DMW
+1497: 0990:     SEVERITY.TEXT$(3) =                                             \   !DMW
+1498: 09b3:         "Major application error"                                       !DMW
+1499: 09b3:     SEVERITY.TEXT$(4) =                                             \   !DMW
+1500: 09d6:         "Minor application error or statistical event"                  !DMW
+1501: 09d6:     SEVERITY.TEXT$(5) =                                             \   !DMW
+1502: 09f9:         "For information purposes only"                                 !DMW
+1503: 09f9: 
+1504: 09f9:     ! Bucket list description
+1505: 09f9:     DIM BUCKET.TEXT$(6)
+1506: 0a28: 
+1507: 0a28:     BUCKET.TEXT$(0) = "Unknown Bucket"                                  !CMW
+1508: 0a4b:     BUCKET.TEXT$(1) = "Controller Hardware"                             !CMW
+1509: 0a6e:     BUCKET.TEXT$(2) = "Terminal Hardware"                               !CMW
+1510: 0a91:     BUCKET.TEXT$(3) = "Terminal Event"                                  !CMW
+1511: 0ab4:     BUCKET.TEXT$(4) = "Controller Event"                                !CMW
+1512: 0ad7:     BUCKET.TEXT$(5) = "System Event"                                    !CMW
+1513: 0afa:     BUCKET.TEXT$(6) = "Application Event"                               !CMW
+1514: 0b1d: 
+1515: 0b1d:     ! Build list of all non-printable ASCII characters to enable
+1516: 0b1d:     ! them to be ignored when displaying screen output
+1517: 0b1d:     NONPRINTABLE.CHARS$ = ""
+1518: 0b34: 
+1519: 0b34:     FOR I% = 0 TO 31
+1520: 0b44:         NONPRINTABLE.CHARS$ = NONPRINTABLE.CHARS$ + CHR$(I%)
+1521: 0b6e:     NEXT I%
+1522: 0b84: 
+1523: 0b84:     FOR I% = 127 TO 255
+1524: 0b94:         NONPRINTABLE.CHARS$ = NONPRINTABLE.CHARS$ + CHR$(I%)
+1525: 0bbe:     NEXT I%
+1526: 0bd5: 
+1527: 0bd5:     NONPRINTABLE.MAP$ = STRING$(LEN(NONPRINTABLE.CHARS$),".")
+1528: 0c03: 
+1529: 0c03:     ! Null constants
+1530: 0c03:     NULL.PROGRAM$  = STRING$(8," ")
+1531: 0c21:     NULL.FILENAME$ = STRING$(12," ")
+1532: 0c3f:     NULL.MAPPING%  = 7FFFH ! High values                                !BMW
+1533: 0c50: 
+1534: 0c50:     ! Editor control application                                        !IMW
+1535: 0c50:     EDITOR.PROGRAM$  = "ADXEDITL"                                       !IMW
+1536: 0c67:     EDITOR.PATHNAME$ = "ADX_UPGM:" + EDITOR.PROGRAM$ + ".286"           !IMW
+1537: 0c90: 
+1538: 0c90: RETURN
+1539: 0ca0: 
+1540: 0ca0: \***********************************************************************
+1541: 0ca0: \***
+1542: 0ca0: \*** ALLOCATE.SESSION.NUMBERS
+1543: 0ca0: \***
+1544: 0ca0: \***********************************************************************
+1545: 0ca0: ALLOCATE.SESSION.NUMBERS:
+1546: 0cb0: 
+1547: 0cb0:     FILE.OPERATION$ = "O"
+1548: 0cc7: 
+1549: 0cc7:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \
+1550: 0cf4:                           EVLOG.REPORT.NUM%,                        \
+1551: 0cf4:                           EVLOG.FILE.NAME$)
+1552: 0cf4:     EVLOG.SESS.NUM% = F20.INTEGER.FILE.NO%
+1553: 0d0a: 
+1554: 0d0a:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \
+1555: 0d31:                           REPORT.REPORT.NUM%,                       \
+1556: 0d31:                           REPORT.FILE.NAME$)
+1557: 0d31:     REPORT.SESS.NUM% = F20.INTEGER.FILE.NO%
+1558: 0d43: 
+1559: 0d43:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \
+1560: 0d6a:                           RETCODE.REPORT.NUM%,                      \
+1561: 0d6a:                           RETCODE.FILE.NAME$)
+1562: 0d6a:     RETCODE.SESS.NUM% = F20.INTEGER.FILE.NO%
+1563: 0d7c: 
+1564: 0d7c:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \
+1565: 0da3:                           TILLSESS.REPORT.NUM%,                     \
+1566: 0da3:                           TILLSESS.FILE.NAME$)
+1567: 0da3:     TILLSESS.SESS.NUM% = F20.INTEGER.FILE.NO%
+1568: 0db5: 
+1569: 0db5:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \
+1570: 0ddc:                           SALESESS.REPORT.NUM%,                     \
+1571: 0ddc:                           SALESESS.FILE.NAME$)
+1572: 0ddc:     SALESESS.SESS.NUM% = F20.INTEGER.FILE.NO%
+1573: 0dee: 
+1574: 0dee:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \
+1575: 0e1b:                           CLLOG.REPORT.NUM%,                        \
+1576: 0e1b:                           CLLOG.FILE.NAME$)
+1577: 0e1b:     CLLOG.SESS.NUM% = F20.INTEGER.FILE.NO%
+1578: 0e31: 
+1579: 0e31:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \
+1580: 0e5e:                           EVAPP.REPORT.NUM%,                        \
+1581: 0e5e:                           EVAPP.FILE.NAME$)
+1582: 0e5e:     EVAPP.SESS.NUM% = F20.INTEGER.FILE.NO%
+1583: 0e74: 
+1584: 0e74:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \   !EMW
+1585: 0e9b:                           MESSAGES.REPORT.NUM%,                     \   !EMW
+1586: 0e9b:                           MESSAGES.FILE.NAME$)                          !EMW
+1587: 0e9b:     MESSAGES.SESS.NUM% = F20.INTEGER.FILE.NO%                           !EMW
+1588: 0ead:                                                                         !EMW
+1589: 0ead:     CALL SESS.NUM.UTILITY(FILE.OPERATION$,                          \   !FMW
+1590: 0eda:                           ULOG.REPORT.NUM%,                         \   !FMW
+1591: 0eda:                           ULOG.FILE.NAME$)                              !FMW
+1592: 0eda:     ULOG.SESS.NUM% = F20.INTEGER.FILE.NO%                               !FMW
+1593: 0ef0:                                                                         !FMW
+1594: 0ef0:     RETURN
+1595: 0f00: 
+1596: 0f00: \***********************************************************************
+1597: 0f00: \***
+1598: 0f00: \***    INITIALISE.FILES
+1599: 0f00: \***
+1600: 0f00: \***********************************************************************
+1601: 0f00: INITIALISE.FILES:
+1602: 0f10: 
+1603: 0f10:     OPEN.EVAPP = FALSE
+1604: 0f26: 
+1605: 0f26:     OPEN EVAPP.FILE.NAME$ KEYED RECL EVAPP.RECL%                    \
+1606: 0f53:         AS EVAPP.SESS.NUM% NOWRITE NODEL
+1607: 0f53: 
+1608: 0f53:     OPEN.EVAPP = TRUE
+1609: 0f69: 
+1610: 0f69: OPEN.EVAPP.ERROR:
+1611: 0f79: 
+1612: 0f79:     RETURN
+1613: 0f89: 
+1614: 0f89: \***********************************************************************
+1615: 0f89: \***
+1616: 0f89: \***    DEALLOCATE.SESSION.NUMBERS
+1617: 0f89: \***
+1618: 0f89: \***********************************************************************
+1619: 0f89: DEALLOCATE.SESSION.NUMBERS:
+1620: 0f99: 
+1621: 0f99:     FILE.OPERATION$ = "C"
+1622: 0fb0: 
+1623: 0fb0:     CALL SESS.NUM.UTILITY("C",EVLOG.SESS.NUM%,"")
+1624: 0fcf:     CALL SESS.NUM.UTILITY("C",REPORT.SESS.NUM%,"")
+1625: 0feb:     CALL SESS.NUM.UTILITY("C",RETCODE.SESS.NUM%,"")
+1626: 1007:     CALL SESS.NUM.UTILITY("C",TILLSESS.SESS.NUM%,"")
+1627: 1023:     CALL SESS.NUM.UTILITY("C",SALESESS.SESS.NUM%,"")
+1628: 103f:     CALL SESS.NUM.UTILITY("C",CLLOG.SESS.NUM%,"")
+1629: 105e:     CALL SESS.NUM.UTILITY("C",EVAPP.SESS.NUM%,"")
+1630: 107d:     CALL SESS.NUM.UTILITY("C",MESSAGES.SESS.NUM%,"")                    !EMW
+1631: 1099:     CALL SESS.NUM.UTILITY("C",ULOG.SESS.NUM%,"")                        !FMW
+1632: 10b8: 
+1633: 10b8:     RETURN
+1634: 10c8: 
+1635: 10c8: \***********************************************************************
+1636: 10c8: \***
+1637: 10c8: \***    CHECK.COMMAND.FILES
+1638: 10c8: \***
+1639: 10c8: \***********************************************************************
+1640: 10c8: CHECK.COMMAND.FILES:
+1641: 10d8: 
+1642: 10d8:     ! FOR each controller ID                                            !EMW
+1643: 10d8:     FOR I% = 1 TO 2                                                     !EMW
+1644: 10e9:     
+1645: 10e9:         ! Initialise directory table buffer
+1646: 10e9:         DTBL.BUFFER$ = STRING$(48,CHR$(0))
+1647: 1108: 
+1648: 1108:         ! IF master controller ID                                       !EMW
+1649: 1108:         IF I% = 1 THEN BEGIN                                            !EMW
+1650: 1117:             CLLOG.NODE.ID$ = "AA"                                       !EMW
+1651: 1130:         ! IF alternate master controller ID                             !EMW
+1652: 1130:         ENDIF ELSE BEGIN                                                !EMW
+1653: 1138:             CLLOG.NODE.ID$ = "AB"                                       !EMW
+1654: 114f:         ENDIF                                                           !EMW
+1655: 1157:         ! Command line log file path                                    !EMW
+1656: 1157:         CLLOG.PATH$ = "ADXLX" + CLLOG.NODE.ID$ + "N::" +            \   !EMW
+1657: 1182:                       "C:\ADX_CLOG\"                                    !EMW
+1658: 1182: 
+1659: 1182:         CLLOG.COUNT% = 0
+1660: 1190: 
+1661: 1190:         ! Initialise search file name
+1662: 1190:         SRCHDIR.FILE.NAME$ = CLLOG.PATH$ + "*.*"
+1663: 11b0: 
+1664: 11b0:         SRCHDIR.RC% = 1
+1665: 11c5: 
+1666: 11c5:         ! WHILE a matching file name is found
+1667: 11c5:         WHILE SRCHDIR.RC% = 1
+1668: 11d0: 
+1669: 11d0:             ! Get next command line log file name
+1670: 11d0:             SRCHDIR.RC% = SRCHDIR(SRCHDIR.FILE.NAME$,DTBL.BUFFER$)
+1671: 11fd: 
+1672: 11fd:             ! IF a matching file name is found
+1673: 11fd:             IF SRCHDIR.RC% = 1 THEN BEGIN
+1674: 121b: 
+1675: 121b:                 CLLOG.FLAGS% = GETN2(DTBL.BUFFER$,22)
+1676: 1238: 
+1677: 1238:                 ! IF not a sub-directory
+1678: 1238:                 IF (CLLOG.FLAGS% AND 0010H) = 0 THEN BEGIN
+1679: 124e: 
+1680: 124e:                     ! Get file name from directory table
+1681: 124e:                     COMMAND.FILE.NAME$ = MID$(DTBL.BUFFER$,5,18)
+1682: 1270: 
+1683: 1270:                     ! Strip off any trailing null characters
+1684: 1270:                     COMMAND.FILE.NAME$ = LEFT$(COMMAND.FILE.NAME$,  \
+1685: 12b3:                         (MATCH(CHR$(0),COMMAND.FILE.NAME$,1)) - 1)
+1686: 12b3: 
+1687: 12b3:                     CLLOG.LOCKED = FALSE
+1688: 12c5: 
+1689: 12c5:                     ! IF NOT the master command log file AND
+1690: 12c5:                     !    session command log file found
+1691: 12c5:                     IF NOT COMMAND.FILE.NAME$ = "ADXCLLOG.DAT" AND  \
+1692: 130b:                        MATCH("########.C##",                        \
+1693: 130b:                              COMMAND.FILE.NAME$,1) THEN BEGIN
+1694: 130b: 
+1695: 130b:                         ! Build full path name for command log file
+1696: 130b:                         COMMAND.FILE.NAME$ = CLLOG.PATH$ +          \
+1697: 132f:                                              COMMAND.FILE.NAME$
+1698: 132f: 
+1699: 132f:                         ! Check whether file locked
+1700: 132f:                         OPEN COMMAND.FILE.NAME$                     \
+1701: 1354:                             AS CLLOG.SESS.NUM% NOWRITE NODEL
+1702: 1354: 
+1703: 1354:                         ! IF NOT a currently active session
+1704: 1354:                         IF NOT CLLOG.LOCKED THEN BEGIN
+1705: 1363:                             CLLOG.COUNT% = CLLOG.COUNT% + 1
+1706: 136f:                             CLOSE CLLOG.SESS.NUM%
+1707: 1383:                         ENDIF
+1708: 138b: 
+1709: 138b:                     ENDIF
+1710: 1393: 
+1711: 1393:                 ENDIF
+1712: 139b: 
+1713: 139b:             ENDIF
+1714: 13a3: 
+1715: 13a3:         WEND
+1716: 13c1: 
+1717: 13c1:         ! IF any command log files are found for inactive sessions      !EMW
+1718: 13c1:         IF CLLOG.COUNT% > 0 THEN BEGIN
+1719: 13d0: 
+1720: 13d0:             ! Concatenate command log files for inactive sessions
+1721: 13d0:             NETSTART.RC% =                                          \   !EMW
+1722: 1400:                 NETSTART(CLLOG.NODE.ID$,"ADX_SPGM:ADXCLOGL.386","")     !EMW
+1723: 1400: 
+1724: 1400:         ENDIF
+1725: 1408: 
+1726: 1408:     NEXT I%                                                             !EMW
+1727: 1421:     
+1728: 1421:     RETURN
+1729: 1431: 
+1730: 1431: \***********************************************************************
+1731: 1431: \***
+1732: 1431: \***    BUILD.DATA.TABLES
+1733: 1431: \***
+1734: 1431: \***********************************************************************
+1735: 1431: BUILD.DATA.TABLES:
+1736: 1441: 
+1737: 1441:     ! Reset for data statements
+1738: 1441:     RESTORE
+1739: 144e: 
+1740: 144e:     ! ----------------------
+1741: 144e:     ! Build A messages table
+1742: 144e:     !-----------------------
+1743: 144e: 
+1744: 144e:     DIM LA$(999) ! Long A message table
+1745: 147e: 
+1746: 147e:     END.OF.DATA = FALSE
+1747: 1490: 
+1748: 1490:     WHILE NOT END.OF.DATA
+1749: 149b: 
+1750: 149b:         READ MESSAGE1$, \ Message number
+1751: 14b5:              MESSAGE2$  ! Message description
+1752: 14b5: 
+1753: 14b5:         I% = VAL(RIGHT$(MESSAGE1$,3))
+1754: 14d9: 
+1755: 14d9:         LA$(I%) = MESSAGE2$
+1756: 1502: 
+1757: 1502:         IF I% = 999 THEN BEGIN
+1758: 1512:             END.OF.DATA = TRUE
+1759: 1524:         ENDIF
+1760: 152c: 
+1761: 152c:     WEND
+1762: 153e: 
+1763: 153e: DATA "A200","Translation program problem"
+1764: 153e: DATA "A201","Display program problem"
+1765: 153e: DATA "A202","Record not added. File space exceeded"
+1766: 153e: DATA "A203","Screen defaults file was not found"
+1767: 153e: DATA "A204","Error occurred processing the transaction log"
+1768: 153e: DATA "A205","Information for report is not available"
+1769: 153e: DATA "A206","Error from Application Services"
+1770: 153e: DATA "A207","Host credit pipe error"
+1771: 153e: DATA "A208","DDM start immediate task ended due to error"
+1772: 153e: DATA "A210","DDM background task ended due to error"
+1773: 153e: DATA "A211","DDM timer task ended due to error"
+1774: 153e: DATA "A212","Error accessing file"
+1775: 153e: DATA "A250","EFT application halted"
+1776: 153e: DATA "A251","EFT application critical error"
+1777: 153e: DATA "A252","EFT application unexpected situation"
+1778: 153e: DATA "A301","DISPLAY PROGRAM PROBLEM"
+1779: 153e: DATA "A302","RECORD NOT ADDED. FILE SPACE EXCEEDED"
+1780: 153e: DATA "A303","ERROR ACCESSING FILE"
+1781: 153e: DATA "A305","PM BACKGROUND TASK ENDED DUE TO ERROR"
+1782: 153e: DATA "A306","PM SCHEDULER TASK PROCESSING ERROR"
+1783: 153e: DATA "A307","ERROR LOADING PM BACKGROUND PROGRAM"
+1784: 153e: DATA "A308","PM BACKGROUND TASK HAS ITEM FILE READONLY"
+1785: 153e: DATA "A309","PM BACKGROUND TASK HAS RELEASED ITEM FILE"
+1786: 153e: DATA "A310","ERROR STARTING OVERNIGHT PROCESSING PROGRAMS"
+1787: 153e: DATA "A311","PM BACKGROUND TASK UNABLE TO OPEN ITEM FILE"
+1788: 153e: DATA "A312","PRINTER ERROR - REPORT PROGRAM ENDED"
+1789: 153e: DATA "A313","NO PRICE MANAGEMENT FUNCTIONS AVAILABLE IN THE TERMINAL"
+1790: 153e: DATA "A314","NO PRICE MANAGEMENT MARKDOWNS AVAILABLE IN THE TERMINAL"
+1791: 153e: DATA "A315","PRICE MANAGEMENT FILE NOT DELETED"
+1792: 153e: DATA "A316","ERROR COPYING GLOBAL LOOKUP FILE TO TERMINAL RAM"
+1793: 153e: DATA "A317","ERROR OPENING TERMINAL RAM FILE"
+1794: 153e: DATA "A318","ERROR OPENING CONTROLLER RAM FILE"
+1795: 153e: DATA "A319","ERROR COPYING GLOBAL LOOKUP FILE TO CONTROLLER RAM"
+1796: 153e: DATA "A320","TDC ERROR - AN INVALID EVENT NUMBER WAS READ"
+1797: 153e: DATA "A331","Terminal Item Record file is full Record(s) not added"
+1798: 153e: DATA "A332","Reload of Terminal Item Record File is now required"
+1799: 153e: DATA "A333","Message not currently used"
+1800: 153e: DATA "A334","No Terminal Maintenance Control file exists"
+1801: 153e: DATA "A335","Error on build/reload of Terminal Item Record File"
+1802: 153e: DATA "A336","Insufficient RAM Disk space to load Terminal Item Record File"
+1803: 153e: DATA "A337","reserved terminal offline feature message"
+1804: 153e: DATA "A338","reserved terminal offline feature message"
+1805: 153e: DATA "A339","reserved terminal offline feature message"
+1806: 153e: DATA "A340","reserved terminal offline feature message"
+1807: 153e: DATA "A800","PROGRAM DREDIX HAS OPENED ^FILENAME FILE"                  !IMW
+1808: 153e: DATA "A801","PROGRAM DREDIX HAS UPDATED ^FILENAME FILE"                 !IMW
+1809: 153e: DATA "A802","PROGRAM DREDIX HAS CREATED ^FILENAME FILE"                 !IMW
+1810: 153e: DATA "A803","PROGRAM VEDIT HAS OPENED ^FILENAME FILE"                   !IMW
+1811: 153e: DATA "A804","PROGRAM VEDIT HAS UPDATED ^FILENAME FILE"                  !IMW
+1812: 153e: DATA "A805","PROGRAM VEDIT HAS CREATED ^FILENAME FILE"                  !IMW
+1813: 153e: DATA "A806","PROGRAM XE HAS OPENED ^FILENAME FILE"                      !IMW
+1814: 153e: DATA "A807","PROGRAM XE HAS UPDATED ^FILENAME FILE"                     !IMW
+1815: 153e: DATA "A808","PROGRAM XE HAS CREATED ^FILENAME FILE"                     !IMW
+1816: 153e: DATA "A990","PROGRAM UTILS HAS OPENED ^FILENAME FILE"                   !FMW
+1817: 153e: DATA "A991","PROGRAM UTILS HAS UPDATED ^FILENAME FILE"                  !FMW
+1818: 153e: DATA "A999","Sales Support has stopped abnormally"
+1819: 153e: 
+1820: 153e:     !-----------------------
+1821: 153e:     ! Build J Messages table
+1822: 153e:     !-----------------------
+1823: 153e: 
+1824: 153e:     DIM LJ$(999) ! Long J message table
+1825: 156e: 
+1826: 156e:     END.OF.DATA = FALSE
+1827: 1580: 
+1828: 1580:     WHILE NOT END.OF.DATA
+1829: 158b: 
+1830: 158b:         READ MESSAGE1$, \ Message number
+1831: 15a5:              MESSAGE2$  ! Message description
+1832: 15a5: 
+1833: 15a5:         I% = VAL(RIGHT$(MESSAGE1$,3))
+1834: 15c9: 
+1835: 15c9:         LJ$(I%) = MESSAGE2$
+1836: 15f2: 
+1837: 15f2:         IF I% = 999 THEN BEGIN
+1838: 1602:             END.OF.DATA = TRUE
+1839: 1614:         ENDIF
+1840: 161c: 
+1841: 161c:     WEND
+1842: 162e: 
+1843: 162e: DATA "J100","Error processing Store Options file EALSOPTS"
+1844: 162e: DATA "J101","Unexpected or non-recoverable error occurred"
+1845: 162e: DATA "J102","SALES SUPPORT HAS STOPPED ABNORMALLY"
+1846: 162e: DATA "J103","ERROR PROCESSING ONE OR MORE ITEMS IN IUF"
+1847: 162e: DATA "J104","THE TILL HAS FAILED TO WRITE TO THE DEC QUEUE FILE"
+1848: 162e: DATA "J105","STOCK SUPPORT HAS STOPPED ABNORMALLY"
+1849: 162e: DATA "J106","An error has occurred creating item movement messages"
+1850: 162e: DATA "J107","Free for future use"
+1851: 162e: DATA "J108","Free for future use"
+1852: 162e: DATA "J109","Free for future use"
+1853: 162e: DATA "J110","Flight details access error  [FLGTNO]"
+1854: 162e: DATA "J111","Free for future use"
+1855: 162e: DATA "J112","Flight details access error  [FLGTZONE]"
+1856: 162e: DATA "J905","A Background application has ended abnormally"
+1857: 162e: DATA "J995","EMERGENCY PRICE CHANGE REJECTED"
+1858: 162e: DATA "J996","Stock Support has ended abnormally"
+1859: 162e: DATA "J997","Failed to create IMSTC"
+1860: 162e: DATA "J998","Insufficient space on controller"
+1861: 162e: DATA "J999","Sleeper has ended abnormally"
+1862: 162e: 
+1863: 162e:     !-----------------------
+1864: 162e:     ! Build W Messages table
+1865: 162e:     !-----------------------
+1866: 162e: 
+1867: 162e:     DIM SW$(999) ! Short W message table
+1868: 165e:     DIM LW$(999) ! Long W message table
+1869: 168e: 
+1870: 168e:     ! Open System Messages File                                         !EMW
+1871: 168e:     OPEN "ADX_SPGM:MESSAGES.TXT" AS MESSAGES.SESS.NUM% NOWRITE NODEL    !EMW
+1872: 16ac:                                                                         !EMW
+1873: 16ac:     END.OF.FILE = FALSE                                                 !EMW
+1874: 16be:                                                                         !EMW
+1875: 16be:     ! WHILE NOT end of system messages file reached                     !EMW
+1876: 16be:     WHILE NOT END.OF.FILE                                               !EMW
+1877: 16c9:                                                                         !EMW
+1878: 16c9:         READ #MESSAGES.SESS.NUM%;                                   \   !EMW
+1879: 16fc:             MESSAGE1$,  \ W Message number                          \   !EMW
+1880: 16fc:             MESSAGE2$,  \ Long W message description                \   !EMW
+1881: 16fc:             MESSAGE3$   ! Short W message description                   !EMW
+1882: 16fc:                                                                         !EMW
+1883: 16fc:         I% = VAL(RIGHT$(MESSAGE1$,3))                                   !EMW
+1884: 1720:                                                                         !EMW
+1885: 1720:         SW$(I%) = MESSAGE2$                                             !EMW
+1886: 1749:         LW$(I%) = MESSAGE3$                                             !EMW
+1887: 1772:                                                                         !EMW
+1888: 1772: END.MESSAGES.REACHED:                                                   !EMW
+1889: 1782:                                                                         !EMW
+1890: 1782:     WEND                                                                !EMW
+1891: 1794:                                                                         !EMW
+1892: 1794:     CLOSE MESSAGES.SESS.NUM%                                            !EMW
+1893: 17a5: 
+1894: 17a5: ! Wildcards in messages are as follows:                                 !EMW
+1895: 17a5: ! ^TYPE      1 byte INT Type
+1896: 17a5: ! ^REASON    1 byte INT Reason
+1897: 17a5: ! ^PID       4 byte INT Process ID
+1898: 17a5: ! ^PROGRAM   8 byte ASC Program name
+1899: 17a5: ! ^OPERATOR  4 byte UPD Operator ID
+1900: 17a5: ! ^USER     12 byte ASC user ID
+1901: 17a5: ! ^IPADDR   15 byte ASC IP address
+1902: 17a5: ! ^NODE      2 byte ASC Controller ID
+1903: 17a5: ! ^TERM      2 byte UPD Terminal number
+1904: 17a5: ! ^DRIVE     1 byte ASC Drive letter
+1905: 17a5: ! ^FILENAME  8 byte ASC Filename OR 12 byte ASC Filename (8.3 format)
+1906: 17a5: 
+1907: 17a5:     DIM SOURCE.TEXT$(255) ! Source description table                    !CMW
+1908: 17d5: 
+1909: 17d5:     !--------------------------------
+1910: 17d5:     ! Build source descriptions table
+1911: 17d5:     !--------------------------------
+1912: 17d5: 
+1913: 17d5:     END.OF.DATA = FALSE
+1914: 17e7: 
+1915: 17e7:     WHILE NOT END.OF.DATA
+1916: 17f2: 
+1917: 17f2:         READ MESSAGE1$, \ Source number
+1918: 180c:              MESSAGE2$  ! Source description
+1919: 180c: 
+1920: 180c:         I% = VAL(RIGHT$(MESSAGE1$,3))
+1921: 1830: 
+1922: 1830:         IF I% = 999 THEN BEGIN
+1923: 1840:             END.OF.DATA = TRUE
+1924: 1854:         ENDIF ELSE BEGIN
+1925: 185c:             SOURCE.TEXT$(I%) = MESSAGE2$                                !CMW
+1926: 1885:         ENDIF
+1927: 188d: 
+1928: 188d:     WEND
+1929: 189f: 
+1930: 189f: ! Message source
+1931: 189f: ! --------------
+1932: 189f: DATA "S000","Unknown Source                    "
+1933: 189f: DATA "S001","Controller Application            "
+1934: 189f: DATA "S002","IPL Command Processor             "
+1935: 189f: DATA "S003","SNMP                              "
+1936: 189f: DATA "S004","File Services                     "
+1937: 189f: DATA "S005","TCP/IP                            "
+1938: 189f: DATA "S006","X.25 Driver                       "
+1939: 189f: DATA "S007","DFM Feature                       "
+1940: 189f: DATA "S008","First Store Loop Adapter          "
+1941: 189f: DATA "S009","Second Store Loop Adapter         "
+1942: 189f: DATA "S010","Host ASYNC Driver                 "
+1943: 189f: DATA "S012","Common Communications             "
+1944: 189f: DATA "S013","Communications & Sys Management   "
+1945: 189f: DATA "S014","Host Command Processor (HCP)      "
+1946: 189f: DATA "S015","SDLC Driver                       "
+1947: 189f: DATA "S016","SNA Driver                        "
+1948: 189f: DATA "S017","Shared I/O Access Method          "
+1949: 189f: DATA "S018","Token Ring                        "
+1950: 189f: DATA "S019","TCP/IP                            "
+1951: 189f: DATA "S020","DDA                               "
+1952: 189f: DATA "S021","Token-Ring                        "
+1953: 189f: DATA "S022","LAN                               "
+1954: 189f: DATA "S023","Token-Ring Transporter            "
+1955: 189f: DATA "S024","Console Systems                   "
+1956: 189f: DATA "S025","Ethernet                          "
+1957: 189f: DATA "S028","SCSI Device Driver                "
+1958: 189f: DATA "S029","Optical Drive Utility             "
+1959: 189f: DATA "S030","Store Controller IPL              "
+1960: 189f: DATA "S031","Features Installation             "
+1961: 189f: DATA "S032","Dump Formatter                    "
+1962: 189f: DATA "S033","Trace Formatter                   "
+1963: 189f: DATA "S034","System Log Scan                   "
+1964: 189f: DATA "S035","Performance Report                "
+1965: 189f: DATA "S036","Start Trace/Performance           "
+1966: 189f: DATA "S037","Problem Analysis Diskette         "
+1967: 189f: DATA "S038","Report Module Level               "
+1968: 189f: DATA "S039","Apply Software Maintenance        "
+1969: 189f: DATA "S040","Input Sequence Table Utility      "
+1970: 189f: DATA "S041","System Configuration Utility      "
+1971: 189f: DATA "S042","Print Configuration Utility       "
+1972: 189f: DATA "S043","Keyed File Utility                "
+1973: 189f: DATA "S044","Display/Alter File Utility        "
+1974: 189f: DATA "S045","Control File Build Utility        "
+1975: 189f: DATA "S046","File Distribution Utility         "
+1976: 189f: DATA "S047","Store Controller RAM Disk         "
+1977: 189f: DATA "S048","Remote Command Processor (RCP)    "
+1978: 189f: DATA "S049","Audible Alarm                     "
+1979: 189f: DATA "S051","Host Async - IBM ARTIC adapter    "
+1980: 189f: DATA "S052","Comms Driver - IBM ARTIC adapter  "
+1981: 189f: DATA "S053","Remote Change Management Server   "
+1982: 189f: DATA "S054","Print Spooler                     "
+1983: 189f: DATA "S055","Streaming Tape Drive              "
+1984: 189f: DATA "S056","Streaming Tape Drive Utility      "
+1985: 189f: DATA "S057","File Compression/Decompression    "
+1986: 189f: DATA "S058","3270 Emulation                    "
+1987: 189f: DATA "S059","Remote System Function            "
+1988: 189f: DATA "S060","Terminal Application              "
+1989: 189f: DATA "S064","Application Loader                "
+1990: 189f: DATA "S068","Debug                             "
+1991: 189f: DATA "S069","3270 Emulation in the Terminal    "
+1992: 189f: DATA "S070","I/O Processor                     "
+1993: 189f: DATA "S072","Terminal File Services            "
+1994: 189f: DATA "S074","Terminal Services                 "
+1995: 189f: DATA "S076","Terminal Timer                    "
+1996: 189f: DATA "S078","Remote I/O Access Method          "
+1997: 189f: DATA "S079","Remote I/O Access Method          "
+1998: 189f: DATA "S080","Terminal Store Loop               "
+1999: 189f: DATA "S082","Terminal Device Channel Adapter   "
+2000: 189f: DATA "S083","Universal Serial Bus              "
+2001: 189f: DATA "S084","Terminal IPL                      "
+2002: 189f: DATA "S085","Terminal Partial Dump             "
+2003: 189f: DATA "S086","Set Terminal Characteristics      "
+2004: 189f: DATA "S087","Remote STC                        "
+2005: 189f: DATA "S090","Terminal Printer, 4689 Printer    "
+2006: 189f: DATA "S091","Matrix Keyboard                   "
+2007: 189f: DATA "S092","50-Key Keyboard                   "
+2008: 189f: DATA "S093","Alphanumeric Keyboard             "
+2009: 189f: DATA "S094","Cash Drawer Adapter               "
+2010: 189f: DATA "S095","Operator Display                  "
+2011: 189f: DATA "S096","Alphanumeric Display              "
+2012: 189f: DATA "S097","Shopper Display                   "
+2013: 189f: DATA "S098","Video Display Adapter             "
+2014: 189f: DATA "S099","Uninterruptable Power Supply (UPS)"
+2015: 189f: DATA "S100","Managers Keylock                  "
+2016: 189f: DATA "S101","Touch Screen/Keyboard Driver      "
+2017: 189f: DATA "S102","1520 Hand-Held Scanner Model A01  "
+2018: 189f: DATA "S104","Point-of-Sale Scanner             "
+2019: 189f: DATA "S108","Single-Track Mag Stripe Reader"
+2020: 189f: DATA "S109","Dual-Track Mag Stripe Reader      "
+2021: 189f: DATA "S110","Scale Adapter                     "
+2022: 189f: DATA "S112","Coin Dispenser Adapter            "
+2023: 189f: DATA "S114","Totals Retention                  "
+2024: 189f: DATA "S116","Terminal Keyboard Tone            "
+2025: 189f: DATA "S118","Serial Port Adapter               "
+2026: 189f: DATA "S120","Magnetic Wand Adapter             "
+2027: 189f: DATA "S122","1520 Scanner Model A02            "
+2028: 189f: DATA "S124","4685 Scanner Model 001/002        "
+2029: 189f: DATA "S125","Terminal RAM Disk                 "
+2030: 189f: DATA "S244","Java Device Redirection Driver    "
+2031: 189f: DATA "S246","Command Line Logging Utility      "
+2032: 189f: DATA "S247","Secure Shell (SSH)                "
+2033: 189f: DATA "S248","Enhanced Password Driver          "
+2034: 189f: DATA "S249","Preload Rebuild Utility           "
+2035: 189f: DATA "S250","Terminal Preload Client           "
+2036: 189f: DATA "S251","Terminal Preload Server (mtftpdpl)"
+2037: 189f: DATA "S252","System Information Server         "
+2038: 189f: DATA "S253","Virtual File System (VFS) Server  "
+2039: 189f: DATA "S254","TSS (Terminal Session Server)     "
+2040: 189f: DATA "S255","RF Adapter                        "                        !BMW
+2041: 189f: DATA "S999","THE END"
+2042: 189f: 
+2043: 189f:     DIM R$(1024)
+2044: 18cf: 
+2045: 18cf:     ! Open Report Numbers File
+2046: 18cf:     OPEN "ADX_SPGM:REPORT.TXT" AS REPORT.SESS.NUM% NOWRITE NODEL
+2047: 18ed: 
+2048: 18ed:     END.OF.FILE = FALSE
+2049: 18ff: 
+2050: 18ff:     ! WHILE NOT end of report numbers file reached
+2051: 18ff:     WHILE NOT END.OF.FILE
+2052: 190a: 
+2053: 190a:         ! Read report number record
+2054: 190a:         READ #REPORT.SESS.NUM%; LINE REPORT.RECORD$
+2055: 1926: 
+2056: 1926:         REPORT.NUM% = VAL(LEFT$(REPORT.RECORD$,5))
+2057: 194c:         REPORT.NAME$ = MID$(REPORT.RECORD$,6,17)
+2058: 196e:         CALL RTRIM(REPORT.NAME$)
+2059: 1982:         R$(REPORT.NUM%) = REPORT.NAME$
+2060: 19ab: 
+2061: 19ab:         M% = MATCHB(" ",R$(REPORT.NUM%),1)                              !CMW
+2062: 19dd:         IF M% > 1 THEN BEGIN
+2063: 19ec:             R$(REPORT.NUM%) = LEFT$(R$(REPORT.NUM%),M% - 1)
+2064: 1a32:         ENDIF
+2065: 1a3a: 
+2066: 1a3a: END.REPORT.REACHED:
+2067: 1a4a: 
+2068: 1a4a:     WEND
+2069: 1a5c: 
+2070: 1a5c:     CLOSE REPORT.SESS.NUM%
+2071: 1a6d: 
+2072: 1a6d:     DIM TS$(1024)
+2073: 1a9d: 
+2074: 1a9d:     ! Open Till session numbers file
+2075: 1a9d:     OPEN "ADX_SPGM:TILLSESS.TXT" AS TILLSESS.SESS.NUM% NOWRITE NODEL
+2076: 1abb: 
+2077: 1abb:     END.OF.FILE = FALSE
+2078: 1acd: 
+2079: 1acd:     ! WHILE NOT end of till session numbers file reached
+2080: 1acd:     WHILE NOT END.OF.FILE
+2081: 1ad8: 
+2082: 1ad8:         READ #TILLSESS.SESS.NUM%; LINE TILLSESS.RECORD$
+2083: 1af4: 
+2084: 1af4:         TILLSESS.NUM% = VAL(LEFT$(TILLSESS.RECORD$,5))
+2085: 1b1a:         TILLSESS.NAME$ = MID$(TILLSESS.RECORD$,6,17)
+2086: 1b3c:         CALL RTRIM(TILLSESS.NAME$)
+2087: 1b50:         TS$(TILLSESS.NUM%) = TILLSESS.NAME$
+2088: 1b79: 
+2089: 1b79:         M% = MATCHB(" ",TS$(TILLSESS.NUM%),1)                           !CMW
+2090: 1bab:         IF M% > 1 THEN BEGIN
+2091: 1bba:             TS$(TILLSESS.NUM%) = LEFT$(TS$(TILLSESS.NUM%),M% - 1)
+2092: 1c00:         ENDIF
+2093: 1c08: 
+2094: 1c08: END.TILLSESS.REACHED:
+2095: 1c18: 
+2096: 1c18:     WEND
+2097: 1c2a: 
+2098: 1c2a:     CLOSE TILLSESS.SESS.NUM%
+2099: 1c3b: 
+2100: 1c3b:     DIM SS$(1024)
+2101: 1c6b: 
+2102: 1c6b:     ! Open Sales Support session numbers file
+2103: 1c6b:     OPEN "ADX_SPGM:SALESESS.TXT" AS SALESESS.SESS.NUM% NOWRITE NODEL
+2104: 1c89: 
+2105: 1c89:     END.OF.FILE = FALSE
+2106: 1c9b: 
+2107: 1c9b:     ! WHILE NOT end of Sales Support session numbers file reached
+2108: 1c9b:     WHILE NOT END.OF.FILE
+2109: 1ca6: 
+2110: 1ca6:         READ #SALESESS.SESS.NUM%; LINE SALESESS.RECORD$
+2111: 1cc2: 
+2112: 1cc2:         SALESESS.NUM% = VAL(LEFT$(SALESESS.RECORD$,5))                  !GMW
+2113: 1ce8:         SALESESS.NAME$ = MID$(SALESESS.RECORD$,6,17)                    !GMW
+2114: 1d0a:         CALL RTRIM(SALESESS.NAME$)
+2115: 1d1e:         SS$(SALESESS.NUM%) = SALESESS.NAME$
+2116: 1d47: 
+2117: 1d47:         M% = MATCHB(" ",SS$(SALESESS.NUM%),1)                           !CMW
+2118: 1d79:         IF M% > 1 THEN BEGIN
+2119: 1d88:             SS$(SALESESS.NUM%) = LEFT$(SS$(SALESESS.NUM%),M% - 1)
+2120: 1dce:         ENDIF
+2121: 1dd6: 
+2122: 1dd6: END.SALESESS.REACHED:
+2123: 1de6: 
+2124: 1de6:     WEND
+2125: 1df8: 
+2126: 1df8:     CLOSE SALESESS.SESS.NUM%
+2127: 1e09: 
+2128: 1e09:     DIM EE$(2000),SE$(2000),LE$(2000)
+2129: 1e89: 
+2130: 1e89:     ! Return code description
+2131: 1e89: 
+2132: 1e89:     I% = 0
+2133: 1e97: 
+2134: 1e97:     ! Open return codes file
+2135: 1e97:     OPEN "ADX_SPGM:RETCODE.TXT" AS RETCODE.SESS.NUM% NOWRITE NODEL
+2136: 1eb5: 
+2137: 1eb5:     END.OF.FILE = FALSE
+2138: 1ec7: 
+2139: 1ec7:     ! WHILE NOT end of return codes file reached
+2140: 1ec7:     WHILE NOT END.OF.FILE
+2141: 1ed2: 
+2142: 1ed2:         READ #RETCODE.SESS.NUM%;                                    \
+2143: 1f05:             MESSAGE1$,  \ Return code                               \
+2144: 1f05:             MESSAGE2$,  \ Error code                                \
+2145: 1f05:             MESSAGE3$   ! Return code description
+2146: 1f05: 
+2147: 1f05:         I% = I% + 1
+2148: 1f11:         EE$(I%) = MESSAGE1$
+2149: 1f3a:         SE$(I%) = MESSAGE2$
+2150: 1f63:         LE$(I%) = MESSAGE3$
+2151: 1f8c: 
+2152: 1f8c: END.RETCODE.REACHED:
+2153: 1f9c: 
+2154: 1f9c:     WEND
+2155: 1fae: 
+2156: 1fae:     CLOSE RETCODE.SESS.NUM%
+2157: 1fbf: 
+2158: 1fbf:     DIM HIGHWORD.ERRORCODE$(255)    ! High word error code
+2159: 1fef:     DIM HIGHWORD.DESCRIPTION$(255)  ! High word error description
+2160: 201f: 
+2161: 201f:     !--------------------------------------------------------
+2162: 201f:     ! Build high word error code description table (nnXXnnnn)
+2163: 201f:     !--------------------------------------------------------
+2164: 201f: 
+2165: 201f:     I% = 0
+2166: 202d: 
+2167: 202d:     END.OF.DATA = FALSE
+2168: 203f: 
+2169: 203f:     WHILE NOT END.OF.DATA
+2170: 204a: 
+2171: 204a:         READ MESSAGE1$,MESSAGE2$
+2172: 2064: 
+2173: 2064:         I% = I% + 1
+2174: 2070:         HIGHWORD.ERRORCODE$(I%)   = MESSAGE1$
+2175: 2099:         HIGHWORD.DESCRIPTION$(I%) = MESSAGE2$
+2176: 20c2: 
+2177: 20c2:         IF HIGHWORD.ERRORCODE$(I%) = "FF" THEN BEGIN
+2178: 20ee:             END.OF.DATA = TRUE
+2179: 2100:         ENDIF
+2180: 2108: 
+2181: 2108:     WEND
+2182: 211a: 
+2183: 211a: DATA "00","Kernel or Supervisor"
+2184: 211a: DATA "01","Timer Driver"
+2185: 211a: DATA "02","DOS Emulation"
+2186: 211a: DATA "0D","Terminal Diagnostics"
+2187: 211a: DATA "10","Pipe Resource Manager"
+2188: 211a: DATA "11","Pipe Driver"
+2189: 211a: DATA "1A","DIVA Network Gateway for SNA"
+2190: 211a: DATA "1C","DIVA Network Gateway for SNA"
+2191: 211a: DATA "20","Disk Resource Manager"
+2192: 211a: DATA "21","Disk Drivers"
+2193: 211a: DATA "22","Disk Drivers"
+2194: 211a: DATA "23","Disk Drivers"
+2195: 211a: DATA "24","Disk Drivers"
+2196: 211a: DATA "25","Disk Drivers"
+2197: 211a: DATA "26","Disk Drivers"
+2198: 211a: DATA "27","Disk Drivers"
+2199: 211a: DATA "28","Disk Drivers"
+2200: 211a: DATA "29","Disk Drivers"
+2201: 211a: DATA "2A","Disk Drivers"
+2202: 211a: DATA "2B","Disk Drivers"
+2203: 211a: DATA "2C","Disk Drivers"
+2204: 211a: DATA "2D","Disk Drivers"
+2205: 211a: DATA "2E","Disk Drivers"
+2206: 211a: DATA "2F","Disk Drivers"
+2207: 211a: DATA "30","Console Resource Manager"
+2208: 211a: DATA "31","Console Drivers"
+2209: 211a: DATA "32","Console Drivers"
+2210: 211a: DATA "33","Console Drivers"
+2211: 211a: DATA "34","Console Drivers"
+2212: 211a: DATA "35","Console Drivers"
+2213: 211a: DATA "36","Console Drivers"
+2214: 211a: DATA "37","Console Drivers"
+2215: 211a: DATA "38","Console Drivers"
+2216: 211a: DATA "39","Console Drivers"
+2217: 211a: DATA "3A","Console Drivers"
+2218: 211a: DATA "3B","Console Drivers"
+2219: 211a: DATA "3C","Console Drivers"
+2220: 211a: DATA "3D","Console Drivers"
+2221: 211a: DATA "3E","Console Drivers"
+2222: 211a: DATA "3F","Console Drivers"
+2223: 211a: DATA "40","Command/Load Resource Manager"
+2224: 211a: DATA "41","Terminal Transmit Request"
+2225: 211a: DATA "42","Secondary Loop Interface"
+2226: 211a: DATA "43","Secondary Loop Error Handler"
+2227: 211a: DATA "44","Terminal Local File Services"
+2228: 211a: DATA "50","NFS or VFS Client"
+2229: 211a: DATA "51","Non-Toshiba Extension Drivers"
+2230: 211a: DATA "52","Non-Toshiba Extension Drivers"
+2231: 211a: DATA "53","Non-Toshiba Extension Drivers"
+2232: 211a: DATA "54","Non-Toshiba Extension Drivers"
+2233: 211a: DATA "55","Non-Toshiba Extension Drivers"
+2234: 211a: DATA "56","Non-Toshiba Extension Drivers"
+2235: 211a: DATA "57","Non-Toshiba Extension Drivers"
+2236: 211a: DATA "58","Non-Toshiba Extension Drivers"
+2237: 211a: DATA "59","Non-Toshiba Extension Drivers"
+2238: 211a: DATA "5A","CDROM Driver"
+2239: 211a: DATA "5B","DVD Driver"
+2240: 211a: DATA "5C","Embedded Functions Interface Driver"
+2241: 211a: DATA "5D","Non-Toshiba Extension Drivers"
+2242: 211a: DATA "5E","Non-Toshiba Extension Drivers"
+2243: 211a: DATA "5F","Non-Toshiba Extension Drivers"
+2244: 211a: DATA "60","Network Resource Manager"
+2245: 211a: DATA "61","Protocol Driver"
+2246: 211a: DATA "62","Transport Driver"
+2247: 211a: DATA "63","Network Server Driver"
+2248: 211a: DATA "64","NET: Device Driver"
+2249: 211a: DATA "65","Name Server Driver"
+2250: 211a: DATA "66","Network Requester Server Driver"
+2251: 211a: DATA "67","DLC Device Driver"
+2252: 211a: DATA "68","MAC Device Driver"
+2253: 211a: DATA "69","Novell Client Driver"
+2254: 211a: DATA "6A","NETIF Ethernet Driver"
+2255: 211a: DATA "6B","Novell IPX Driver"
+2256: 211a: DATA "70","Miscellaneous Resource Manager"
+2257: 211a: DATA "71","Totals Retention"
+2258: 211a: DATA "72","Totals Retention"
+2259: 211a: DATA "73","Totals Retention"
+2260: 211a: DATA "74","Totals Retention"
+2261: 211a: DATA "75","Totals Retention"
+2262: 211a: DATA "76","Totals Retention"
+2263: 211a: DATA "77","Totals Retention"
+2264: 211a: DATA "78","Totals Retention"
+2265: 211a: DATA "79","Totals Retention"
+2266: 211a: DATA "7A","Totals Retention"
+2267: 211a: DATA "7B","Totals Retention"
+2268: 211a: DATA "7C","Totals Retention"
+2269: 211a: DATA "7D","Totals Retention"
+2270: 211a: DATA "7E","Totals Retention"
+2271: 211a: DATA "7F","Totals Retention"
+2272: 211a: DATA "81","Port Driver"
+2273: 211a: DATA "82","Device Channel"
+2274: 211a: DATA "83","Totals Retention"
+2275: 211a: DATA "84","I/O Processor"
+2276: 211a: DATA "85","Terminal Keyboard"
+2277: 211a: DATA "86","Cash Drawer"
+2278: 211a: DATA "89","Print Spooler"
+2279: 211a: DATA "8A","Touch Screen"
+2280: 211a: DATA "8B","Uninterruptable Power Supply Serial Driver"
+2281: 211a: DATA "90","Terminal Printer"
+2282: 211a: DATA "91","Fiscal Printer"
+2283: 211a: DATA "98","Serial Devices"
+2284: 211a: DATA "99","OEM Serial Devices"
+2285: 211a: DATA "9A","OEM Serial Devices"
+2286: 211a: DATA "9B","OEM Serial Devices"
+2287: 211a: DATA "A0","First Alphanumeric or Operator Display"
+2288: 211a: DATA "A1","First Video Display"
+2289: 211a: DATA "A2","Coin Dispenser"
+2290: 211a: DATA "A3","Scale"
+2291: 211a: DATA "A5","MSR"
+2292: 211a: DATA "A7","Terminal Scanner Driver"
+2293: 211a: DATA "A8","Terminal Magnetic Wand Driver"
+2294: 211a: DATA "A9","Shopper Display"
+2295: 211a: DATA "AA","Second Alphanumeric or Operator Display"
+2296: 211a: DATA "AB","Second Video Display"
+2297: 211a: DATA "B0","Communications - ASYNC"
+2298: 211a: DATA "B1","Communications - Drivers"
+2299: 211a: DATA "B2","Communications - Drivers"
+2300: 211a: DATA "B3","Communications - Drivers"
+2301: 211a: DATA "B4","Communications - Drivers"
+2302: 211a: DATA "B5","Communications - Drivers"
+2303: 211a: DATA "B6","Communications - Drivers"
+2304: 211a: DATA "B7","Communications - Drivers"
+2305: 211a: DATA "B8","Communications - Drivers"
+2306: 211a: DATA "B9","Communications - Drivers"
+2307: 211a: DATA "BA","Communications - Drivers"
+2308: 211a: DATA "BB","Communications - Drivers"
+2309: 211a: DATA "BC","Communications - Drivers"
+2310: 211a: DATA "BD","Communications - Drivers"
+2311: 211a: DATA "BE","Communications - Drivers"
+2312: 211a: DATA "BF","Communications - Drivers"
+2313: 211a: DATA "C0","Jattach Driver"
+2314: 211a: DATA "C1","Terminal Services"
+2315: 211a: DATA "C2","Operator Console Facility"
+2316: 211a: DATA "C3","Pipe Routing Services"
+2317: 211a: DATA "C4","Console Driver Extension"
+2318: 211a: DATA "C7","Remote Operator"
+2319: 211a: DATA "C8","IPL Command Processor"
+2320: 211a: DATA "CC","LAN Terminal Transporter"
+2321: 211a: DATA "CD","Loadable Terminal Initialization"
+2322: 211a: DATA "D0","Apply Software Maintenance"
+2323: 211a: DATA "D1","Controller Token-Ring TCC"
+2324: 211a: DATA "D4","Telxon device driver"
+2325: 211a: DATA "D5","Telxon device driver"
+2326: 211a: DATA "D6","Telxon device driver"
+2327: 211a: DATA "D7","Telxon device driver"
+2328: 211a: DATA "D8","Telxon device driver"
+2329: 211a: DATA "D9","Telxon device driver"
+2330: 211a: DATA "DD","Data Distribution Application"
+2331: 211a: DATA "DE","LAN Requester"
+2332: 211a: DATA "DF","Flex-net LAN Timeout"
+2333: 211a: DATA "E0","Installation"
+2334: 211a: DATA "E1","Controller Printer Despooler"
+2335: 211a: DATA "E4","Optical Disk Driver"
+2336: 211a: DATA "E5","Tape Streamer Driver"
+2337: 211a: DATA "E6","EIDE Device Driver"
+2338: 211a: DATA "E7","Enhanced Password Driver/Manager"
+2339: 211a: DATA "F0","Application Loader"
+2340: 211a: DATA "F1","Terminal File Services"
+2341: 211a: DATA "F2","Shared I/O Access Method"
+2342: 211a: DATA "F3","Keyed File Services"
+2343: 211a: DATA "F4","CBASIC Runtime Library"
+2344: 211a: DATA "F5","SCSI Installation Driver"
+2345: 211a: DATA "F6","SCSI Generic Driver"
+2346: 211a: DATA "F7","Hard Disk Driver"
+2347: 211a: DATA "F8","Token-Ring Error Log"
+2348: 211a: DATA "F9","Tape Streamer Driver"
+2349: 211a: DATA "FA","ABIOS"
+2350: 211a: DATA "FB","Driver for Preloaded In-Memory Files"
+2351: 211a: DATA "FD","SSRT - Store Controller"
+2352: 211a: DATA "FE","SSRT - Runtime Library"
+2353: 211a: DATA "FF","SSRT - Terminal"
+2354: 211a: 
+2355: 211a:     DIM LOWWORD.ERRORCODE$(255)     ! Low word error code
+2356: 214a:     DIM LOWWORD.DESCRIPTION$(255)   ! Low word error description
+2357: 217a: 
+2358: 217a:     !-------------------------------------------------
+2359: 217a:     ! Build low-word error code description (nnnnXXXX)
+2360: 217a:     !-------------------------------------------------
+2361: 217a: 
+2362: 217a:     I% = 0
+2363: 2188: 
+2364: 2188:     END.OF.DATA = FALSE
+2365: 219a: 
+2366: 219a:     WHILE NOT END.OF.DATA
+2367: 21a5: 
+2368: 21a5:         READ MESSAGE1$,MESSAGE2$
+2369: 21bf: 
+2370: 21bf:         IF MESSAGE1$ = "FFFF" THEN BEGIN
+2371: 21da:             END.OF.DATA = TRUE
+2372: 21ee:         ENDIF ELSE BEGIN
+2373: 21f6:             I% = I% + 1
+2374: 2202:             LOWWORD.ERRORCODE$(I%)   = MESSAGE1$
+2375: 222b:             LOWWORD.DESCRIPTION$(I%) = MESSAGE2$
+2376: 2254:         ENDIF
+2377: 225c: 
+2378: 225c:     WEND
+2379: 226e: 
+2380: 226e: DATA "4001","The file cannot be accessed (ownership differences). "
+2381: 226e: DATA "4002","The event was cancelled."
+2382: 226e: DATA "4003","End-of-file was detected."
+2383: 226e: DATA "4004","For CREATE - The file already exists. For INSTALL - The device already exists."
+2384: 226e: DATA "4005","General - The device does not match."
+2385: 226e: DATA "4006","The device is LOCKED."
+2386: 226e: DATA "4007","The file number is bad."
+2387: 226e: DATA "4008","The function number is bad."
+2388: 226e: DATA "4009","The function is not implemented."
+2389: 226e: DATA "400A","The information type is illegal for this file."
+2390: 226e: DATA "400B","An error occurred on initialization of a driver."
+2391: 226e: DATA "400C","General - The file cannot be accessed because of current usage."
+2392: 226e: DATA "400D","There is not enough storage available."
+2393: 226e: DATA "400E","General - A function mismatch occurred (an attempt to perform a function on a file that does not support the function)."
+2394: 226e: DATA "400F","An illegal file name was specified."
+2395: 226e: DATA "4010","General - The file was not found."
+2396: 226e: DATA "4011","General - An illegal parameter was specified."
+2397: 226e: DATA "4012","The record size does not match the request."
+2398: 226e: DATA "4013","For INSTALL - A subdriver is required."
+2399: 226e: DATA "4014","A bad flag number was detected."
+2400: 226e: DATA "4015","There was an attempt to access a non-existent storage area."
+2401: 226e: DATA "4016","A storage bound error occurred."
+2402: 226e: DATA "4017","An illegal instruction was detected."
+2403: 226e: DATA "4018","An attempt to divide by zero was detected."
+2404: 226e: DATA "4019","A bound exception occurred."
+2405: 226e: DATA "401A","An overflow exception occurred."
+2406: 226e: DATA "401B","A privilege exception occurred."
+2407: 226e: DATA "401C","Trace"
+2408: 226e: DATA "401D","Breakpoint was detected."
+2409: 226e: DATA "401E","A floating point exception occurred."
+2410: 226e: DATA "401F","A stack fault occurred."
+2411: 226e: DATA "4020","A general exception occurred."
+2412: 226e: DATA "4021","Emulated instruction group 1."
+2413: 226e: DATA "4022","A 386 memory page fault occurred."
+2414: 226e: DATA "4023","Out of KOSPOOL; cannot start process HALBLD."
+2415: 226e: DATA "407F","There are not enough operating system resources available to run the program."
+2416: 226e: DATA "4080","The function does not support asynchronous I/O."
+2417: 226e: DATA "4082","A bad load format was detected."
+2418: 226e: DATA "4083","General - There was recursion (99 times) on prefix substitution."
+2419: 226e: DATA "4084","The file number table is full."
+2420: 226e: DATA "4085","For DEFINE - An illegal name was specified."
+2421: 226e: DATA "4086","There are too many driver units."
+2422: 226e: DATA "4087","The driver does not need a subdriver."
+2423: 226e: DATA "4088","The driver returned a bad driver type."
+2424: 226e: DATA "4089","The LOADER could not find a stack specified in the requested application load module."
+2425: 226e: DATA "408A","The file table count specified on SET of the SYSTEM table is not legal."
+2426: 226e: DATA "4100","Out of storage pool."
+2427: 226e: DATA "4101","A bad address was specified to free."
+2428: 226e: DATA "4180","The flag is already set."
+2429: 226e: DATA "4181","Indicates the return code of the process being ended."
+2430: 226e: DATA "4182","The process ID was not found on the command to end."
+2431: 226e: DATA "4183","For COMMAND - No PROCINFO was specified."
+2432: 226e: DATA "4184","For COMMAND - A storage load type that was not valid was detected."
+2433: 226e: DATA "4185","For CONTROL - A storage access that was not valid was attempted."
+2434: 226e: DATA "4186","An event mask that was not valid was detected."
+2435: 226e: DATA "4187","The event has not completed."
+2436: 226e: DATA "4188","The required shared run-time library (SRTL) could not be found."
+2437: 226e: DATA "418A","The program was ended by a Control-C."
+2438: 226e: DATA "418C","A SWIRET was attempted from a process that is not a SWI."
+2439: 226e: DATA "418D","The requested event is pending."
+2440: 226e: DATA "418E","There are too many nested shared run-time libraries (SRTLs)."
+2441: 226e: DATA "418F","The program header indicates that a SRTL is required, but no SRTL names were specified."
+2442: 226e: DATA "4190","A load error occurred. A storage load type that was not valid was detected. Re-link or post-link the application to correct the load type."
+2443: 226e: DATA "4191","A corrupt fixup record was detected."
+2444: 226e: DATA "4192","A SRTL fixup error was detected."
+2445: 226e: DATA "4193","An end of file was reached before the end of the fixup record was found."
+2446: 226e: DATA "4194","The program could not get addressability to a Logical Device Table due to either an LDT limit or an out of memory condition."
+2447: 226e: DATA "4196","An overlay is trying to use a SRTL that was not specified in the load module."
+2448: 226e: DATA "4197","The version number of the SRTL found does not match the version number of the requested SRTL."
+2449: 226e: DATA "4198","The SRTLs call each other."
+2450: 226e: DATA "4199","A postlinked SRTL is required but the SRTL being loaded is non-POSTLINKED or vice versa."
+2451: 226e: DATA "419A","DLL init routine returned error."
+2452: 226e: DATA "419B","DLL init routine returned error."
+2453: 226e: DATA "419C","Imported symbol not found."
+2454: 226e: DATA "419D","Cannot import by ordinal."
+2455: 226e: DATA "419E","TLS entries in PE header."
+2456: 226e: DATA "41FF","The process is aborting."
+2457: 226e: DATA "4300","No block or directory entries are available."
+2458: 226e: DATA "4301","A media change occurred."
+2459: 226e: DATA "4302","A media change was detected after a write."
+2460: 226e: DATA "4303","A bad path was detected."
+2461: 226e: DATA "4304","The devices are locked exclusively."
+2462: 226e: DATA "4305","The address is out of the range."
+2463: 226e: DATA "4306","A rename or delete was attempted on a read only (R/O) file."
+2464: 226e: DATA "4307","A delete was attempted on a directory that is not empty."
+2465: 226e: DATA "4308","A bad offset was detected in a READ, WRITE, SEEK, or CREATE."
+2466: 226e: DATA "4309","The file allocation table is corrupted."
+2467: 226e: DATA "430A","A pending lock cannot be unlocked."
+2468: 226e: DATA "430B","System media are not operating."
+2469: 226e: DATA "430C","The file was closed before the asynchronous lock could be completed."
+2470: 226e: DATA "430D","A lock access conflict was detected."
+2471: 226e: DATA "430E","An error was detected while reading the file allocation table (FAT)."
+2472: 226e: DATA "430F","There are no drive slots remaining."
+2473: 226e: DATA "4380","An XRB format that was not valid was detected."
+2474: 226e: DATA "4381","A bad request was detected."
+2475: 226e: DATA "4382","No driver or storage is available."
+2476: 226e: DATA "4383","The request was canceled."
+2477: 226e: DATA "4384","There is no such node or buffer address."
+2478: 226e: DATA "43A0","There is no such node."
+2479: 226e: DATA "43A1","The node cannot be connected. Possible hardware error or the node could not successfully complete reconciliation."
+2480: 226e: DATA "43A2","Unable to log on to the remote node."
+2481: 226e: DATA "43A3","The remote node does not support any dialect supported by the local node."
+2482: 226e: DATA "43A4","You are already logged on to the node."
+2483: 226e: DATA "43A5","You are not logged on to the node."
+2484: 226e: DATA "43A6","The local node name is not set."
+2485: 226e: DATA "43A7","The remote log on was refused."
+2486: 226e: DATA "43A8","You are not permitted to log on to the specified node."
+2487: 226e: DATA "43A9","The local node name is already set"
+2488: 226e: DATA "43AA","The log on limit was exceeded for this process."
+2489: 226e: DATA "43AB","There are no operations-in-progress available to service this request."
+2490: 226e: DATA "43AC","The node could not successfully complete reconciliation for a distribute on close file."
+2491: 226e: DATA "43B0","The server is broken."
+2492: 226e: DATA "43B1","The server is not yet initialized."
+2493: 226e: DATA "43C0","An internal error occurred in the indicated remote module."
+2494: 226e: DATA "43E0","No remote node or socket was specified."
+2495: 226e: DATA "43E1","There was an attempt to use a reserved socket."
+2496: 226e: DATA "43E2","A connection handle that was not valid was detected."
+2497: 226e: DATA "43E3","A connection is in the wrong state."
+2498: 226e: DATA "43E4","The connection table is full."
+2499: 226e: DATA "4400","A general error was received from a Personal Computer DOS node."
+2500: 226e: DATA "4420","The driver’s asynchronous portion must be called."
+2501: 226e: DATA "4421","No such name was found."
+2502: 226e: DATA "4422","The specified key is unknown."
+2503: 226e: DATA "4423","The specified name already exists."
+2504: 226e: DATA "4424","A name that was not valid was specified."
+2505: 226e: DATA "4425","The function requires a transporter for operation and the transport driver is not installed."
+2506: 226e: DATA "4440","The request timed out."
+2507: 226e: DATA "4441","The message has more data."
+2508: 226e: DATA "4442","A connection handle that was not valid was detected."
+2509: 226e: DATA "4443","The connection was closed on a pending request."
+2510: 226e: DATA "4444","The request is already completed."
+2511: 226e: DATA "4446","A network failure occurred."
+2512: 226e: DATA "4447","The specified socket address does not exist."
+2513: 226e: DATA "4448","Another node is using that name."
+2514: 226e: DATA "4450","A network reset/recover is being attempted."
+2515: 226e: DATA "4451","Duplicate command; one is already outstanding."
+2516: 226e: DATA "4452","An SAP or STATION_ID value that was not valid was specified."
+2517: 226e: DATA "4453","Multicast addressing: filtering allows more addresses than specified."
+2518: 226e: DATA "4500","There was an attempt to do direct I/O through a driver that does not support it."
+2519: 226e: DATA "4501","There was an attempt to do ROS (int 10) I/O through a driver that does not support it."
+2520: 226e: DATA "4502","There was an attempt to do ROS (int 16) keyboard input through a driver that does not support PC DOS applications."
+2521: 226e: DATA "FFFF","THE END"
+2522: 226e: 
+2523: 226e:     RETURN
+2524: 227e: 
+2525: 227e: \***********************************************************************
+2526: 227e: \***
+2527: 227e: \***    ERROR.DETECTED
+2528: 227e: \***
+2529: 227e: \***********************************************************************
+2530: 227e: ERROR.DETECTED:
+2531: 228e: 
+2532: 228e:     IF ERR = "EF" AND ERRF% = REPORT.SESS.NUM% THEN BEGIN
+2533: 22d7:         END.OF.FILE = TRUE
+2534: 22e9:         RESUME END.REPORT.REACHED
+2535: 2300:     ENDIF
+2536: 2308: 
+2537: 2308:     IF ERR = "EF" AND ERRF% = MESSAGES.SESS.NUM% THEN BEGIN             !EMW
+2538: 2351:         END.OF.FILE = TRUE                                              !EMW
+2539: 2363:         RESUME END.MESSAGES.REACHED                                     !EMW
+2540: 237a:     ENDIF                                                               !EMW
+2541: 2382:                                                                         !EMW
+2542: 2382:     IF ERR = "EF" AND ERRF% = RETCODE.SESS.NUM% THEN BEGIN
+2543: 23cb:         END.OF.FILE = TRUE
+2544: 23dd:         RESUME END.RETCODE.REACHED
+2545: 23f4:     ENDIF
+2546: 23fc: 
+2547: 23fc:     IF ERR = "EF" AND ERRF% = TILLSESS.SESS.NUM% THEN BEGIN
+2548: 2445:         END.OF.FILE = TRUE
+2549: 2457:         RESUME END.TILLSESS.REACHED
+2550: 246e:     ENDIF
+2551: 2476: 
+2552: 2476:     IF ERR = "EF" AND ERRF% = SALESESS.SESS.NUM% THEN BEGIN
+2553: 24bf:         END.OF.FILE = TRUE
+2554: 24d1:         RESUME END.SALESESS.REACHED
+2555: 24e8:     ENDIF
+2556: 24f0: 
+2557: 24f0:     ! IF command log file is locked
+2558: 24f0:     IF ERR = "*I" AND ERRN = 80F3400CH AND                          \
+2559: 2561:        ERRF% = CLLOG.SESS.NUM% THEN BEGIN
+2560: 2561:         CLLOG.LOCKED = TRUE
+2561: 2573:         RESUME
+2562: 258a:     ENDIF
+2563: 2592: 
+2564: 2592:     IF ERR = "OE" AND ERRF% = EVAPP.SESS.NUM% THEN BEGIN
+2565: 25e2:         RESUME OPEN.EVAPP.ERROR
+2566: 25f9:     ENDIF
+2567: 2601: 
+2568: 2601:     IF ERR = "CU" AND ERRF% = EVAPP.SESS.NUM% THEN BEGIN
+2569: 2651:         RESUME
+2570: 2668:     ENDIF
+2571: 2670: 
+2572: 2670:     ERROR.COUNT% = ERROR.COUNT% + 1
+2573: 267c: 
+2574: 267c:     ! IF potential infinite loop
+2575: 267c:     IF ERROR.COUNT% > 1 THEN BEGIN
+2576: 268b:         STOP
+2577: 2698:     ENDIF
+2578: 26a0: 
+2579: 26a0:     CALL STANDARD.ERROR.DETECTED(ERRN, ERRF%, ERRL, ERR)
+2580: 26d2: 
+2581: 26d2:     END
+2582: 26d2: 
+2583: 26d2: End of Compilation

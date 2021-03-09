@@ -1,0 +1,156 @@
+\*****************************************************************************
+\***                                                                         *
+\***   4680 BASIC INTEGER*1 LIST - Functions                                 *
+\***                                                                         *
+\***   Provides a big string array of up to about 256,000,000 elements.      *
+\***   Currently only one list per program though.                           *
+\***                                                                         *
+\***                                                                         *
+\***   Reference : I1LISTF.J86                                               *
+\***                                                                         *
+\***   Version A      Tittoo Thomas        05th August  2011                 *
+\***      Cloned LISTLIB to support INTEGER*1, INTEGER*2 and INTEGER*4       *
+\***                                                                         *
+\*****************************************************************************
+
+\*****************************************************************************
+\***                                                                         *
+\***    CREATE.NEW.I1.ARRAY                                                  *
+\***    Resets I1.TEMP.ARRAY% so BASIC thinks there's no array allocated,    *
+\***    DIMs a new array, then saves the address of the array in an array of *
+\***    pointers.                                                            *
+\***                                                                         *
+\*****************************************************************************
+
+SUB CREATE.NEW.I1.ARRAY(ELE%)
+
+    INTEGER*4 ELE%
+    INTEGER*4 TEMP%
+    INTEGER*4 POKE.ADR%
+
+    !Fool BASIC into thinking it hasn't allocated the I1.TEMP.ARRAY% array
+    POKE PTR.TO.I1.TEMP.ARRAY%, 0
+    POKE PTR.TO.I1.TEMP.ARRAY% + 1, 0
+    POKE PTR.TO.I1.TEMP.ARRAY% + 2, 0
+    POKE PTR.TO.I1.TEMP.ARRAY% + 3, 0
+
+    !Allocate an array
+    DIM I1.TEMP.ARRAY%(ELE%)
+
+    !Save away the address of the array
+    POKE.ADR% = VARPTR(TEMP%)
+    POKE POKE.ADR%, PEEK(PTR.TO.I1.TEMP.ARRAY%)
+    POKE POKE.ADR% + 1, PEEK(PTR.TO.I1.TEMP.ARRAY% + 1)
+    POKE POKE.ADR% + 2, PEEK(PTR.TO.I1.TEMP.ARRAY% + 2)
+    POKE POKE.ADR% + 3, PEEK(PTR.TO.I1.TEMP.ARRAY% + 3)
+    I1.ARRAY.PTR.TABLE%(CURRENT.I1.PTR.COUNT%) = TEMP%
+    CURRENT.I1.PTR.COUNT% = CURRENT.I1.PTR.COUNT% + 1
+
+END SUB
+
+\*****************************************************************************
+\***                                                                         *
+\***    I1.LIST.DIM                                                          *
+\***                                                                         *
+\***    Dimension the list up to 256,000,000 elements (16,000 * 16,000)      *
+\***    if you have the RAM available!                                       *
+\***                                                                         *
+\*****************************************************************************
+
+FUNCTION I1.LIST.DIM(NEW.ELEMENTS%) PUBLIC
+
+    INTEGER*1 I1.LIST.DIM
+    INTEGER*4 A%
+    INTEGER*4 NEW.ELEMENTS%
+    INTEGER*4 ARRAY%
+    INTEGER*4 PEEK.ADR%
+
+    !Set up constants
+    PTR.TO.I1.TEMP.ARRAY% = VARPTR(I1.TEMP.ARRAY%)
+    I1.ELEMENTS.PER.ARRAY% = 16000
+
+    !Clear out any existing arrays
+    FOR A% = 0 TO (CURRENT.I1.PTR.COUNT% - 1)
+        ARRAY% = I1.ARRAY.PTR.TABLE%(A%)
+        IF ARRAY% <> 0 THEN \
+        BEGIN
+            PEEK.ADR% = VARPTR(ARRAY%)
+            POKE PTR.TO.I1.TEMP.ARRAY%, PEEK(PEEK.ADR%)
+            POKE PTR.TO.I1.TEMP.ARRAY% + 1, PEEK(PEEK.ADR% + 1)
+            POKE PTR.TO.I1.TEMP.ARRAY% + 2, PEEK(PEEK.ADR% + 2)
+            POKE PTR.TO.I1.TEMP.ARRAY% + 3, PEEK(PEEK.ADR% + 3)
+            DIM I1.TEMP.ARRAY%(0)
+        ENDIF
+    NEXT A%
+
+    !Dimension an integer array to hold the pointers to the actual arrays
+    CURRENT.I1.PTR.COUNT% = 0
+    DIM I1.ARRAY.PTR.TABLE%(NEW.ELEMENTS% / I1.ELEMENTS.PER.ARRAY%)
+
+    !Create as many string arrays as required
+    WHILE NEW.ELEMENTS% > I1.ELEMENTS.PER.ARRAY%
+        CALL CREATE.NEW.I1.ARRAY(I1.ELEMENTS.PER.ARRAY%)
+        NEW.ELEMENTS% = NEW.ELEMENTS% - I1.ELEMENTS.PER.ARRAY%
+    WEND
+    CALL CREATE.NEW.I1.ARRAY(NEW.ELEMENTS%)
+
+    I1.LIST.DIM = 0
+
+END FUNCTION
+
+\*****************************************************************************
+\***                                                                         *
+\***    I1.LIST.SET                                                          *
+\***                                                                         *
+\***    Sets an element in the list to a given INTEGER*1                     *
+\***                                                                         *
+\*****************************************************************************
+
+SUB I1.LIST.SET(ELEMENT%, DATA%) PUBLIC
+
+    INTEGER*4 PEEK.ADR%
+    INTEGER*4 ARRAY%
+    INTEGER*4 ELEMENT%
+    INTEGER*1 DATA%
+
+    !Set up I1.TEMP.ARRAY% to point to the right array
+    ARRAY% = I1.ARRAY.PTR.TABLE%(ELEMENT% / I1.ELEMENTS.PER.ARRAY%)
+    PEEK.ADR% = VARPTR(ARRAY%)
+    POKE PTR.TO.I1.TEMP.ARRAY%, PEEK(PEEK.ADR%)
+    POKE PTR.TO.I1.TEMP.ARRAY% + 1, PEEK(PEEK.ADR% + 1)
+    POKE PTR.TO.I1.TEMP.ARRAY% + 2, PEEK(PEEK.ADR% + 2)
+    POKE PTR.TO.I1.TEMP.ARRAY% + 3, PEEK(PEEK.ADR% + 3)
+
+    !Update the element in the array
+    I1.TEMP.ARRAY%(MOD(ELEMENT%, I1.ELEMENTS.PER.ARRAY%)) = DATA%
+
+END SUB
+
+\*****************************************************************************
+\***                                                                         *
+\***    I1.LIST.GET                                                          *
+\***                                                                         *
+\***    Gets the INTEGER*1 value from a given element in the list.           *
+\***                                                                         *
+\*****************************************************************************
+
+SUB I1.LIST.GET(ELEMENT%, RETURNED.DATA%) PUBLIC
+
+    INTEGER*4 PEEK.ADR%
+    INTEGER*4 ARRAY%
+    INTEGER*4 ELEMENT%
+    INTEGER*1 RETURNED.DATA%
+
+    !Set up I1.TEMP.ARRAY% to point to the right array
+    ARRAY% = I1.ARRAY.PTR.TABLE%(ELEMENT% / I1.ELEMENTS.PER.ARRAY%)
+    PEEK.ADR% = VARPTR(ARRAY%)
+    POKE PTR.TO.I1.TEMP.ARRAY%, PEEK(PEEK.ADR%)
+    POKE PTR.TO.I1.TEMP.ARRAY% + 1, PEEK(PEEK.ADR% + 1)
+    POKE PTR.TO.I1.TEMP.ARRAY% + 2, PEEK(PEEK.ADR% + 2)
+    POKE PTR.TO.I1.TEMP.ARRAY% + 3, PEEK(PEEK.ADR% + 3)
+
+    !Get the element from the array
+    RETURNED.DATA% = I1.TEMP.ARRAY%(MOD(ELEMENT%, I1.ELEMENTS.PER.ARRAY%))
+
+END SUB
+

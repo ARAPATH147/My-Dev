@@ -1,0 +1,108 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***           CHKBF - PRICE CHECK BUFFER FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***                    REFERENCE : CHKBFFUN.BAS
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: 
+  10: 0000:   %INCLUDE CHKBFDEC.J86
+  11: 0000: \******************************************************************************
+  12: 0000: \***
+  13: 0000: \***           %INCLUDE FOR CHKBF - PRICE CHECK BUFFER FILE
+  14: 0000: \***
+  15: 0000: \***                    - FIELD DECLARATIONS   
+  16: 0000: \***                    - FILE REFERENCE PARAMETERS  
+  17: 0000: \***  
+  18: 0000: \***                    REFERENCE: CHKBFDEC.J86
+  19: 0000: \***
+  20: 0000: \******************************************************************************
+  21: 0000: 
+  22: 0000:    INTEGER*1 GLOBAL				\
+  23: 0000: 	CHKBF.SESS.NUM%
+  24: 0000: 
+  25: 0000:    INTEGER*2 GLOBAL				\
+  26: 0000: 	CHKBF.RECL%,                            \
+  27: 0000:         CHKBF.REPORT.NUM% 	
+  28: 0000: 
+  29: 0000:    INTEGER*4 GLOBAL				\ DLC
+  30: 0000:         CHKBF.POINTER%
+  31: 0000: 	
+  32: 0000:    STRING GLOBAL			\
+  33: 0000: 	CHKBF.ITEM.CODE$,	\ 13 byte ASC - bar code, as passed from PDT
+  34: 0000: 	CHKBF.PRICE$,		\  6 byte ASC - price, as passed from PDT 
+  35: 0000: 	CHKBF.FILLER$,		\  1 byte ASC - spare
+  36: 0000: 	CHKBF.FILE.NAME$
+  37: 0000: 
+  38: 0000:   INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  39: 0000:   
+  40: 0000:   STRING GLOBAL FILE.OPERATION$, CURRENT.CODE$
+  41: 0000:   
+  42: 0000: 
+  43: 0000:   FUNCTION CHKBF.SET PUBLIC
+  44: 0014: \***************************
+  45: 0014: 
+  46: 0014:      CHKBF.FILE.NAME$  = "CHKBF"
+  47: 0023:      CHKBF.REPORT.NUM% = 209
+  48: 002c:      CHKBF.RECL%       = 20
+  49: 0035:      
+  50: 0035:   END FUNCTION
+  51: 0041: \------------------------------------------------------------------------------
+  52: 0041: REM EJECT^L       
+  53: 0041: 
+  54: 0041:   FUNCTION READ.CHKBF PUBLIC
+  55: 0055: \****************************   
+  56: 0055: 
+  57: 0055:      INTEGER*2 READ.CHKBF
+  58: 0055:      
+  59: 0055:      READ.CHKBF = 1
+  60: 005a:      
+  61: 005a:      
+  62: 005a:      IF END #CHKBF.SESS.NUM% THEN READ.ERROR     
+  63: 0070:      READ FORM "C13,C6,C1"; #CHKBF.SESS.NUM% ;				\
+  64: 00aa: 	  CHKBF.ITEM.CODE$,						\
+  65: 00aa:   	  CHKBF.PRICE$,							\
+  66: 00aa: 	  CHKBF.FILLER$
+  67: 00aa: 
+  68: 00aa:      READ.CHKBF = 0
+  69: 00af:      EXIT FUNCTION
+  70: 00b1:      
+  71: 00b1:      
+  72: 00b1:      READ.ERROR:
+  73: 00b1:      
+  74: 00b1:         FILE.OPERATION$     = "R"
+  75: 00c0:         CURRENT.CODE$       = PACK$("0000000000000000")
+  76: 00d4:         CURRENT.REPORT.NUM% = CHKBF.REPORT.NUM% 		
+  77: 00e2:      
+  78: 00e2:         EXIT FUNCTION          
+  79: 00e4:      
+  80: 00e4: 
+  81: 00e4:   END FUNCTION
+  82: 00f3: \------------------------------------------------------------------------------
+  83: 00f3: 
+  84: 00f3:   FUNCTION WRITE.CHKBF PUBLIC
+  85: 0107: \*****************************
+  86: 0107: 
+  87: 0107:    INTEGER*2 WRITE.CHKBF
+  88: 0107:    
+  89: 0107:    WRITE.CHKBF = 1
+  90: 010c: 
+  91: 010c:    IF END #CHKBF.SESS.NUM% THEN WRITE.ERROR
+  92: 0122:    WRITE FORM "C13,C6,C1"; #CHKBF.SESS.NUM% , CHKBF.POINTER%;		\ CLC
+  93: 0176: 	CHKBF.ITEM.CODE$,						\
+  94: 0176: 	CHKBF.PRICE$,							\
+  95: 0176: 	CHKBF.FILLER$
+  96: 0176:    WRITE.CHKBF = 0
+  97: 017b:    EXIT FUNCTION
+  98: 017d:    
+  99: 017d:    WRITE.ERROR:
+ 100: 017d:    
+ 101: 017d:       CURRENT.CODE$ = CHKBF.ITEM.CODE$
+ 102: 0193:       FILE.OPERATION$ = "O"
+ 103: 01a2:       CURRENT.REPORT.NUM% = CHKBF.REPORT.NUM%
+ 104: 01b0:       
+ 105: 01b0:       EXIT FUNCTION
+ 106: 01b2: 
+ 107: 01b2: END FUNCTION
+ 108: 01c1: End of Compilation

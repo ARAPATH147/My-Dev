@@ -1,0 +1,463 @@
+REM \
+\******************************************************************************
+\******************************************************************************
+\***
+\***      %INCLUDE FOR STOCK MOVEMENT QUEUE FILE FIELD DECLARATIONS
+\***                                             FILE REFERENCE PARAMETERS
+\***
+\***               FILE TYPE    : Sequential
+\***
+\***               REFERENCE    : STKMQDEC.J86
+\***
+\***      Version A.     L. Cook
+\***
+\***      Combined from STKMQNUE.J86 and STKMQFLE.J86
+\***
+\***      Version B.     S.P. Kelsey (CTG)            7th November
+\***      Include CSR Marker in the Type 1 and Type 18 transactions.
+\***
+\***      Version C.     S. Goulding                 8th March
+\***      Add fields for new tranctions types 21 & 23
+\***
+\***      Version D.     ???????????            ????????????
+\***      ????????????????????????????????????????????????????????
+\***
+\***      Version E.     Michael J. Kelsall           16th Dec 1993.
+\***      Addition of txn types, 24, 25, 26, 27 and 28. As part of the
+\***      RETURNS/AUTOMATIC CREDIT CLAIMING system.
+\***
+\***      Version 1.1    Michael J. Kelsall           10th Aug 1994.
+\***      Changes as part of R/ACC update to allow for zero price claim
+\***      processing. Addition of type 29 txn for this change.
+\***
+\***      Version 1.2    Nik Sen                       8th November 1994
+\***      Addition of transaction type 30 as oart of Epsom Life CSR Phase 2
+\***
+\***      Version 1.3    Neil Bennett                   2nd January 2007
+\***      Add ASN processing support. (Rec Type 17)
+\***
+\***      Version 1.4    Brian Greenfield               14th may 2007
+\***      Added STKMQ.RECALL.TYPE$ for use in A7C RECALLS - only type 26 records.
+\***
+\***      Version 1.5    Neil Bennett                  31st January 2008
+\***      Add STKMQ.FLAG$ for record type 11
+\***
+\***      Version 1.6    Dave Constable                5th September 2008
+\***      Add STKMQ.FLAG$ for record type 33
+\***
+\***      Version 1.7    Dave Constable                30th December 2008
+\***      Add STKMQ.RESCAN$ for record type 33
+\***
+\***      Version 1.8    Dave Constable                6th January 2009
+\***      Add Bookin date & time for record type 33
+\***
+\***      Version F      Mark Walker                      27th Mar 2014
+\***      F337 Centralised View of Stock
+\***      - Relocated STKMQ item processing variables to here.
+\***
+\******************************************************************************
+\*******************************************************************************
+\***
+\***  The length of the records on this file vary depending on the record
+\***  transaction type, but they all comprise combinations of the fields
+\***  defined below.
+\***
+\***  Transaction type 0 (Header record) - RECORD DELIMITER, TRANS TYPE,
+\***     FIELD DELIMITER, CREATION DATE, CREATION TIME, RECORD DELIMITER,
+\***     END OF RECORD MARKER.
+\***
+\***  Transaction type 1 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, FSI, FOLIO YEAR, FOLIO MONTH, FOLIO NUMBER, STORE SUFFIX,
+\***     COUNT OF ITEMS, INVOICE DAY,(FIELD DELIMITER, BOOTS CODE,
+\***     FIELD DELIMITER, QUANTITY, FIELD DELIMITER, CSR MARKER),
+\***     RECORD DELIMITER, END OF RECORD MARKER.
+\***     The fields within brackets are repeated as many times as count of items.
+\***
+\***  Transaction type 2 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE, FIELD DELIMITER, QUANTITY, RECORD DELIMITER,
+\***     END OF RECORD MARKER.
+\***
+\***  Transaction type 3 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE, FIELD DELIMITER, QUANTITY, FIELD DELIMITER,
+\***     REASON CODE, STORE/RETURN CODE, RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 4 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE, ON IDF FLAG, FIELD DELIMITER, QUANTITY,
+\***     RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 5 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE, COUNT FLAG, STOCK MOVEMENT DATE, FIELD DELIMITER,
+\***     QUANTITY, RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 6 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE, REASON (1 byte ASCII)
+\***     RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 7 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE, CONCEPT SEQUENCE
+\***     RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 8 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, PRODUCT GROUP, RECORD DELIMITER, END OF RECORD
+\***     MARKER
+\***
+\***  Transaction type 9 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, LIST NUMBER, ITEM NUMBER, LIST TYPE,
+\***     COUNT.BY.DATE, RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 10- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE,
+\***     RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 11- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE, FIELD DELIMITER, COUNT QUANTITY, FIELD DELIMITER(opt),
+\***     SOURCE(opt), FLAG(opt), RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 12- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BOOTS CODE,
+\***     RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 13- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, LIST NUMBER, ITEM NUMBER, ITEM STATUS,ITEM CODE,
+\***     COUNT DATE, COUNT TIME, PRICE, FIELD DELIMITER, SHOP FLOOR COUNT,
+\***     FIELD DELIMITER, BACKROOM COUNT, RECORD DELIMITER, END OF REC MARKER
+\***
+\***  Transaction type 14- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, LIST NUMBER, LIST STATUS, RECORD DELIMITER,
+\***     END OF RECORD MARKER
+\***
+\***  Transaction type 16- RECORD DELIMIER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, BC LETTER, FIELD DELIMITER, ORIGINAL RECOUNT
+\***     PERCENTAGE, FIELD DELIMITER, CHANGED RECOUNT PERCENTAGE,
+\***     RECORD DELIMITER, END OF RECORD DELIMITER
+\***
+\***  Transaction type 17- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, SOURCE, SUPPLIER NUMBER, ORDER NUMBER, ORDER SUFFIX, PAGE
+\***     NUMBER, ITEM COUNT,
+\***     CARTON NUMBER, CARTON FLAG,                                        ! 1.3NWB
+\***     FIELD DELIMITER, ITEM CODE, BAR CODE,
+\***     QUANTITY - GOOD, FIELD DELIMITER, QUANTITY - DAMAGED, FIELD DELIMITER,
+\***     QUANTITY - STOLEN (the last 8 fields repeat ITEM COUNT times),
+\***     RECORD DELIMITER, END OF RECORD DELIMITER
+\***
+\***  Transaction type 18- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, FOLIO IDENTIFIER, FOLIO YEAR, FOLIO MONTH, FOLIO NUMBER,
+\***     STORE SUFFIX, ITEM COUNT, INVOICE DAY, EXPECTED DATE OF DELIVERY,
+\***     DALLAS MARKER, FIELD DELIMITER, ITEM CODE, FIELD DELIMITER,
+\***     ORDER QUANTITY, FIELD DELIMITER, CSR MARKER,
+\***     (the last six fields repeat ITEM COUNT times),
+\***     RECORD DELIMITER, END OF RECORD DELIMITER
+\***
+\***  Transaction type 19- RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, SUPPLIER NUMBER, ORDER NUMBER, ORDER SUFFIX, CONFIRM/AMEND FLAG,
+\***     START TIME, END TIME, NO SINGLES ADDED, NO ITEMS ADDED, NO ITEMS
+\***     BOOKED IN, RECORD DELIMITER, END OF RECORD DELIMITER
+\***
+\***  Transaction type 21 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, DISTRIBUTION CENTRE, WAREHOUSE NUMBER, STORE NUMBER, UOD NUMBER,
+\***     STATUS, RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 23 - RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, DISTRIBUTION CENTRE, WAREHOUSE NUMBER, STORE NUMBER, UOD NUMBER,
+\***     STATUS, BOOTS/BAR CODE, BOOTS/BAR CODE FLAG, QUANTITY, FIELD DELIMITER
+\***     FSI,FOLIO YEAR, FOLIO MONTH, STORE SUFFIX, FOLIO NO, CSR MARKER
+\***     RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***
+\***  RETURNS/AUTOMATIC CREDIT CLAIMING RECORD TYPES;
+\***
+\***  Transaction type 24 - Whole or Part consignment record
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+\***     CREDIT CLAIM NUM, BC LETTER, CLAIM TYPE, SUPPLIER NUM, INVOICE NUM,
+\***     FOLIO NUM, BATCH REF NUM, WHOLE/PART CONSIGNMENT, REPAIR CATEGORY,
+\***     REPAIR NUM, PLAN4 POLICY NUM, DDDA/DCDR NUM, DELIV NOTE NUM,
+\***     DELIV DATE, NUM OF CARTONS, ORDER NUM, COMMENT, NUM OF ITEMS,
+\***     ITEM/BAR CODE FLAG, BOOTS/BAR CODE, QTY, PRICE, RECORD DELIMITER,
+\***     END OF RECORD MARKER
+\***     (ITEM/BAR CODE FLAG to PRICE repeated NUM OF ITEMS times)
+\***
+\***  Transaction type 25 - Non-sales func 16 and Misc. txns from controller
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+\***     CREDIT CLAIM NUM, NUM OF ITEMS, AUTH CODE/CONTACT,
+\***     ADJUST STOCK FIGURE FLAG, REASON, ITEM/BAR CODE FLAG, BOOTS/BAR CODE,
+\***     QTY, PRICE, RECORD DELIMITER, END OF RECORD MARKER
+\***     (ITEM/BAR CODE FLAG to PRICE repeated NUM OF ITEMS times)
+\***
+\***  Transaction type 26 - Data from LDT
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME, UOD NUM,
+\***     UOD STATUS, CREDIT CLAIM NUM, NUM OF ITEMS UPDATED, TOTAL QTY IN UOD,
+\***     ADJUST STOCK FIGURE FLAG, SUPPLY ROUTE, DISP LOCATION, BC LETTER,
+\***     RECALL NUM, AUTHORISATION, SUPPLIER, RETURN METHOD, CARRIER, BIRD NUM,
+\***     REASON, WAREHOUSE ROUTE, UOD TYPE, REASON FOR DAMAGE, RECEIVING STORE,
+\***     DESTINATION, DATE UOD OPENED, DATE UOD DESPATCHED, TIME UOD
+\***     DESPATCHED, RECALL TYPE$, ITEM.BAR CODE FLAG, BOOTS/BAR CODE, QTY,       ! 1.4BG
+\***     ITEM UPDATED FLAG, RECORD DELIMITER, END OF RECORD MARKER
+\***     (ITEM/BAR CODE FLAG to ITEM UPDATED FLAG repeated NUM OF ITEMS times)
+\***
+\***  Transaction type 27 - End of LDT session
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+\***     DATE SESSION ENDED, TIME SESSION ENDED, RECORD DELIMITER,
+\***     END OF RECORD MARKER
+\***
+\***  Transaction type 28 - Cancelled Credit Claim
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+\***     CLAIM NUMBER, UOD NUM, NEW STATUS FLAG, RECORD DELIMITER,
+\***     END OF RECORD MARKER
+\***
+\***  Transaction type 29 - Zero price update
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+\***     CLAIM NUMBER, ITEM NUMBER, CLAIM VALUE, RECORD DELIMITER,
+\***     END OF RECORD MARKER
+\***
+\***  Transaction type 30 - CSR Issues
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE, TIME,
+\***     BOOTS CODE, FIELD DELIMITER, QUANTITY, FIELD DELIMITER
+\***     EXPECTED DELIVERY DATE, RECORD DELIMITER, END OF RECORD MARKER
+\***
+\***  Transaction type 31 - Quasi Count
+\***     RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, LIST NUMBER, ITEM NUMBER, ITEM STATUS,ITEM CODE,
+\***     COUNT DATE, COUNT TIME, PRICE, FIELD DELIMITER, SHOP FLOOR COUNT,
+\***     FIELD DELIMITER, BACKROOM COUNT (PREV STOCK FIG), RECORD DELIMITER,
+\***      END OF REC MARKER
+\***
+\***  Transaction type 32 - Quasi Adjustment count
+\**      RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, LIST NUMBER, ITEM NUMBER, ITEM STATUS,ITEM CODE,
+\***     COUNT DATE, COUNT TIME, PRICE, FIELD DELIMITER, SHOP FLOOR COUNT,
+\***     FIELD DELIMITER, BACKROOM COUNT (PREV STOCK FIG), RECORD DELIMITER,
+\***     END OF REC MARKER
+\***
+\***  Transaction type 33 - +UOD Receiving
+\**      RECORD DELIMITER, TRANS TYPE, FIELD DELIMITER, DATE,
+\***     TIME, UOD LICENCE PLATE, DESPATCH DATE, ACTION, ITEM COUNT,
+\***     for audit type+(ITEM CODE, BARCODE, DESPATCHED QTY, VARIANCE )
+\***     END OF REC MARKER
+\***
+\******************************************************************************
+
+  STRING GLOBAL              \
+    STKMQ.FILE.NAME$,        \
+    STKMQ.RECORD$,           \ Used to store the whole record which is unstrung
+                             \ into the fields below
+    STKMQ.RECORD.DELIMITER$, \ 1 byte ASCII set to " (CHR$(34))
+    STKMQ.TRANS.TYPE$,       \ 1 byte UPD. 00 = Header record
+                             \             01 = W'house invoice delivery record
+                             \             02 = Delivery without invoice record
+                             \             03 = Stock out record
+                             \             04 = Stock count record
+                             \             17 = Delivery without confirmation
+                             \                  of Direct Order detail
+                             \             18 = Confirmed Dallas invoice record
+                             \             19 = Delivery without confirmation
+                             \                  of Direct Order header
+                             \             21 = UOD record
+                             \             23 = Item Level UOD record
+                             \             24 = Whole/Part consignment (R/ACC)
+                             \             25 = NS16 / Misc cont txn (R/ACC)
+                             \             26 = Data from LDT (R/ACC)
+                             \             27 = End of LDT session (R/ACC)
+                             \             28 = Canc. Credit Claim (R/ACC)
+                             \             29 = Zero price update (R/ACC)
+    STKMQ.FIELD.DELIMITER$,  \ 1 byte ASCII set to ; (CHR$(59))
+    STKMQ.CREATION.DATE$,    \ 3 byte UPD set to current date
+    STKMQ.CREATION.TIME$,    \ 3 byte UPD set to current time
+    STKMQ.CSR.MARKER$,       \ 1 byte ASCII. "Y" - This is a CSR Item      BSPK
+                             \               " " - This is not a CSR Item  BSPK
+    STKMQ.DATE$,             \ 3 byte UPD set to current date
+    STKMQ.TIME$,             \ 3 byte UPD set to current time
+    STKMQ.FSI$,              \ 1 byte ASCII
+    STKMQ.FOLIO.YEAR$,       \ 1 byte UPD
+    STKMQ.FOLIO.MONTH$,      \ 1 byte UPD
+    STKMQ.FOLIO.NUMBER$,     \ 2 bytes UPD
+    STKMQ.STORE.SUFFIX$,     \ 1 byte ASCII
+    STKMQ.ITEM.COUNT$,       \ 1 byte UPD between 1 and 17
+    STKMQ.BOOTS.CODE$,       \ 4 bytes UPD
+    STKMQ.ON.IDF.FLAG$,      \ 1 byte ASCII. Y = On IDF   N = Not on IDF
+    STKMQ.QUANTITY$,         \ variable length string equivalent to
+                             \ STR$(STKMQ.QUANTITY%)
+                             \ +ve indicates add to stock
+                             \ -ve indicates subtract from stock
+    STKMQ.REASON.CODE$,      \ 2 bytes UPD
+    STKMQ.STORE.RET.CODE$,   \ 2 bytes UPD
+    STKMQ.ENDREC.MARKER$,    \ 2 bytes ASCII set to XODOA
+    STKMQ.REASON$,           \ 1 byte ASCII. "I" = ineligible,
+                             \               "U" = unsuppliable,
+                             \               "Z" = deleted,
+                             \               " " = not removed.
+    STKMQ.CONCEPT.SEQUENCE$, \ 3 byte UPD. Concept group / sequence
+    STKMQ.INVOICE.DAY$,      \ 1 byte UPD
+    STKMQ.LIST.NUMBER$,      \ 4 byte ASCII
+    STKMQ.ITEM.NUMBER$,      \ 2 byte ASCII
+    STKMQ.ITEM.STATUS$,      \ 1 byte ASCII
+    STKMQ.COUNT.DATE$,       \ 3 byte UPD - YYMMDD
+    STKMQ.COUNT.TIME$,       \ 2 byte UPD - HHMM
+    STKMQ.PRICE$,            \ 5 byte UPD
+    STKMQ.SHOP.COUNT$,       \ variable ASCII
+    STKMQ.BKRM.COUNT$,       \ variable ASCII
+    STKMQ.LIST.STATUS$,      \ 1 byte ASCII
+    STKMQ.LEFT.TO.COUNT$,    \ variable ASCII
+    STKMQ.COUNT.BY.DATE$,    \ 3 bytes UPD
+    STKMQ.PRODUCT.GROUP$,    \ 3 bytes UPD
+    STKMQ.BC.LETTER$,        \ 1 byte ASCII
+    STKMQ.ORG.RECOUNT$,      \ VARIABLE ASCII
+    STKMQ.NEW.RECOUNT$,      \ VARIABLE ASCII
+    STKMQ.LIST.TYPE$,        \ 1 byte ASCII
+    STKMQ.COUNT.FLAG$,       \ 1 byte ASC from corrections file
+    STKMQ.STMVT.DATE$,       \ 3 bytes UPD
+    STKMQ.SUPPLIER.NO$,      \ 4 bytes UPD
+    STKMQ.ORDER.NO$,         \ 2 bytes UPD
+    STKMQ.ORDER.SFX$,        \ 1 byte ASCII
+    STKMQ.PAGE.NO$,          \ 1 byte UPD
+    STKMQ.ORDER.DATE$,       \ 3 bytes UPD
+    STKMQ.EXP.DELV.DATE$,    \ 3 bytes UPD
+    STKMQ.DALLAS.MKR$,       \ 1 byte ASCII DALLAS system marker
+                             \ 'Y' - invoice is from DALLAS system,
+                             \ 'N' - invoice is not from DALLAS system
+                             \ 'Q' - invoice contains quantity alterations
+    STKMQ.SOURCE$,           \ 1 byte ASCII Source flag
+                             \ 'S' - PSS65, 'P' - PDT, PSS57
+                             \ Transaction type 11 'S' - Stocktake else ' '
+    STKMQ.FLAG$,             \ Transaction type 11 'F' - First 'L' - Last or ' '
+    STKMQ.BAR.CODE$,         \ 6 bytes UPD
+    STKMQ.CODE.FLAG$,        \ 1 BYTE ASCII
+    STKMQ.QTY.GOOD$,         \ VARIABLE ASCII
+                             \ Quantity of singles booked in in good condition
+    STKMQ.QTY.BAD$,          \ VARIABLE ASCII
+                             \ Quantity of singles booked in in bad condition
+    STKMQ.QTY.STOLEN$,       \ VARIABLE ASCII
+                             \ Quantity of singles recognised as stolen
+    STKMQ.CONF.AMND.FLAG$,   \ 1 byte ASCII - Confirm/ Amend Flag
+                             \ 'C' - Order has been confirmed
+                             \ 'A' - Order has been amended
+                             \ ' ' - Nothing has been done to the order
+    STKMQ.START.TIME$,       \ 2 byte UPD (HHMM) time order started to be
+                             \ processed
+    STKMQ.END.TIME$,         \ 2 byte UPD (HHMM) time order was completed
+    STKMQ.SNGLS.ADDED$,      \ 2 byte UPD  Singles added to order
+    STKMQ.ITEMS.ADDED$,      \ 2 byte UPD  Items added to order
+    STKMQ.ITEMS.BOOKED$,     \ 2 byte UPD  Items booked in on the order
+    STKMQ.DIST.CENTRE$,      \ 1 byte UPD
+    STKMQ.WHSE.NUMBER$,      \ 1 byte UPD
+    STKMQ.STORE.NUMBER$,     \ 2 byte UPD
+    STKMQ.UOD.NUMBER$,       \ 3 byte UPD
+    STKMQ.STATUS$,           \ 1 byte ASCII
+                             \
+    STKMQ.CREDIT.CLAIM.NUM$, \ 4 byte UPD
+    STKMQ.CLAIM.TYPE$,       \ 1 byte ASC;  "M" = Missing,
+                             \              "E" = Excess,
+                             \              "R" = Repairs
+    STKMQ.SUPPLIER.NUM$,     \ 3 byte UPD
+    STKMQ.INVOICE.NUM$,      \*9 byte ASC
+    STKMQ.FOLIO.NUM$,        \ 3 byte UPD
+    STKMQ.BATCH.REF$,        \ 3 byte UPD
+    STKMQ.WHOLE.PART.CON$,   \ 1 byte ASC   "W" = Whole, "P" = Part
+    STKMQ.REPAIR.CATEGORY$,  \ 1 byte UPD;   1 = Plan4,
+                             \               2 = Estimate,
+                             \               3 = Boots guarantee,
+                             \               4 = Supplier guarantee,
+                             \               5 = Other guarantee,
+    STKMQ.REPAIR.NUM$,       \ 6 byte UPD
+    STKMQ.PLAN4.POLICY.NUM$, \ 6 byte UPD; (Only if repair cat is Plan4)
+    STKMQ.DDDA.DCDR.NUM$,    \ 4 byte UPD
+    STKMQ.DELIV.NOTE.NUM$,   \*9 byte ASC
+    STKMQ.NUM.CARTONS.RECEIV$,\1 byte UPD
+    STKMQ.ORDER.NUM$,        \*7 byte ASC
+    STKMQ.COMMENT$,          \*20 byte ASC
+    STKMQ.ITEM.BARCODE.FLAG$,\ 1 byte ASC;  "I" = Boots item code,
+                             \               "B" = Barcode.
+    STKMQ.ITEM.BARCODE$,     \ 7 byte UPD
+    STKMQ.ITEM.PRICE$,       \ 3 byte UPD;  Spaces.
+    STKMQ.AUTHORISATION$,    \ 15 byte ASC
+    STKMQ.ADJ.STOCK.FIGURE$, \ 1 byte ASC;  "Y" or "N"
+    STKMQ.RETURN.REASON$,    \ 1 byte UPD;  (See CCRSN file)
+    STKMQ.UOD.NUM$,          \ 7 byte UPD
+    STKMQ.UOD.STATUS$,       \ 1 byte ASC;  "O" = Open,
+                             \              "C" = Closed,
+                             \              "D" = Despatched
+    STKMQ.SUPPLY.ROUTE$,     \ 1 byte ASC
+    STKMQ.DISP.LOCATION$,    \ 1 byte ASC   "M" = MDS,
+                             \              "D" = Dispensary
+    STKMQ.RECALL.NUM$,       \ 8 byte ASC
+    STKMQ.SUPPLIER$,         \ 15 byte ASC
+    STKMQ.RETURN.METHOD$,    \ 1 byte UPD;   1 = Carrier,
+                             \               2 = BIRD,
+                             \               3 = Via D6,
+                             \               4 = Representative
+    STKMQ.CARRIER$,          \ 1 byte UPD;   1 = GPO,
+                             \               2 = Parcelforce,
+                             \               3 = Securicor,
+                             \               4 = Other
+    STKMQ.BIRD.NUM$,         \ 8 byte ASC
+    STKMQ.WAREHOUSE.ROUTE$,  \ 1 byte ASC   "R" = RDC,
+                             \              "C" = CSR
+    STKMQ.UOD.TYPE$,         \ 1 byte UPD;   1 = Travel Outer,
+                             \               2 = Town Tray,
+                             \               3 = Roll cage,
+                             \               4 = Other
+    STKMQ.DAMAGE.REASON$,    \ 1 byte UPD    1 = Bad packaging,
+                             \               2 = Poor handling
+    STKMQ.RECEIVING.STORE$,  \ 2 byte UPD
+    STKMQ.DESTINATION$,      \ 1 byte UPD    1 = Business Centre,
+                             \               2 = MTS,
+                             \               3 = Other
+    STKMQ.DATE.UOD.OPENED$,  \ 3 byte UPD
+    STKMQ.DATE.DESPATCHED$,  \ 3 byte UPD
+    STKMQ.TIME.DESPATCHED$,  \ 3 byte UPD
+    STKMQ.ITEM.UPDATED$,     \ 1 byte ASC
+    STKMQ.DATE.SESS.END$,    \ 3 byte UPD
+    STKMQ.TIME.SESS.END$,    \ 3 byte UPD
+    STKMQ.NEW.STATUS.FLAG$,  \ 1 byte ASC   "C" = Closed,
+                             \              "D" = Despatched,
+                             \              "X" = Cancelled
+    STKMQ.ITEM.NUM$,         \ 2 byte UPD   (CCITF key value)
+    STKMQ.CLAIM.VALUE$,      \ 3 byte UPD
+    STKMQ.CARTON.FLAG$,      \ 1 byte  ASCII - ' ' Old Process,             ! 1.3NWB
+                             \                 'N' Normal Book In           ! 1.3NWB
+                             \                 'A' Carton Audit Process     ! 1.3NWB
+                             \                 'E' Exception Process (nof)  ! 1.3NWB
+    STKMQ.CARTON.NO$,        \ 4 bytes UPD (0-9999)                         ! 1.3NWB
+    STKMQ.RECALL.TYPE$       ! 1 byte ASC   "B" = Batch Recall              ! 1.4BG
+                             !              "N" = Non-batch Recall          ! 1.4BG
+                             !              " " = Old Credit Claim          ! 1.4BG
+
+!***********************************************************!* DC 1.6
+!* Added for +UOD Development                               !* DC 1.6
+!***********************************************************!* DC 1.6
+  STRING GLOBAL \                                           !* DC 1.6 
+    STKMQ.LICENCE.PLATE$, \                                 !* DC 1.6 
+    STKMQ.DESPATCH.DATE$, \                                 !* DC 1.6 
+    STKMQ.ACTION$, \                                        !* DC 1.6 
+    STKMQ.DELIVERY.DATE$, \                                 !* DC 1.6 
+    STKMQ.DELIVERY.TIME$, \                                 !* DC 1.6 
+    STKMQ.DRIVER.ID$, \                                     !* DC 1.6 
+    STKMQ.BOOKIN.DATE$, \                                   !* DC 1.8
+    STKMQ.BOOKIN.TIME$, \                                   !* DC 1.8 
+    STKMQ.OP.ID$, \                                         !* DC 1.6 
+    STKMQ.BOOKIN.METHOD$, \                                 !* DC 1.6 
+    STKMQ.BOOKIN.LEVEL$, \                                  !* DC 1.6 
+    STKMQ.GIT$, \                                           !* DC 1.6 
+    STKMQ.RESCAN$, \                                        !* DC 1.7
+    STKMQ.FILLER$                                           !* DC 1.6 
+
+  INTEGER*2 GLOBAL           \                              !* DC 1.6 
+    STKMQ.SESS.NUM%,         \                              !* DC 1.6 
+    STKMQ.REPORT.NUM%                                       !* DC 1.6 
+!***********************************************************!* DC 1.6
+
+    STRING GLOBAL                                                       \   !FMW
+        STKMQ.UOD.QTY$,         \                                       \   !FMW
+        STKMQ.CODE$(1),         \ Item Code                             \   !FMW
+        STKMQ.TYPE$(1),         \ Code type I = Item code               \   !FMW
+                                \           B = Barcode                 \   !FMW
+        STKMQ.CSR.FLAG$(1),     \ CSR Flag                              \   !FMW
+        STKMQ.EAN.CODE$(1),     \ Barcode                               \   !FMW
+        STKMQ.QTY$(1),          \ Quantity                              \   !FMW
+        STKMQ.GOOD.QUAN$(1),    \ Good Quantity                         \   !FMW
+        STKMQ.DAM.QUAN$(1),     \ Damaged Quantity                      \   !FMW
+        STKMQ.STOL.QUAN$(1),    \ Stolen Quantity                       \   !FMW
+        STKMQ.PRICE.ARRAY$(1)   ! Retail Price                              !FMW
+                                                                            !FMW
+    INTEGER*2 GLOBAL                                                    \   !FMW
+        STKMQ.ITEM%             ! Count of items in a transaction           !FMW
+

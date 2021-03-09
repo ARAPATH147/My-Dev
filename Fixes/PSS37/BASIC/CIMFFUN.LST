@@ -1,0 +1,242 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***         %INCLUDE FOR CSR ITEM MOVEMENT FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***               REFERENCE    : CIMFFUN.BAS
+   8: 0000: \***
+   9: 0000: \***    VERSION A                                  Les Cook  21/08/92
+  10: 0000: \***
+  11: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  12: 0000: \***    Corrected setting of FILE.OPERATION$ within WRITE functions.
+  13: 0000: \***
+  14: 0000: \******************************************************************************
+  15: 0000: \******************************************************************************
+  16: 0000: 
+  17: 0000:   INTEGER*2 GLOBAL                       \
+  18: 0000:      CURRENT.REPORT.NUM%
+  19: 0000:   
+  20: 0000:   STRING GLOBAL                          \
+  21: 0000:      CURRENT.CODE$,                      \
+  22: 0000:      FILE.OPERATION$
+  23: 0000:   
+  24: 0000:   %INCLUDE CIMFDEC.J86                                                 ! BRC
+  25: 0000: REM \
+  26: 0000: \******************************************************************************
+  27: 0000: \******************************************************************************
+  28: 0000: \***
+  29: 0000: \***         %INCLUDE FOR CSR ITEM MOVEMENT FILE FIELD DECLARATIONS
+  30: 0000: \***
+  31: 0000: \***               FILE TYPE    : Keyed
+  32: 0000: \***
+  33: 0000: \***               REFERENCE    : CIMFDEC.J86
+  34: 0000: \***
+  35: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  36: 0000: \***    No changes to this file.
+  37: 0000: \***
+  38: 0000: \******************************************************************************
+  39: 0000: \******************************************************************************
+  40: 0000: 
+  41: 0000:   STRING GLOBAL           \
+  42: 0000:     CIMF.FILE.NAME$,      \
+  43: 0000:     CIMF.BOOTS.CODE$,     \ 4 byte UPD without check digit (key)
+  44: 0000:     CIMF.TRANS.DATE$,     \ 3 byte UPD, last transmitted date in form YYMMDD
+  45: 0000:     CIMF.SPACE$           ! 1 bytes
+  46: 0000: 
+  47: 0000:   INTEGER*2 GLOBAL        \
+  48: 0000:     CIMF.RECL%,           \
+  49: 0000:     CIMF.REPORT.NUM%,     \
+  50: 0000:     CIMF.SESS.NUM%
+  51: 0000: 
+  52: 0000:   INTEGER*4 GLOBAL        \
+  53: 0000:     CIMF.NUMITEM%,        \ Number of Items Sold
+  54: 0000:     CIMF.RESTART%         ! Last Transaction Number for Restart
+  55: 0000:     
+  56: 0000: 
+  57: 0000:   
+  58: 0000: 
+  59: 0000:   
+  60: 0000:   FUNCTION CIMF.SET PUBLIC
+  61: 0014: \**************************
+  62: 0014: 
+  63: 0014:      CIMF.REPORT.NUM%  = 54
+  64: 001d:      CIMF.RECL%        = 16
+  65: 0026:      CIMF.FILE.NAME$   = "CIMFI"  
+  66: 0035: 
+  67: 0035:   END FUNCTION
+  68: 0041: 
+  69: 0041: \-----------------------------------------------------------------------------
+  70: 0041: 
+  71: 0041:   FUNCTION READ.CIMF PUBLIC
+  72: 0055: \***************************
+  73: 0055: 
+  74: 0055:     INTEGER*1 READ.CIMF
+  75: 0055:     
+  76: 0055:     READ.CIMF = 1
+  77: 0059: 
+  78: 0059:     IF END #CIMF.SESS.NUM% THEN READ.CIMF.ERROR
+  79: 006d:     READ FORM "T5,2I4,C3,C1"; #CIMF.SESS.NUM%                     \
+  80: 00c0:          KEY CIMF.BOOTS.CODE$;                                    \
+  81: 00c0:              CIMF.RESTART%,                                       \
+  82: 00c0:              CIMF.NUMITEM%,                                       \
+  83: 00c0:              CIMF.TRANS.DATE$,                                    \
+  84: 00c0:              CIMF.SPACE$
+  85: 00c0:     READ.CIMF = 0
+  86: 00c4:     EXIT FUNCTION
+  87: 00c6:     
+  88: 00c6:     READ.CIMF.ERROR:
+  89: 00c6:     
+  90: 00c6:        CURRENT.CODE$ = CIMF.BOOTS.CODE$
+  91: 00dc:        FILE.OPERATION$ = "R"
+  92: 00eb:        CURRENT.REPORT.NUM% = CIMF.REPORT.NUM%
+  93: 00f9:        
+  94: 00f9:        EXIT FUNCTION
+  95: 00fb: 
+  96: 00fb:   END FUNCTION
+  97: 010a: \-----------------------------------------------------------------------------
+  98: 010a: 
+  99: 010a:   FUNCTION READ.CIMF.LOCK PUBLIC
+ 100: 011e: \********************************
+ 101: 011e: 
+ 102: 011e:     INTEGER*1 READ.CIMF.LOCK
+ 103: 011e:     
+ 104: 011e:     READ.CIMF.LOCK = 1
+ 105: 0122:     
+ 106: 0122:     IF END #CIMF.SESS.NUM% THEN READ.CIMF.LOCK.ERROR
+ 107: 0136:     READ FORM "T5,2I4,C3,C1"; #CIMF.SESS.NUM% AUTOLOCK            \
+ 108: 0189:          KEY CIMF.BOOTS.CODE$;                                    \
+ 109: 0189:              CIMF.RESTART%,                                       \
+ 110: 0189:              CIMF.NUMITEM%,                                       \
+ 111: 0189:              CIMF.TRANS.DATE$,                                    \
+ 112: 0189:              CIMF.SPACE$
+ 113: 0189:     READ.CIMF.LOCK = 0
+ 114: 018d:     EXIT FUNCTION
+ 115: 018f:     
+ 116: 018f:     READ.CIMF.LOCK.ERROR:
+ 117: 018f:     
+ 118: 018f:        CURRENT.CODE$ = CIMF.BOOTS.CODE$
+ 119: 01a5:        FILE.OPERATION$ = "R"
+ 120: 01b4:        CURRENT.REPORT.NUM% = CIMF.REPORT.NUM%
+ 121: 01c2:        
+ 122: 01c2:        EXIT FUNCTION
+ 123: 01c4: 
+ 124: 01c4:   END FUNCTION
+ 125: 01d3: 
+ 126: 01d3: \-----------------------------------------------------------------------------
+ 127: 01d3: 
+ 128: 01d3:   FUNCTION WRITE.CIMF PUBLIC
+ 129: 01e7: \****************************
+ 130: 01e7: 
+ 131: 01e7:    INTEGER*1 WRITE.CIMF
+ 132: 01e7:    
+ 133: 01e7:    WRITE.CIMF = 1
+ 134: 01eb:    
+ 135: 01eb:    IF END #CIMF.SESS.NUM% THEN WRITE.CIMF.ERROR
+ 136: 01ff:    WRITE FORM "C4,2I4,C3,C1"; #CIMF.SESS.NUM%;                    \
+ 137: 0261:              CIMF.BOOTS.CODE$,                                    \
+ 138: 0261:              CIMF.RESTART%,                                       \
+ 139: 0261:              CIMF.NUMITEM%,                                       \
+ 140: 0261:              CIMF.TRANS.DATE$,                                    \
+ 141: 0261:              CIMF.SPACE$
+ 142: 0261:    WRITE.CIMF = 0
+ 143: 0265:    EXIT FUNCTION
+ 144: 0267:    
+ 145: 0267:    WRITE.CIMF.ERROR:
+ 146: 0267:    
+ 147: 0267:        CURRENT.CODE$ = CIMF.BOOTS.CODE$
+ 148: 027d:        FILE.OPERATION$ = "W"                                           ! BRC
+ 149: 028c:        CURRENT.REPORT.NUM% = CIMF.REPORT.NUM%
+ 150: 029a:        
+ 151: 029a:        EXIT FUNCTION
+ 152: 029c: 
+ 153: 029c:   END FUNCTION
+ 154: 02ab: 
+ 155: 02ab: \-----------------------------------------------------------------------------
+ 156: 02ab: 
+ 157: 02ab:   FUNCTION WRITE.CIMF.UNLOCK PUBLIC
+ 158: 02bf: \***********************************
+ 159: 02bf: 
+ 160: 02bf:    INTEGER*1 WRITE.CIMF.UNLOCK
+ 161: 02bf:    
+ 162: 02bf:    WRITE.CIMF.UNLOCK = 1
+ 163: 02c3:    
+ 164: 02c3:    IF END #CIMF.SESS.NUM% THEN WRITE.CIMF.UNLOCK.ERROR
+ 165: 02d7:    WRITE FORM "C4,2I4,C3,C1"; #CIMF.SESS.NUM%  AUTOUNLOCK;        \
+ 166: 0339:              CIMF.BOOTS.CODE$,                                    \
+ 167: 0339:              CIMF.RESTART%,                                       \
+ 168: 0339:              CIMF.NUMITEM%,                                       \
+ 169: 0339:              CIMF.TRANS.DATE$,                                    \
+ 170: 0339:              CIMF.SPACE$
+ 171: 0339:    WRITE.CIMF.UNLOCK = 0
+ 172: 033d:    EXIT FUNCTION
+ 173: 033f:    
+ 174: 033f:    WRITE.CIMF.UNLOCK.ERROR:
+ 175: 033f:    
+ 176: 033f:        CURRENT.CODE$ = CIMF.BOOTS.CODE$
+ 177: 0355:        FILE.OPERATION$ = "W"                                           ! BRC
+ 178: 0364:        CURRENT.REPORT.NUM% = CIMF.REPORT.NUM%
+ 179: 0372:        
+ 180: 0372:        EXIT FUNCTION
+ 181: 0374: 
+ 182: 0374:   END FUNCTION
+ 183: 0383: 
+ 184: 0383: 
+ 185: 0383: \-----------------------------------------------------------------------------
+ 186: 0383: 
+ 187: 0383:   FUNCTION WRITE.CIMF.HOLD.UNLOCK PUBLIC
+ 188: 0397: \****************************************
+ 189: 0397: 
+ 190: 0397:    INTEGER*1 WRITE.CIMF.HOLD.UNLOCK
+ 191: 0397:    
+ 192: 0397:    WRITE.CIMF.HOLD.UNLOCK = 1
+ 193: 039b:    
+ 194: 039b:    IF END #CIMF.SESS.NUM% THEN WRITE.CIMF.HOLD.UNLOCK.ERROR
+ 195: 03af:    WRITE FORM "C4,2I4,C3,C1"; HOLD #CIMF.SESS.NUM%  AUTOUNLOCK;   \
+ 196: 0411:              CIMF.BOOTS.CODE$,                                    \
+ 197: 0411:              CIMF.RESTART%,                                       \
+ 198: 0411:              CIMF.NUMITEM%,                                       \
+ 199: 0411:              CIMF.TRANS.DATE$,                                    \
+ 200: 0411:              CIMF.SPACE$
+ 201: 0411:    WRITE.CIMF.HOLD.UNLOCK = 0
+ 202: 0415:    EXIT FUNCTION
+ 203: 0417:    
+ 204: 0417:    WRITE.CIMF.HOLD.UNLOCK.ERROR:
+ 205: 0417:    
+ 206: 0417:        CURRENT.CODE$ = CIMF.BOOTS.CODE$
+ 207: 042d:        FILE.OPERATION$ = "W"                                           ! BRC
+ 208: 043c:        CURRENT.REPORT.NUM% = CIMF.REPORT.NUM%
+ 209: 044a:        
+ 210: 044a:        EXIT FUNCTION
+ 211: 044c:   
+ 212: 044c:   END FUNCTION
+ 213: 045b: 
+ 214: 045b: \_____________________________________________________________________________
+ 215: 045b: 
+ 216: 045b:   FUNCTION WRITE.CIMF.HOLD PUBLIC
+ 217: 046f: \*********************************
+ 218: 046f: 
+ 219: 046f:    INTEGER*1 WRITE.CIMF.HOLD
+ 220: 046f:    
+ 221: 046f:    WRITE.CIMF.HOLD = 1
+ 222: 0473:    
+ 223: 0473:    IF END #CIMF.SESS.NUM% THEN WRITE.CIMF.HOLD.ERROR
+ 224: 0487:    WRITE FORM "C4,2I4,C3,C1"; HOLD #CIMF.SESS.NUM% ;              \ 
+ 225: 04e9:              CIMF.BOOTS.CODE$,                                    \ 
+ 226: 04e9:              CIMF.RESTART%,                                       \ 
+ 227: 04e9:              CIMF.NUMITEM%,                                       \ 
+ 228: 04e9:              CIMF.TRANS.DATE$,                                    \ 
+ 229: 04e9:              CIMF.SPACE$                                          
+ 230: 04e9:    WRITE.CIMF.HOLD = 0
+ 231: 04ed:    EXIT FUNCTION
+ 232: 04ef:    
+ 233: 04ef:    WRITE.CIMF.HOLD.ERROR:
+ 234: 04ef:    
+ 235: 04ef:        CURRENT.CODE$ = CIMF.BOOTS.CODE$
+ 236: 0505:        FILE.OPERATION$ = "W"                                           ! BRC
+ 237: 0514:        CURRENT.REPORT.NUM% = CIMF.REPORT.NUM%
+ 238: 0522:        
+ 239: 0522:        EXIT FUNCTION
+ 240: 0524: 
+ 241: 0524:   END FUNCTION                                                    
+ 242: 0533: End of Compilation

@@ -1,0 +1,234 @@
+   1: 0000: 
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***              RF COUNT LIST OF LISTS FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***               REFERENCE    : CLOLFFUN.BAS
+   8: 0000: \***
+   9: 0000: \***         VERSION A            Nik Sen                  13th October 1998
+  10: 0000: \***
+  11: 0000: \***         VERSION B            Charles Skadorwa         22nd January 1999
+  12: 0000: \***                   TOTAL.ITEMS added to keep track of total items in each list.
+  13: 0000: \***                 
+  14: 0000: \***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+  15: 0000: \***    Changes for RF trial.
+  16: 0000: \***    Removed redundant PVCS revision control block from top of code.
+  17: 0000: \***    Recompiled to prevent future automatic recompiles.
+  18: 0000: \***    No changes to actual code.
+  19: 0000: \***
+  20: 0000: \***    REVISION 1.5             ALAN CARR                     12 AUG 2004.
+  21: 0000: \***    Changes for RF OSSR solution.
+  22: 0000: \***    Added new flag "marked for OSSR count". This can be "Y" or "N"
+  23: 0000: \***
+  24: 0000: \***    REVISION 1.6            MARK GOODE                     5th January 2005.
+  25: 0000: \***    Changes for RF OSSR WAN solution.
+  26: 0000: \***    New field on the header record for remaining OSSR count figure and user ID.
+  27: 0000: \***
+  28: 0000: \***    REVISION 1.7            SYAM JAYAN                     25th January 2012.
+  29: 0000: \***    The change is to rearrange/remove redundant fields and to add new 
+  30: 0000: \***    fields in CLOLF Format as part of Stock file accuracy project
+  31: 0000: \***
+  32: 0000: \*******************************************************************************
+  33: 0000: \*******************************************************************************
+  34: 0000: 
+  35: 0000:     INTEGER*2 GLOBAL                \
+  36: 0000:        CURRENT.REPORT.NUM%
+  37: 0000:        
+  38: 0000:     STRING GLOBAL                    \
+  39: 0000:        CURRENT.CODE$,                \
+  40: 0000:        FILE.OPERATION$
+  41: 0000:     
+  42: 0000:     %INCLUDE CLOLFDEC.J86                                              
+  43: 0000: 
+  44: 0000: \******************************************************************************\******************************************************************************
+  45: 0000: \******************************************************************************
+  46: 0000: \***
+  47: 0000: \***         %INCLUDE FOR RF LIST OF LISTS FILE FIELD DECLARATIONS
+  48: 0000: \***
+  49: 0000: \***               FILE TYPE    : DIRECT
+  50: 0000: \***
+  51: 0000: \***               REFERENCE    : CLOLFDEC.J86
+  52: 0000: \***
+  53: 0000: \***    VERSION A.           Nik Sen.               13 October 1998
+  54: 0000: \***               New file for RF system. Holds list of counting lists. 
+  55: 0000: \***
+  56: 0000: \***    VERSION B            Charles Skadorwa        22nd January 1999
+  57: 0000: \***               TOTAL.ITEMS added to keep track of total items in each list.
+  58: 0000: \***                 
+  59: 0000: \***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+  60: 0000: \***    Changes for RF trial.
+  61: 0000: \***    Removed redundant PVCS revision control block from top of code.
+  62: 0000: \***    Recompiled to prevent future automatic recompiles.
+  63: 0000: \***    No changes to actual code.
+  64: 0000: \***
+  65: 0000: \***    REVISION 1.5             ALAN CARR                     12 AUG 2004.
+  66: 0000: \***    Changes for RF OSSR solution.
+  67: 0000: \***    Added new flag "marked for OSSR count". This can be "Y" or "N"
+  68: 0000: \***
+  69: 0000: \***    REVISION 1.6            MARK GOODE                     5th January 2005.
+  70: 0000: \***    Changes for RF OSSR WAN solution.
+  71: 0000: \***    New field on the header record for remaining OSSR count figure and user ID
+  72: 0000: \***
+  73: 0000: \***    REVISION 1.7            SYAM JAYAN                     25th January 2012
+  74: 0000: \***    The change is to rearrange/remove redundant fields and to add new
+  75: 0000: \***    fields in CLOLF Format as part of Stock file accuracy project
+  76: 0000: \***
+  77: 0000: \*******************************************************************************
+  78: 0000: \*******************************************************************************
+  79: 0000: 
+  80: 0000: STRING GLOBAL                   \
+  81: 0000:     CLOLF.ACTIVE.STATUS$,       \                        ! 1.7 SJ
+  82: 0000:     CLOLF.BULETT$,              \                        ! 1.7 SJ
+  83: 0000:     CLOLF.CREATION.DATE$,       \Creation date           ! 1.7 SJ
+  84: 0000:     CLOLF.CREATION.TIME$,       \Creation time           ! 1.7 SJ
+  85: 0000:     CLOLF.CURRENT.LOCATION$,    \Current location        ! 1.7 SJ
+  86: 0000:     CLOLF.EXPIRY.DATE$,         \Expiry date             ! 1.7 SJ
+  87: 0000:     CLOLF.FILE.NAME$,           \                        ! 1.7 SJ
+  88: 0000:     CLOLF.LISTID$,              \                        ! 1.7 SJ
+  89: 0000:     CLOLF.LIST.NAME$,           \                        ! 1.7 SJ
+  90: 0000:     CLOLF.LSTTYP$,              \                        ! 1.7 SJ
+  91: 0000:     CLOLF.PICKER.USER.ID$,      \                        ! 1.7 SJ
+  92: 0000:     CLOLF.PILST.ID$,            \                        ! 1.7 SJ
+  93: 0000:     CLOLF.PICK.START.TIME$,     \Pick start time         ! 1.7 SJ
+  94: 0000:     CLOLF.PICK.END.TIME$,       \Pick end time           ! 1.7 SJ
+  95: 0000:     CLOLF.USERID$               ! 1.6 MG                 ! 1.7 SJ
+  96: 0000:     !CLOLF.TOTAL.ITEMS$,        \ BCS                    ! 1.7 SJ
+  97: 0000:     !CLOLF.SRITEMS$,            \                        ! 1.7 SJ
+  98: 0000:     !CLOLF.BSITEMS$,            \                        ! 1.7 SJ
+  99: 0000:     !CLOLF.BUNAME$,             \                        ! 1.7 SJ
+ 100: 0000:     !CLOLF.HOLISTID$,           \                        ! 1.7 SJ
+ 101: 0000:     !CLOLF.CNTDATE$,            \ 1.5 AC                 ! 1.7 SJ
+ 102: 0000:     !CLOLF.OSSR.FLAG$,          \ 1.5 AC                 ! 1.7 SJ
+ 103: 0000:     !CLOLF.OSSRITEMS$,          \ 1.6 MG                 ! 1.7 SJ
+ 104: 0000:   
+ 105: 0000: INTEGER*4 GLOBAL                \
+ 106: 0000:     CLOLF.RECORD.NUM%
+ 107: 0000: 
+ 108: 0000: INTEGER*2 GLOBAL                \
+ 109: 0000:     CLOLF.BSITEMS%,             \                        ! 1.7 SJ
+ 110: 0000:     CLOLF.OSSRITEMS%,           \                        ! 1.7 SJ
+ 111: 0000:     CLOLF.REPORT.NUM%,          \                        ! 1.7 SJ
+ 112: 0000:     CLOLF.SESS.NUM%,            \                        ! 1.7 SJ
+ 113: 0000:     CLOLF.SRITEMS%,             \                        ! 1.7 SJ
+ 114: 0000:     CLOLF.TOTAL.ITEMS%          !                        ! 1.7 SJ
+ 115: 0000:                                                   
+ 116: 0000: INTEGER*1 GLOBAL                \
+ 117: 0000:     CLOLF.RECL%         
+ 118: 0000: 
+ 119: 0000: 
+ 120: 0000: 
+ 121: 0000:   FUNCTION CLOLF.SET PUBLIC
+ 122: 0014: \***************************
+ 123: 0014: 
+ 124: 0014:     CLOLF.REPORT.NUM% = 556
+ 125: 001d:     CLOLF.RECL%       = 67           ! BCS  ! 1.5 AC ! 1.6 MG ! 1.7 SJ
+ 126: 0025:     CLOLF.FILE.NAME$  = "CLOLF"
+ 127: 0034:     
+ 128: 0034:   END FUNCTION
+ 129: 0040:     
+ 130: 0040: \-----------------------------------------------------------------------------
+ 131: 0040: 
+ 132: 0040: FUNCTION READ.CLOLF PUBLIC
+ 133: 0054: \****************************
+ 134: 0054: 
+ 135: 0054:     INTEGER*2 READ.CLOLF
+ 136: 0054:     
+ 137: 0054:     READ.CLOLF = 1
+ 138: 0059:     
+ 139: 0059:     IF END #CLOLF.SESS.NUM% THEN READ.CLOLF.ERROR
+ 140: 006d:     READ FORM "2C3,2C1,C30,C3,C1,C4,C3,C2,C3,2C2,C1,4I2";     \ 1.7 SJ
+ 141: 015a:        #CLOLF.SESS.NUM%, CLOLF.RECORD.NUM%;    \ BCS \ 1.5 AC \ 1.7 SJ
+ 142: 015a:        CLOLF.LISTID$,                          \ 
+ 143: 015a:        CLOLF.USERID$,                          \ 1.6 MG \ 1.7 SJ
+ 144: 015a:        CLOLF.LSTTYP$,                          \ 1.7 SJ
+ 145: 015a:        CLOLF.BULETT$,                          \ 1.7 SJ
+ 146: 015a:        CLOLF.LIST.NAME$,                       \ 1.7 SJ
+ 147: 015a:        CLOLF.PICKER.USER.ID$,                  \ 1.7 SJ
+ 148: 015a:        CLOLF.ACTIVE.STATUS$,                   \ 1.7 SJ
+ 149: 015a:        CLOLF.PILST.ID$,                        \ 1.7 SJ
+ 150: 015a:        CLOLF.CREATION.DATE$,                   \ 1.7 SJ
+ 151: 015a:        CLOLF.CREATION.TIME$,                   \ 1.7 SJ
+ 152: 015a:        CLOLF.EXPIRY.DATE$,                     \ 1.7 SJ
+ 153: 015a:        CLOLF.PICK.START.TIME$,                 \ 1.7 SJ
+ 154: 015a:        CLOLF.PICK.END.TIME$,                   \ 1.7 SJ
+ 155: 015a:        CLOLF.CURRENT.LOCATION$,                \ 1.7 SJ
+ 156: 015a:        CLOLF.TOTAL.ITEMS%,                     \ 1.7 SJ
+ 157: 015a:        CLOLF.SRITEMS%,                         \ 1.7 SJ
+ 158: 015a:        CLOLF.BSITEMS%,                         \ 1.7 SJ
+ 159: 015a:        CLOLF.OSSRITEMS%                        ! 1.7 SJ       
+ 160: 015a:        !CLOLF.TOTAL.ITEMS$,                    \ BCS    \ 1.7 SJ
+ 161: 015a:        !CLOLF.SRITEMS$,                        \ 1.7 SJ
+ 162: 015a:        !CLOLF.BSITEMS$,                        \ 1.7 SJ 
+ 163: 015a:        !CLOLF.BUNAME$,                         \ 1.7 SJ 
+ 164: 015a:        !CLOLF.HOLISTID$,                       \ 1.7 SJ
+ 165: 015a:        !CLOLF.CNTDATE$,                        \ 1.5 AC \ 1.7 SJ
+ 166: 015a:        !CLOLF.OSSR.FLAG$,                      \ 1.5 AC \ 1.7 SJ
+ 167: 015a:        !CLOLF.OSSRITEMS$,                      \ 1.6 MG \ 1.7 SJ
+ 168: 015a: 
+ 169: 015a:     READ.CLOLF = 0
+ 170: 015f:     EXIT FUNCTION
+ 171: 0161:     
+ 172: 0161: READ.CLOLF.ERROR:
+ 173: 0161: 
+ 174: 0161:     FILE.OPERATION$ = "R"
+ 175: 0170:     CURRENT.REPORT.NUM% = CLOLF.REPORT.NUM%
+ 176: 017e:        
+ 177: 017e:     EXIT FUNCTION
+ 178: 0180: 
+ 179: 0180: END FUNCTION
+ 180: 018f: 
+ 181: 018f: \-----------------------------------------------------------------------------
+ 182: 018f:   
+ 183: 018f: 
+ 184: 018f: FUNCTION WRITE.CLOLF PUBLIC
+ 185: 01a3: \****************************
+ 186: 01a3: 
+ 187: 01a3:     INTEGER*2 WRITE.CLOLF
+ 188: 01a3:     
+ 189: 01a3:     WRITE.CLOLF = 1
+ 190: 01a8:     
+ 191: 01a8:     IF END #CLOLF.SESS.NUM% THEN WRITE.CLOLF.ERROR
+ 192: 01bc:     WRITE FORM "2C3,2C1,C30,C3,C1,C4,C3,C2,C3,2C2,C1,4I2";          \ 1.7 SJ
+ 193: 02ee:        #CLOLF.SESS.NUM%, CLOLF.RECORD.NUM%; \ BCS ! 1.5 AC ! 1.6 MG \ 1.7 SJ
+ 194: 02ee:        CLOLF.LISTID$,                          \ 
+ 195: 02ee:        CLOLF.USERID$,                          \ 1.6 MG \ 1.7 SJ
+ 196: 02ee:        CLOLF.LSTTYP$,                          \ 1.7 SJ
+ 197: 02ee:        CLOLF.BULETT$,                          \ 1.7 SJ
+ 198: 02ee:        CLOLF.LIST.NAME$,                       \ 1.7 SJ
+ 199: 02ee:        CLOLF.PICKER.USER.ID$,                  \ 1.7 SJ
+ 200: 02ee:        CLOLF.ACTIVE.STATUS$,                   \ 1.7 SJ
+ 201: 02ee:        CLOLF.PILST.ID$,                        \ 1.7 SJ
+ 202: 02ee:        CLOLF.CREATION.DATE$,                   \ 1.7 SJ
+ 203: 02ee:        CLOLF.CREATION.TIME$,                   \ 1.7 SJ
+ 204: 02ee:        CLOLF.EXPIRY.DATE$,                     \ 1.7 SJ
+ 205: 02ee:        CLOLF.PICK.START.TIME$,                 \ 1.7 SJ
+ 206: 02ee:        CLOLF.PICK.END.TIME$,                   \ 1.7 SJ
+ 207: 02ee:        CLOLF.CURRENT.LOCATION$,                \ 1.7 SJ
+ 208: 02ee:        CLOLF.TOTAL.ITEMS%,                     \ 1.7 SJ
+ 209: 02ee:        CLOLF.SRITEMS%,                         \ 1.7 SJ
+ 210: 02ee:        CLOLF.BSITEMS%,                         \ 1.7 SJ
+ 211: 02ee:        CLOLF.OSSRITEMS%                        ! 1.7 SJ       
+ 212: 02ee:        !CLOLF.TOTAL.ITEMS$,                    \ BCS    \ 1.7 SJ
+ 213: 02ee:        !CLOLF.SRITEMS$,                        \ 1.7 SJ
+ 214: 02ee:        !CLOLF.BSITEMS$,                        \ 1.7 SJ 
+ 215: 02ee:        !CLOLF.BUNAME$,                         \ 1.7 SJ 
+ 216: 02ee:        !CLOLF.HOLISTID$,                       \ 1.7 SJ
+ 217: 02ee:        !CLOLF.CNTDATE$,                        \ 1.5 AC \ 1.7 SJ
+ 218: 02ee:        !CLOLF.OSSR.FLAG$,                      \ 1.5 AC \ 1.7 SJ
+ 219: 02ee:        !CLOLF.OSSRITEMS$,                      \ 1.6 MG \ 1.7 SJ
+ 220: 02ee: 
+ 221: 02ee: 
+ 222: 02ee:     WRITE.CLOLF = 0
+ 223: 02f3:     EXIT FUNCTION
+ 224: 02f5:     
+ 225: 02f5: WRITE.CLOLF.ERROR:
+ 226: 02f5: 
+ 227: 02f5:     FILE.OPERATION$ = "R"
+ 228: 0304:     CURRENT.REPORT.NUM% = CLOLF.REPORT.NUM%
+ 229: 0312:        
+ 230: 0312:     EXIT FUNCTION
+ 231: 0314: 
+ 232: 0314: END FUNCTION
+ 233: 0323: 
+ 234: 0323: End of Compilation

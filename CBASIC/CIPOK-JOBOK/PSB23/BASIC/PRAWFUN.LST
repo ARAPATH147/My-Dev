@@ -1,0 +1,135 @@
+   1: 0000: \********************************************************************
+   2: 0000: \***      Price Change Report Raw data file
+   3: 0000: \***      Version A           Neil Bennett          6th June 2006
+   4: 0000: \***
+   5: 0000: \***      Version B           Jamie Thorpe           23rd October 2006
+   6: 0000: \***      Added PRAW.SEL.LABEL.TYPE$
+   7: 0000: \....................................................................
+   8: 0000: 
+   9: 0000: INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  10: 0000: 
+  11: 0000: STRING GLOBAL CURRENT.CODE$
+  12: 0000: STRING GLOBAL FILE.OPERATION$
+  13: 0000: 
+  14: 0000: 
+  15: 0000: %INCLUDE PRAWDEC.J86
+  16: 0000: \********************************************************************
+  17: 0000: \***      EXTERNAL FUNCTION DECLARATIONS FOR THE PCTFRAW FILE
+  18: 0000: \***      REFERENCE : PRAWDEC.J86
+  19: 0000: \***      Version A           Neil Bennett            5th June 2006
+  20: 0000: \***
+  21: 0000: \***      Version B           Jamie Thorpe           23rd October 2006
+  22: 0000: \***      Added PRAW.SEL.LABEL.TYPE$
+  23: 0000: \********************************************************************
+  24: 0000: 
+  25: 0000: INTEGER*2 GLOBAL                \
+  26: 0000:     PRAW.SESS.NUM%,             \
+  27: 0000:     PRAW.REPORT.NUM%            !
+  28: 0000:   
+  29: 0000: STRING GLOBAL                   \
+  30: 0000:     PRAW.FILE.NAME$,            \
+  31: 0000:     PRAW.RECORD$,               \
+  32: 0000:     PRAW.BOOTS.CODE$,           \
+  33: 0000:     PRAW.ITEM.DESC$,            \
+  34: 0000:     PRAW.NEW.PRICE$,            \
+  35: 0000:     PRAW.OLD.PRICE$,            \
+  36: 0000:     PRAW.RPD.NUM$,              \
+  37: 0000:     PRAW.INC.DEC.FLAG$,         \
+  38: 0000:     PRAW.BUSINESS.CEN$,         \
+  39: 0000:     PRAW.PRODUCT.GRP$ ,         \
+  40: 0000:     PRAW.SEL.LABEL.TYPE$
+  41: 0000: 
+  42: 0000: \--------------------------------------------------------------------
+  43: 0000: 
+  44: 0000: SUB PRAW.SPLIT.RECORD PUBLIC
+  45: 0014: 
+  46: 0014:     PRAW.BOOTS.CODE$   = MID$(PRAW.RECORD$, 1, 7)
+  47: 0033:     PRAW.ITEM.DESC$    = MID$(PRAW.RECORD$, 8, 24)
+  48: 0052:     PRAW.NEW.PRICE$    = MID$(PRAW.RECORD$, 32, 8)
+  49: 0071:     PRAW.OLD.PRICE$    = MID$(PRAW.RECORD$, 40, 8)
+  50: 0090:     PRAW.RPD.NUM$      = MID$(PRAW.RECORD$, 48, 6)
+  51: 00af:     PRAW.INC.DEC.FLAG$ = MID$(PRAW.RECORD$, 54, 1)
+  52: 00ce:     PRAW.BUSINESS.CEN$ = MID$(PRAW.RECORD$, 55, 1)
+  53: 00ed:     PRAW.PRODUCT.GRP$  = MID$(PRAW.RECORD$, 56, 5)
+  54: 010c:     PRAW.SEL.LABEL.TYPE$ = MID$(PRAW.RECORD$, 61, 1)
+  55: 012b: 
+  56: 012b: END SUB
+  57: 0137: 
+  58: 0137: \--------------------------------------------------------------------
+  59: 0137: 
+  60: 0137: SUB PRAW.CONCAT.RECORD PUBLIC
+  61: 014b: 
+  62: 014b:     PRAW.RECORD$ = PRAW.BOOTS.CODE$ + \
+  63: 01bc:                    PRAW.ITEM.DESC$ + \
+  64: 01bc:                    PRAW.NEW.PRICE$ + \
+  65: 01bc:                    PRAW.OLD.PRICE$ + \
+  66: 01bc:                    PRAW.RPD.NUM$ + \
+  67: 01bc:                    PRAW.INC.DEC.FLAG$ + \
+  68: 01bc:                    PRAW.BUSINESS.CEN$ + \
+  69: 01bc:                    PRAW.PRODUCT.GRP$ + \
+  70: 01bc:                    PRAW.SEL.LABEL.TYPE$
+  71: 01bc: 
+  72: 01bc: END SUB
+  73: 01c8: 
+  74: 01c8: \--------------------------------------------------------------------
+  75: 01c8: 
+  76: 01c8: FUNCTION PRAW.SET PUBLIC
+  77: 01dc: 
+  78: 01dc:     PRAW.REPORT.NUM%   = 728
+  79: 01e5:     PRAW.FILE.NAME$    = "PCTFRAW"
+  80: 01f4:     
+  81: 01f4: END FUNCTION
+  82: 0200: 
+  83: 0200: \--------------------------------------------------------------------
+  84: 0200: 
+  85: 0200: FUNCTION READ.PRAW PUBLIC
+  86: 0214: 
+  87: 0214:     INTEGER*2 READ.PRAW
+  88: 0214: 
+  89: 0214:     READ.PRAW = 1
+  90: 0219: 
+  91: 0219:     IF END #PRAW.SESS.NUM% THEN FILE.ERROR
+  92: 022d: 
+  93: 022d:     READ #PRAW.SESS.NUM%; LINE PRAW.RECORD$
+  94: 0246:     CALL PRAW.SPLIT.RECORD
+  95: 024a:     
+  96: 024a:     READ.PRAW = 0
+  97: 024f: 
+  98: 024f: EXIT FUNCTION
+  99: 0251: 
+ 100: 0251: FILE.ERROR:
+ 101: 0251: 
+ 102: 0251:     FILE.OPERATION$ = "R"
+ 103: 0260:     CURRENT.REPORT.NUM% = PRAW.REPORT.NUM%
+ 104: 026e:     CURRENT.CODE$ = ""
+ 105: 027d:     
+ 106: 027d: END FUNCTION
+ 107: 028c: 
+ 108: 028c: \--------------------------------------------------------------------
+ 109: 028c: 
+ 110: 028c: FUNCTION WRITE.PRAW PUBLIC
+ 111: 02a0: 
+ 112: 02a0:     INTEGER*2 WRITE.PRAW
+ 113: 02a0: 
+ 114: 02a0:     WRITE.PRAW = 1
+ 115: 02a5: 
+ 116: 02a5:     IF END #PRAW.SESS.NUM% THEN FILE.ERROR
+ 117: 02b9: 
+ 118: 02b9:     CALL PRAW.CONCAT.RECORD
+ 119: 02bd:     PRINT USING "&"; #PRAW.SESS.NUM%; PRAW.RECORD$
+ 120: 02e4:     
+ 121: 02e4:     WRITE.PRAW = 0
+ 122: 02e9: 
+ 123: 02e9: EXIT FUNCTION
+ 124: 02eb: 
+ 125: 02eb: FILE.ERROR:
+ 126: 02eb: 
+ 127: 02eb:     FILE.OPERATION$ = "W"
+ 128: 02fa:     CURRENT.REPORT.NUM% = PRAW.REPORT.NUM%
+ 129: 0308:     CURRENT.CODE$ = PRAW.RECORD$
+ 130: 031e: 
+ 131: 031e: END FUNCTION
+ 132: 032d: 
+ 133: 032d: \--------------------------------------------------------------------
+ 134: 032d: 
+ 135: 032d: End of Compilation

@@ -1,0 +1,494 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  KEYED
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  CCUODFUN.BAS
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  12: 0000: \***                               FILE OF OPEN/CLOSED UODS
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***    VERSION A : Michael J. Kelsall      13th September 1993
+  16: 0000: \***      
+  17: 0000: \***    VERSION B : Mark Walker                   18th Jul 2015
+  18: 0000: \***    F392 Retail Stock 5
+  19: 0000: \***    Added CCUOD.RETRIEVAL.FLAG$ field to allow record to be
+  20: 0000: \***    marked as processed.
+  21: 0000: \***
+  22: 0000: \*****************************************************************************
+  23: 0000: \*****************************************************************************
+  24: 0000: 
+  25: 0000:   INTEGER*2 GLOBAL            \
+  26: 0000:          CURRENT.REPORT.NUM% 
+  27: 0000:          
+  28: 0000:   STRING GLOBAL               \
+  29: 0000:          CURRENT.CODE$,       \
+  30: 0000:          FILE.OPERATION$           
+  31: 0000: 
+  32: 0000:   %INCLUDE CCUODDEC.J86
+  33: 0000: 
+  34: 0000: \*****************************************************************************
+  35: 0000: \*****************************************************************************
+  36: 0000: \***
+  37: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  38: 0000: \***
+  39: 0000: \***                   FILE TYPE:  KEYED
+  40: 0000: \***
+  41: 0000: \***                   REFERENCE:  CCUODDEC.J86
+  42: 0000: \***
+  43: 0000: \***                 DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  44: 0000: \***                   FILE OF OPEN/CLOSED UODS
+  45: 0000: \***
+  46: 0000: \***
+  47: 0000: \***    VERSION A : Michael J. Kelsall      13th September 1993
+  48: 0000: \***      
+  49: 0000: \***    VERSION B : Mark Walker                   18th Jul 2015
+  50: 0000: \***    F392 Retail Stock 5
+  51: 0000: \***    Added CCUOD.RETRIEVAL.FLAG$ field to allow record to be
+  52: 0000: \***    marked as processed.
+  53: 0000: \***
+  54: 0000: \*****************************************************************************
+  55: 0000: \*****************************************************************************
+  56: 0000: 
+  57: 0000: STRING GLOBAL           \
+  58: 0000:    CCUOD.FILE.NAME$,        \
+  59: 0000:    CCUOD.UOD.NUM$,      \  7 byte UPD;  Record key
+  60: 0000:    CCUOD.STATUS$,       \  1 byte ASC;  "O" = Open,
+  61: 0000:                 \           "C" = Closed,
+  62: 0000:                 \           "D" = Despatched,       
+  63: 0000:                 \           "X" = Cancelled.
+  64: 0000:    CCUOD.CREDIT.CLAIM.NUM$, \  4 byte UPD
+  65: 0000:                 \  CCUOD.NUM.OF.ITEMS% here (I2)
+  66: 0000:    CCUOD.SUPPLY.ROUTE$,     \  1 byte ASC;  "W" = Warehouse,
+  67: 0000:                 \           "E" = EPSOM,
+  68: 0000:                 \           "O" = Other Directs,
+  69: 0000:                 \               "D" = Dispensary.
+  70: 0000:    CCUOD.DISP.LOCATION$,    \  1 byte ASC   "M" = MDS, "D" = Dispensary.
+  71: 0000:    CCUOD.BC.LETTER$,        \  1 byte ASC    
+  72: 0000:    CCUOD.RECALL.NUM$,       \  8 byte ASC
+  73: 0000:    CCUOD.AUTHORISATION$,    \ 15 byte ASC
+  74: 0000:    CCUOD.SUPPLIER$,     \ 15 byte ASC
+  75: 0000:    CCUOD.METHOD.OF.RETURN$, \  1 byte UPD;   1 = Carrier,
+  76: 0000:                 \                2 = BIRD,
+  77: 0000:                 \        3 = Via D6,
+  78: 0000:                 \        4 = Representative.
+  79: 0000:    CCUOD.CARRIER$,      \  1 byte UPD;   1 = GPO,
+  80: 0000:                 \                2 = Parcelforce,
+  81: 0000:                 \        3 = Securicor,
+  82: 0000:                 \        4 = Other.
+  83: 0000:    CCUOD.BIRD.NUM$,     \  8 byte ASC                   
+  84: 0000:    CCUOD.REASON.NUM$,       \  1 byte UPD     (See CSRNS declaration)
+  85: 0000:    CCUOD.RECEIVING.STORE$,  \  2 byte UPD    
+  86: 0000:    CCUOD.DESTINATION$,      \  1 byte UPD    1 = Business Centre, 
+  87: 0000:                 \            2 = MTS,
+  88: 0000:                 \        3 = Pharmacy, 
+  89: 0000:                 \        4 = Other.
+  90: 0000:    CCUOD.WAREHOUSE.ROUTE$,  \  1 byte ASC   "R" = RDC, "C" = CSR.
+  91: 0000:    CCUOD.UOD.TYPE$,     \  1 byte UPD    1 = Travel Outer,
+  92: 0000:                 \        2 = Town tray,
+  93: 0000:                 \        3 = Roll cage,
+  94: 0000:                 \                4 = Other.
+  95: 0000:    CCUOD.DAMAGE.REASON$,         \  1 byte UPD    1 = Bad packaging,    
+  96: 0000:                 \        2 = Poor handling.
+  97: 0000:    CCUOD.DATE.UOD.OPENED$,  \  3 byte UPD 
+  98: 0000:    CCUOD.DATE.UOD.DESPATCHED$,  \  3 byte UPD
+  99: 0000:    CCUOD.TIME.UOD.DESPATCHED$,  \  3 byte UPD
+ 100: 0000:    CCUOD.RETRIEVAL.FLAG$, \  1 byte ASC;  " " = to be retrieved             !BMW
+ 101: 0000:                           \               "N" = marked as processed         !BMW
+ 102: 0000:    CCUOD.FILLER$,       \ 19 byte ASC;   Spaces.
+ 103: 0000:                 \
+ 104: 0000:                 \
+ 105: 0000:                 \
+ 106: 0000:    CCUOD.HEADER$,       \   Hdr rec layout; (key of High values)
+ 107: 0000:    CCUOD.DATE.FILE.UPDATED$,    \  3 byte UPD (all 9's if empty file created)
+ 108: 0000:    CCUOD.TIME.FILE.UPDATED$,    \  3 byte UPD (all 9's if empty file created)
+ 109: 0000:    CCUOD.LDT.NUM$,      \  3 byte UPD (Zeros if no outstanding data
+ 110: 0000:                 \              to be processed by PSS35)
+ 111: 0000:    CCUOD.HEADER.FILLER$     ! 84 byte ASC;  Spaces.
+ 112: 0000: 
+ 113: 0000: 
+ 114: 0000: INTEGER*2 GLOBAL        \
+ 115: 0000:    CCUOD.RECL%,         \
+ 116: 0000:    CCUOD.REPORT.NUM%,       \
+ 117: 0000:    CCUOD.SESS.NUM%,     \
+ 118: 0000:                 \
+ 119: 0000:    CCUOD.NUM.OF.ITEMS%      ! 2 byte INT
+ 120: 0000: 
+ 121: 0000: 
+ 122: 0000: 
+ 123: 0000: 
+ 124: 0000:   FUNCTION CCUOD.SET PUBLIC
+ 125: 0014: 
+ 126: 0014:      INTEGER*2 CCUOD.SET
+ 127: 0014:      CCUOD.SET = 1
+ 128: 0019: 
+ 129: 0019:        CCUOD.REPORT.NUM% = 314                                   
+ 130: 0022:        CCUOD.RECL%      = 100
+ 131: 002b:        CCUOD.FILE.NAME$ = "CCUOD"
+ 132: 003a:   
+ 133: 003a:      CCUOD.SET = 0
+ 134: 003f: 
+ 135: 003f:   END FUNCTION
+ 136: 004e: 
+ 137: 004e: 
+ 138: 004e: 
+ 139: 004e:   FUNCTION READ.CCUOD PUBLIC
+ 140: 0062: 
+ 141: 0062:     INTEGER*2 READ.CCUOD
+ 142: 0062:     
+ 143: 0062:     READ.CCUOD = 1    
+ 144: 0067: 
+ 145: 0067:     IF CCUOD.UOD.NUM$ = PACK$(STRING$(7,"??")) THEN BEGIN    ! header record
+ 146: 008c:        IF END #CCUOD.SESS.NUM% THEN READ.ERROR   
+ 147: 00a0:        READ FORM "T8,3C3,C84"; #CCUOD.SESS.NUM% KEY CCUOD.UOD.NUM$;     \
+ 148: 00f3:                 CCUOD.DATE.FILE.UPDATED$,                               \
+ 149: 00f3:                 CCUOD.TIME.FILE.UPDATED$,                               \
+ 150: 00f3:                 CCUOD.LDT.NUM$,                                         \
+ 151: 00f3:                 CCUOD.HEADER.FILLER$
+ 152: 00f3:        READ.CCUOD = 0
+ 153: 00f8:        EXIT FUNCTION     
+ 154: 00fe:     ENDIF ELSE BEGIN                                    ! detail record
+ 155: 00fe:        IF END #CCUOD.SESS.NUM% THEN READ.ERROR
+ 156: 0112:        READ FORM "T8,C1,C4,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,3C3,C1,C18"; \   !BMW
+ 157: 0236:             #CCUOD.SESS.NUM% KEY CCUOD.UOD.NUM$;                        \
+ 158: 0236:                 CCUOD.STATUS$,                                          \
+ 159: 0236:                 CCUOD.CREDIT.CLAIM.NUM$,                                \
+ 160: 0236:                 CCUOD.NUM.OF.ITEMS%,                                    \
+ 161: 0236:                 CCUOD.SUPPLY.ROUTE$,                                    \
+ 162: 0236:                 CCUOD.DISP.LOCATION$,                                   \
+ 163: 0236:                 CCUOD.BC.LETTER$,                                       \
+ 164: 0236:                 CCUOD.RECALL.NUM$,                                      \
+ 165: 0236:                 CCUOD.AUTHORISATION$,                                   \
+ 166: 0236:                 CCUOD.SUPPLIER$,                                        \
+ 167: 0236:                 CCUOD.METHOD.OF.RETURN$,                                \
+ 168: 0236:                 CCUOD.CARRIER$,                                         \
+ 169: 0236:                 CCUOD.BIRD.NUM$,                                        \
+ 170: 0236:                 CCUOD.REASON.NUM$,                                      \
+ 171: 0236:                 CCUOD.RECEIVING.STORE$,                                 \
+ 172: 0236:                 CCUOD.DESTINATION$,                                     \
+ 173: 0236:                 CCUOD.WAREHOUSE.ROUTE$,                                 \
+ 174: 0236:                 CCUOD.UOD.TYPE$,                                        \
+ 175: 0236:                 CCUOD.DAMAGE.REASON$,                                   \
+ 176: 0236:                 CCUOD.DATE.UOD.OPENED$,                                 \
+ 177: 0236:                 CCUOD.DATE.UOD.DESPATCHED$,                             \
+ 178: 0236:                 CCUOD.TIME.UOD.DESPATCHED$,                             \
+ 179: 0236:                 CCUOD.RETRIEVAL.FLAG$,                                  \   !BMW
+ 180: 0236:                 CCUOD.FILLER$
+ 181: 0236:        READ.CCUOD = 0
+ 182: 023b:        EXIT FUNCTION
+ 183: 023d:     ENDIF
+ 184: 023d:         
+ 185: 023d:     READ.ERROR:
+ 186: 023d: 
+ 187: 023d:         CURRENT.CODE$ = CCUOD.UOD.NUM$
+ 188: 0253:         FILE.OPERATION$ = "R"
+ 189: 0262:         CURRENT.REPORT.NUM% = CCUOD.REPORT.NUM%
+ 190: 0270:         EXIT FUNCTION
+ 191: 0272: 
+ 192: 0272:   END FUNCTION
+ 193: 0281:   
+ 194: 0281: 
+ 195: 0281: 
+ 196: 0281:   FUNCTION READ.CCUOD.LOCKED PUBLIC
+ 197: 0295: 
+ 198: 0295:     INTEGER*2 READ.CCUOD.LOCKED
+ 199: 0295:     
+ 200: 0295:     READ.CCUOD.LOCKED = 1    
+ 201: 029a: 
+ 202: 029a:     IF CCUOD.UOD.NUM$ = PACK$(STRING$(7,"??")) THEN BEGIN    ! header record
+ 203: 02bf:        IF END #CCUOD.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 204: 02d3:        READ FORM "T8,3C3,C84"; #CCUOD.SESS.NUM% AUTOLOCK                \
+ 205: 0326:             KEY CCUOD.UOD.NUM$;                                         \
+ 206: 0326:                 CCUOD.DATE.FILE.UPDATED$,                               \
+ 207: 0326:                 CCUOD.TIME.FILE.UPDATED$,                               \
+ 208: 0326:                 CCUOD.LDT.NUM$,                                         \
+ 209: 0326:                 CCUOD.HEADER.FILLER$
+ 210: 0326:        READ.CCUOD.LOCKED = 0
+ 211: 032b:        EXIT FUNCTION     
+ 212: 0331:     ENDIF ELSE BEGIN                                    ! detail record
+ 213: 0331:        IF END #CCUOD.SESS.NUM% THEN READ.LOCKED.ERROR
+ 214: 0345:        READ FORM "T8,C1,C4,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,3C3,C1,C18"; \   !BMW
+ 215: 0469:             #CCUOD.SESS.NUM% AUTOLOCK                                   \
+ 216: 0469:             KEY CCUOD.UOD.NUM$;                                         \
+ 217: 0469:                 CCUOD.STATUS$,                                          \
+ 218: 0469:                 CCUOD.CREDIT.CLAIM.NUM$,                                \
+ 219: 0469:                 CCUOD.NUM.OF.ITEMS%,                                    \
+ 220: 0469:                 CCUOD.SUPPLY.ROUTE$,                                    \
+ 221: 0469:                 CCUOD.DISP.LOCATION$,                                   \
+ 222: 0469:                 CCUOD.BC.LETTER$,                                       \
+ 223: 0469:                 CCUOD.RECALL.NUM$,                                      \
+ 224: 0469:                 CCUOD.AUTHORISATION$,                                   \
+ 225: 0469:                 CCUOD.SUPPLIER$,                                        \
+ 226: 0469:                 CCUOD.METHOD.OF.RETURN$,                                \
+ 227: 0469:                 CCUOD.CARRIER$,                                         \
+ 228: 0469:                 CCUOD.BIRD.NUM$,                                        \
+ 229: 0469:                 CCUOD.REASON.NUM$,                                      \
+ 230: 0469:                 CCUOD.RECEIVING.STORE$,                                 \
+ 231: 0469:                 CCUOD.DESTINATION$,                                     \
+ 232: 0469:                 CCUOD.WAREHOUSE.ROUTE$,                                 \
+ 233: 0469:                 CCUOD.UOD.TYPE$,                                        \
+ 234: 0469:                 CCUOD.DAMAGE.REASON$,                                   \
+ 235: 0469:                 CCUOD.DATE.UOD.OPENED$,                                 \
+ 236: 0469:                 CCUOD.DATE.UOD.DESPATCHED$,                             \
+ 237: 0469:                 CCUOD.TIME.UOD.DESPATCHED$,                             \
+ 238: 0469:                 CCUOD.RETRIEVAL.FLAG$,                                  \   !BMW
+ 239: 0469:                 CCUOD.FILLER$
+ 240: 0469:        READ.CCUOD.LOCKED = 0
+ 241: 046e:        EXIT FUNCTION
+ 242: 0470:     ENDIF
+ 243: 0470:         
+ 244: 0470:     READ.LOCKED.ERROR:
+ 245: 0470: 
+ 246: 0470:         CURRENT.CODE$ = CCUOD.UOD.NUM$
+ 247: 0486:         FILE.OPERATION$ = "R"
+ 248: 0495:         CURRENT.REPORT.NUM% = CCUOD.REPORT.NUM%
+ 249: 04a3:            
+ 250: 04a3:         EXIT FUNCTION
+ 251: 04a5: 
+ 252: 04a5:   END FUNCTION  
+ 253: 04b4: 
+ 254: 04b4: 
+ 255: 04b4: 
+ 256: 04b4:   FUNCTION WRITE.HOLD.CCUOD PUBLIC
+ 257: 04c8: 
+ 258: 04c8:     INTEGER*2 WRITE.HOLD.CCUOD
+ 259: 04c8:     
+ 260: 04c8:     WRITE.HOLD.CCUOD = 1
+ 261: 04cd:       
+ 262: 04cd:     IF CCUOD.UOD.NUM$ = PACK$(STRING$(7,"??")) THEN BEGIN       ! Header Record
+ 263: 04f5:        IF END #CCUOD.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 264: 0509:        WRITE FORM "C7,3C3,C84"; HOLD #CCUOD.SESS.NUM%;                  \        
+ 265: 056b:                 CCUOD.UOD.NUM$,                                         \
+ 266: 056b:                 CCUOD.DATE.FILE.UPDATED$,                               \
+ 267: 056b:                 CCUOD.TIME.FILE.UPDATED$,                               \
+ 268: 056b:                 CCUOD.LDT.NUM$,                                         \
+ 269: 056b:                 CCUOD.HEADER.FILLER$
+ 270: 056b:        WRITE.HOLD.CCUOD = 0
+ 271: 0570:        EXIT FUNCTION         
+ 272: 0576:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 273: 0576:        IF END #CCUOD.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 274: 058a:        WRITE FORM "C7,C1,C4,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,3C3,C1,C18";\   !BMW
+ 275: 0718:            HOLD #CCUOD.SESS.NUM%;                                       \
+ 276: 0718:                 CCUOD.UOD.NUM$,                                         \
+ 277: 0718:                 CCUOD.STATUS$,                                          \
+ 278: 0718:                 CCUOD.CREDIT.CLAIM.NUM$,                                \
+ 279: 0718:                 CCUOD.NUM.OF.ITEMS%,                                    \
+ 280: 0718:                 CCUOD.SUPPLY.ROUTE$,                                    \
+ 281: 0718:                 CCUOD.DISP.LOCATION$,                                   \
+ 282: 0718:                 CCUOD.BC.LETTER$,                                       \
+ 283: 0718:                 CCUOD.RECALL.NUM$,                                      \
+ 284: 0718:                 CCUOD.AUTHORISATION$,                                   \
+ 285: 0718:                 CCUOD.SUPPLIER$,                                        \
+ 286: 0718:                 CCUOD.METHOD.OF.RETURN$,                                \
+ 287: 0718:                 CCUOD.CARRIER$,                                         \
+ 288: 0718:                 CCUOD.BIRD.NUM$,                                        \
+ 289: 0718:                 CCUOD.REASON.NUM$,                                      \
+ 290: 0718:                 CCUOD.RECEIVING.STORE$,                                 \
+ 291: 0718:                 CCUOD.DESTINATION$,                                     \
+ 292: 0718:                 CCUOD.WAREHOUSE.ROUTE$,                                 \
+ 293: 0718:                 CCUOD.UOD.TYPE$,                                        \
+ 294: 0718:                 CCUOD.DAMAGE.REASON$,                                   \
+ 295: 0718:                 CCUOD.DATE.UOD.OPENED$,                                 \
+ 296: 0718:                 CCUOD.DATE.UOD.DESPATCHED$,                             \
+ 297: 0718:                 CCUOD.TIME.UOD.DESPATCHED$,                             \
+ 298: 0718:                 CCUOD.RETRIEVAL.FLAG$,                                  \   !BMW
+ 299: 0718:                 CCUOD.FILLER$
+ 300: 0718:        WRITE.HOLD.CCUOD = 0
+ 301: 071d:        EXIT FUNCTION
+ 302: 071f:     ENDIF
+ 303: 071f:      
+ 304: 071f:     WRITE.HOLD.ERROR:
+ 305: 071f:      
+ 306: 071f:        FILE.OPERATION$ = "W"
+ 307: 072e:        CURRENT.REPORT.NUM% = CCUOD.REPORT.NUM%
+ 308: 073c:        CURRENT.CODE$ = CCUOD.UOD.NUM$
+ 309: 0752:     
+ 310: 0752:        EXIT FUNCTION    
+ 311: 0754: 
+ 312: 0754:   END FUNCTION
+ 313: 0763: 
+ 314: 0763: 
+ 315: 0763: 
+ 316: 0763:   FUNCTION WRITE.UNLOCK.CCUOD PUBLIC
+ 317: 0777: 
+ 318: 0777:     INTEGER*2 WRITE.UNLOCK.CCUOD
+ 319: 0777:     
+ 320: 0777:     WRITE.UNLOCK.CCUOD = 1
+ 321: 077c:       
+ 322: 077c:     IF CCUOD.UOD.NUM$ = PACK$(STRING$(7,"??")) THEN BEGIN       ! Header Record
+ 323: 07a4:        IF END #CCUOD.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 324: 07b8:        WRITE FORM "C7,3C3,C84"; #CCUOD.SESS.NUM% AUTOUNLOCK;                    \        
+ 325: 081a:                 CCUOD.UOD.NUM$,                                         \
+ 326: 081a:                 CCUOD.DATE.FILE.UPDATED$,                               \
+ 327: 081a:                 CCUOD.TIME.FILE.UPDATED$,                               \
+ 328: 081a:                 CCUOD.LDT.NUM$,                                         \
+ 329: 081a:                 CCUOD.HEADER.FILLER$
+ 330: 081a:        WRITE.UNLOCK.CCUOD = 0
+ 331: 081f:        EXIT FUNCTION         
+ 332: 0825:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 333: 0825:        IF END #CCUOD.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 334: 0839:        WRITE FORM "C7,C1,C4,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,3C3,C1,C18";\   !BMW
+ 335: 09c7:            #CCUOD.SESS.NUM% AUTOUNLOCK;                                 \
+ 336: 09c7:                 CCUOD.UOD.NUM$,                                         \
+ 337: 09c7:                 CCUOD.STATUS$,                                          \
+ 338: 09c7:                 CCUOD.CREDIT.CLAIM.NUM$,                                \
+ 339: 09c7:                 CCUOD.NUM.OF.ITEMS%,                                    \
+ 340: 09c7:                 CCUOD.SUPPLY.ROUTE$,                                    \
+ 341: 09c7:                 CCUOD.DISP.LOCATION$,                                   \
+ 342: 09c7:                 CCUOD.BC.LETTER$,                                       \
+ 343: 09c7:                 CCUOD.RECALL.NUM$,                                      \
+ 344: 09c7:                 CCUOD.AUTHORISATION$,                                   \
+ 345: 09c7:                 CCUOD.SUPPLIER$,                                        \
+ 346: 09c7:                 CCUOD.METHOD.OF.RETURN$,                                \
+ 347: 09c7:                 CCUOD.CARRIER$,                                         \
+ 348: 09c7:                 CCUOD.BIRD.NUM$,                                        \
+ 349: 09c7:                 CCUOD.REASON.NUM$,                                      \
+ 350: 09c7:                 CCUOD.RECEIVING.STORE$,                                 \
+ 351: 09c7:                 CCUOD.DESTINATION$,                                     \
+ 352: 09c7:                 CCUOD.WAREHOUSE.ROUTE$,                                 \
+ 353: 09c7:                 CCUOD.UOD.TYPE$,                                        \
+ 354: 09c7:                 CCUOD.DAMAGE.REASON$,                                   \
+ 355: 09c7:                 CCUOD.DATE.UOD.OPENED$,                                 \
+ 356: 09c7:                 CCUOD.DATE.UOD.DESPATCHED$,                             \
+ 357: 09c7:                 CCUOD.TIME.UOD.DESPATCHED$,                             \
+ 358: 09c7:                 CCUOD.RETRIEVAL.FLAG$,                                  \   !BMW
+ 359: 09c7:                 CCUOD.FILLER$
+ 360: 09c7:        WRITE.UNLOCK.CCUOD = 0
+ 361: 09cc:        EXIT FUNCTION
+ 362: 09ce:     ENDIF
+ 363: 09ce:      
+ 364: 09ce:     WRITE.UNLOCK.ERROR:
+ 365: 09ce:      
+ 366: 09ce:        FILE.OPERATION$ = "W"
+ 367: 09dd:        CURRENT.REPORT.NUM% = CCUOD.REPORT.NUM%
+ 368: 09eb:        CURRENT.CODE$ = CCUOD.UOD.NUM$
+ 369: 0a01:     
+ 370: 0a01:        EXIT FUNCTION    
+ 371: 0a03: 
+ 372: 0a03:   END FUNCTION
+ 373: 0a12: 
+ 374: 0a12: 
+ 375: 0a12: 
+ 376: 0a12:   FUNCTION WRITE.HOLD.UNLOCK.CCUOD PUBLIC
+ 377: 0a26: 
+ 378: 0a26:     INTEGER*2 WRITE.HOLD.UNLOCK.CCUOD
+ 379: 0a26:     
+ 380: 0a26:     WRITE.HOLD.UNLOCK.CCUOD = 1
+ 381: 0a2b:       
+ 382: 0a2b:     IF CCUOD.UOD.NUM$ = PACK$(STRING$(7,"??")) THEN BEGIN       ! Header Record
+ 383: 0a53:        IF END #CCUOD.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 384: 0a67:        WRITE FORM "C7,3C3,C84"; HOLD #CCUOD.SESS.NUM% AUTOUNLOCK;       \        
+ 385: 0ac9:                 CCUOD.UOD.NUM$,                                         \
+ 386: 0ac9:                 CCUOD.DATE.FILE.UPDATED$,                               \
+ 387: 0ac9:                 CCUOD.TIME.FILE.UPDATED$,                               \
+ 388: 0ac9:                 CCUOD.LDT.NUM$,                                         \
+ 389: 0ac9:                 CCUOD.HEADER.FILLER$
+ 390: 0ac9:        WRITE.HOLD.UNLOCK.CCUOD = 0
+ 391: 0ace:        EXIT FUNCTION         
+ 392: 0ad4:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 393: 0ad4:        IF END #CCUOD.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 394: 0ae8:        WRITE FORM "C7,C1,C4,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,3C3,C1,C18";\   !BMW
+ 395: 0c76:            HOLD #CCUOD.SESS.NUM% AUTOUNLOCK;                            \
+ 396: 0c76:                 CCUOD.UOD.NUM$,                                         \
+ 397: 0c76:                 CCUOD.STATUS$,                                          \
+ 398: 0c76:                 CCUOD.CREDIT.CLAIM.NUM$,                                \
+ 399: 0c76:                 CCUOD.NUM.OF.ITEMS%,                                    \
+ 400: 0c76:                 CCUOD.SUPPLY.ROUTE$,                                    \
+ 401: 0c76:                 CCUOD.DISP.LOCATION$,                                   \
+ 402: 0c76:                 CCUOD.BC.LETTER$,                                       \
+ 403: 0c76:                 CCUOD.RECALL.NUM$,                                      \
+ 404: 0c76:                 CCUOD.AUTHORISATION$,                                   \
+ 405: 0c76:                 CCUOD.SUPPLIER$,                                        \
+ 406: 0c76:                 CCUOD.METHOD.OF.RETURN$,                                \
+ 407: 0c76:                 CCUOD.CARRIER$,                                         \
+ 408: 0c76:                 CCUOD.BIRD.NUM$,                                        \
+ 409: 0c76:                 CCUOD.REASON.NUM$,                                      \
+ 410: 0c76:                 CCUOD.RECEIVING.STORE$,                                 \
+ 411: 0c76:                 CCUOD.DESTINATION$,                                     \
+ 412: 0c76:                 CCUOD.WAREHOUSE.ROUTE$,                                 \
+ 413: 0c76:                 CCUOD.UOD.TYPE$,                                        \
+ 414: 0c76:                 CCUOD.DAMAGE.REASON$,                                   \
+ 415: 0c76:                 CCUOD.DATE.UOD.OPENED$,                                 \
+ 416: 0c76:                 CCUOD.DATE.UOD.DESPATCHED$,                             \
+ 417: 0c76:                 CCUOD.TIME.UOD.DESPATCHED$,                             \
+ 418: 0c76:                 CCUOD.RETRIEVAL.FLAG$,                                  \   !BMW
+ 419: 0c76:                 CCUOD.FILLER$
+ 420: 0c76:        WRITE.HOLD.UNLOCK.CCUOD = 0
+ 421: 0c7b:        EXIT FUNCTION
+ 422: 0c7d:     ENDIF
+ 423: 0c7d:      
+ 424: 0c7d:     WRITE.HOLD.UNLOCK.ERROR:
+ 425: 0c7d:      
+ 426: 0c7d:        FILE.OPERATION$ = "W"
+ 427: 0c8c:        CURRENT.REPORT.NUM% = CCUOD.REPORT.NUM%
+ 428: 0c9a:        CURRENT.CODE$ = CCUOD.UOD.NUM$
+ 429: 0cb0:     
+ 430: 0cb0:        EXIT FUNCTION    
+ 431: 0cb2: 
+ 432: 0cb2:   END FUNCTION
+ 433: 0cc1: 
+ 434: 0cc1: 
+ 435: 0cc1: 
+ 436: 0cc1:   FUNCTION WRITE.CCUOD PUBLIC
+ 437: 0cd5: 
+ 438: 0cd5:     INTEGER*2 WRITE.CCUOD
+ 439: 0cd5:     
+ 440: 0cd5:     WRITE.CCUOD = 1
+ 441: 0cda:       
+ 442: 0cda:     IF CCUOD.UOD.NUM$ = PACK$(STRING$(7,"??")) THEN BEGIN       ! Header Record
+ 443: 0d02:        IF END #CCUOD.SESS.NUM% THEN WRITE.ERROR
+ 444: 0d16:        WRITE FORM "C7,3C3,C84"; #CCUOD.SESS.NUM%;                       \        
+ 445: 0d78:                 CCUOD.UOD.NUM$,                                         \ UPD
+ 446: 0d78:                 CCUOD.DATE.FILE.UPDATED$,                               \ UPD
+ 447: 0d78:                 CCUOD.TIME.FILE.UPDATED$,                               \ UPD
+ 448: 0d78:                 CCUOD.LDT.NUM$,                                         \ UPD
+ 449: 0d78:                 CCUOD.HEADER.FILLER$
+ 450: 0d78:        WRITE.CCUOD = 0
+ 451: 0d7d:        EXIT FUNCTION         
+ 452: 0d83:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 453: 0d83:        IF END #CCUOD.SESS.NUM% THEN WRITE.ERROR
+ 454: 0d97:        WRITE FORM "C7,C1,C4,I2,3C1,C8,2C15,2C1,C8,C1,C2,4C1,3C3,C1,C18";\   !BMW
+ 455: 0f25:            #CCUOD.SESS.NUM%;                                            \
+ 456: 0f25:                 CCUOD.UOD.NUM$,                                         \ UPD
+ 457: 0f25:                 CCUOD.STATUS$,                                          \
+ 458: 0f25:                 CCUOD.CREDIT.CLAIM.NUM$,                                \
+ 459: 0f25:                 CCUOD.NUM.OF.ITEMS%,                                    \
+ 460: 0f25:                 CCUOD.SUPPLY.ROUTE$,                                    \
+ 461: 0f25:                 CCUOD.DISP.LOCATION$,                                   \
+ 462: 0f25:                 CCUOD.BC.LETTER$,                                       \
+ 463: 0f25:                 CCUOD.RECALL.NUM$,                                      \
+ 464: 0f25:                 CCUOD.AUTHORISATION$,                                   \
+ 465: 0f25:                 CCUOD.SUPPLIER$,                                        \
+ 466: 0f25:                 CCUOD.METHOD.OF.RETURN$,                                \ UPD
+ 467: 0f25:                 CCUOD.CARRIER$,                                         \ UPD
+ 468: 0f25:                 CCUOD.BIRD.NUM$,                                        \
+ 469: 0f25:                 CCUOD.REASON.NUM$,                                      \ UPD
+ 470: 0f25:                 CCUOD.RECEIVING.STORE$,                                 \ UPD
+ 471: 0f25:                 CCUOD.DESTINATION$,                                     \ UPD
+ 472: 0f25:                 CCUOD.WAREHOUSE.ROUTE$,                                 \
+ 473: 0f25:                 CCUOD.UOD.TYPE$,                                        \ UPD
+ 474: 0f25:                 CCUOD.DAMAGE.REASON$,                                   \ UPD
+ 475: 0f25:                 CCUOD.DATE.UOD.OPENED$,                                 \ UPD
+ 476: 0f25:                 CCUOD.DATE.UOD.DESPATCHED$,                             \ UPD
+ 477: 0f25:                 CCUOD.TIME.UOD.DESPATCHED$,                             \ UPD
+ 478: 0f25:                 CCUOD.RETRIEVAL.FLAG$,                                  \   !BMW
+ 479: 0f25:                 CCUOD.FILLER$
+ 480: 0f25:        WRITE.CCUOD = 0
+ 481: 0f2a:        EXIT FUNCTION
+ 482: 0f2c:     ENDIF
+ 483: 0f2c:      
+ 484: 0f2c:     WRITE.ERROR:
+ 485: 0f2c:      
+ 486: 0f2c:        FILE.OPERATION$ = "W"
+ 487: 0f3b:        CURRENT.REPORT.NUM% = CCUOD.REPORT.NUM%
+ 488: 0f49:        CURRENT.CODE$ = CCUOD.UOD.NUM$
+ 489: 0f5f:     
+ 490: 0f5f:        EXIT FUNCTION    
+ 491: 0f61: 
+ 492: 0f61:   END FUNCTION
+ 493: 0f70: 
+ 494: 0f70: End of Compilation

@@ -1,0 +1,862 @@
+   1: 0003:  \****************************************************************************
+   2: 0003: \* STKCHKR .286                                              DECEMBER 2016   *
+   3: 0003: \*                                                                           *
+   4: 0003: \*  SPECIFY EITHER AN INPUT FILE OR "ALL" AS A PARAMETER AND IT WILL PRINT   *
+   5: 0003: \*  THE ITEMS STOCK LEVELS. IF "CLR" IS SPECIFIED AS A SECOND PARAMETER IT   *                                                
+   6: 0003: \*  WILL ALSO CREATE AN STCOR TO ZERO THE ITEMS IN THE STOCK FILE.           *                                                              
+   7: 0003: \*                                                                           *
+   8: 0003: \*    24/10/17 - CHANGED TO 'Z' TYPE RECORD INTRODUCED FOR RS6               *
+   9: 0003: \*****************************************************************************
+  10: 0003: 
+  11: 0003: INTEGER*1 A%, B%, TRUE, FALSE
+  12: 0003: INTEGER*2 BLOCK%, I%, RC%, INPUT.SESS.NUM%, KEYSTK.SESS.NUM%, THE.END%, DIRSTK.SESS.NUM%, CLR%, CURRENT.PARAM%, COMMAND.LEN%, DIVIDE.MATCH%, \
+  13: 0003: PREV.DIVIDE.MATCH%, STRING.SECTION%, CHK.FILE%, PARAM1.LEN%, PARAM2.LEN%, HDR.WRTN%
+  14: 0003: 
+  15: 0003: INTEGER*4 RECORDS%, RET.CODE%
+  16: 0003: STRING RECORD$, TEMP$, OUTPUT$, STOCK.IC$, STOCK.SL$, INPUTFILE$, INPCODE$, STORE.NUMBER$, ADXSERVE.DATA$, FILE.NAME$, NORMAL.RUN$, PARAM$(1), \
+  17: 0003: ALL$
+  18: 0003: 
+  19: 0003: %INCLUDE IMSTCDEC.J86
+  20: 0003: \***********************************************************************
+  21: 0003: \***********************************************************************
+  22: 0003: \***
+  23: 0003: \***    DESCRIPTION: Item Movement & Stock File
+  24: 0003: \***                 Field Definitions         
+  25: 0003: \***
+  26: 0003: \***    FILE TYPE : Keyed
+  27: 0003: \***
+  28: 0003: \***********************************************************************
+  29: 0003: \***
+  30: 0003: \***    Version A.          Les Cook                     21st Aug 1992
+  31: 0003: \***    Initial version.
+  32: 0003: \***
+  33: 0003: \***    VERSION 1.1         Julia Stones                 13th Jun 2005
+  34: 0003: \***    Added new external functions for
+  35: 0003: \***        MIMSTC - merged IMSTC
+  36: 0003: \***        CIMSTC - Copy of IMSTC
+  37: 0003: \***        BIMSTC - Backup of IMSTC
+  38: 0003: \***
+  39: 0003: \***    Version C.          Mark Walker                  23rd Jan 2014
+  40: 0003: \***    F337 Centralised View of Stock
+  41: 0003: \***    - Added sequence ID field definition.
+  42: 0003: \***    - Moved BIMST, CIMST and MIMST field definitions to separate
+  43: 0003: \***      modules.
+  44: 0003: \***    - Moved TIMST record length to TIMSTDEC.J86.
+  45: 0003: \***    - Minor formatting changes (uncommented).
+  46: 0003: \***
+  47: 0003: \***    Version D.          Mark Walker                  30th Apr 2014
+  48: 0003: \***    F337 Centralised View of Stock
+  49: 0003: \***    QC599: Introduced item level TSL restart pointer to allow
+  50: 0003: \***           Sales Support restart/recovery to continue processing
+  51: 0003: \***           correctly from the next unprocessed item.
+  52: 0003: \***
+  53: 0003: \***********************************************************************
+  54: 0003: \***********************************************************************
+  55: 0003: 
+  56: 0003: \***********************************************************************
+  57: 0003: \***********************************************************************
+  58: 0003: \***
+  59: 0003: \***    File Record Layout
+  60: 0003: \***
+  61: 0003: \***    IMSTC.BAR.CODE$             11 UPD  Barcode (Key)
+  62: 0003: \***    IMSTC.RESTART%               4 INT  IMSTC Restart pointer
+  63: 0003: \***    IMSTC.NUMITEMS%              4 INT  Number of items sold
+  64: 0003: \***    IMSTC.AMTSALE%               4 INT  Amount of items sold
+  65: 0003: \***    IMSTC.TSL.RESTART%           4 INT  TSL Restart pointer             !DMW
+  66: 0003: \***    IMSTC.STKMQ.RESTART%         4 INT  STKMQ Restart pointer
+  67: 0003: \***    IMSTC.STATUS.FLAG$           1 ASC  Status flags
+  68: 0003: \***    IMSTC.STOCK.FIGURE%          2 INT  Stock Figure
+  69: 0003: \***    IMSTC.REASON.ITEM.REMOVED$   1 ASC  Deletion Reason
+  70: 0003: \***    IMSTC.SID%                   4 INT  Sequence ID
+  71: 0003: \***    IMSTC.FILLER$                1 UPD  Filler
+  72: 0003: \***
+  73: 0003: \***********************************************************************
+  74: 0003: \***********************************************************************
+  75: 0003: 
+  76: 0003:     INTEGER*2 GLOBAL                                                    \
+  77: 0003:         IMSTC.SESS.NUM%,                                                \
+  78: 0003:         IMSTC.RECL%,                                                    \
+  79: 0003:         IMSTC.REPORT.NUM%,                                              \
+  80: 0003:         IMSTC.STOCK.FIGURE%
+  81: 0003: 
+  82: 0003:     INTEGER*4 GLOBAL                                                    \
+  83: 0003:         IMSTC.AMTSALE%,                                                 \
+  84: 0003:         IMSTC.NEXT.SID%,                                                \   !CMW
+  85: 0003:         IMSTC.NUMITEMS%,                                                \
+  86: 0003:         IMSTC.RESERVED%,                                                \
+  87: 0003:         IMSTC.RESTART%,                                                 \
+  88: 0003:         IMSTC.SID%,                                                     \   !CMW
+  89: 0003:         IMSTC.STKMQ.RESTART%,                                           \
+  90: 0003:         IMSTC.TSL.RESTART%                                                  !DMW
+  91: 0003: 
+  92: 0003:     STRING GLOBAL                                                       \
+  93: 0003:         IMSTC.BAR.CODE$,                                                \
+  94: 0003:         IMSTC.FILE.NAME$,                                               \
+  95: 0003:         IMSTC.FILLER$,                                                  \
+  96: 0003:         IMSTC.HOLD.PENDING$,                                            \
+  97: 0003:         IMSTC.REASON.ITEM.REMOVED$,                                     \
+  98: 0003:         IMSTC.STATUS.FLAG$
+  99: 0003: 
+ 100: 0003: %INCLUDE STOCKDEC.J86
+ 101: 0003: \***********************************************************************
+ 102: 0003: \***********************************************************************
+ 103: 0003: \***
+ 104: 0003: \***    DESCRIPTION: Stock File
+ 105: 0003: \***                 Field Definitions         
+ 106: 0003: \***
+ 107: 0003: \***    FILE TYPE : Keyed
+ 108: 0003: \***
+ 109: 0003: \***********************************************************************
+ 110: 0003: \***
+ 111: 0003: \***    Version B.              Robert Cowey             21st Oct 1993
+ 112: 0003: \***    No changes to this file.
+ 113: 0003: \***
+ 114: 0003: \***    Version C.              Mark Walker              24th Jan 2014
+ 115: 0003: \***    F337 Centralised View of Stock
+ 116: 0003: \***    - Added sequence ID and item status fields.
+ 117: 0003: \***    - Minor formatting changes (uncommented).
+ 118: 0003: \***
+ 119: 0003: \***    Version D.              Mark Walker              15th Mar 2014
+ 120: 0003: \***    F337 Centralised View of Stock
+ 121: 0003: \***    Added next sequence ID field.
+ 122: 0003: \***
+ 123: 0003: \***    Version E.              Mark Walker               7th May 2014
+ 124: 0003: \***    F337 Centralised View of Stock
+ 125: 0003: \***    Added new 'stock flags' field for future use.
+ 126: 0003: \***
+ 127: 0003: \***********************************************************************
+ 128: 0003: \***********************************************************************
+ 129: 0003: 
+ 130: 0003: \***********************************************************************
+ 131: 0003: \***********************************************************************
+ 132: 0003: \***
+ 133: 0003: \***    File Record Layout
+ 134: 0003: \***
+ 135: 0003: \***    STOCK.BOOTS.CODE$            4 UPD  Item Code (Key)
+ 136: 0003: \***    STOCK.STOCK.FIG%             2 INT  Stock Figure
+ 137: 0003: \***    STOCK.LAST.COUNT%            2 INT  Last Count Quantity
+ 138: 0003: \***    STOCK.DATE.LAST.COUNT$       3 UPD  Date of Last Count
+ 139: 0003: \***    STOCK.DATE.LAST.MOVE$        3 UPD  Date of Last Movement
+ 140: 0003: \***    STOCK.LAST.REC%              2 INT  Last Receipt Quantity
+ 141: 0003: \***    STOCK.DATE.LAST.REC$         3 UPD  Date of Last Receipt
+ 142: 0003: \***    STOCK.DATE.LAST.GAP$         3 UPD  Date of Last Gap
+ 143: 0003: \***    STOCK.SID%                   4 INT  Sequence ID                     !CMW
+ 144: 0003: \***    STOCK.STATUS.1$              1 ASC  Item Status                     !CMW
+ 145: 0003: \***    STOCK.FLAGS%                 1 INT  Stock flags                     !EMW
+ 146: 0003: \***    STOCK.FILLER$                2 UPD  Filler                          !EMW
+ 147: 0003: \***
+ 148: 0003: \***********************************************************************
+ 149: 0003: \***********************************************************************
+ 150: 0003: 
+ 151: 0003:     INTEGER*1 GLOBAL                                                    \
+ 152: 0003:         STOCK.FLAGS%,                                                   \   !EMW
+ 153: 0003:         STOCK.RECL%
+ 154: 0003: 
+ 155: 0003:     INTEGER*2 GLOBAL                                                    \
+ 156: 0003:         STOCK.LAST.COUNT%,                                              \
+ 157: 0003:         STOCK.LAST.REC%,                                                \
+ 158: 0003:         STOCK.REPORT.NUM%,                                              \
+ 159: 0003:         STOCK.SESS.NUM%,                                                \
+ 160: 0003:         STOCK.STOCK.FIG%
+ 161: 0003: 
+ 162: 0003:     INTEGER*4 GLOBAL                                                    \   !CMW
+ 163: 0003:         STOCK.NEXT.SID%,                                                \   !DMW
+ 164: 0003:         STOCK.SID%                                                          !CMW
+ 165: 0003: 
+ 166: 0003:     STRING GLOBAL                                                       \
+ 167: 0003:         STOCK.BOOTS.CODE$,                                              \
+ 168: 0003:         STOCK.DATE.LAST.COUNT$,                                         \
+ 169: 0003:         STOCK.DATE.LAST.GAP$,                                           \
+ 170: 0003:         STOCK.DATE.LAST.MOVE$,                                          \
+ 171: 0003:         STOCK.DATE.LAST.REC$,                                           \
+ 172: 0003:         STOCK.FILE.NAME$,                                               \
+ 173: 0003:         STOCK.FILLER$,                                                  \
+ 174: 0003:         STOCK.STATUS.1$                                                     !CMW
+ 175: 0003: 
+ 176: 0003: %INCLUDE STCORDEC.J86
+ 177: 0003: REM \
+ 178: 0003: \******************************************************************************
+ 179: 0003: \******************************************************************************
+ 180: 0003: \***                                                                          *
+ 181: 0003: \***      %INCLUDE FOR SALES/STOCKS CORRECTIONS FILE FIELD DECLARATIONS       *
+ 182: 0003: \***                                                                          *
+ 183: 0003: \***               FILE TYPE    : Sequential                                  *
+ 184: 0003: \***                                                                          *
+ 185: 0003: \***               REFERENCE    : STCORDEC.J86                                *
+ 186: 0003: \***                                                                          *
+ 187: 0003: \***      9th MAY, 2000                                                       *
+ 188: 0003: \***                                                                          *
+ 189: 0003: \******************************************************************************
+ 190: 0003: \****************************************************************************** 
+ 191: 0003: 
+ 192: 0003:   STRING GLOBAL           \
+ 193: 0003:     STCOR.FILE.NAME$,     \
+ 194: 0003:     STCOR.ITEM.CODE$,     \ 4 bytes UPD
+ 195: 0003:     STCOR.REST$,          \ 12 bytes - remainder of the record
+ 196: 0003:     STCOR.SERIAL.NO$,     \ 3 bytes UPD
+ 197: 0003:     STCOR.STORE.NO$,      \ 4 bytes ASCII (leading zeroes)
+ 198: 0003:     STCOR.RUN.TYPE$,      \ 1 byte ASCII
+ 199: 0003:                           \    " " = Adjust stock figure
+ 200: 0003:                           \    "R" = Replace stock figure
+ 201: 0003:     STCOR.HDR.FILLER$,    \ 8 bytes filler set to spaces
+ 202: 0003:                           \
+ 203: 0003:     STCOR.STMVT.DATE$,    \ 3 bytes UPD (YYMMDD) date of 'stock movement'
+ 204: 0003:     STCOR.STKCNT.FLAG$,   \ 1 byte Y = Record contains a stock count figure
+ 205: 0003:                           \        N = Record does not contain a stock count fig
+ 206: 0003:     STCOR.DET.FILLER$,    \ 6 bytes filler set to spaces
+ 207: 0003:                           \
+ 208: 0003:     STCOR.TRL.FILLER$,    \ 12 bytes filler set to spaces              
+ 209: 0003:     STCOR.REC.TYPE$       ! set up by the read function
+ 210: 0003:     
+ 211: 0003:   INTEGER*2 GLOBAL           \
+ 212: 0003:     STCOR.SESS.NUM%,         \
+ 213: 0003:     STCOR.REPORT.NUM%,       \
+ 214: 0003:     STCOR.SALES.QUANT%,      \ set to zeroes if record contains a stock movement
+ 215: 0003:                              \ quantity or stock count figure
+ 216: 0003:     STCOR.STMVT.QUANT%,      \ set to zeroes if record contains a sales figure  
+ 217: 0003:                              \ quantity or stock count figure
+ 218: 0003:     STCOR.STOCK.COUNT%       ! set to zeroes if stock count flag set to 'N'      
+ 219: 0003:     
+ 220: 0003:   INTEGER*4 GLOBAL           \
+ 221: 0003:     STCOR.REC.NO%,           \ number of the record being read
+ 222: 0003:     STCOR.RECL%,             \
+ 223: 0003:     STCOR.REC.COUNT%         ! number of records on file                               
+ 224: 0003:                            
+ 225: 0003: %INCLUDE IMSTCEXT.J86
+ 226: 0003: \***********************************************************************
+ 227: 0003: \***********************************************************************
+ 228: 0003: \***
+ 229: 0003: \***    DESCRIPTION: Item Movement & Stock File
+ 230: 0003: \***                 External File Function Definitions
+ 231: 0003: \***
+ 232: 0003: \***    FILE TYPE : Keyed
+ 233: 0003: \***
+ 234: 0003: \***********************************************************************
+ 235: 0003: \***
+ 236: 0003: \***    Version A.          Les Cook                     21st Aug 1992
+ 237: 0003: \***    Initial version.
+ 238: 0003: \***
+ 239: 0003: \***    VERSION 1.1         Julia Stones                 13th Jun 2005
+ 240: 0003: \***    Added new external functions for
+ 241: 0003: \***        MIMSTC - merged IMSTC
+ 242: 0003: \***        CIMSTC - Copy of IMSTC
+ 243: 0003: \***        BIMSTC - Backup of IMSTC
+ 244: 0003: \***
+ 245: 0003: \***    Version C.          Mark Walker                  23rd Jan 2014
+ 246: 0003: \***    F337 Centralised View of Stock
+ 247: 0003: \***    - Moved BIMST, CIMST and MIMST external function definitions
+ 248: 0003: \***      to separate modules.
+ 249: 0003: \***    - Minor formatting changes (uncommented).
+ 250: 0003: \***
+ 251: 0003: \***********************************************************************
+ 252: 0003: \***********************************************************************
+ 253: 0003: 
+ 254: 0003: FUNCTION IMSTC.SET EXTERNAL
+ 255: 0003: END FUNCTION
+ 256: 0003: 
+ 257: 0003: FUNCTION READ.IMSTC EXTERNAL
+ 258: 0003:     INTEGER*2 READ.IMSTC
+ 259: 0003: END FUNCTION
+ 260: 0003: 
+ 261: 0003: FUNCTION READ.IMSTC.LOCK EXTERNAL
+ 262: 0003:     INTEGER*2 READ.IMSTC.LOCK
+ 263: 0003: END FUNCTION
+ 264: 0003: 
+ 265: 0003: FUNCTION WRITE.IMSTC EXTERNAL
+ 266: 0003:    INTEGER*2 WRITE.IMSTC
+ 267: 0003: END FUNCTION
+ 268: 0003: 
+ 269: 0003: FUNCTION WRITE.IMSTC.UNLOCK.HOLD EXTERNAL
+ 270: 0003:     INTEGER*2 WRITE.IMSTC.UNLOCK.HOLD
+ 271: 0003: END FUNCTION
+ 272: 0003: 
+ 273: 0003: FUNCTION WRITE.IMSTC.UNLOCK EXTERNAL
+ 274: 0003:    INTEGER*2 WRITE.IMSTC.UNLOCK
+ 275: 0003: END FUNCTION
+ 276: 0003: 
+ 277: 0003: FUNCTION WRITE.IMSTC.HOLD EXTERNAL
+ 278: 0003:    INTEGER*2 WRITE.IMSTC.HOLD
+ 279: 0003: END FUNCTION
+ 280: 0003: 
+ 281: 0003: %INCLUDE STOCKEXT.J86
+ 282: 0003: \***********************************************************************
+ 283: 0003: \***********************************************************************
+ 284: 0003: \***
+ 285: 0003: \***    DESCRIPTION: Stock File
+ 286: 0003: \***                 External File Function Definitions
+ 287: 0003: \***
+ 288: 0003: \***    FILE TYPE : Keyed
+ 289: 0003: \***
+ 290: 0003: \***********************************************************************
+ 291: 0003: \***
+ 292: 0003: \***    Version A.          Les Cook                     21st Aug 1992
+ 293: 0003: \***    Initial version.
+ 294: 0003: \***
+ 295: 0003: \***    Version B.          Robert Cowey                 21st Oct 1993
+ 296: 0003: \***    No changes to this file.
+ 297: 0003: \***
+ 298: 0003: \***    Version C.          Nik Sen                      22nd Dec 1994
+ 299: 0003: \***    WRITE.STOCK.HOLD added.
+ 300: 0003: \***
+ 301: 0003: \***    Version D.          Mark Walker                  23rd Jan 2014
+ 302: 0003: \***    F337 Centralised View of Stock
+ 303: 0003: \***    - Minor formatting changes (uncommented).
+ 304: 0003: \***
+ 305: 0003: \***********************************************************************
+ 306: 0003: \***********************************************************************
+ 307: 0003: 
+ 308: 0003: FUNCTION STOCK.SET EXTERNAL
+ 309: 0003: END FUNCTION
+ 310: 0003:    
+ 311: 0003: FUNCTION READ.STOCK EXTERNAL
+ 312: 0003:     INTEGER*2 READ.STOCK
+ 313: 0003: END FUNCTION
+ 314: 0003:    
+ 315: 0003: FUNCTION WRITE.STOCK EXTERNAL
+ 316: 0003:     INTEGER*2 WRITE.STOCK
+ 317: 0003: END FUNCTION
+ 318: 0003:    
+ 319: 0003: FUNCTION WRITE.STOCK.HOLD EXTERNAL
+ 320: 0003:     INTEGER*2 WRITE.STOCK.HOLD
+ 321: 0003: END FUNCTION
+ 322: 0003: 
+ 323: 0003: FUNCTION READ.STOCK.LOCK EXTERNAL
+ 324: 0003:     INTEGER*2 READ.STOCK.LOCK
+ 325: 0003: END FUNCTION
+ 326: 0003:    
+ 327: 0003: FUNCTION WRITE.STOCK.UNLOCK EXTERNAL
+ 328: 0003:     INTEGER*2 WRITE.STOCK.UNLOCK
+ 329: 0003: END FUNCTION
+ 330: 0003:    
+ 331: 0003: FUNCTION WRITE.STOCK.UNLOCK.HOLD EXTERNAL
+ 332: 0003:     INTEGER*2 WRITE.STOCK.UNLOCK.HOLD
+ 333: 0003: END FUNCTION
+ 334: 0003: 
+ 335: 0003: %INCLUDE STCOREXT.J86
+ 336: 0003: REM \
+ 337: 0003: \******************************************************************************
+ 338: 0003: \******************************************************************************
+ 339: 0003: \***
+ 340: 0003: \***         %INCLUDE FOR SALES/STOCKS RERUNS FILE I/O SESSION NUMBER
+ 341: 0003: \***
+ 342: 0003: \***               REFERENCE    : STCOREXT.J86
+ 343: 0003: \***
+ 344: 0003: \******************************************************************************
+ 345: 0003: *******************************************************************************
+ 346: 0003: 
+ 347: 0003:      FUNCTION STCOR.SET EXTERNAL
+ 348: 0003:      END FUNCTION
+ 349: 0003:      
+ 350: 0003:      FUNCTION READ.STCOR EXTERNAL
+ 351: 0003:         INTEGER*2 READ.STCOR
+ 352: 0003:      END FUNCTION
+ 353: 0003:      
+ 354: 0003: 
+ 355: 0003: %INCLUDE PSBF30E.J86
+ 356: 0003: \*****************************************************************************
+ 357: 0003: \*****************************************************************************
+ 358: 0003: \***
+ 359: 0003: \***                 EXTERNAL FUNCTION DEFINITION PSBF30
+ 360: 0003: \***
+ 361: 0003: \*****************************************************************************
+ 362: 0003: \*****************************************************************************
+ 363: 0003: 
+ 364: 0003: \*****************************************************************************
+ 365: 0003: \*****************************************************************************
+ 366: 0003: \***
+ 367: 0003: \***   Version 96A              Mark Walker                31st May 1995
+ 368: 0003: \***   Original version.
+ 369: 0003: \***
+ 370: 0003: \***   Version B                Andrew Wedgeworth          17th March 1997
+ 371: 0003: \***   Added READONLY$ variable.  This parameter may be used to specify 
+ 372: 0003: \***   whether the file is to be opened with the READONLY option.
+ 373: 0003: \***
+ 374: 0003: \*****************************************************************************
+ 375: 0003: \*****************************************************************************
+ 376: 0003:  
+ 377: 0003:        FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \ 
+ 378: 0003:                                    REPORT.NUM%,                        \  
+ 379: 0003:                                    READONLY$) EXTERNAL
+ 380: 0003: 
+ 381: 0003:        STRING FILE.NAME$,READONLY$
+ 382: 0003:        INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+ 383: 0003: 
+ 384: 0003:        END FUNCTION
+ 385: 0003: 
+ 386: 0003: %INCLUDE BTCMEM.J86
+ 387: 0003: !********************************************************************
+ 388: 0003: !***
+ 389: 0003: !***    INCLUDED CODE:  BTCMEM.J86
+ 390: 0003: !***    AUTHOR:         Stuart William McConnachie
+ 391: 0003: !***    DATE:           26th February 2006
+ 392: 0003: !***
+ 393: 0003: !********************************************************************
+ 394: 0003: !***
+ 395: 0003: !***    Controller CBASIC Memory Functions
+ 396: 0003: !***
+ 397: 0003: !********************************************************************
+ 398: 0003: 
+ 399: 0003: !Get a single byte integer from a string offset
+ 400: 0003: FUNCTION GETN1 (S$, P%) EXTERNAL
+ 401: 0003:     STRING S$
+ 402: 0003:     INTEGER*2 P%
+ 403: 0003:     INTEGER*2 GETN1
+ 404: 0003: END FUNCTION
+ 405: 0003: 
+ 406: 0003: !Get a two byte integer from a string offset
+ 407: 0003: FUNCTION GETN2 (S$, P%) EXTERNAL
+ 408: 0003:     STRING S$
+ 409: 0003:     INTEGER*2 P%
+ 410: 0003:     INTEGER*2 GETN2
+ 411: 0003: END FUNCTION
+ 412: 0003: 
+ 413: 0003: !Get a four byte integer from a string offset
+ 414: 0003: FUNCTION GETN4 (S$, P%) EXTERNAL
+ 415: 0003:     STRING S$
+ 416: 0003:     INTEGER*2 P%
+ 417: 0003:     INTEGER*4 GETN4
+ 418: 0003: END FUNCTION
+ 419: 0003: 
+ 420: 0003: !Get a 10 byte CBASIC real from a string offset
+ 421: 0003: FUNCTION GETR10 (S$, P%) EXTERNAL
+ 422: 0003:     STRING S$
+ 423: 0003:     INTEGER*2 P%
+ 424: 0003:     REAL GETR10
+ 425: 0003: END FUNCTION
+ 426: 0003: 
+ 427: 0003: !Put a single byte integer into a string at offset
+ 428: 0003: FUNCTION PUTN1 (S$, P%, N%) EXTERNAL
+ 429: 0003:     STRING S$
+ 430: 0003:     INTEGER*2 P%
+ 431: 0003:     INTEGER*1 N%
+ 432: 0003:     INTEGER*1 PUTN1
+ 433: 0003: END FUNCTION
+ 434: 0003: 
+ 435: 0003: !Put a two byte integer into a string at offset
+ 436: 0003: FUNCTION PUTN2 (S$, P%, N%) EXTERNAL
+ 437: 0003:     STRING S$
+ 438: 0003:     INTEGER*2 P%
+ 439: 0003:     INTEGER*2 N%
+ 440: 0003:     INTEGER*1 PUTN2
+ 441: 0003: END FUNCTION
+ 442: 0003: 
+ 443: 0003: !Put a four byte integer into a string at offset
+ 444: 0003: FUNCTION PUTN4 (S$, P%, N%) EXTERNAL
+ 445: 0003:     STRING S$
+ 446: 0003:     INTEGER*2 P%
+ 447: 0003:     INTEGER*4 N%
+ 448: 0003:     INTEGER*1 PUTN4
+ 449: 0003: END FUNCTION
+ 450: 0003: 
+ 451: 0003: !Put a 10 byte CBASIC real into a string at offset
+ 452: 0003: FUNCTION PUTR10 (S$, P%, R) EXTERNAL
+ 453: 0003:     STRING S$
+ 454: 0003:     INTEGER*2 P%
+ 455: 0003:     REAL R
+ 456: 0003:     INTEGER*1 PUTR10
+ 457: 0003: END FUNCTION
+ 458: 0003: 
+ 459: 0003: !Peek a two byte integer from a memory address
+ 460: 0003: FUNCTION PEEKN2 (A%) EXTERNAL
+ 461: 0003:     INTEGER*4 A%
+ 462: 0003:     INTEGER*2 PEEKN2
+ 463: 0003: END FUNCTION
+ 464: 0003: 
+ 465: 0003: !Peek a four byte integer from a memory address
+ 466: 0003: FUNCTION PEEKN4 (A%) EXTERNAL
+ 467: 0003:     INTEGER*4 A%
+ 468: 0003:     INTEGER*4 PEEKN4
+ 469: 0003: END FUNCTION
+ 470: 0003: 
+ 471: 0003: !Peek a 10 byte CBASIC real from a memory address
+ 472: 0003: FUNCTION PEEKR10 (A%) EXTERNAL
+ 473: 0003:     INTEGER*4 A%
+ 474: 0003:     REAL PEEKR10
+ 475: 0003: END FUNCTION
+ 476: 0003: 
+ 477: 0003: !Poke a two byte integer to a memory address
+ 478: 0003: FUNCTION POKEN2 (A%, N%) EXTERNAL
+ 479: 0003:     INTEGER*4 A%
+ 480: 0003:     INTEGER*2 N%
+ 481: 0003:     INTEGER*1 POKEN2
+ 482: 0003: END FUNCTION
+ 483: 0003: 
+ 484: 0003: !Poke a four byte integer to a memory address
+ 485: 0003: FUNCTION POKEN4 (A%, N%) EXTERNAL
+ 486: 0003:     INTEGER*4 A%
+ 487: 0003:     INTEGER*4 N%
+ 488: 0003:     INTEGER*1 POKEN4
+ 489: 0003: END FUNCTION
+ 490: 0003: 
+ 491: 0003: !Poke a 10 byte CBASIC real to a memory address
+ 492: 0003: FUNCTION POKER10 (A%, R) EXTERNAL
+ 493: 0003:     INTEGER*4 A%
+ 494: 0003:     REAL R
+ 495: 0003:     INTEGER*1 POKER10
+ 496: 0003: END FUNCTION
+ 497: 0003: 
+ 498: 0003: %INCLUDE ADXSERVE.J86                            
+ 499: 0003: \******************************************************************************
+ 500: 0003: \******************************************************************************
+ 501: 0003: \***                                                                        ***
+ 502: 0003: \***    %INCLUDE FOR FUNCTION ADXSERVE (an I.B.M. system function)          ***
+ 503: 0003: \***                                                                        ***
+ 504: 0003: \***         AUTHOR        :  Bruce Scriver                                 ***
+ 505: 0003: \***                                                                        ***
+ 506: 0003: \***         DATE WRITTEN  :  14th March 1986                               ***
+ 507: 0003: \***                                                                        ***
+ 508: 0003: \***         DATE OF LAST REVISION  - 14th March 1986                       ***
+ 509: 0003: \***                                                                        ***
+ 510: 0003: \***                                                                        ***
+ 511: 0003: \******************************************************************************
+ 512: 0003: \******************************************************************************
+ 513: 0003: 
+ 514: 0003:    SUB ADXSERVE (RETURN.CODE%,                                                \
+ 515: 0003:                  ADX.FUNCTION%,                                               \
+ 516: 0003:                  ADX.PARM.1%,                                                 \
+ 517: 0003:                  ADX.PARM.2$)                                                 \
+ 518: 0003:    EXTERNAL
+ 519: 0003:   
+ 520: 0003:       STRING     ADX.PARM.2$
+ 521: 0003: 
+ 522: 0003:       INTEGER*2  ADX.FUNCTION%,                                               \
+ 523: 0003:                  ADX.PARM.1%
+ 524: 0003: 
+ 525: 0003:       INTEGER*4  RETURN.CODE%                                                 \
+ 526: 0003: 
+ 527: 0003:    END SUB     
+ 528: 0003: 
+ 529: 0003: %INCLUDE ADXSTART.J86
+ 530: 0003: \******************************************************************************
+ 531: 0003: \******************************************************************************
+ 532: 0003: \***                                                                        ***
+ 533: 0003: \***    %INCLUDE FOR FUNCTION ADXSTART (an I.B.M. system function)          ***
+ 534: 0003: \***                                                                        ***
+ 535: 0003: \***         AUTHOR        :  Barbara Holbrook                              ***
+ 536: 0003: \***                                                                        ***
+ 537: 0003: \***         DATE WRITTEN  :  26th June 1987                                ***
+ 538: 0003: \***                                                                        ***
+ 539: 0003: \***         DATE OF LAST REVISION  - 19th November 1987                    ***
+ 540: 0003: \***                                                                        ***
+ 541: 0003: \***                                                                        ***
+ 542: 0003: \******************************************************************************
+ 543: 0003: \******************************************************************************
+ 544: 0003: 
+ 545: 0003:    FUNCTION ADXSTART (ADX.NAME$,                                       \
+ 546: 0003:                       ADX.PARM$,                                       \
+ 547: 0003:                       ADX.MESS$)                                       \
+ 548: 0003:    EXTERNAL
+ 549: 0003: 
+ 550: 0003:       STRING     ADX.NAME$,                                            \
+ 551: 0003:                  ADX.PARM$,                                            \
+ 552: 0003:                  ADX.MESS$
+ 553: 0003: 
+ 554: 0003:       INTEGER*2  ADXSTART
+ 555: 0003: 
+ 556: 0003:    END FUNCTION
+ 557: 0003: 
+ 558: 0003: %INCLUDE ADXCOPY.J86
+ 559: 0003: \******************************************************************************
+ 560: 0003: \******************************************************************************
+ 561: 0003: \***                                                                        ***
+ 562: 0003: \***    %INCLUDE FOR SUBROUTINE ADXCOPYF (an I.B.M. system subroutine)      ***
+ 563: 0003: \***                                                                        ***
+ 564: 0003: \***         DATE WRITTEN  :  13th May 1988                                 ***
+ 565: 0003: \***                                                                        ***
+ 566: 0003: \******************************************************************************
+ 567: 0003: \******************************************************************************
+ 568: 0003: 
+ 569: 0003:    SUB  ADXCOPYF (RETC, INFILE, OUTFILE, OPT0, OPT1, OPT2) EXTERNAL
+ 570: 0003: 
+ 571: 0003:       INTEGER*4   RETC
+ 572: 0003:       STRING      INFILE, OUTFILE
+ 573: 0003:       INTEGER*2   OPT0, OPT1, OPT2
+ 574: 0003: 
+ 575: 0003:    END  SUB
+ 576: 0003: 
+ 577: 0003: 
+ 578: 0003: FUNCTION PROCESS.KEYED.RECORD$(RECORD$) PUBLIC
+ 579: 002c:            STRING RECORD$,                    \
+ 580: 002c:            PROCESS.KEYED.RECORD$         
+ 581: 002c:             
+ 582: 002c:     ON ERROR GOTO ERROR.DETECTED
+ 583: 0041:             STOCK.IC$ = UNPACK$(MID$(RECORD$,1,4))
+ 584: 0066:             STOCK.SL$ = STR$(GETN2(RECORD$,4))      
+ 585: 008f:             !IF STOCK.IC$ <> "00000000" THEN BEGIN 
+ 586: 008f:                 GOSUB IMSTC.CHECK
+ 587: 00a1:                    IF CLR% = 0 THEN PRINT "Item Code: " + STOCK.IC$ + "   Stock Level: " + STOCK.SL$
+ 588: 00d8:                    IF CLR% = 1 AND STOCK.SL$ <> "0" THEN GOSUB STCOR.MAIN              
+ 589: 011d:                 !        ENDIF
+ 590: 011d:                 
+ 591: 011d:                            
+ 592: 011d: END.FUNC:
+ 593: 012d: 
+ 594: 012d:     PROCESS.KEYED.RECORD$ = RECORD$  
+ 595: 0145:     EXIT FUNCTION
+ 596: 0150:     
+ 597: 0150: IMSTC.CHECK:
+ 598: 0160: IMSTC.BAR.CODE$ = PACK$(RIGHT$("000000000000000000" + LEFT$(STOCK.IC$,(LEN(STOCK.IC$) - 1)),22))                        
+ 599: 01bf: RC% = READ.IMSTC
+ 600: 01cf: RETURN
+ 601: 01df: 
+ 602: 01df: STCOR.MAIN:
+ 603: 01ef:     STCOR.ITEM.CODE$   = PACK$(STOCK.IC$)
+ 604: 020f:     STCOR.STMVT.DATE$  = PACK$(DATE$)
+ 605: 022c:     STCOR.SALES.QUANT% = 0
+ 606: 023d:     STCOR.STMVT.QUANT% = 0 
+ 607: 024e:     STCOR.STOCK.COUNT% = VAL(STOCK.SL$) * -1
+ 608: 028f:     STCOR.STKCNT.FLAG$ = "Y"
+ 609: 02a6: 
+ 610: 02a6: WRITE FORM "C4,C3,3I2,C1,C6"; #STCOR.SESS.NUM%;                     \   
+ 611: 0324:                                    STCOR.ITEM.CODE$,                    \       
+ 612: 0324:                                    STCOR.STMVT.DATE$,                   \
+ 613: 0324:                                    STCOR.SALES.QUANT%,                  \
+ 614: 0324:                                    STCOR.STMVT.QUANT%,                  \
+ 615: 0324:                                    STCOR.STOCK.COUNT%,                  \
+ 616: 0324:                                    STCOR.STKCNT.FLAG$,                  \
+ 617: 0324:                                    STCOR.DET.FILLER$
+ 618: 0324: RECORDS% = RECORDS% + 1                                   
+ 619: 033d: RETURN
+ 620: 034d:     
+ 621: 034d:    
+ 622: 034d:     ERROR.DETECTED: 
+ 623: 035d:     PRINT   
+ 624: 036a:     PRINT "DIAGNOSTIC MESSAGES :"   
+ 625: 037b:     PRINT "    FILE NUMBER IS   :",ERRF%     
+ 626: 0397:     PRINT "    ERROR CODE       :",ERR     
+ 627: 03b5:     PRINT "    ERROR NUMBER     :",ERRN      
+ 628: 03d4:     PRINT "    CODE LINE        :",ERRL     
+ 629: 03f0:     PRINT                             
+ 630: 03fd:     PRINT "######## has ended in error."      
+ 631: 040e:     
+ 632: 040e:     RESUME END.FUNC
+ 633: 0425:      
+ 634: 0425: END FUNCTION
+ 635: 0443:              
+ 636: 0443: ON ERROR GOTO ERROR.DETECTED
+ 637: 0472:     GOSUB INITIALISATION
+ 638: 0484:     GOSUB MAIN.PROGRAM
+ 639: 0496:     GOSUB TERMINATION
+ 640: 04a8: STOP
+ 641: 04b5: 
+ 642: 04b5: INITIALISATION:
+ 643: 04c5: CALL IMSTC.SET
+ 644: 04e0: CALL STOCK.SET
+ 645: 04fb: CALL STCOR.SET
+ 646: 0516: CALL ADXSERVE(RC%,4,0,ADXSERVE.DATA$)
+ 647: 055f: STORE.NUMBER$ = LEFT$(ADXSERVE.DATA$,4) 
+ 648: 0581: STOCK.SESS.NUM% = 1
+ 649: 0592: IMSTC.SESS.NUM% = 2
+ 650: 05a3: INPUT.SESS.NUM% = 3
+ 651: 05b1: DIRSTK.SESS.NUM% = 4
+ 652: 05bf: STCOR.SESS.NUM% = 5
+ 653: 05d0: CLR% = 0
+ 654: 05de: TRUE = -1
+ 655: 05eb: FALSE = 0
+ 656: 05f8: A% = 1
+ 657: 0605: HDR.WRTN% = 0
+ 658: 0613: DIM PARAM$(2)
+ 659: 063c: 
+ 660: 063c: OPEN STOCK.FILE.NAME$ DIRECT RECL 512 AS DIRSTK.SESS.NUM%
+ 661: 0661: OPEN IMSTC.FILE.NAME$ KEYED RECL IMSTC.RECL% AS IMSTC.SESS.NUM%
+ 662: 068d:  
+ 663: 068d: RETURN
+ 664: 069d: 
+ 665: 069d: MAIN.PROGRAM:
+ 666: 06ad: 
+ 667: 06ad:     COMMAND.LEN% = LEN(COMMAND$)
+ 668: 06c7:     IF COMMAND.LEN% > 0 THEN BEGIN
+ 669: 06d9:         WHILE NOT B% 
+ 670: 06e4:             DIVIDE.MATCH% = MATCH(" ",COMMAND$,A%)
+ 671: 0710:             IF DIVIDE.MATCH% = 0 THEN BEGIN
+ 672: 071f:                 PARAM$(CURRENT.PARAM%) = MID$(COMMAND$,PREV.DIVIDE.MATCH% + 1,COMMAND.LEN% - DIVIDE.MATCH%)
+ 673: 075f:                 B% = TRUE 
+ 674: 0770:              ENDIF ELSE IF NOT DIVIDE.MATCH% = 0 THEN BEGIN
+ 675: 077f:                 IF NOT B% = TRUE THEN BEGIN
+ 676: 0790:                     STRING.SECTION% = DIVIDE.MATCH% - A%
+ 677: 07a9:                     PARAM$(CURRENT.PARAM%) = MID$(COMMAND$,A%,STRING.SECTION%)
+ 678: 07e5:                 ENDIF
+ 679: 07ed:             ENDIF
+ 680: 07f5:             CURRENT.PARAM% = CURRENT.PARAM% + 1
+ 681: 0801:             PREV.DIVIDE.MATCH% = DIVIDE.MATCH%
+ 682: 080f:             A% = DIVIDE.MATCH% + 1
+ 683: 081e:         WEND
+ 684: 0830:         IF NOT B% = TRUE THEN BEGIN
+ 685: 0841:             PARAM$(CURRENT.PARAM%) = MID$(COMMAND$,PREV.DIVIDE.MATCH% + 1,COMMAND.LEN% - DIVIDE.MATCH%)
+ 686: 0881:         ENDIF
+ 687: 0889:     ENDIF
+ 688: 0891:     
+ 689: 0891:     PARAM1.LEN% = LEN(PARAM$(0))
+ 690: 08b7:     
+ 691: 08b7:     IF PARAM1.LEN% = 0 THEN BEGIN
+ 692: 08c6:         NORMAL.RUN$ = "YES"
+ 693: 08de:     ENDIF ELSE BEGIN
+ 694: 08e6:         IF PARAM$(0) = "ALL" THEN BEGIN
+ 695: 090d:             ALL$ = "YES"
+ 696: 0925:         ENDIF ELSE IF PARAM$(0) = "CLR" THEN BEGIN
+ 697: 094c:             CLR% = 1
+ 698: 095d:         ENDIF ELSE IF PARAM1.LEN% > 0 AND PARAM$(0) <> "ALL" AND PARAM$(0) <> "CLR" THEN BEGIN
+ 699: 09d0:             FILE.NAME$ = PARAM$(0)
+ 700: 09f5:             CHK.FILE% = 1
+ 701: 0a03:         ENDIF
+ 702: 0a0b:         
+ 703: 0a0b:     ENDIF 
+ 704: 0a13:     
+ 705: 0a13:     PARAM2.LEN% = LEN(PARAM$(1))
+ 706: 0a39:     IF NOT PARAM2.LEN% = 0 THEN BEGIN
+ 707: 0a4b:         IF PARAM$(1) = "ALL" THEN BEGIN
+ 708: 0a72:             ALL$ = "YES"
+ 709: 0a8a:         ENDIF ELSE IF PARAM$(1) = "CLR" THEN BEGIN
+ 710: 0ab1:             CLR% = 1
+ 711: 0ac2:         ENDIF ELSE IF PARAM2.LEN% > 0 AND PARAM$(1) <> "ALL" AND PARAM$(1) <> "CLR" THEN BEGIN
+ 712: 0b35:             FILE.NAME$ = PARAM$(1)
+ 713: 0b5a:             CHK.FILE% = 1
+ 714: 0b68:         ENDIF
+ 715: 0b70:     ENDIF 
+ 716: 0b78:     
+ 717: 0b78: IF ALL$ = "YES" THEN BEGIN
+ 718: 0b93:     GOSUB CHECK.ALL
+ 719: 0ba7: ENDIF ELSE IF CHK.FILE% = 1 THEN BEGIN
+ 720: 0bb6:     GOSUB CHECK.FILE
+ 721: 0bc8: ENDIF
+ 722: 0bd0: 
+ 723: 0bd0: RETURN
+ 724: 0be0: 
+ 725: 0be0: !If ALL is requested then it will provide the stock level of all items in stock.bin prioritising imstc stock levels where possible
+ 726: 0be0: CHECK.ALL:
+ 727: 0bf0: IF CLR% = 1 THEN GOSUB STCOR.HEADER
+ 728: 0c09: IF PROCESS.KEYED.FILE(STOCK.FILE.NAME$,108,"N" ) THEN BEGIN
+ 729: 0c2e:         PRINT "Unsuccesful"
+ 730: 0c3f: ENDIF
+ 731: 0c47: RETURN
+ 732: 0c57: 
+ 733: 0c57: !If a specific filename is passed it will read through the provided item codes and provide the stock
+ 734: 0c57: CHECK.FILE:
+ 735: 0c67:     INPUTFILE$ = FILE.NAME$
+ 736: 0c80:     OPEN STOCK.FILE.NAME$ KEYED RECL STOCK.RECL% AS STOCK.SESS.NUM%
+ 737: 0cae:     THE.END% = 0 
+ 738: 0cbc:     OPEN INPUTFILE$ AS INPUT.SESS.NUM%
+ 739: 0cdd:     IF CLR% = 1 THEN GOSUB STCOR.HEADER 
+ 740: 0cf6:         WHILE THE.END% = 0
+ 741: 0d01:             IF END # INPUT.SESS.NUM% THEN END.OF.FILE
+ 742: 0d1a:                 READ # INPUT.SESS.NUM%;INPCODE$
+ 743: 0d3b:                 IF INPCODE$ <> "" THEN BEGIN
+ 744: 0d59:                     INPCODE$ = RIGHT$("00000000" + INPCODE$,8)
+ 745: 0d8f:                     IF LEN(INPCODE$) = 8 THEN BEGIN
+ 746: 0dad:                         STOCK.BOOTS.CODE$ = PACK$(INPCODE$)
+ 747: 0dcd:                         RC% = READ.STOCK
+ 748: 0ddd:                         IF NOT RC% THEN BEGIN
+ 749: 0df0:                                 STOCK.IC$ = UNPACK$(STOCK.BOOTS.CODE$)
+ 750: 0e11:                                 STOCK.SL$ = STR$(STOCK.STOCK.FIG%)
+ 751: 0e31:                                GOSUB IMSTC.CHECK
+ 752: 0e43:                                IF CLR% = 0 THEN PRINT "Item Code: " + STOCK.IC$ + "   Stock Level: " + STOCK.SL$
+ 753: 0e7a:                               IF CLR% = 1 AND STOCK.SL$ <> "0" THEN GOSUB STCOR.MAIN
+ 754: 0ec1:                          ENDIF ELSE BEGIN
+ 755: 0ec9:                                 PRINT "Item Code: " + STOCK.IC$ + " not found in stock.bin"
+ 756: 0ef1:                  ENDIF
+ 757: 0ef9:               ENDIF
+ 758: 0f01:         ENDIF        
+ 759: 0f09:             LOOP.END:
+ 760: 0f19:             WEND
+ 761: 0f2b:     CLOSE INPUT.SESS.NUM%
+ 762: 0f3c:     CLOSE STOCK.SESS.NUM%
+ 763: 0f50: RETURN
+ 764: 0f60: 
+ 765: 0f60: !Checks the stock level of the item in the IMSTC file
+ 766: 0f60: IMSTC.CHECK:
+ 767: 0f70: IMSTC.BAR.CODE$ = PACK$(RIGHT$("000000000000000000" + LEFT$(STOCK.IC$,(LEN(STOCK.IC$) - 1)),22))                        
+ 768: 0fcf: RC% = READ.IMSTC
+ 769: 0fdf: 
+ 770: 0fdf: IF NOT RC% THEN BEGIN
+ 771: 0fef:     IF STOCK.SL$ <> STR$(IMSTC.STOCK.FIGURE%) THEN BEGIN
+ 772: 1018:         STOCK.SL$ = STR$(IMSTC.STOCK.FIGURE%)
+ 773: 1038:     ENDIF
+ 774: 1040: ENDIF
+ 775: 1048: RETURN 
+ 776: 1058: 
+ 777: 1058: 
+ 778: 1058: 
+ 779: 1058: !Used for looping through the input file
+ 780: 1058: END.OF.FILE:
+ 781: 1068: THE.END% = 1
+ 782: 1076: GOTO LOOP.END:
+ 783: 1081: RETURN
+ 784: 1091: 
+ 785: 1091: NO.FILE:
+ 786: 10a1: PRINT "INPUT FILE NOT FOUND"
+ 787: 10b2: STOP
+ 788: 10bf: 
+ 789: 10bf: 
+ 790: 10bf: !Creates the header file for STCOR
+ 791: 10bf: STCOR.HEADER:
+ 792: 10cf:     CREATE STCOR.FILE.NAME$ AS STCOR.SESS.NUM%
+ 793: 10f6:     STCOR.ITEM.CODE$ = PACK$("00000000")
+ 794: 1112:     STCOR.SERIAL.NO$ = PACK$("001341")
+ 795: 112e:     STCOR.STORE.NO$  = STORE.NUMBER$
+ 796: 1149:     STCOR.RUN.TYPE$  = "R"
+ 797: 1160:     RECORDS% = 0
+ 798: 1175: 
+ 799: 1175:     WRITE FORM "C4,C3,C4,C1,C8"; #STCOR.SESS.NUM%;                      \   
+ 800: 11df:                                   STCOR.ITEM.CODE$,                     \       
+ 801: 11df:                                   STCOR.SERIAL.NO$,                     \
+ 802: 11df:                                   STCOR.STORE.NO$,                      \
+ 803: 11df:                                   STCOR.RUN.TYPE$,                      \
+ 804: 11df:                                   STCOR.HDR.FILLER$
+ 805: 11df:     HDR.WRTN% = 1
+ 806: 11ed: RETURN
+ 807: 11fd: 
+ 808: 11fd: !Creates an item record for STCOR
+ 809: 11fd: STCOR.MAIN:
+ 810: 120d:     STCOR.ITEM.CODE$   = PACK$(STOCK.IC$)
+ 811: 122d:     STCOR.STMVT.DATE$  = PACK$(DATE$)
+ 812: 124a:     STCOR.SALES.QUANT% = 0
+ 813: 125b:     STCOR.STMVT.QUANT% = 0 
+ 814: 126c:     STCOR.STOCK.COUNT% = 0
+ 815: 127d:     STCOR.STKCNT.FLAG$ = "Z"
+ 816: 1294: 
+ 817: 1294: WRITE FORM "C4,C3,3I2,C1,C6"; #STCOR.SESS.NUM%;                     \   
+ 818: 1312:                                    STCOR.ITEM.CODE$,                    \       
+ 819: 1312:                                    STCOR.STMVT.DATE$,                   \
+ 820: 1312:                                    STCOR.SALES.QUANT%,                  \
+ 821: 1312:                                    STCOR.STMVT.QUANT%,                  \
+ 822: 1312:                                    STCOR.STOCK.COUNT%,                  \
+ 823: 1312:                                    STCOR.STKCNT.FLAG$,                  \
+ 824: 1312:                                    STCOR.DET.FILLER$
+ 825: 1312: RECORDS% = RECORDS% + 1                                   
+ 826: 132b: RETURN
+ 827: 133b: 
+ 828: 133b: !Creates a trailer record for STCOR
+ 829: 133b: STCOR.TRAILER:
+ 830: 134b:     IF HDR.WRTN% = 1 THEN BEGIN 
+ 831: 135d:         STCOR.ITEM.CODE$ = PACK$("09999999")
+ 832: 1379:         STCOR.REC.COUNT% = RECORDS% + 2
+ 833: 1394:                                   
+ 834: 1394:         WRITE FORM "C4,I4,C12"; #STCOR.SESS.NUM%;                           \   
+ 835: 13de:                              STCOR.ITEM.CODE$,                          \       
+ 836: 13de:                              STCOR.REC.COUNT%,                          \
+ 837: 13de:                              STCOR.TRL.FILLER$
+ 838: 13de:         CLOSE STCOR.SESS.NUM%
+ 839: 13f2:     ENDIF
+ 840: 13fa: 
+ 841: 13fa: RETURN
+ 842: 140a: 
+ 843: 140a: TERMINATION:
+ 844: 141a: IF CLR% = 1 THEN GOSUB STCOR.TRAILER
+ 845: 1433: CLOSE IMSTC.SESS.NUM%
+ 846: 1447: CLOSE DIRSTK.SESS.NUM%
+ 847: 1458: IF CLR% = 1 THEN PRINT "Program complete. STCOR generated with " + STR$(STCOR.REC.COUNT% - 2) + " item records."
+ 848: 14a0: RETURN
+ 849: 14b0: 
+ 850: 14b0:            
+ 851: 14b0: ERROR.DETECTED:
+ 852: 14c0:     PRINT   
+ 853: 14cd:     PRINT "DIAGNOSTIC MESSAGES :"   
+ 854: 14de:     PRINT "    FILE NUMBER IS   :",ERRF%     
+ 855: 14fa:     PRINT "    ERROR CODE       :",ERR     
+ 856: 1518:     PRINT "    ERROR NUMBER     :",ERRN      
+ 857: 1537:     PRINT "    CODE LINE        :",ERRL     
+ 858: 1553:     PRINT                             
+ 859: 1560:     PRINT "######## has ended in error."      
+ 860: 1576:     END
+ 861: 1576:     
+ 862: 1576: End of Compilation

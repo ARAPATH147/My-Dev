@@ -1,0 +1,1184 @@
+   1: 0002: \******************************************************************************
+   2: 0002: \******************************************************************************
+   3: 0002: \***
+   4: 0002: \***
+   5: 0002: \***   PROJUNK utility     4/1/2015             Ranjith Gopalankutty
+   6: 0002: \***
+   7: 0002: \***   Original version
+   8: 0002: \***
+   9: 0002: \***
+  10: 0002: \***   Usage
+  11: 0002: \***   This utility will help to clear the junk characters from Second
+  12: 0002: \***   priority queue. Transactions which are failed at SAP PI side can
+  13: 0002: \***   be reprocessed using this utility by specifying the date.
+  14: 0002: \***
+  15: 0002: \***            PROJUNK 'HELP' 
+  16: 0002: \*** 
+  17: 0002: \***   Using the utility with 'HELP' switch will display the help screen.
+  18: 0002: \***   By specifying the date parameter, PROJUNK will find respective 
+  19: 0002: \***   DQ2CE or ADQ2CE files. If the user calls the program without 
+  20: 0002: \***   specifying any parameter also make the program to call the
+  21: 0002: \***   help screen. 
+  22: 0002: 
+  23: 0002: \******************************************************************************
+  24: 0002: \******************************************************************************
+  25: 0002: \******************************************************************************
+  26: 0002: \***
+  27: 0002: \***    Included code defining function related Global variables
+  28: 0002: \***
+  29: 0002: \******************************************************************************
+  30: 0002: 
+  31: 0002:     %INCLUDE BEMFDEC.J86
+  32: 0002: \******************************************************************************
+  33: 0002: \***
+  34: 0002: \***	   %INCLUDE FOR BOOTS ERROR MESSAGE FILE - FIELD DECLARATIONS
+  35: 0002: \***                                             - FILE REFERENCE PARAMETERS
+  36: 0002: \***
+  37: 0002: \***                         FILE TYPE : Direct
+  38: 0002: \***
+  39: 0002: \***                         REFERENCE : BEMFDEC
+  40: 0002: \***
+  41: 0002: \***	Version A               Mark Walker                  1st November 1993
+  42: 0002: \***
+  43: 0002: \******************************************************************************
+  44: 0002: 
+  45: 0002: 	STRING GLOBAL			BEMF.MESSAGE$,			\
+  46: 0002: 					BEMF.FILE.NAME$
+  47: 0002: 
+  48: 0002: 	INTEGER*2 GLOBAL		BEMF.RECL%,			\
+  49: 0002: 					BEMF.REPORT.NUM%,		\
+  50: 0002: 					BEMF.SESS.NUM%
+  51: 0002: 
+  52: 0002: 	INTEGER*4 GLOBAL		BEMF.REC.NO%
+  53: 0002:     %INCLUDE PSBF01G.J86    !   APPLICATION.LOG
+  54: 0002: REM \
+  55: 0002: \*******************************************************************************
+  56: 0002: \*******************************************************************************
+  57: 0002: \***
+  58: 0002: \***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+  59: 0002: \***
+  60: 0002: \***                FUNCTION NUMBER    : PSBF01
+  61: 0002: \***
+  62: 0002: \***                REFERENCE          : PSBF01G.J86
+  63: 0002: \***
+  64: 0002: \***                DATE OF LAST AMENDMENT  - 27/2/86
+  65: 0002: \***
+  66: 0002: \***
+  67: 0002: \*******************************************************************************
+  68: 0002: 
+  69: 0002:       INTEGER GLOBAL  F01.RETURN.CODE%
+  70: 0002: 
+  71: 0002: 
+  72: 0002:     %INCLUDE PSBF20G.J86    !   ALLOCATE.DEALLOCATE.SESS.NUM
+  73: 0002: REM\
+  74: 0002: \*******************************************************************************
+  75: 0002: \*******************************************************************************
+  76: 0002: \***
+  77: 0002: \***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+  78: 0002: \***
+  79: 0002: \***                       REFERENCE     : PSBF20G.J86
+  80: 0002: \*** 
+  81: 0002: \***     Version A              Bruce Scrive                   5th May 1988   
+  82: 0002: \*** 
+  83: 0002: \***     Version B              Robert Cowey                   7th May 1991
+  84: 0002: \***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+  85: 0002: \***     to two byte integer.
+  86: 0002: \***
+  87: 0002: \***     Version D              Andrew Wedgeworth             1st July 1992
+  88: 0002: \***     F20.RETURN.CODE% removed as it is no longer required.
+  89: 0002: \***
+  90: 0002: \*******************************************************************************
+  91: 0002: \*******************************************************************************
+  92: 0002: 
+  93: 0002:       STRING    GLOBAL F20.FILE.NAME$,                                 \
+  94: 0002:                        F20.STRING.FILE.NO$,                            \
+  95: 0002:                        F20.TABLE.DIMENSIONED.FLAG$,                    \
+  96: 0002:                        SESS.NUM.TABLE$(1)
+  97: 0002: 
+  98: 0002:       INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+  99: 0002: 
+ 100: 0002:       ! 1 line deleted from here                                       ! DAW 
+ 101: 0002: 
+ 102: 0002:       
+ 103: 0002:   
+ 104: 0002: \******************************************************************************
+ 105: 0002: \***
+ 106: 0002: \***    Global Variable definitions
+ 107: 0002: \***
+ 108: 0002: \******************************************************************************
+ 109: 0002: 
+ 110: 0002: 
+ 111: 0002:      STRING GLOBAL                                                      \
+ 112: 0002:          BATCH.SCREEN.FLAG$,                                            \
+ 113: 0002:          CURRENT.CODE$,                                                 \
+ 114: 0002:          CURRENT.CODE.LOGGED$,                                          \
+ 115: 0002:          FILE.OPERATION$,                                               \
+ 116: 0002:          FUNCTION.FLAG$,                                                \
+ 117: 0002:          MODULE$,                                                       \
+ 118: 0002:          MODULE.NUMBER$,                                                \
+ 119: 0002:          PROGRAM$,                                                      \
+ 120: 0002:          PASSED.STRING$,                                                \
+ 121: 0002:          VAR.STRING.1$,                                                 \
+ 122: 0002:          VAR.STRING.2$                                                  !
+ 123: 0002: 
+ 124: 0002:      INTEGER*1 GLOBAL                                                   \
+ 125: 0002:          ERROR.COUNT%,                                                  \
+ 126: 0002:          FALSE,                                                         \
+ 127: 0002:          TRUE                                                           !
+ 128: 0002:         
+ 129: 0002:      INTEGER*2 GLOBAL                                                   \
+ 130: 0002:          CURRENT.REPORT.NUM%,                                           \
+ 131: 0002:          EVENT.NO%,                                                     \
+ 132: 0002:          MESSAGE.NO%,                                                   \
+ 133: 0002:          PASSED.INTEGER%                                                !    
+ 134: 0002: 
+ 135: 0002: \******************************************************************************
+ 136: 0002: \***
+ 137: 0002: \***   VARIABLE DECLARATIONS
+ 138: 0002: \***
+ 139: 0002: \******************************************************************************
+ 140: 0002: 
+ 141: 0002:     STRING                                                              \
+ 142: 0002:          CMD$,                                                          \
+ 143: 0002:          CFG.FILE.NAME$,                                                \
+ 144: 0002:          DD$,                                                           \
+ 145: 0002:          DQ2CE.FILE.NAME$,                                              \
+ 146: 0002:          DQ2CE.FILE.PREFIX$,                                            \
+ 147: 0002:          DQ2CE.FILE.SUFFIX$,                                            \
+ 148: 0002:          ERR.FILE.NAME$,                                                \
+ 149: 0002:          ERR.MESSAGE$,                                                  \
+ 150: 0002:          FILE.PATH.C$,                                                  \
+ 151: 0002:          FILE.PATH.D$,                                                  \
+ 152: 0002:          INPUT1$,                                                       \
+ 153: 0002:          INPUT2$,                                                       \
+ 154: 0002:          JUNK.CHAR$,                                                    \
+ 155: 0002:          LINE.STRING$,                                                  \
+ 156: 0002:          MM$,                                                           \
+ 157: 0002:          PROCESSED.STRING$,                                             \
+ 158: 0002:          PROJUNK.CFG.FILE$,                                             \
+ 159: 0002:          PROJUNK.DAT.FILE$,                                             \
+ 160: 0002: 		 PROJUNK.ARR$(1),                                               \
+ 161: 0002:          SPACE$,                                                        \
+ 162: 0002:          SWITCH$,                                                       \
+ 163: 0002:          TEMP.STRING$,                                                  \
+ 164: 0002:          VAL1$,                                                         \
+ 165: 0002:          YY$                                                            \
+ 166: 0002: 
+ 167: 0002:      INTEGER*1                                                          \
+ 168: 0002:          EOF,                                                           \
+ 169: 0002: 		 EOF1,                                                          \
+ 170: 0002:          RC%                                                            !
+ 171: 0002: 
+ 172: 0002:      INTEGER*2                                                          \
+ 173: 0002:          COUNT%,                                                        \
+ 174: 0002:          DATE%,                                                         \
+ 175: 0002:          DD%,                                                           \
+ 176: 0002:          DQ2CE.SESS.NUM%,                                               \
+ 177: 0002:          DQ2CE.ARRAY(1),                                                \
+ 178: 0002:          ERR.SESS.NUM%,                                                 \
+ 179: 0002:          FOUND%,                                                        \
+ 180: 0002:          I%,                                                            \
+ 181: 0002:          LEN%,                                                          \
+ 182: 0002:          MONTH.DAYS%,                                                   \
+ 183: 0002:          POS%,                                                          \
+ 184: 0002:          PROJUNK.CFG.SESS%,                                             \
+ 185: 0002:          PROJUNK.DAT.SESS%                                              !
+ 186: 0002: 
+ 187: 0002:      INTEGER*4                                                          \
+ 188: 0002: 	     ARRAY.COUNT%,                                                  \
+ 189: 0002: 		 INDEX%,                                                        \
+ 190: 0002:          J%,                                                            \
+ 191: 0002:          K%,                                                            \
+ 192: 0002:          LAST.JUNK%,                                                    \
+ 193: 0002:          RECORD%,                                                       \
+ 194: 0002:          TRANSACTION%,                                                  \
+ 195: 0002:          TRANSACTION1%                                                  !
+ 196: 0002: 
+ 197: 0002: 
+ 198: 0002: \******************************************************************************
+ 199: 0002: \***
+ 200: 0002: \***    FUNCTION DECLARATIONS
+ 201: 0002: \***
+ 202: 0002: \******************************************************************************
+ 203: 0002: 
+ 204: 0002:      %INCLUDE BASROUT.J86   ! OSShell function
+ 205: 0002: \*LIB   BVEJ BASROUT  J86      03/11/97 08:16:26 PIDBLD3  *    FIX
+ 206: 0002: \*PROM  BVEJ BASROUT  J86      03/10/97 17:18:40 PIDBLD3  MVEJ IR34352
+ 207: 0002: \*RTIME BVEJ BASROUT  J86      03/10/97 17:18:41 PIDBLD3  MVEJ IR34352
+ 208: 0002: \*LIB   MVEJ BASROUT  J86      03/05/97 10:48:46 EDJRAL   *    IR34352
+ 209: 0002: \*LIB   MVEJ BASROUT  J86      02/17/97 11:19:56 EDJRAL   *    REASONAR
+ 210: 0002: \*LIB   MVEJ BASROUT  J86      02/14/97 15:59:11 EDJRAL   *    REASONAR
+ 211: 0002: ! BASROUT.J86 - this file is to be included in any BASIC code which utilizes
+ 212: 0002: !   the BASROUT.OBJ routines.  These routines were written
+ 213: 0002: !  using Metaware C and are intended to provide functions which
+ 214: 0002: !         are either not available in 4680 CBASIC or which can be more
+ 215: 0002: !               efficiently handled by the C language.  Their usage is
+ 216: 0002: !  offered on an "AT YOUR OWN RISK" basis.
+ 217: 0002: !
+ 218: 0002: !               The insert/extract routines usefulness may not be immediately
+ 219: 0002: !               apparent.  Their intention is that they be used in conjunction
+ 220: 0002: !               with a read/write form command.  They can more efficiently
+ 221: 0002: !               parse a string into many different variables than can the
+ 222: 0002: !               read form statement.  So instead of a long list of data var's
+ 223: 0002: !               it may be more efficient to just read/write one long string
+ 224: 0002: !               and then use the insert/extract routines to parse out the
+ 225: 0002: !   data.
+ 226: 0002: 
+ 227: 0002: ! ******************* SUB PROCESS FUNCTIONS *********************************
+ 228: 0002: 
+ 229: 0002: function osshell(cmd.line$) external   ! routine to start
+ 230: 0002:        ! another program.
+ 231: 0002:            integer*4    osshell    ! Upon completion of
+ 232: 0002:            string       cmd.line$   ! program, control is
+ 233: 0002:        ! returned to calling
+ 234: 0002: end function      ! program.
+ 235: 0002: !
+ 236: 0002: ! NOTES:  Program must be a 286 type file.  This does not exclude
+ 237: 0002: !         the capability to execute a batch file however.  Simply pass the
+ 238: 0002: !         following:
+ 239: 0002: !              c:\adx_spgm\command.286 batfile
+ 240: 0002: !         where batfile is the name of the batch file to be executed.
+ 241: 0002: !
+ 242: 0002: ! IMPORTANT: When using osshell to execute a batch file as described above,
+ 243: 0002: !            the final command in the batch file must be "exit".  If not,
+ 244: 0002: !       control is never given back to the calling program.
+ 245: 0002: 
+ 246: 0002: ! ************************ MEMORY RELATED FUNCTIONS ************************
+ 247: 0002: 
+ 248: 0002: function memfree(choice) external   ! routine to que the
+ 249: 0002:        ! status of the
+ 250: 0002:  integer*4 memfree    ! machine's memory:
+ 251: 0002:  integer*2 choice    ! Options:
+ 252: 0002:        !    1 - free
+ 253: 0002: end function      !    2 - total
+ 254: 0002:        !    3 - system
+ 255: 0002: 
+ 256: 0002: ! ********************** TIMEDATE RELATED FUNCTIONS ************************
+ 257: 0002: 
+ 258: 0002: function timedate(choice) external   ! routine to que the
+ 259: 0002:        ! OS's timedate table
+ 260: 0002:  integer*4 timedate   ! Choices:
+ 261: 0002:  integer*2 choice    !    1 - millisec's
+ 262: 0002:        !        since midnight
+ 263: 0002: end function      !    2 - minutes from
+ 264: 0002:        !  UCT (timezone)
+ 265: 0002:        !    3 - day of week
+ 266: 0002:        !   0-Sunday
+ 267: 0002:        !  6-Saturday
+ 268: 0002: 
+ 269: 0002: function settime(msecs) external   ! routine to set the
+ 270: 0002:        ! time on the controller
+ 271: 0002:  integer*4  settime    ! msecs is the desired
+ 272: 0002:  integer*4 msecs    ! number of milliseconds
+ 273: 0002:        ! since midnight
+ 274: 0002: end function      ! Returns negative on
+ 275: 0002:        ! error
+ 276: 0002: ! NOTE:  This routine sets the time only on the controller.  The terminals'
+ 277: 0002: ! time will not be updated until 1 AM or unless a terminal is STC'd.
+ 278: 0002: ! At 1 AM the controller broadcasts the new time to all terminals.
+ 279: 0002: ! Insure this is taken into consideration when using this routine.
+ 280: 0002: 
+ 281: 0002: !******************** DISK FILE RELATED FUNCTIONS *************************
+ 282: 0002: 
+ 283: 0002: function truncate(name,length) external   ! routine to truncate
+ 284: 0002:        ! the specified file
+ 285: 0002:  integer*4 truncate   ! to a given length.
+ 286: 0002:  string  name
+ 287: 0002:  integer*4 length
+ 288: 0002: 
+ 289: 0002: end function
+ 290: 0002: 
+ 291: 0002: !******************** STRING VALUE RELATED FUNCTIONS **********************
+ 292: 0002: 
+ 293: 0002: function isalpha(bstrn) external   ! routine to identify
+ 294: 0002:        ! if the specified
+ 295: 0002:  integer*1 isalpha    ! string contains all
+ 296: 0002:  string  bstrn    ! alphabetic char's
+ 297: 0002:        ! Returns:
+ 298: 0002: end function      !     0 - all alpha
+ 299: 0002:        !     X - byte of 1st
+ 300: 0002:        !         non-alpha
+ 301: 0002:        !   char
+ 302: 0002: 
+ 303: 0002: function isdigit(bstrn) external   ! routine to identify
+ 304: 0002:        ! if the specified
+ 305: 0002:  integer*1 isdigit    ! string contains all
+ 306: 0002:  string  bstrn    ! numeric char's
+ 307: 0002:        ! Returns:
+ 308: 0002: end function      !     0 - all numeric
+ 309: 0002:        !     X - byte of 1st
+ 310: 0002:        !         non-numeric
+ 311: 0002:        !   char
+ 312: 0002: 
+ 313: 0002: function islower(bstrn) external   ! routine to identify
+ 314: 0002:        ! if the specified
+ 315: 0002:  integer*1 islower    ! string contains all
+ 316: 0002:  string  bstrn    ! lower case char's
+ 317: 0002:        ! Returns:
+ 318: 0002: end function      !     0 - all lowercase
+ 319: 0002:        !     X - byte of 1st
+ 320: 0002:        !         non-lowercase
+ 321: 0002:        !   char
+ 322: 0002: 
+ 323: 0002: function isupper(bstrn) external   ! routine to identify
+ 324: 0002:        ! if the specified
+ 325: 0002:  integer*1 isupper    ! string contains all
+ 326: 0002:  string  bstrn    ! upper case char's
+ 327: 0002:        ! Returns:
+ 328: 0002: end function      !     0 - all uppercase
+ 329: 0002:        !     X - byte of 1st
+ 330: 0002:        !         non-uppercase
+ 331: 0002:        !   char
+ 332: 0002: 
+ 333: 0002: function toalpha(bstrn) external   ! routine to convert
+ 334: 0002:        ! non-alpha or non-num
+ 335: 0002:    integer*2 toalpha    ! char's to spaces
+ 336: 0002:  string  bstrn    ! Returns:
+ 337: 0002: end function      !   x - no. of char's
+ 338: 0002:        !       changed
+ 339: 0002: 
+ 340: 0002: ! ********************* USER/GROUP ZERO LEVEL FUNCTIONS *********************
+ 341: 0002: 
+ 342: 0002: function idlecount(choice) external   ! routine to either
+ 343: 0002:        ! set to zero or queue
+ 344: 0002:  integer*4 idlecount   ! the value of the
+ 345: 0002:  integer*1 choice    ! processor's idlecount
+ 346: 0002:        ! Choice:
+ 347: 0002: end function      !     0 - set to zero
+ 348: 0002: !       !     1 - get value
+ 349: 0002: ! NEEDS USER/GROUP 0 LEVEL OF AUTHORIZATION  ! Returns:
+ 350: 0002: ! TO WORK - This level is not available unless  !     X - idlecount
+ 351: 0002: ! the file ADXCSOUF.DAT file is "patched".  This !    -X - error code
+ 352: 0002: ! is highly unrecommended.
+ 353: 0002: 
+ 354: 0002: function logical(actname,logname,choice) external ! routine to set a
+ 355: 0002:        ! a logical name.
+ 356: 0002:  integer*4 logical    ! parms are self
+ 357: 0002:         string  logname    ! explanatory except
+ 358: 0002:  string  actname    ! for choice:
+ 359: 0002:  integer*1 choice    !   0 - set process
+ 360: 0002:        !   1 - set system
+ 361: 0002: end function      !   2 - get process
+ 362: 0002:        !   3 - get system
+ 363: 0002: 
+ 364: 0002: ! NOTE:  Only the setting of a system level of logical name requires
+ 365: 0002: ! user/group zero level of authorization.  Any application may query any
+ 366: 0002: ! logical name.  Setting of a system logical name is only applicable until
+ 367: 0002: ! the system is IPL'd.  A process logical name is only active when that
+ 368: 0002: ! process is active.
+ 369: 0002: 
+ 370: 0002: !******************** STRING PARSING FUNCTIONS *****************************
+ 371: 0002: 
+ 372: 0002: function inserts(whole,part,offset) external  ! routine to insert a
+ 373: 0002:        ! string (part) into
+ 374: 0002:  integer*2 INSERTS    ! another string (whole)
+ 375: 0002:  string  whole    ! starting at specified
+ 376: 0002:  string  part    ! character (offset)
+ 377: 0002:  integer*2 offset
+ 378: 0002: 
+ 379: 0002: end function
+ 380: 0002: 
+ 381: 0002: function cinsert4(integer4,bstring,offset) external   ! routine to insert
+ 382: 0002:        ! a 4-byte integer into
+ 383: 0002:  integer*1 cinsert4   ! a string starting at
+ 384: 0002:  integer*4 integer4   ! byte specified by
+ 385: 0002:  string  bstring    ! offset (1-based)
+ 386: 0002:  integer*2 offset    ! Returns:
+ 387: 0002:        !     0 - Success
+ 388: 0002: end function      !    -1 - String overrun
+ 389: 0002: 
+ 390: 0002: function cinsert2(integer2,bstring,offset) external  ! routine to insert
+ 391: 0002:        ! a 2-byte integer into
+ 392: 0002:  integer*1 cinsert2   ! a string starting at
+ 393: 0002:  integer*2 integer2   ! byte specified by
+ 394: 0002:  string  bstring    ! offset (1-based)
+ 395: 0002:  integer*2 offset    ! Returns:
+ 396: 0002:        !     0 - Success
+ 397: 0002: end function      !    -1 - String overrun
+ 398: 0002: 
+ 399: 0002: function cinsert1(bstring,integer1,offset) external  ! routine to insert
+ 400: 0002:        ! a 1-byte integer into
+ 401: 0002:  integer*1 cinsert1   ! a string starting at
+ 402: 0002:  integer*1 integer1   ! byte specified by
+ 403: 0002:  string  bstring    ! offset (1-based)
+ 404: 0002:  integer*2 offset    ! Returns:
+ 405: 0002:        !     0 - Success
+ 406: 0002: end function      !    -1 - String overrun
+ 407: 0002: 
+ 408: 0002: function extracts(whole,part,offset) external  ! routine to extract a
+ 409: 0002:        ! string (part) from
+ 410: 0002:  integer*2 EXTRACTS   ! another string (whole)
+ 411: 0002:  string  whole    ! starting at specified
+ 412: 0002:  string  part    ! character (offset)
+ 413: 0002:  integer*2 offset
+ 414: 0002: 
+ 415: 0002: end function
+ 416: 0002: 
+ 417: 0002: function cextract4(bstring,offset) external  ! routine to extract
+ 418: 0002:        ! a 4-byte integer from
+ 419: 0002:  integer*4 cextract4   ! a string starting at
+ 420: 0002:                        ! byte specified by
+ 421: 0002:  string  bstring    ! offset (1-based)
+ 422: 0002:  integer*2 offset    ! Returns:
+ 423: 0002:        !     X - 4 byte integer
+ 424: 0002: end function      !    -1 - String overrun
+ 425: 0002: 
+ 426: 0002: function cextract2(bstring,offset) external  ! routine to extract
+ 427: 0002:        ! a 2-byte integer from
+ 428: 0002:  integer*2 cextract2   ! a string starting at
+ 429: 0002:                        ! byte specified by
+ 430: 0002:  string  bstring    ! offset (1-based)
+ 431: 0002:  integer*2 offset    ! Returns:
+ 432: 0002:        !     X - 2 byte integer
+ 433: 0002: end function      !    -1 - String overrun
+ 434: 0002: 
+ 435: 0002: function cextract1(bstring,offset) external  ! routine to extract
+ 436: 0002:        ! a 1-byte integer from
+ 437: 0002:  integer*1 cextract1   ! a string starting at
+ 438: 0002:                        ! byte specified by
+ 439: 0002:  string  bstring    ! offset (1-based)
+ 440: 0002:  integer*2 offset    ! Returns:
+ 441: 0002:        !     X - 1 byte integer
+ 442: 0002: end function      !    -1 - String overrun
+ 443: 0002: 
+ 444: 0002: 
+ 445: 0002: function srchdir (file.name$,dtbl.buffer$) external ! routine to return
+ 446: 0002:        ! file names and sizes
+ 447: 0002:        ! Return values:
+ 448: 0002:        !    -1  no matches
+ 449: 0002:        !        found on first
+ 450: 0002:        !        call
+ 451: 0002:        !    0   no matches
+ 452: 0002:        !        found on sub-
+ 453: 0002:        !        sequent calls
+ 454: 0002:        !    Pos Success
+ 455: 0002:        !    Neg OS Rtn Code
+ 456: 0002: ! Usage Note:  If searching for all occurences of a particular file name,
+ 457: 0002: ! first initialize dtbl.buffer$ to 48 Nulls (pack$("00")) and issue a call
+ 458: 0002: ! to srchdir.  If any matches are found, a positive value will be returned.
+ 459: 0002: ! To see if any more matches exist, just issue another call to srchdir without
+ 460: 0002: ! resetting the values of dtbl.buffer$.  If any are found, a positive value
+ 461: 0002: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 462: 0002: ! describing file will be returned in the dtbl.buffer$ after each call.  Format
+ 463: 0002: ! of this data is defined below.
+ 464: 0002: 
+ 465: 0002:  integer*4 srchdir
+ 466: 0002: 
+ 467: 0002:  string  file.name$   ! file name to start
+ 468: 0002:        ! search (18 bytes max)
+ 469: 0002:        ! Wild cards and logical
+ 470: 0002:        ! names supported.
+ 471: 0002: 
+ 472: 0002:  string  dtbl.buffer$   ! must be initialized
+ 473: 0002:        ! to 48 bytes.  Contains
+ 474: 0002:        ! all of directory info
+ 475: 0002:        ! Initialize to nulls
+ 476: 0002:        ! each time a new file
+ 477: 0002:        ! name is used.
+ 478: 0002: 
+ 479: 0002: ! NOTE:  Format of dtbl.buffer$ string is as follows:
+ 480: 0002: !
+ 481: 0002: ! Offs  Type                    Description Notes
+ 482: 0002: !  0 integer*4  key  use extract4 to access
+ 483: 0002: !  4  string (18 bytes) file name
+ 484: 0002: ! 22 integer*2  attributes use extract2 to access
+ 485: 0002: !      0x01 - Read Only
+ 486: 0002: !      0x02 - Hidden
+ 487: 0002: !      0x04 - System
+ 488: 0002: !      0x08 - Volume Label
+ 489: 0002: !      0x10 - Subdirectory
+ 490: 0002: !      0x20 - Archive (Files)
+ 491: 0002: !      0x40 - Security enabled
+ 492: 0002: !      0x80 - Reserved
+ 493: 0002: !      0x0000 - Local
+ 494: 0002: !      0x4000 - Mirrored/Update
+ 495: 0002: !      0xC000 - Mirrored/Close
+ 496: 0002: !
+ 497: 0002: !      0x6000 - Compound/Update
+ 498: 0002: !      0xE000 - Compound/Close
+ 499: 0002: ! 24 integer*2  record size use extract2 to access
+ 500: 0002: ! 26 integer*1  User ID of Owner
+ 501: 0002: ! 27 integer*1  Group ID of Owner
+ 502: 0002: ! 28 integer*2  File Security
+ 503: 0002: ! 30 string (6 bytes) Reserved
+ 504: 0002: ! 36 integer*4  File Size use extract4 to access
+ 505: 0002: ! 40 integer*2  Year  use extract2 to access
+ 506: 0002: ! 42 integer*1  Month
+ 507: 0002: ! 43 integer*1  Day
+ 508: 0002: ! 44 integer*1  Hour
+ 509: 0002: ! 45 integer*1  Minute
+ 510: 0002: ! 46 integer*1  Second
+ 511: 0002: ! 47 integer*1  Reserved
+ 512: 0002: 
+ 513: 0002: end function
+ 514: 0002: 
+ 515: 0002: function srchproc (proc.name$,ptbl.buffer$) external ! routine to return
+ 516: 0002:        ! process names and
+ 517: 0002:        ! status.  Handy to
+ 518: 0002:        ! determine if a
+ 519: 0002:        ! program is currently
+ 520: 0002:        ! running.
+ 521: 0002:        ! Return values:
+ 522: 0002:        !    -1  no matches
+ 523: 0002:        !        found on first
+ 524: 0002:        !        call
+ 525: 0002:        !    0   no matches
+ 526: 0002:        !        found on sub-
+ 527: 0002:        !        sequent calls
+ 528: 0002:        !    Pos Success
+ 529: 0002:        !    Neg Failure
+ 530: 0002:        !        OS Rtn Code
+ 531: 0002:        ! 80000001h - Insuff
+ 532: 0002:         !        ptbl buffer
+ 533: 0002:        !        Length
+ 534: 0002: ! Usage Note:  If searching for all occurences of a particular process name,
+ 535: 0002: ! first initialize ptbl.buffer$ to 60 Nulls (pack$("00")) and issue a call
+ 536: 0002: ! to srchproc.  If any matches are found, a positive value will be returned.
+ 537: 0002: ! To see if any more matches exist, just issue another call to srchproc without
+ 538: 0002: ! resetting the values of ptbl.buffer$.  If any are found, a positive value
+ 539: 0002: ! will be returned.  This can be repeated until a Zero is returned.  All data
+ 540: 0002: ! describing file will be returned in the ptbl.buffer$ after each call.  Format
+ 541: 0002: ! of this data is defined as follows:
+ 542: 0002: !
+ 543: 0002: !       --------------------------------------------------------
+ 544: 0002: !   0   |                         PID                          |
+ 545: 0002: !       --------------------------------------------------------
+ 546: 0002: !   4   |           FID             |   CID        |   VCID    |
+ 547: 0002: !       --------------------------------------------------------
+ 548: 0002: !   8   |                         NAME                         |
+ 549: 0002: !       --------------------------------------------------------
+ 550: 0002: !  12   |                         NAME cont'd                  |
+ 551: 0002: !       --------------------------------------------------------
+ 552: 0002: !  16   |       NAME cont'd         |   STATE      |  PRIOR    |
+ 553: 0002: !       --------------------------------------------------------
+ 554: 0002: !  20   |                         MAXMEM                       |
+ 555: 0002: !       --------------------------------------------------------
+ 556: 0002: !  24   |       FLAGS               |   USER        |  GROUP   |
+ 557: 0002: !       --------------------------------------------------------
+ 558: 0002: !  28   |                         PARENT                       |
+ 559: 0002: !       --------------------------------------------------------
+ 560: 0002: !  32   |                         EVENTS                       |
+ 561: 0002: !       --------------------------------------------------------
+ 562: 0002: !  36   |                         CODE                         |
+ 563: 0002: !       --------------------------------------------------------
+ 564: 0002: !  40   |                         CSIZE                        |
+ 565: 0002: !       --------------------------------------------------------
+ 566: 0002: !  44   |                         DATA                         |
+ 567: 0002: !       --------------------------------------------------------
+ 568: 0002: !  48   |                         DSIZE                        |
+ 569: 0002: !       --------------------------------------------------------
+ 570: 0002: !  52   |                         HEAP                         |
+ 571: 0002: !       --------------------------------------------------------
+ 572: 0002: !  56   |                         HSIZE                        |
+ 573: 0002: !       --------------------------------------------------------
+ 574: 0002: !
+ 575: 0002: !       PID   Process ID
+ 576: 0002: !       FID  Process's Family ID
+ 577: 0002: !       CID   Physical Console Device Number
+ 578: 0002: !       VCID  Process's Virtual Console Number
+ 579: 0002: !       NAME  Process Name (Application Running)
+ 580: 0002: ! STATE    Process State (0-Run, 1-Waiting, 2-Terminating)
+ 581: 0002: ! PRIOR    Priority
+ 582: 0002: !       MAXMEM  Maximum Memory Allowed
+ 583: 0002: !       FLAGS  Bit 0 (1-System Process, 0-User Process)
+ 584: 0002: !   Bit 1 (1-Locked in Memory, 0-Swappable)
+ 585: 0002: !   Bit 2 (1-Running in SWI context, 0-Running in main context)
+ 586: 0002: !   Bit 3 (1-Superuser Process,0-Not a Superuser Process)
+ 587: 0002: ! USER  User Number
+ 588: 0002: ! GROUP  Group Number
+ 589: 0002: !       PARENT   Parent Process ID
+ 590: 0002: !       EVENTS   Bit Map of events that have completed but not retrieved
+ 591: 0002: !       CODE  Start of code area in user space
+ 592: 0002: ! CSIZE  Size in bytes of code area
+ 593: 0002: !       DATA  Start of data area in user space
+ 594: 0002: ! DSIZE  Size in bytes of data area
+ 595: 0002: !       HEAP  Start of heap area in user space
+ 596: 0002: ! HSIZE  Size in bytes of heap area
+ 597: 0002: !
+ 598: 0002:  integer*4 srchproc
+ 599: 0002: 
+ 600: 0002:  string  proc.name$   ! process name to start
+ 601: 0002:        ! search (10 bytes max)
+ 602: 0002:        ! Wild cards and logical
+ 603: 0002:        ! names supported.
+ 604: 0002: 
+ 605: 0002:  string  ptbl.buffer$   ! must be initialized
+ 606: 0002:        ! to 60 bytes.  Contains
+ 607: 0002:        ! all of process info
+ 608: 0002:        ! Initialize to nulls
+ 609: 0002:        ! each time a new
+ 610: 0002:        ! process name is used.
+ 611: 0002: 
+ 612: 0002: end function
+ 613: 0002: 
+ 614: 0002: function cconstat(timeout) external       ! function similar
+ 615: 0002:                                               ! to BASIC constat%
+ 616: 0002:  integer*2 cconstat   ! waits for either a
+ 617: 0002:  integer*4 timeout    ! key being hit or
+ 618: 0002:        ! the timer expiring
+ 619: 0002:        ! before returning
+ 620: 0002:        ! returns:
+ 621: 0002:        !   -1 error
+ 622: 0002:        !    0 timer expired
+ 623: 0002:        !    x scan code of
+ 624: 0002:        !      key hit
+ 625: 0002: end function
+ 626: 0002: 
+ 627: 0002: function disksize(disk.name$) external   ! function to find
+ 628: 0002:        ! the total size of
+ 629: 0002:  integer*4 disksize   ! the specified disk
+ 630: 0002:  string  disk.name$   ! name (e.g. "h0:")
+ 631: 0002:        ! if return value is
+ 632: 0002:        ! negative, error
+ 633: 0002: end function      ! was received
+ 634: 0002: 
+ 635: 0002: 
+ 636: 0002: 
+ 637: 0002: \******************************************************************************
+ 638: 0002: \***
+ 639: 0002: \***    Included code defining external Boots functions
+ 640: 0002: \***
+ 641: 0002: \******************************************************************************
+ 642: 0002: 
+ 643: 0002:      %INCLUDE PSBF01E.J86   ! APPLICATION.LOG
+ 644: 0002: REM \
+ 645: 0002: \*******************************************************************************
+ 646: 0002: \*******************************************************************************
+ 647: 0002: \***
+ 648: 0002: \***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+ 649: 0002: \***
+ 650: 0002: \***                      FUNCTION NUMBER   : PSBF01
+ 651: 0002: \***
+ 652: 0002: \***                    INCLUDE REFERENCE : PSBF01E.J86
+ 653: 0002: \*** 
+ 654: 0002: \***      Version B           Andrew Wedgeworth          1st July 1992
+ 655: 0002: \***      Three parameters which passed to the function have been removed.
+ 656: 0002: \***      APPLICATION.LOG has been added as a variable name (this holds the
+ 657: 0002: \***      return code).
+ 658: 0002: \***
+ 659: 0002: \*******************************************************************************
+ 660: 0002: 
+ 661: 0002: 
+ 662: 0002:    FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+ 663: 0002:                              VAR.STRING.1$,                                   \
+ 664: 0002:                              VAR.STRING.2$,                                   \
+ 665: 0002:                              EVENT.NO%)  EXTERNAL
+ 666: 0002: 
+ 667: 0002:       INTEGER*1 EVENT.NO%
+ 668: 0002: 
+ 669: 0002:       INTEGER*2 APPLICATION.LOG,                                       \ GAW
+ 670: 0002:                 MESSAGE.NO%
+ 671: 0002: 
+ 672: 0002:       STRING VAR.STRING.1$,                                            \
+ 673: 0002:              VAR.STRING.2$
+ 674: 0002: 
+ 675: 0002:    END FUNCTION
+ 676: 0002: 
+ 677: 0002: \*******************************************************************************
+ 678: 0002:      %INCLUDE PSBF20E.J86   ! ALLOCATE.DEALLOCATE.SESS.NUM
+ 679: 0002: REM\
+ 680: 0002: \*******************************************************************************
+ 681: 0002: \*******************************************************************************
+ 682: 0002: \***
+ 683: 0002: \***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+ 684: 0002: \***
+ 685: 0002: \***                  REFERENCE     : PSBF20E.J86
+ 686: 0002: \***
+ 687: 0002: \***     VERSION C            Janet Smith                13th May 1992
+ 688: 0002: \***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+ 689: 0002: \***     128 files.
+ 690: 0002: \***
+ 691: 0002: \***     VERSION D.           Andrew Wedgeworth          1st July 1992
+ 692: 0002: \***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+ 693: 0002: \***     as a variable.  This new variable contains the function's return
+ 694: 0002: \***     code.
+ 695: 0002: \***
+ 696: 0002: \*******************************************************************************
+ 697: 0002: \*******************************************************************************
+ 698: 0002: 
+ 699: 0002:    FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+ 700: 0002:                               PASSED.INTEGER%,                         \
+ 701: 0002:                               PASSED.STRING$)                          \
+ 702: 0002:    EXTERNAL
+ 703: 0002: 
+ 704: 0002:    STRING    FUNCTION.FLAG$,                                           \
+ 705: 0002:              PASSED.STRING$
+ 706: 0002:    ! 3 variables removed from here                                     ! CAW
+ 707: 0002: 
+ 708: 0002: 
+ 709: 0002:    INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+ 710: 0002:              PASSED.INTEGER%				               ! CJAS
+ 711: 0002: 
+ 712: 0002:    END FUNCTION
+ 713: 0002: 
+ 714: 0002: 
+ 715: 0002: \******************************************************************************
+ 716: 0002: \***
+ 717: 0002: \***    MAIN PROGRAM
+ 718: 0002: \***
+ 719: 0002: \******************************************************************************
+ 720: 0002: 
+ 721: 0002:      MAIN.PROGRAM:
+ 722: 0024: 
+ 723: 0024:          ON ERROR GOTO ERROR.DETECTED
+ 724: 0039:          GOSUB INITIALISATION
+ 725: 004b:          GOSUB MAIN.PROCESSING           
+ 726: 005d:          GOSUB TERMINATION
+ 727: 006f:          
+ 728: 006f:      STOP
+ 729: 007c: \******************************************************************************
+ 730: 007c: \***
+ 731: 007c: \***   SUBROUTINE : INITIALISATION
+ 732: 007c: \***
+ 733: 007c: \******************************************************************************
+ 734: 007c: 
+ 735: 007c:      INITIALISATION:
+ 736: 008c:        
+ 737: 008c:          ARRAY.COUNT%       = 10000
+ 738: 00a1: 		 DIM PROJUNK.ARR$(ARRAY.COUNT%)
+ 739: 00d0: 		 
+ 740: 00d0:          FILE.PATH.C$       = "ADXLXAAN::C:\"
+ 741: 00e5:          FILE.PATH.D$       = "ADXLXAAN::D:\ADX_UDT1\"
+ 742: 00fa:          ERR.FILE.NAME$     = FILE.PATH.C$ + "PROJUNK.ERR"        
+ 743: 011a:          PROJUNK.CFG.FILE$  = FILE.PATH.C$ + "PROJUNK.CFG"
+ 744: 013a:          PROJUNK.DAT.FILE$  = FILE.PATH.C$ + "PROJUNK.DAT"
+ 745: 015a:          FOUND%             = 0         
+ 746: 0168: 
+ 747: 0168:          SPACE$             = " "         
+ 748: 017d: 
+ 749: 017d:          GOSUB ALLOCATE.SESSION.NUMBERS
+ 750: 018f: 
+ 751: 018f:          CREATE POSFILE ERR.FILE.NAME$     AS ERR.SESS.NUM%        
+ 752: 01af:          CREATE POSFILE PROJUNK.DAT.FILE$  AS PROJUNK.DAT.SESS%
+ 753: 01cf:           
+ 754: 01cf: 
+ 755: 01cf:      RETURN
+ 756: 01df: 
+ 757: 01df: 
+ 758: 01df: \******************************************************************************
+ 759: 01df: \***
+ 760: 01df: \***    ALLOCATE.SESSION.NUMBERS:
+ 761: 01df: \***
+ 762: 01df: \***    Use the session number utility to allocate file numbers for the
+ 763: 01df: \***    files used by the program.
+ 764: 01df: \***
+ 765: 01df: \******************************************************************************
+ 766: 01df: 
+ 767: 01df:      ALLOCATE.SESSION.NUMBERS:
+ 768: 01ef: 
+ 769: 01ef:          FUNCTION.FLAG$ = "O"
+ 770: 0206:           
+ 771: 0206:          PASSED.INTEGER%   = ERR.SESS.NUM%
+ 772: 0218:          PASSED.STRING$    = ERR.FILE.NAME$
+ 773: 0233:          GOSUB CALL.F20.SESS.NUM.UTILITY
+ 774: 0245:          ERR.SESS.NUM%     = F20.INTEGER.FILE.NO%
+ 775: 0257: 
+ 776: 0257:          PASSED.INTEGER%   = PROJUNK.CFG.SESS%
+ 777: 0269:          PASSED.STRING$    = PROJUNK.CFG.FILE$
+ 778: 0284:          GOSUB CALL.F20.SESS.NUM.UTILITY
+ 779: 0296:          PROJUNK.CFG.SESS% = F20.INTEGER.FILE.NO%
+ 780: 02a8: 
+ 781: 02a8:          PASSED.INTEGER%   = PROJUNK.DAT.SESS%
+ 782: 02ba:          PASSED.STRING$    = PROJUNK.DAT.FILE$
+ 783: 02d5:          GOSUB CALL.F20.SESS.NUM.UTILITY
+ 784: 02e7:          PROJUNK.DAT.SESS% = F20.INTEGER.FILE.NO%
+ 785: 02f9:       
+ 786: 02f9: 
+ 787: 02f9:      RETURN
+ 788: 0309: 
+ 789: 0309: \******************************************************************************
+ 790: 0309: \***
+ 791: 0309: \***    CALL.F20.SESS.NUM.UTILITY:
+ 792: 0309: \***
+ 793: 0309: \******************************************************************************
+ 794: 0309: 
+ 795: 0309:      CALL.F20.SESS.NUM.UTILITY: 
+ 796: 0319:         
+ 797: 0319:          FILE.OPERATION$ = FUNCTION.FLAG$
+ 798: 0337:          CURRENT.REPORT.NUM% = PASSED.INTEGER%
+ 799: 034d:          RC% = SESS.NUM.UTILITY (FUNCTION.FLAG$, PASSED.INTEGER%,       \
+ 800: 037d:                                  PASSED.STRING$)
+ 801: 037d:          IF RC% <> 0 THEN GOTO FILE.ERROR
+ 802: 038f: 
+ 803: 038f:      RETURN
+ 804: 039f: 
+ 805: 039f: \******************************************************************************
+ 806: 039f: \***
+ 807: 039f: \***   SUBROUTINE : MAIN PROCESSING
+ 808: 039f: \***
+ 809: 039f: \******************************************************************************
+ 810: 039f: 
+ 811: 039f:     MAIN.PROCESSING:          
+ 812: 03af: 
+ 813: 03af:        
+ 814: 03af:         GOSUB OPEN.DQ2CE.FILE
+ 815: 03c1:         GOSUB READ.DQ2CE.FILE
+ 816: 03d3: 		GOSUB PROCESS.FILE
+ 817: 03e5: 
+ 818: 03e5:         PRINT TRANSACTION% ; "Transaction have been read"
+ 819: 0403: 
+ 820: 0403:         IF RECORD% = 0 THEN BEGIN
+ 821: 041e:             PRINT "No junk character found"  
+ 822: 0431:         ENDIF ELSE BEGIN
+ 823: 0439:             PRINT RECORD%  ; "Transactions Has Junk Character" 
+ 824: 0457:         ENDIF
+ 825: 045f: 
+ 826: 045f:         IF RECORD% > 0 THEN BEGIN
+ 827: 0478:          !  GOSUB PROCESS.QCONSOLE.REPLAY
+ 828: 0478:         ENDIF
+ 829: 0480: 
+ 830: 0480:     RETURN
+ 831: 0490: \******************************************************************************
+ 832: 0490: \***
+ 833: 0490: \***   SUBROUTINE : FIND.DQ2CE.FILE
+ 834: 0490: \***
+ 835: 0490: \******************************************************************************	 
+ 836: 0490: 
+ 837: 0490:     FIND.DQ2CE.FILE:      
+ 838: 0498:         
+ 839: 0498:      
+ 840: 0498: 
+ 841: 0498:     RETURN
+ 842: 04a8:   
+ 843: 04a8: \******************************************************************************
+ 844: 04a8: \***
+ 845: 04a8: \***   SUBROUTINE : OPEN.DQ2CE.FILE
+ 846: 04a8: \***
+ 847: 04a8: \******************************************************************************	 
+ 848: 04a8: 
+ 849: 04a8:    OPEN.DQ2CE.FILE:
+ 850: 04b8: 
+ 851: 04b8:         DQ2CE.FILE.NAME$ =  "d:/adx_udt1/dq2ce.bin"
+ 852: 04cd: 
+ 853: 04cd:         FUNCTION.FLAG$   = "O"          
+ 854: 04e4:         PASSED.INTEGER%  = DQ2CE.SESS.NUM%
+ 855: 04f6:         PASSED.STRING$   = DQ2CE.FILE.NAME$
+ 856: 0511:         GOSUB CALL.F20.SESS.NUM.UTILITY
+ 857: 0523:         DQ2CE.SESS.NUM%  = F20.INTEGER.FILE.NO%         
+ 858: 0535: 
+ 859: 0535:         OPEN DQ2CE.FILE.NAME$ AS DQ2CE.SESS.NUM% NOWRITE NODEL
+ 860: 0557:         IF END #DQ2CE.SESS.NUM% THEN ERROR.DETECTED
+ 861: 0570: 
+ 862: 0570:    RETURN
+ 863: 0580: 
+ 864: 0580: \******************************************************************************
+ 865: 0580: \***
+ 866: 0580: \***   SUBROUTINE : READ.DQ2CE.FILE
+ 867: 0580: \***
+ 868: 0580: \******************************************************************************	
+ 869: 0580: 
+ 870: 0580:    READ.DQ2CE.FILE: 
+ 871: 0590: 
+ 872: 0590:        RECORD%      = 0 
+ 873: 05a5:        TRANSACTION% = 0
+ 874: 05ba: 	   INDEX% = 1
+ 875: 05cf: 
+ 876: 05cf:        ! To read a record from " to " as each transaction will be limited 
+ 877: 05cf:        ! between double quotes     
+ 878: 05cf:          
+ 879: 05cf: 	  VAL1$ = CHR$(34)	 
+ 880: 05e7: 
+ 881: 05e7:        
+ 882: 05e7: 
+ 883: 05e7:  
+ 884: 05e7: 
+ 885: 05e7:    WHILE EOF = FALSE  
+ 886: 05f2: 
+ 887: 05f2:        IF END #DQ2CE.SESS.NUM% THEN DQ2CE.END
+ 888: 060b: 
+ 889: 060b:                  READ #DQ2CE.SESS.NUM%; LINE  LINE.STRING$
+ 890: 0627:                  IF LEFT$(LINE.STRING$,1) = VAL1$ AND                  \
+ 891: 06a4:                  RIGHT$(LINE.STRING$,1) = VAL1$ THEN BEGIN
+ 892: 06a4:                  TRANSACTION% = TRANSACTION% + 1
+ 893: 06bd: 				 PROJUNK.ARR$(INDEX%)  = LINE.STRING$
+ 894: 06e7: 				 INDEX% = INDEX% + 1
+ 895: 0703: 				  
+ 896: 0703: 
+ 897: 0703:                 ENDIF ELSE BEGIN
+ 898: 070b:                      TEMP.STRING$ = LINE.STRING$
+ 899: 0724:                      WHILE  RIGHT$(LINE.STRING$,1) <> VAL1$
+ 900: 072e: 
+ 901: 072e:                          READ #DQ2CE.SESS.NUM%; LINE  LINE.STRING$
+ 902: 074a:                          TEMP.STRING$ = TEMP.STRING$ + LINE.STRING$
+ 903: 076e: 
+ 904: 076e:                      WEND
+ 905: 07a2: 
+ 906: 07a2:                           TRANSACTION1% = TRANSACTION1% + 1
+ 907: 07bb:                           LINE.STRING$  = TEMP.STRING$
+ 908: 07d4:                           TEMP.STRING$  = ""
+ 909: 07e9: 						  PROJUNK.ARR$(INDEX%)  = LINE.STRING$
+ 910: 0813: 				          INDEX% = INDEX% + 1
+ 911: 082c: 				  
+ 912: 082c: 
+ 913: 082c:                ENDIF
+ 914: 0834: 
+ 915: 0834:            
+ 916: 0834:        WEND
+ 917: 084c: 
+ 918: 084c:   
+ 919: 084c:    
+ 920: 084c:    
+ 921: 084c:    DQ2CE.END:        
+ 922: 085c:          
+ 923: 085c:         EOF         = TRUE        
+ 924: 086e:         TRANSACTION% = TRANSACTION1% + TRANSACTION%
+ 925: 0887:     
+ 926: 0887:   RETURN
+ 927: 0897: 
+ 928: 0897:   
+ 929: 0897: PROCESS.FILE:
+ 930: 08a7: OPEN "C:/INPUT.TXT" AS 150 
+ 931: 08c3: 	   
+ 932: 08c3: 
+ 933: 08c3: 	   
+ 934: 08c3: 	   WHILE EOF1 = FALSE
+ 935: 08ce: 	   
+ 936: 08ce: 	      
+ 937: 08ce: 	    
+ 938: 08ce:            IF END #150 THEN FILE.END
+ 939: 08e6:            READ #150; LINE JUNK.CHAR$
+ 940: 0901: 	       JUNK.CHAR$ = LEFT$(JUNK.CHAR$,9)
+ 941: 0923: 		 
+ 942: 0923: 		   FOR I% = 1 TO INDEX%
+ 943: 0933: 		   
+ 944: 0933: 		        GOSUB FIND.DQ2CE.JUNK
+ 945: 0945: 		   
+ 946: 0945: 		   NEXT I%
+ 947: 0961: 		   
+ 948: 0961: 	   WEND
+ 949: 0979: FILE.END:
+ 950: 0989:    EOF1 = TRUE
+ 951: 099b:    
+ 952: 099b:    RETURN   
+ 953: 09ab:    
+ 954: 09ab:    
+ 955: 09ab: \******************************************************************************
+ 956: 09ab: \***
+ 957: 09ab: \***   SUBROUTINE : FIND.DQ2CE.JUNK
+ 958: 09ab: \***
+ 959: 09ab: \******************************************************************************	
+ 960: 09ab: 
+ 961: 09ab:     FIND.DQ2CE.JUNK:
+ 962: 09bb: 
+ 963: 09bb:         FOUND%  = MATCH(JUNK.CHAR$,PROJUNK.ARR$(I%),1)
+ 964: 09eb: 
+ 965: 09eb:         IF FOUND% > 0 THEN BEGIN         
+ 966: 09fa:             WRITE #PROJUNK.DAT.SESS%; PROJUNK.ARR$(I%)
+ 967: 0a28:             
+ 968: 0a28: 
+ 969: 0a28:         ENDIF
+ 970: 0a30: 
+ 971: 0a30:         PROCESSED.STRING$ = "" 
+ 972: 0a45: 
+ 973: 0a45:     RETURN
+ 974: 0a55: 
+ 975: 0a55: \******************************************************************************
+ 976: 0a55: \***
+ 977: 0a55: \***   SUBROUTINE :  PROCESS.DQ2CE.JUNK
+ 978: 0a55: \***
+ 979: 0a55: \******************************************************************************
+ 980: 0a55: 
+ 981: 0a55:    PROCESS.DQ2CE.JUNK:         
+ 982: 0a5d:         
+ 983: 0a5d:         COUNT%     = 0
+ 984: 0a6b:         J%         = 0
+ 985: 0a80:         K%         = 1
+ 986: 0a95:         LAST.JUNK% = 1
+ 987: 0aaa:         POS%       = 1
+ 988: 0ab8: 
+ 989: 0ab8:         WHILE K% < = LEN% AND LAST.JUNK% = 1
+ 990: 0ac3: 
+ 991: 0ac3:             J% = MATCH(JUNK.CHAR$,LINE.STRING$,POS%)
+ 992: 0af0:             IF J% > 0 THEN BEGIN
+ 993: 0b09:                 PROCESSED.STRING$ = PROCESSED.STRING$ +                 \ 
+ 994: 0b46:                             MID$(LINE.STRING$,POS%,J%-POS%)
+ 995: 0b46:                 COUNT% = COUNT% + 1
+ 996: 0b55:             ENDIF ELSE BEGIN
+ 997: 0b5d:                 LAST.JUNK%        = 0
+ 998: 0b72:                 PROCESSED.STRING$ = PROCESSED.STRING$ + RIGHT$          \
+ 999: 0bb6:                 (LINE.STRING$,(LEN% - LEN(PROCESSED.STRING$))-COUNT%)    
+1000: 0bb6:                 WRITE #PROJUNK.DAT.SESS% ; MID$(PROCESSED.STRING$,2,    \
+1001: 0bf2:                                            (LEN(PROCESSED.STRING$)-2))   
+1002: 0bf2:             ENDIF
+1003: 0bfa: 
+1004: 0bfa:               POS% = J% + 1
+1005: 0c12:               K%   = K% + 1
+1006: 0c2b:               J%   = 0
+1007: 0c40: 
+1008: 0c40:          WEND
+1009: 0c78:         
+1010: 0c78:        
+1011: 0c78:      RETURN
+1012: 0c88: \******************************************************************************
+1013: 0c88: \***
+1014: 0c88: \***   SUBROUTINE :  PROCESS.QCONSOLE.REPLAY
+1015: 0c88: \***
+1016: 0c88: \******************************************************************************
+1017: 0c88: 
+1018: 0c88:    PROCESS.QCONSOLE.REPLAY:
+1019: 0c90:      
+1020: 0c90:       CALL OSSHELL("ADX_UPGM/QCONSOLE -REPLAY" + SPACE$ + "C:/PROJUNK.DAT")
+1021: 0cbb: 
+1022: 0cbb:        PRINT "                                                            "
+1023: 0ccc:        PRINT "    Checking the status of low priority queue               "
+1024: 0cdd:        PRINT "                                                            "
+1025: 0cee: 
+1026: 0cee:       CALL OSSHELL("ADX_UPGM/QCONSOLE -QINFO" + SPACE$ +               \
+1027: 0d19:                                                 "D:/ADX_UDT1/DQ3CE.BIN")
+1028: 0d19: 
+1029: 0d19: 
+1030: 0d19: 
+1031: 0d19:    RETURN
+1032: 0d29: 
+1033: 0d29: \******************************************************************************
+1034: 0d29: \***
+1035: 0d29: \***   SUBROUTINE : CLOSE.PROCESSING
+1036: 0d29: \***
+1037: 0d29: \******************************************************************************
+1038: 0d29: 
+1039: 0d29:     CLOSE.PROCESSING:
+1040: 0d39: 
+1041: 0d39:       !  CLOSE DQ2CE.SESS.NUM%
+1042: 0d39:          CLOSE PROJUNK.CFG.SESS%
+1043: 0d4a:          CLOSE PROJUNK.DAT.SESS%
+1044: 0d5b: 
+1045: 0d5b: 
+1046: 0d5b:      RETURN
+1047: 0d6b: \******************************************************************************
+1048: 0d6b: \***
+1049: 0d6b: \***   SUBROUTINE : DEALLOCATE.SESSION.NUMBERS
+1050: 0d6b: \***
+1051: 0d6b: \******************************************************************************
+1052: 0d6b: 
+1053: 0d6b:      DEALLOCATE.SESSION.NUMBERS:
+1054: 0d7b: 
+1055: 0d7b:          FUNCTION.FLAG$   = "C"          
+1056: 0d92: 
+1057: 0d92:          PASSED.INTEGER%   = ERR.SESS.NUM%
+1058: 0da4:          PASSED.STRING$    = ERR.FILE.NAME$
+1059: 0dbf:          GOSUB CALL.F20.SESS.NUM.UTILITY
+1060: 0dd1:          ERR.SESS.NUM%     = F20.INTEGER.FILE.NO%
+1061: 0de3: 
+1062: 0de3:          PASSED.INTEGER%   = PROJUNK.CFG.SESS%
+1063: 0df5:          PASSED.STRING$    = PROJUNK.CFG.FILE$
+1064: 0e10:          GOSUB CALL.F20.SESS.NUM.UTILITY
+1065: 0e22:          PROJUNK.CFG.SESS% = F20.INTEGER.FILE.NO%
+1066: 0e34: 
+1067: 0e34:          PASSED.INTEGER%   = PROJUNK.DAT.SESS%
+1068: 0e46:          PASSED.STRING$    = PROJUNK.DAT.FILE$
+1069: 0e61:          GOSUB CALL.F20.SESS.NUM.UTILITY
+1070: 0e73:          PROJUNK.DAT.SESS% = F20.INTEGER.FILE.NO%
+1071: 0e85: 
+1072: 0e85:          PASSED.INTEGER%   = DQ2CE.SESS.NUM%
+1073: 0e97:          PASSED.STRING$    = DQ2CE.FILE.NAME$
+1074: 0eb2:          GOSUB CALL.F20.SESS.NUM.UTILITY
+1075: 0ec4:          DQ2CE.SESS.NUM%   = F20.INTEGER.FILE.NO% 
+1076: 0ed6:              
+1077: 0ed6:      RETURN
+1078: 0ee6: 
+1079: 0ee6: \******************************************************************************
+1080: 0ee6: \***
+1081: 0ee6: \***   SUBROUTINE : DISPLAY.HELP
+1082: 0ee6: \***
+1083: 0ee6: \******************************************************************************
+1084: 0ee6: 
+1085: 0ee6:      DISPLAY.HELP:
+1086: 0eee:          PRINT "                                                             "
+1087: 0eff:          PRINT "   **********************************************************"
+1088: 0f10:          PRINT "   *                                                        *"
+1089: 0f21:          PRINT "   *   SECOND QUEUE JUNK CHARACTER PROCESSOR UTILITY-V1.0   *"
+1090: 0f32:          PRINT "   *                                                        *"
+1091: 0f43:          PRINT "   *                                                        *"
+1092: 0f54:          PRINT "   *  PROJUNK Utility Help                                  *"
+1093: 0f65:          PRINT "   *  Please enter the date in format 'PROJUNK <YYMMDD>'    *"
+1094: 0f76:          PRINT "   *  Eg: PROJUNK 150131 , 15=Year,01=Month,31=Date         *"
+1095: 0f87:          PRINT "   *                                                        *"
+1096: 0f98:          PRINT "   **********************************************************"
+1097: 0fa9: 
+1098: 0fa9: \******************************************************************************
+1099: 0fa9: \***                                                                           
+1100: 0fa9: \***   ERROR ROUTINE  :  FILE.ERROR                                            
+1101: 0fa9: \***                                                                           
+1102: 0fa9: \***   Call APPLICATION.LOG to log an event 106 with                           
+1103: 0fa9: \***   flag, current report number and current key                             
+1104: 0fa9: \***                                                                           
+1105: 0fa9: \***                                                                           
+1106: 0fa9: \******************************************************************************
+1107: 0fa9: 
+1108: 0fa9:      FILE.ERROR:
+1109: 0fb9:         
+1110: 0fb9:          VAR.STRING.1$ = FILE.OPERATION$                     +          \
+1111: 1043:                 CHR$(SHIFT(CURRENT.REPORT.NUM%, 8) AND 0FFH) +          \
+1112: 1043:                 CHR$(CURRENT.REPORT.NUM% AND 0FFH)           +          \
+1113: 1043:                 CURRENT.CODE$
+1114: 1043:          VAR.STRING.2$ = "PROJUNK"
+1115: 105a:          MESSAGE.NO%   = 0
+1116: 106b:          EVENT.NO%     = 106
+1117: 107c: 
+1118: 107c:          RC% = APPLICATION.LOG(MESSAGE.NO%,VAR.STRING.1$,               \
+1119: 10b5:                       VAR.STRING.2$,EVENT.NO%)
+1120: 10b5: 
+1121: 10b5:          GOTO STOP.PROGRAM
+1122: 10c0: \******************************************************************************
+1123: 10c0: \***
+1124: 10c0: \***   SUBROUTINE : TERMINATION
+1125: 10c0: \***
+1126: 10c0: \******************************************************************************
+1127: 10c0: 
+1128: 10c0:      TERMINATION:
+1129: 10d0: 
+1130: 10d0:          PRINT #ERR.SESS.NUM% ; DATE$ + SPACE$ + "REPROCESSING IS SUCCESSFUL"
+1131: 110f:          CLOSE ERR.SESS.NUM%
+1132: 1120:          CALL OSSHELL("IF EXIST C:\PROJUNK.OK        DEL C:\PROJUNK.OK")     
+1133: 1134:          CALL OSSHELL("REN" + SPACE$ + ERR.FILE.NAME$ + SPACE$ +       \
+1134: 116f:                                                         "C:\PROJUNK.OK")
+1135: 116f: 
+1136: 116f:          GOSUB CLOSE.PROCESSING
+1137: 1181:          GOSUB DEALLOCATE.SESSION.NUMBERS
+1138: 1193:          GOSUB STOP.PROGRAM
+1139: 11a5: 
+1140: 11a5: 
+1141: 11a5: 
+1142: 11a5: \******************************************************************************
+1143: 11a5: \***
+1144: 11a5: \***   SUBROUTINE : ERROR.DETECTED
+1145: 11a5: \***
+1146: 11a5: \******************************************************************************
+1147: 11a5: 
+1148: 11a5:      ERROR.DETECTED:           
+1149: 11b5: 
+1150: 11b5:          WRITE #ERR.SESS.NUM%; "An Error Occurred "
+1151: 11d1:          WRITE #ERR.SESS.NUM%; "Fatal Error:" + ERR
+1152: 11fd:          WRITE #ERR.SESS.NUM%; "Session Number: " + STR$(ERRF%)
+1153: 1231:          WRITE #ERR.SESS.NUM%; "Line Number:" + STR$(ERRL)
+1154: 1265: 
+1155: 1265:          IF ERR = "OE" AND ERRF% = DQ2CE.SESS.NUM% THEN BEGIN 
+1156: 12ae:             PRINT  "File is not present for the requested date"
+1157: 12bf:             GOSUB STOP.PROGRAM
+1158: 12d1:          ENDIF
+1159: 12d9: 
+1160: 12d9:          IF ERR = "OE" AND ERRF% = PROJUNK.CFG.SESS% THEN BEGIN 
+1161: 1322:             PRINT  "Configuration file is missing "
+1162: 1333:             GOSUB STOP.PROGRAM
+1163: 1345:          ENDIF
+1164: 134d: 
+1165: 134d:          GOSUB FILE.ERROR
+1166: 135f: 
+1167: 135f: \******************************************************************************
+1168: 135f: \***
+1169: 135f: \***   SUBROUTINE : STOP.PROGRAM
+1170: 135f: \***
+1171: 135f: \******************************************************************************
+1172: 135f: 
+1173: 135f:      STOP.PROGRAM:
+1174: 1374: 
+1175: 1374:      END
+1176: 1374: 
+1177: 1374: \******************************************************************************
+1178: 1374: \******************************************************************************
+1179: 1374: \***
+1180: 1374: \***    End of program 
+1181: 1374: \***
+1182: 1374: \******************************************************************************
+1183: 1374: \******************************************************************************		 
+1184: 1374: End of Compilation

@@ -1,0 +1,219 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***           TILLBAG FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***           REFERENCE  : BTCSFUN
+   7: 0000: \***
+   8: 0000: \***           VERSION A  : JULIA STONES 23/10/03
+   9: 0000: \***
+  10: 0000: \***
+  11: 0000: \*****************************************************************************
+  12: 0000: \*****************************************************************************
+  13: 0000: 
+  14: 0000:     INTEGER*2 GLOBAL      CURRENT.REPORT.NUM%
+  15: 0000: 
+  16: 0000: 
+  17: 0000:     STRING GLOBAL         CURRENT.CODE$,                 \
+  18: 0000:                           FILE.OPERATION$
+  19: 0000: 
+  20: 0000: 
+  21: 0000:     %INCLUDE              BTCSDEC.J86
+  22: 0000: \*****************************************************************************
+  23: 0000: \*****************************************************************************
+  24: 0000: \***
+  25: 0000: \***      %INCLUDE FOR BTCS FILE - FIELD DECLARATIONS
+  26: 0000: \***                               FILE REFERENCE PARAMETERS
+  27: 0000: \***
+  28: 0000: \***      FILE TYPE    : DIRECT
+  29: 0000: \***
+  30: 0000: \***      REFERENCE    : BTCSDEC
+  31: 0000: \***
+  32: 0000: \***      VERSION A    : Julia Stones 22/10/03
+  33: 0000: \***
+  34: 0000: \*****************************************************************************
+  35: 0000: \*****************************************************************************
+  36: 0000: 
+  37: 0000:     STRING GLOBAL        BTCS.FILE.NAME$
+  38: 0000: 
+  39: 0000: 
+  40: 0000:     INTEGER*2 GLOBAL     BTCS.SESS.NUM%,        \
+  41: 0000:                          BTCS.RECL%,            \
+  42: 0000:                          BTCS.REPORT.NUM%
+  43: 0000: 
+  44: 0000: 
+  45: 0000:     INTEGER*4 GLOBAL     BTCS.REC.NUM%
+  46: 0000: 
+  47: 0000: 
+  48: 0000:     STRING GLOBAL        BTCS.RECORD$,           \ Whole record form file:
+  49: 0000:                          BTCS.RECORD.TYPE$,      \ 1 ASC Type of record:
+  50: 0000:                                                  \       "H" = header
+  51: 0000:                                                  \       "D" = detail
+  52: 0000:                                                  \       "T" = trailer
+  53: 0000:                          BTCS.STORE.NUMBER$,     \ 4 ASC 4 digit Store number
+  54: 0000:                          BTCS.STKTAKE.NUM$,      \ 4 ASC 4 digit Stock take number
+  55: 0000:                          BTCS.DATE$,             \ 6 ASC Date YYMMDD
+  56: 0000:                          BTCS.TIME$,             \ 6 ASC Time HHMMSS
+  57: 0000:                          BTCS.DISP.AREA$,        \ 1 ASC M = MDS
+  58: 0000:                                                  \       D = Dispensing
+  59: 0000:                          BTCS.FILLER$,           \   ASC Set to spaces
+  60: 0000:                          BTCS.NUM.RECORD$,       \ 4 ASC Record sequence number starting at 0001
+  61: 0000:                          BTCS.ITEM.CODE$,        \13 ASC Item Code/PIP code
+  62: 0000:                          BTCS.CODE.TYPE$,        \ 1 ASC E = EAN item code
+  63: 0000:                                                  \       P = PIP code
+  64: 0000:                          BTCS.PACK.QTY$,         \ 6 ASC Number of packs, bottles etc
+  65: 0000:                          BTCS.DIS.UNIT.QTY$,     \ 4 ASC Dispensed unit quantity
+  66: 0000:                          BTCS.RECORD.COUNT$,     \ 4 ASC Amount of records in file (inc header and trailer)
+  67: 0000:                          BTCS.ENDREC$            \ 2 ASC ODOA
+  68: 0000: 
+  69: 0000: 
+  70: 0000: \*****************************************************************************
+  71: 0000: 
+  72: 0000:     FUNCTION BTCS.SET PUBLIC
+  73: 0014: 
+  74: 0014: ! Full file name will be added by PSS37 (Either be BTCSK.??? for a count,
+  75: 0014: !                                        BTCSF.??? for a book in,
+  76: 0014: ! for both files ext ??? is the next number 001 - 999 taken from the SSPSCTRL
+  77: 0014: ! control file
+  78: 0014: 
+  79: 0014:         BTCS.FILE.NAME$  = "ADXLXACN::D:\ADX_UDT1\BTCS"
+  80: 0023:         BTCS.REPORT.NUM% = 665
+  81: 002c:         BTCS.RECL%       = 42
+  82: 0035: 
+  83: 0035:     END FUNCTION
+  84: 0041: 
+  85: 0041: \*****************************************************************************
+  86: 0041: 
+  87: 0041:     SUB BTCS.SPLIT
+  88: 0055: 
+  89: 0055:         BTCS.RECORD.TYPE$ = MID$(BTCS.RECORD$,36, 1)
+  90: 0074: 
+  91: 0074:         IF BTCS.RECORD.TYPE$ = "H" THEN BEGIN
+  92: 008d: 
+  93: 008d:             BTCS.STORE.NUMBER$      = LEFT$(BTCS.RECORD$,   4)
+  94: 00ac:             BTCS.STKTAKE.NUM$   = MID$(BTCS.RECORD$,  5, 4)
+  95: 00cb:             BTCS.DATE$          = MID$(BTCS.RECORD$,  9, 6)
+  96: 00ea:             BTCS.TIME$          = MID$(BTCS.RECORD$, 15, 6)
+  97: 0109:             BTCS.DISP.AREA$     = MID$(BTCS.RECORD$, 21, 1)
+  98: 0128:             BTCS.FILLER$        = MID$(BTCS.RECORD$, 22,14)
+  99: 0147:             BTCS.NUM.RECORD$    = MID$(BTCS.RECORD$, 36, 4)
+ 100: 0166:             BTCS.ENDREC$        = RIGHT$(BTCS.RECORD$,   2)
+ 101: 0186: 
+ 102: 0186:         ENDIF ELSE IF BTCS.RECORD.TYPE$ = "D" THEN BEGIN
+ 103: 019f: 
+ 104: 019f:             BTCS.ITEM.CODE$     = LEFT$(BTCS.RECORD$,  13)
+ 105: 01be:             BTCS.CODE.TYPE$     = MID$(BTCS.RECORD$, 14,  1)
+ 106: 01dd:             BTCS.PACK.QTY$      = MID$(BTCS.RECORD$, 15,  6)
+ 107: 01fc:             BTCS.DIS.UNIT.QTY$  = MID$(BTCS.RECORD$, 21,  4)
+ 108: 021b:             BTCS.FILLER$        = MID$(BTCS.RECORD$, 25, 11)
+ 109: 023a:             BTCS.NUM.RECORD$    = MID$(BTCS.RECORD$, 36,  4)
+ 110: 0259:             BTCS.ENDREC$        = RIGHT$(BTCS.RECORD$,    2)
+ 111: 0279: 
+ 112: 0279:         ENDIF ELSE IF BTCS.RECORD.TYPE$ = "T" THEN BEGIN
+ 113: 028f: 
+ 114: 028f:             BTCS.RECORD.COUNT$  = LEFT$(BTCS.RECORD$,   4)
+ 115: 02ae:             BTCS.FILLER$        = MID$(BTCS.RECORD$,  5, 31)
+ 116: 02cd:             BTCS.NUM.RECORD$    = MID$(BTCS.RECORD$, 36,  4)
+ 117: 02ec:             BTCS.ENDREC$        = RIGHT$(BTCS.RECORD$,    2)
+ 118: 0309: 
+ 119: 0309: 
+ 120: 0309:         ENDIF
+ 121: 0309: 
+ 122: 0309:     END SUB
+ 123: 0315: 
+ 124: 0315: \*****************************************************************************
+ 125: 0315: 
+ 126: 0315:     FUNCTION READ.BTCS PUBLIC
+ 127: 0329: 
+ 128: 0329:     INTEGER*1 READ.BTCS
+ 129: 0329: 
+ 130: 0329:         READ.BTCS = 1
+ 131: 032d: 
+ 132: 032d:         IF END # BTCS.SESS.NUM% THEN READ.BTCS.ERROR
+ 133: 0341: 
+ 134: 0341:         READ FORM "C42";                                 \
+ 135: 0363:              # BTCS.SESS.NUM%;                           \
+ 136: 0363:                BTCS.RECORD$
+ 137: 0363: 
+ 138: 0363:         CALL BTCS.SPLIT
+ 139: 0367: 
+ 140: 0367:         READ.BTCS = 0
+ 141: 036b: 
+ 142: 036b:     EXIT FUNCTION
+ 143: 036d: 
+ 144: 036d: READ.BTCS.ERROR:
+ 145: 036d: 
+ 146: 036d:     CURRENT.REPORT.NUM% = BTCS.REPORT.NUM%
+ 147: 037b:     FILE.OPERATION$     = "R"
+ 148: 038a:     CURRENT.CODE$       = PACK$("00000000000000")
+ 149: 039e: 
+ 150: 039e:     END FUNCTION
+ 151: 03ad: 
+ 152: 03ad: \*****************************************************************************
+ 153: 03ad: 
+ 154: 03ad:     FUNCTION WRITE.BTCS PUBLIC
+ 155: 03c1: 
+ 156: 03c1:     INTEGER*1 WRITE.BTCS
+ 157: 03c1: 
+ 158: 03c1:         WRITE.BTCS = 1
+ 159: 03c5: 
+ 160: 03c5:         IF END # BTCS.SESS.NUM% THEN WRITE.BTCS.ERROR
+ 161: 03d9: 
+ 162: 03d9:         IF BTCS.RECORD.TYPE$ = "H" THEN BEGIN
+ 163: 03f2: 
+ 164: 03f2:            WRITE FORM "C4,C4,C6,C6,C1,C14,C1,C4,C2";        \
+ 165: 04a7:                  # BTCS.SESS.NUM%, BTCS.REC.NUM%;           \
+ 166: 04a7:                    BTCS.STORE.NUMBER$,                      \
+ 167: 04a7:                    BTCS.STKTAKE.NUM$,                       \
+ 168: 04a7:                    BTCS.DATE$,                              \
+ 169: 04a7:                    BTCS.TIME$,                              \
+ 170: 04a7:                    BTCS.DISP.AREA$,                         \
+ 171: 04a7:                    BTCS.FILLER$,                            \
+ 172: 04a7:                    BTCS.RECORD.TYPE$,                       \
+ 173: 04a7:                    BTCS.NUM.RECORD$,                        \
+ 174: 04a7:                    BTCS.ENDREC$
+ 175: 04a7: 
+ 176: 04a7:         ENDIF ELSE IF BTCS.RECORD.TYPE$ = "D" THEN BEGIN
+ 177: 04c0: 
+ 178: 04c0:            WRITE FORM "C13,C1,C6,C4,C11,C1,C4,C2";          \
+ 179: 0565:                  # BTCS.SESS.NUM%, BTCS.REC.NUM%;           \
+ 180: 0565:                    BTCS.ITEM.CODE$,                         \
+ 181: 0565:                    BTCS.CODE.TYPE$,                         \
+ 182: 0565:                    BTCS.PACK.QTY$,                          \
+ 183: 0565:                    BTCS.DIS.UNIT.QTY$,                      \
+ 184: 0565:                    BTCS.FILLER$,                            \
+ 185: 0565:                    BTCS.RECORD.TYPE$,                       \
+ 186: 0565:                    BTCS.NUM.RECORD$,                        \
+ 187: 0565:                    BTCS.ENDREC$
+ 188: 0565: 
+ 189: 0565:         ENDIF ELSE IF BTCS.RECORD.TYPE$ = "T" THEN BEGIN
+ 190: 057b: 
+ 191: 057b:            WRITE FORM "C4,C31,C1,C4,C2";                    \
+ 192: 05ef:                  # BTCS.SESS.NUM%, BTCS.REC.NUM%;           \
+ 193: 05ef:                    BTCS.RECORD.COUNT$,                      \
+ 194: 05ef:                    BTCS.FILLER$,                            \
+ 195: 05ef:                    BTCS.RECORD.TYPE$,                       \
+ 196: 05ef:                    BTCS.NUM.RECORD$,                        \
+ 197: 05ef:                    BTCS.ENDREC$
+ 198: 05ef: 
+ 199: 05ef:         ENDIF ELSE BEGIN
+ 200: 05ef: 
+ 201: 05ef:         GOTO WRITE.BTCS.ERROR:
+ 202: 05f1: 
+ 203: 05f1:         ENDIF
+ 204: 05f1: 
+ 205: 05f1:         WRITE.BTCS = 0
+ 206: 05f5: 
+ 207: 05f5:     EXIT FUNCTION
+ 208: 05f7: 
+ 209: 05f7: WRITE.BTCS.ERROR:
+ 210: 05f7: 
+ 211: 05f7:     CURRENT.REPORT.NUM% = BTCS.REPORT.NUM%
+ 212: 0605:     FILE.OPERATION$     = "W"
+ 213: 0614:     CURRENT.CODE$       = PACK$("00000000000000")
+ 214: 0628: 
+ 215: 0628:     END FUNCTION
+ 216: 0637: 
+ 217: 0637: \*****************************************************************************
+ 218: 0637: 
+ 219: 0637: End of Compilation

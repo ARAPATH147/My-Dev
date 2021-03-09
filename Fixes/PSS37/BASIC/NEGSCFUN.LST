@@ -1,0 +1,204 @@
+   1: 0000: 
+   2: 0000: \*****************************************************************************
+   3: 0000: \*****************************************************************************
+   4: 0000: \***
+   5: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+   6: 0000: \***
+   7: 0000: \***                   FILE TYPE:  KEYED
+   8: 0000: \***
+   9: 0000: \***                   REFERENCE:  NEGSCFUN.BAS
+  10: 0000: \***
+  11: 0000: \***                 DESCRIPTION:  CURRENT NEGATIVE STOCK COUNT INFORMATION
+  12: 0000: \***
+  13: 0000: \***
+  14: 0000: \***
+  15: 0000: \***      VERSION 1 : Julia Stones             15th July 1999  
+  16: 0000: \***      
+  17: 0000: \***    REVISION 1.2.            ROBERT COWEY.                  09 SEP 2003.
+  18: 0000: \***    Changes for RF trial.
+  19: 0000: \***    Recompiled to prevent future automatic recompiles.
+  20: 0000: \***    No changes to actual code.
+  21: 0000: \***
+  22: 0000: \*****************************************************************************
+  23: 0000: \*****************************************************************************
+  24: 0000: 
+  25: 0000:   INTEGER*2 GLOBAL            \
+  26: 0000:          CURRENT.REPORT.NUM% 
+  27: 0000:   
+  28: 0000:   STRING GLOBAL               \
+  29: 0000:          CURRENT.CODE$,       \
+  30: 0000:          FILE.OPERATION$         
+  31: 0000: 
+  32: 0000:   %INCLUDE NEGSCDEC.J86
+  33: 0000: 
+  34: 0000: \*****************************************************************************
+  35: 0000: \*****************************************************************************
+  36: 0000: \***
+  37: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  38: 0000: \***
+  39: 0000: \***                   FILE TYPE:  KEYED
+  40: 0000: \***
+  41: 0000: \***                   REFERENCE:  NEGSCDEC.J86
+  42: 0000: \***
+  43: 0000: \***              DESCRIPTION:  CURRENT NEGATIVE STOCK COUNT INFORMATION
+  44: 0000: \***
+  45: 0000: \***
+  46: 0000: \***
+  47: 0000: \***      VERSION 1 : Julia Stones             15th July 1999  
+  48: 0000: \***      
+  49: 0000: \***    REVISION 1.2.            ROBERT COWEY.                  09 SEP 2003.
+  50: 0000: \***    Changes for RF trial.
+  51: 0000: \***    Recompiled to prevent future automatic recompiles.
+  52: 0000: \***    No changes to actual code.
+  53: 0000: \***
+  54: 0000: \*****************************************************************************
+  55: 0000: \*****************************************************************************
+  56: 0000: 
+  57: 0000: STRING GLOBAL   \
+  58: 0000:    NEGSC.FILE.NAME$,  \
+  59: 0000:    NEGSC.KEY$,   \      !  5 bytes UPD; 1 byte Record type 
+  60: 0000:                         \                 Record type 01 item record
+  61: 0000:                         \                 Record type 02 total count record
+  62: 0000:                         \               4 bytes item code (set to zero's if
+  63: 0000:                         \                 record type 02)
+  64: 0000:    NEGSC.STATUS.1$      !  1 byte ASC
+  65: 0000:                         !            'B' - Discontinued but still on display
+  66: 0000:                         !            'C' - Cancel outstanding orders
+  67: 0000:                         !            'D' - Discontinued and no longer on display
+  68: 0000:                         !            'P' - Suspended (orders to Store)
+  69: 0000:                         !            'X' - Deleted
+  70: 0000:                         !            ' ' - No special Status (default value)
+  71: 0000:   
+  72: 0000: INTEGER*2 GLOBAL  \
+  73: 0000:    NEGSC.RECL%,   \
+  74: 0000:    NEGSC.REPORT.NUM%,  \
+  75: 0000:    NEGSC.SESS.NUM%,    \
+  76: 0000:    NEGSC.ITEM.TSF%,    \
+  77: 0000:    NEGSC.NUMBER.OF.DAYS%   !
+  78: 0000: 
+  79: 0000: 
+  80: 0000: 
+  81: 0000: 
+  82: 0000: 
+  83: 0000: 
+  84: 0000:   FUNCTION NEGSC.SET PUBLIC
+  85: 0014: 
+  86: 0014:      INTEGER*2 NEGSC.SET
+  87: 0014:      NEGSC.SET = 1
+  88: 0019: 
+  89: 0019:        NEGSC.REPORT.NUM% = 582                                   
+  90: 0022:        NEGSC.RECL%      = 10
+  91: 002b:        NEGSC.FILE.NAME$ = "NEGSC"
+  92: 003a:   
+  93: 003a:      NEGSC.SET = 0
+  94: 003f: 
+  95: 003f:   END FUNCTION
+  96: 004e: 
+  97: 004e: 
+  98: 004e: 
+  99: 004e:   FUNCTION READ.NEGSC PUBLIC
+ 100: 0062: 
+ 101: 0062:     INTEGER*2 READ.NEGSC
+ 102: 0062:     
+ 103: 0062:     READ.NEGSC = 1    
+ 104: 0067: 
+ 105: 0067:     IF END #NEGSC.SESS.NUM% THEN READ.ERROR
+ 106: 007b:     READ FORM "T6,C1,2I2";  \
+ 107: 00c3:             #NEGSC.SESS.NUM% KEY NEGSC.KEY$;         \
+ 108: 00c3:                              NEGSC.STATUS.1$,        \
+ 109: 00c3:                              NEGSC.ITEM.TSF%,        \
+ 110: 00c3:                              NEGSC.NUMBER.OF.DAYS%    !                  
+ 111: 00c3:        READ.NEGSC = 0
+ 112: 00c8:        EXIT FUNCTION
+ 113: 00ca:  
+ 114: 00ca:     READ.ERROR:
+ 115: 00ca: 
+ 116: 00ca:         CURRENT.CODE$ = PACK$(MID$("0" + NEGSC.KEY$,2,4))
+ 117: 0104:         FILE.OPERATION$ = "R"
+ 118: 0113:         CURRENT.REPORT.NUM% = NEGSC.REPORT.NUM%
+ 119: 0121:  EXIT FUNCTION
+ 120: 0123: 
+ 121: 0123:   END FUNCTION
+ 122: 0132:   
+ 123: 0132: 
+ 124: 0132: 
+ 125: 0132:   FUNCTION READ.NEGSC.LOCKED PUBLIC
+ 126: 0146: 
+ 127: 0146:     INTEGER*2 READ.NEGSC.LOCKED
+ 128: 0146:     
+ 129: 0146:     READ.NEGSC.LOCKED = 1    
+ 130: 014b:        IF END #NEGSC.SESS.NUM% THEN READ.LOCKED.ERROR
+ 131: 015f:        READ FORM "T6,C1,2I2";  \
+ 132: 01a7:             #NEGSC.SESS.NUM% AUTOLOCK KEY NEGSC.KEY$;            \
+ 133: 01a7:             NEGSC.STATUS.1$,                                     \
+ 134: 01a7:             NEGSC.ITEM.TSF%,                                     \
+ 135: 01a7:             NEGSC.NUMBER.OF.DAYS%      !
+ 136: 01a7:        READ.NEGSC.LOCKED = 0
+ 137: 01ac:        EXIT FUNCTION
+ 138: 01ae:  
+ 139: 01ae:     READ.LOCKED.ERROR:
+ 140: 01ae: 
+ 141: 01ae:         CURRENT.CODE$ = PACK$(MID$("0" + NEGSC.KEY$,2,4))
+ 142: 01e8:         FILE.OPERATION$ = "R"
+ 143: 01f7:         CURRENT.REPORT.NUM% = NEGSC.REPORT.NUM%
+ 144: 0205:     
+ 145: 0205:  EXIT FUNCTION
+ 146: 0207: 
+ 147: 0207:   END FUNCTION  
+ 148: 0216: 
+ 149: 0216: 
+ 150: 0216:   FUNCTION WRITE.UNLOCK.NEGSC PUBLIC
+ 151: 022a: 
+ 152: 022a:     INTEGER*2 WRITE.UNLOCK.NEGSC
+ 153: 022a:     
+ 154: 022a:     WRITE.UNLOCK.NEGSC = 1
+ 155: 022f: 
+ 156: 022f:     IF END #NEGSC.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 157: 0243:     WRITE FORM "C5,C1,2I2";   \
+ 158: 028d:         #NEGSC.SESS.NUM% AUTOUNLOCK;   \
+ 159: 028d:                  NEGSC.KEY$,           \
+ 160: 028d:                  NEGSC.STATUS.1$,      \
+ 161: 028d:                  NEGSC.ITEM.TSF%,      \
+ 162: 028d:                  NEGSC.NUMBER.OF.DAYS%  !
+ 163: 028d: 
+ 164: 028d:        WRITE.UNLOCK.NEGSC = 0
+ 165: 0292:        EXIT FUNCTION
+ 166: 0294:      
+ 167: 0294:     WRITE.UNLOCK.ERROR:
+ 168: 0294:      
+ 169: 0294:        FILE.OPERATION$ = "W"
+ 170: 02a3:        CURRENT.REPORT.NUM% = NEGSC.REPORT.NUM%
+ 171: 02b1:        CURRENT.CODE$ = PACK$(MID$("0" + NEGSC.KEY$,2,4))
+ 172: 02eb:     
+ 173: 02eb:        EXIT FUNCTION    
+ 174: 02ed: 
+ 175: 02ed:   END FUNCTION
+ 176: 02fc: 
+ 177: 02fc:   FUNCTION WRITE.NEGSC PUBLIC
+ 178: 0310: 
+ 179: 0310:     INTEGER*2 WRITE.NEGSC
+ 180: 0310:     
+ 181: 0310:     WRITE.NEGSC = 1
+ 182: 0315: 
+ 183: 0315:     IF END #NEGSC.SESS.NUM% THEN WRITE.ERROR
+ 184: 0329:     WRITE FORM "C5,C1,2I2";   \
+ 185: 0373:         #NEGSC.SESS.NUM%;            \
+ 186: 0373:                 NEGSC.KEY$,            \
+ 187: 0373:                 NEGSC.STATUS.1$,       \
+ 188: 0373:                 NEGSC.ITEM.TSF%,       \   
+ 189: 0373:                 NEGSC.NUMBER.OF.DAYS%  !
+ 190: 0373: 
+ 191: 0373:        WRITE.NEGSC = 0
+ 192: 0378:        EXIT FUNCTION
+ 193: 037a:      
+ 194: 037a:     WRITE.ERROR:
+ 195: 037a:      
+ 196: 037a:        FILE.OPERATION$ = "W"
+ 197: 0389:        CURRENT.REPORT.NUM% = NEGSC.REPORT.NUM%
+ 198: 0397:        CURRENT.CODE$ = PACK$(MID$("0" + NEGSC.KEY$,2,4))
+ 199: 03d1:     
+ 200: 03d1:        EXIT FUNCTION    
+ 201: 03d3: 
+ 202: 03d3:   END FUNCTION
+ 203: 03e2: 
+ 204: 03e2: End of Compilation

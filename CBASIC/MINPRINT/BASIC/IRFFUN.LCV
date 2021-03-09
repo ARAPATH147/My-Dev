@@ -1,0 +1,1284 @@
+
+\*****************************************************************************
+\***
+\***      IRF - ITEM REFERENCE FILE - External functions
+\***
+\***      Reference : IRFFUN.BAS
+\***
+\***      Version A           Andrew Wedgeworth     9th July 1992
+\***
+\***      Version B           Steve Windsor        14th December 1992
+\***      Version letter incremented in line with other IRF code.
+\***
+\***      Version C           Steve Windsor         12.02.93
+\***      Added function to read the IRF ALT.
+\***
+\***      Version D           Steve Windsor         12.05.93
+\***      All IRF functions included.
+\***
+\***      Version E           Steve Perkins       20th September 1993
+\***      Deals project : Handling of Converted/Unconverted records
+\***      ++   Anything with 'Delete' after initials should be   ++
+\***      ++   deleted once the IRF has been converted in all    ++
+\***      ++   stores.                                           ++
+\***
+\***      Version F           Mark Walker            5th January 1994
+\***      If a read/write fails, set the CURRENT.CODE$ variable
+\***      to the current bar code.
+\***
+\***      Version 96A         Mark Walker               22nd May 1995
+\***      A new field IRF.POINTS% has replaced the existing
+\***      field IRF.FILLER$. Redundant deals code has been removed.
+\***
+\***      96A supplemental    David Smallwood           20th September 1995
+\***      IRF.RECORD$ initialised to "CONVERTED RECORD" for READ functions.
+\***      This is to enable programs that still refer to IRF.RECORD$
+\***      (e.g.PSS35) to function correctly.
+\***
+\***      Version G     Stuart William McConnachie      11th February 2000
+\***      Converted IRF.INDICAT2$ to integer flag byte.
+\***
+\***      REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+\***      Major changes for 2002 Deals Rewrite project.
+\***      See IRFDEC.J86 for updated record layout.
+\***      Removed variables that are redundant or related to old deals system
+\***      from record (input and output) definitions ...
+\***      INDICAT2%, DEAL.NUM$, INDICAT4%, SALEQUAN$, DEAL.SAVING$, POINTS%
+\***      Defined new deal data (table) variables within record definitions ...
+\***      DEAL.DATA%(0-2)
+\***
+\***      Defined new function IRF.SPLIT.RECORD
+\***      Set variables that may be "retained" within programs to nulls X'00' ...
+\***      INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+\***      Interpreted DEAL.DATA%(n) variables into sub-variables ...
+\***      DEAL.NUM$(0-2), LIST.ID%(0-2)
+\***
+\***      Defined new function IRF.CONCAT.RECORD
+\***      Recreated DEAL.DATA%(n) variables from (interpreted) sub-variables ...
+\***      DEAL.NUM$(0-2), LIST.ID%(0-2)
+\***
+\***      Avoided use of WHILE loop and subscript to keep code more readable
+\***      when handling DEAL.DATA%(n) related variables
+\***
+\***      REVISION 1.7.               ROBERT COWEY.               5 AUG 2002.
+\***      Further changes for 2002 Deals Rewrite project (PSBF19 related).
+\***      Included definition of external GETNn and PUTNn assembler functions.
+\***      Defined function CONCAT.NEW.IRF.DATA$ to combine individual IRF variables
+\***      into a single (record) string NEW.IRF.DATA$.
+\***      Defined function SPLIT.NEW.IRF.DATA$ to extract individual IRF variables
+\***      from (IRF record) string NEW.IRF.DATA$.
+\***
+\***      REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+\***      Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+\***      No changes to this file other than description.
+\***      No changes to IRF file functions.
+\***
+\***      REVISION 1.9.     STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+\***      Changes to remove limit of 3 deals per item.  Added code to access
+\***      aditional deals on the IRF Deal Extension file (IRFDEX).
+\***      SUPPLEMENTAL      ROBERT COWEY                         02 DEC 2003
+\***      Modified CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$ to incorporate
+\***      new IRFDEX deal variables within NEW.IRF.DATA$ string used by PSBF19.
+\***      Modified READ.IRF.ALT to call READ.IRFDEX (to match other functions).
+\***      Changed IRFDEX report number from 663 to 673.
+\***
+\***      REVISION 2.0.             ALAN CARR                      9 FEB 2006.
+\***      Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+\***
+\***      REVISION 2.1              BRIAN GREENFIELD               14 May 2009
+\***      Chanegs to increase the number of deals from 10 to 40.
+\***      Converted two sections to loops to simplify the code.
+\***
+\***      REVISION 2.2              TITTOO THOMAS                  01 July 2011
+\***      The IRF.UNUSED field is disintegrated to 2 new indicator fields
+\***                      IRF.INDICAT9%   1 INT
+\***                      IRF.INDICAT10%  1 INT
+\***...............................................................................
+
+
+    STRING GLOBAL                     \
+        CURRENT.CODE$,                 \
+        FILLER$,                      \ 2.1 BG
+        FILE.OPERATION$
+
+    INTEGER*2 GLOBAL                  \
+        CURRENT.REPORT.NUM%
+
+    INTEGER*2 I%          ! Loop counter                                   ! 1.9 SM
+    INTEGER*2 OFFSET%     ! Offset value                                   ! 2.1 BG
+    INTEGER*2             \ IRF.DEAL.DATA%(n) variable defined locally     ! 1.6 RC
+        IRF.DEAL.DATA%(1) ! to keep underlying data invisible to programs  ! 1.6 RC
+
+
+    %INCLUDE IRFDEC.J86   ! IRF variable declarations
+
+\**********************************************************************************
+\***
+\***       %INCLUDE FOR ITEM RECORD FILE - FIELD DECLARATIONS
+\***                                     - FILE REFERENCE PARAMETERS
+\***
+\***                      FILE TYPE    : Keyed
+\***
+\***                      REFERENCE    : IRFDEC.J86
+\***
+\***     Version A               Andrew Wedgeworth            29th June 1992
+\***
+\***     Version B               Andrew Wedgeworth        14th December 1992
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version C             Steve Windsor          12.02.93
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version D             Steve Windsor          12.05.93
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version E           Steve Perkins       20th September 1993
+\***     Deals project : Handling of Converted/Unconverted records
+\***     ++   Anything with 'Delete' after initials should be   ++
+\***     ++   deleted once the IRF has been converted in all    ++
+\***     ++   stores.                                           ++
+\***
+\***     Version F           Mark Walker            5th January 1994
+\***     Version letter incremented to match other IRF code.
+\***
+\***     Version 96A         Mark Walker               22nd May 1995
+\***     Definition for IRF.POINTS% added.
+\***
+\***                     Stuart McConnachie           12th June 1995
+\***     INDICAT3% comments added for discount/loyalty flags.
+\***
+\***     Version for 96C  Andrew Wedgeworth            22nd May 1996
+\***     Removed IRF.FILLER$ field, as this is now redundant.
+\***
+\***     Version G     Stuart William McConnachie      11th February 2000
+\***     Converted IRF.INDICAT2$ to integer flag byte.
+\***
+\***     REVISION 1.6.               ROBERT COWEY.               9 JUL 2002.
+\***     Major changes for 2002 Deals Rewrite project.
+\***     Incorporated up to date record layout to assist development work
+\***     (placed in the IRFDEC.J86 to make it visible from ...LST files).
+\***     Moved various comments against variables to record layout.
+\***     Relisted variables in alphabetical order.
+\***     Deleted redundant variables associated with the old deals system ...
+\***     DEAL.NUM$, DEAL.SAVING$
+\***     Retained variables that are otherwise redundant (to be set to null X'00'
+\***     within file functions) ...
+\***     INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+\***     Defined variables to hold interpreted deals data for new deals system ...
+\***     DEAL.NUM$(n) and LIST.ID%(n) (where 'n' represents entry 0, 1 and 2).
+\***     These two variables are interpretations of DEAL.DATA% which is defined
+\***     locally within IRFFUN.BAS to keep underlying data invisible to programs.
+\***
+\***     REVISION 1.7                ROBERT COWEY.               5 AUG 2002.
+\***     Further changes for 2002 Deals Rewrite project (PSBF19 related).
+\***     Defined NEW.IRF.DATA$ as a global variable for use with new functions
+\***     CONCAT.NEW.IRF.DATA$ and SPLIT.NEW.IRF.DATA$.
+\***
+\***     REVISION 1.8                ROBERT COWEY.              15 JUL 2003.
+\***     Usage of INDICAT0% bit-3 X'08' changed to Item Contains Alcohol.
+\***     No changes to this file other than description.
+\***     No changes to IRF file functions.
+\***
+\***     REVISION 1.9.      STUART WILLIAM MCCONNACHIE           22 OCT 2003.
+\***     Changes to remove limit of 3 deals per item.
+\***     Declaration of new variables for IRF Deal Extension file (IRFDEX).
+\***
+\***     REVISION 2.0.            ALAN CARR                       9 FEB 2006.
+\***     Add new IRF.INDICAT8% 1 byte, amend IRF.UNUSED$ from 3 to 2 bytes.
+\***
+\***     REVISION 2.1              TITTOO THOMAS                  01 July 2011
+\***     The IRF.UNUSED field is disintegrated to 2 new indicator fields
+\***                      IRF.INDICAT9%   1 INT
+\***                      IRF.INDICAT10%  1 INT
+\***...............................................................................
+
+
+\**********************************************************************************
+\***
+\***    IRF RECORD LAYOUT - REVISION 1.7 - CORRECT FOR 2011 CORE Stores PROJECT
+\***
+\***     1 11  UPD  BAR.CODE$   Without check digit - File KEY
+\***    12  1  INT  INDICAT0%
+\***                    X"01" - Contains statins                           ! 2.2 TT
+\***                    X"02" - Item not priced (giveaway)
+\***                    X"04" - Item not returnable
+\***                    X"08" - Item contains alcohol
+\***                    X"10" - Blocked from sale                          ! 2.2 TT
+\***                    X"20" - Enforced price entry
+\***                    X"40" - Enforced quantity entry
+\***                    X"80" - Movement kept
+\***    13  1  INT  INDICAT1%
+\***                    X"01" - Asprin
+\***                    X"02" - Paracetamol
+\***                    X"04" - TPLU inclusion flag
+\***                    X"08" - Giftcard item                              ! 2.2 TT
+\***                    X"10" - Withdrawn Block from sale                  ! 2.2 TT
+\***                    X"20" - Non-solid dose painkiller                  ! 2.2 TT
+\***                    X"40" - Insurance policy item                      ! 2.2 TT
+\***                    X"80" - Ibuprofen
+\***    14  2  INT  DEAL.DATA%(0)   Interpreted into sub-variables ...
+\***                    X'3F' - into DEAL.NUM$(0) "0000" to "9999" (2 byte UPD)
+\***                    X'C0' - into LIST.ID%(0) X'00' X
+\***                                             X'01' A
+\***                                             X'10' B
+\***                                             X'11' C                   ! 1.9 RC
+\***    16  1  INT  INDICAT8%                                              ! 2.0 AJC
+\***                    X"01" - Chlamydia NHS test kit                     ! 2.2 TT
+\***                    X"02" - Chlamydia open sell test kit               ! 2.2 TT
+\***                    X"04" - Unrestricted group code                    ! 2.2 TT
+\***                    X"08" - Nightingale Till prompt                    ! 2.2 TT
+\***                    X"10" - Contains Ephedrine                         ! 2.2 TT
+\***                    X"60" -  X'00' - If also Blocked From Sale Recall, ! 2.2 TT
+\***                                        Emergency                      ! 2.2 TT
+\***                             X'00' - If NOT Blocked From Sale Recall,  ! 2.2 TT
+\***                                        No recall                      ! 2.2 TT
+\***                             X'20' 100% returns                        ! 2.2 TT
+\***                             X'40' Withdrawn recall                    ! 2.2 TT
+\***                             X'60' Reverse Logistics                   ! 2.2 TT
+\***                    X"80" - WEEE item flag                             ! 2.0 AJC
+\***    17  1  INT  INDICAT9%
+\***                    X'3F' - Disposal special instruction (0-63)
+\***                    X"40" - Resaleable Indicator
+\***                    X"80" - Boots.com Extended Indicator
+\***    18  1  INT  INDICAT10%
+\***                    X'07' - Age restrictions
+\***                             X'00' - No Age restriction
+\***                             X'01' - Age 12 or over
+\***                             X'02' - Age 15 or over
+\***                             X'03' - Age 16 or over
+\***                             X'04' - Age 18 or over
+\***                             X'05' - Age 21 or over
+\***                             X'06' - Reserved
+\***                             X'07' - Reserved
+\***                    X'38' - Ethical classification
+\***                             X'00' - No ethical classification
+\***                             X'08' - Pharmacy medicine (P)
+\***                             X'10' - General Sale License (GSL)
+\***                             X'18' - Prescription Only Medicine (POM)
+\***                             X'20' - Reserved
+\***                             X'28' - Reserved
+\***                             X'30' - Reserved
+\***                             X'38' - Reserved
+\***                    X'C0' - Returns route
+\***                             X'00' - Not Returnable (Destroy)
+\***                             X'40' - Returns & Recovery
+\***                             X'80' - Direct
+\***                             X'C0' - Semi-centralised
+\***    19  5  UPD  SALEPRIC$   Current price in pence
+\***    24  1  INT  INDICAT5%   Guarantee duration
+\***                    X'3F' - Lowest 6 bits indicate duration (1-63)
+\***                    X'40' - Contains Pseudoephedrine                   ! 2.2 TT
+\***                    X'80' - Guarantee Duration Type                    ! 2.2 TT
+\***                              (1 = Months, 0 = Years)                  ! 2.2 TT
+\***    25 18  ASC  ITEMNAME$   Description used by till
+\***    43  3  UPD  BOOTS.CODE$ Without check digit
+\***    46  2  INT  DEAL.DATA%(1)   Similar structure to DEAL.DATA%(0)
+\***    48  2  INT  DEAL.DATA%(2)   Similar structure to DEAL.DATA%(0)
+\***    50  1  INT  INDICAT3%
+\***                    X"01" - Discountexempt (item exempt from discount)
+\***                    X"02" - Boots brand item
+\***                    X"04" - Item redeemable for loyalty
+\***                    X"08" - Loyalty exempt (item exempt from loyalty)
+\***                    X"10" - **Redundant                                ! 2.2 TT
+\***                    X"20" - Local Price active
+\***                    X"40" - Stock system item
+\***                    X"80" - **Redundant                                ! 2.2 TT
+\***
+\***    Record Length 50
+\***
+\***
+\***    IRF DEAL EXTENSION RECORD LAYOUT ! 1.9 RC
+\***
+\***     1  3  UPD  BOOTS.CODE$
+\***     4  2  INT  IRF.DEAL.DATA%(3)   Similar structure to DEAL.DATA%(0)
+\***     6  2  INT  IRF.DEAL.DATA%(4)   Similar structure to DEAL.DATA%(0)
+\***     8  2  INT  IRF.DEAL.DATA%(5)   Similar structure to DEAL.DATA%(0)
+\***    10  2  INT  IRF.DEAL.DATA%(6)   Similar structure to DEAL.DATA%(0)
+\***    12  2  INT  IRF.DEAL.DATA%(7)   Similar structure to DEAL.DATA%(0)
+\***    14  2  INT  IRF.DEAL.DATA%(8)   Similar structure to DEAL.DATA%(0)
+\***    16  2  INT  IRF.DEAL.DATA%(9)   Similar structure to DEAL.DATA%(0)
+\***
+\***    Record Length 17
+\***
+\**********************************************************************************
+
+
+    STRING GLOBAL            \
+        IRF.ALT.FILE.NAME$,  \
+        IRF.BAR.CODE$,       \
+        IRF.BOOTS.CODE$,     \
+        IRF.DEAL.SAVING$,    \ 2 byte - deal saving amount (0 - œ99.99) ! ESP
+        IRF.DEPARTME$,       \ 3 byte UPD. Department number          ! ESP Delete
+        IRF.FILE.NAME$,      \
+        IRF.HOLDING.PRICE$,  \ 4 byte UPD. Current H.O. price in pence if a local
+                             \ price is in effect, zero otherwise.     ! ESP Delete
+        IRF.ITEMNAME$,       \
+\       IRF.MPGROUP$,        \ Removed SBH 31/1/96
+        IRF.RECORD$,         \                                         ! ESP Delete
+        IRF.SALEPRIC$,       \
+        IRF.SALEQUAN$,       \ Redundant (set to null within functions)    ! 1.6 RC
+        IRF.UNUSED$,         \                                                        ! 1.6 RC
+        NEW.IRF.DATA$        !                                             ! 1.7 RC
+
+    STRING GLOBAL            \                                             ! 1.6 RC
+        IRF.DEAL.NUM$(1)                                                   ! 1.6 RC
+
+    INTEGER*1 GLOBAL         \
+        IRF.DD.SUB%,         \ IRF.DEAL.DATA% subscript                    ! 1.6 RC
+        IRF.INDICAT0%,       \
+        IRF.INDICAT1%,       \
+        IRF.INDICAT2%,       \ Redundant (set to null within functions)    ! 1.6 RC
+        IRF.INDICAT3%,       \
+        IRF.INDICAT4%,       \ Redundant (set to null within functions)    ! 1.6 RC
+        IRF.INDICAT5%,       \                                             ! 2.0 AJC
+        IRF.INDICAT8%,       \                                             ! 2.0 AJC
+        IRF.INDICAT9%,       \                                             ! 2.2 TT
+        IRF.INDICAT10%                                                     ! 2.2 TT
+
+    INTEGER*1 GLOBAL         \                                             ! 1.6 RC
+        IRF.LIST.ID%(1)                                                    ! 1.6 RC
+
+    INTEGER*2 GLOBAL         \
+        IRF.ALT.REPORT.NUM%, \
+        IRF.ALT.SESS.NUM%,   \
+        IRF.POINTS%,         \ Redundant (set to null within functions)    ! 1.6 RC
+        IRF.RECL%,           \
+        IRF.REPORT.NUM%,     \
+        IRF.SESS.NUM%,       \
+        IRF.MAX.DEALS%       !                                             ! 1.9 SM
+
+    STRING GLOBAL IRFDEX.FILE.NAME$                                        ! 1.9 SM
+
+    INTEGER*2 GLOBAL IRFDEX.SESS.NUM%                                      ! 1.9 SM
+    INTEGER*2 GLOBAL IRFDEX.REPORT.NUM%                                    ! 1.9 SM
+    INTEGER*2 GLOBAL IRFDEX.RECL%                                          ! 1.9 SM
+
+
+!   INTEGER*2 GLOBAL      \ IRF.DEAL.DATA%(n) variables are defined locally  1.6 RC
+!       IRF.DEAL.DATA%(1) \ within IRFFUN.BAS to keep invisible to programs  1.6 RC
+
+
+    %INCLUDE EALHSASC.J86 ! External assembler function definitions        ! 1.7 RC
+\/* TIME STAMP BLOCK **********************************************
+\** END OF TIME STAMP BLOCK **************************************/
+!! THIS MODULE WAS CREATED BY APAR IR70269
+!*********************************************************************
+!
+! ASSEMBLER SUBROUTNE DEFINITIONS
+!
+! These definitions should be copied by any routine which wishes to
+! use the performanced enhanced assembler routines.
+!
+!*********************************************************************
+ 
+!*********************************************************************
+!
+! SUBSTR
+!
+! This routine performs a merge of two strings. String P3$, offset P4
+! is merged into string P1$ offset P2 for a length of P5 bytes
+!
+! CAUTION: P1$ must be long enough to totally contain P3$
+!
+! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION SUBSTR (P1$,P2,P3$,P4,P5) EXTERNAL
+ STRING P1$,P3$
+ INTEGER*2 P2,P4,P5
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! GETN2/GETN4
+!
+! These routines extract a two/four byte integer from a string.
+! P2 is the offset within the string
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION GETN2(P1$,P2) EXTERNAL
+ INTEGER*2 GETN2
+ STRING P1$
+ INTEGER*2 P2
+ END FUNCTION
+ 
+ FUNCTION GETN4(P1$,P2) EXTERNAL
+ INTEGER*4 GETN4
+ STRING P1$
+ INTEGER*2 P2
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! PUTN2/PUTN4
+!
+! These routines insert a two/four byte integer into a string.
+! P2 is the offset within the string and P3 is the source integer
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION PUTN2(P1$,P2,P3) EXTERNAL
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+ FUNCTION PUTN4(P1$,P2,P3) EXTERNAL
+ STRING P1$
+ INTEGER*2 P2
+ INTEGER*4 P3
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! PACKBIN2/4
+!
+! These routines take a packed decimal string and convert to integer
+! (The equivalent of CBASIC INT%(VAL(UNPACK$())) )
+! P1 is the source string, P2 the string offset and P3 the length
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION PACKBIN2(P1$,P2,P3) EXTERNAL
+ INTEGER*2 PACKBIN2
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+ FUNCTION PACKBIN4(P1$,P2,P3) EXTERNAL
+ INTEGER*4 PACKBIN4
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! ADDIN2/4
+!
+! These routines add an integer into an integer which is imbedded within
+! a string.  P1$ is the string containing at offset P2 the integer to be
+! updated.  P3 is the integer to be added into P1$.
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION ADDIN4(P1$,P2,P3) EXTERNAL
+ INTEGER*4 ADDIN4
+ STRING P1$
+ INTEGER*2 P2
+ INTEGER*4 P3
+ END FUNCTION
+ 
+ FUNCTION ADDIN2(P1$,P2,P3) EXTERNAL
+ INTEGER*2 ADDIN2
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! MATCHB
+!
+! This routine performs a fast match function when the string being
+! searched for contains only a single character.  As with the MATCH
+! function, P1$ is the character to be found, P2$ is the string to be
+! searched, and P3 the offst at which to start the search.
+!
+!*********************************************************************
+ 
+ FUNCTION MATCHB(P1$,P2$,P3) EXTERNAL
+ INTEGER*2 MATCHB
+ STRING P1$
+ STRING P2$
+ INTEGER*2 P3
+ END FUNCTION
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 4 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN4 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 3 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN3 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 2 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN2 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 1 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN1 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 4 BYTE HEX REPRESENTATION OF A 2-BYTE INTEGER                !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDHEX2 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 2 BYTE HEX REPRESENTATION OF A 1-BYTE INTEGER                !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDHEX1 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+\ REM!! STRING TO A 2 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+\ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+\ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!!
+\ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+\ REM!! *************************************************************!!
+ 
+SUB INTBIN2 (IN$,IN%,OUT$,OUT%) EXTERNAL
+STRING IN$,OUT$
+INTEGER IN%,OUT%
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+\ REM!! STRING TO A 3 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+\ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+\ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!!
+\ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+\ REM!! *************************************************************!!
+ 
+SUB INTBIN3 (IN$,IN%,OUT$,OUT%) EXTERNAL
+STRING IN$,OUT$
+INTEGER IN%,OUT%
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+\ REM!! STRING TO A 4 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+\ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+\ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!!
+\ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+\ REM!! *************************************************************!!
+ 
+SUB INTBIN4 (IN$,IN%,OUT$,OUT%) EXTERNAL
+STRING IN$,OUT$
+INTEGER IN%,OUT%
+END SUB
+ 
+                          ! Includes all functions defined by EALGAADF.J86 ! 1.7.RC
+
+FUNCTION IRF.SET PUBLIC
+
+    IRF.REPORT.NUM%     =  7
+    IRF.ALT.REPORT.NUM% = 58
+    IRF.RECL%           = 50
+    IRF.FILE.NAME$      = "IRF"
+    IRF.ALT.FILE.NAME$  = "IRFALT"
+
+    IRFDEX.REPORT.NUM%  = 673                                             ! 1.9 SM+RC
+    IRFDEX.RECL%        = 84                                              ! 1.9 SM 2.1 BG
+    IRFDEX.FILE.NAME$   = "IRFDEX"                                        ! 1.9 SM
+
+    IRF.MAX.DEALS%      = 40                                              ! 1.9 SM 2.1 BG
+    DIM IRF.DEAL.DATA%(IRF.MAX.DEALS%-1) ! Entries used are 0 to 2        ! 1.6 RC 1.9 SM
+    DIM IRF.DEAL.NUM$(IRF.MAX.DEALS%-1)  ! Entries used are 0 to 2        ! 1.6 RC 1.9 SM
+    DIM IRF.LIST.ID%(IRF.MAX.DEALS%-1)   ! Entries used are 0 to 2        ! 1.6 RC 1.9 SM
+
+END FUNCTION
+
+
+\*******************************************************************************
+\***
+\***    IRF.SPLIT.RECORD
+\***    Interprets DEAL.DATA%(n) variables into sub-variables ...
+\***    DEAL.NUM$(0-2), LIST.ID%(0-2)
+\***    Sets variables that may be "retained" within programs to nulls X'00' ...
+\***    INDICAT2%, INDICAT4%, SALEQUAN$, POINTS%
+\***    The function is called immediately following a READ of the IRF.
+\***
+\***............................................................................
+
+
+FUNCTION IRF.SPLIT.RECORD ! Local to IRFFUN       ! Entire function new for 1.6 RC
+
+    IRF.DD.SUB% = 0
+
+    FOR I% = 0 TO IRF.MAX.DEALS% - 1                                    ! 1.9 SM
+
+        IRF.DEAL.NUM$(I%) = PACK$(RIGHT$("0000"+                        \ 1.9 SM
+                              STR$(IRF.DEAL.DATA%(I%) AND 03FFFh),4))   ! 1.9 SM
+        IRF.LIST.ID%(I%) = SHIFT(IRF.DEAL.DATA%(I%),14) AND 03h         ! 1.9 SM
+
+    NEXT I%                                                             ! 1.9 SM
+
+    IRF.INDICAT2% = 0           ! Redundant variable
+    IRF.INDICAT4% = 0           ! Redundant variable
+    IRF.POINTS%   = 0           ! Redundant variable
+    IRF.SALEQUAN$ = PACK$("00") ! Redundant variable
+
+END FUNCTION
+
+
+\*******************************************************************************
+\***
+\***    IRF.CONCAT.RECORD
+\***    Recreates DEAL.DATA%(n) variables from (interpreted) sub-variables ...
+\***    DEAL.NUM$(0-2), LIST.ID%(0-2).
+\***    The function is called immediately prior to a WRITE to the IRF.
+\***
+\***............................................................................
+
+
+FUNCTION IRF.CONCAT.RECORD ! Local to IRFFUN      ! Entire function new for 1.6 RC
+
+    INTEGER*2 DEAL.NUM%                                                 ! 1.9 SM
+
+    FOR I% = 0 TO IRF.MAX.DEALS% - 1                                    ! 1.9 SM
+
+        DEAL.NUM% = VAL(UNPACK$(IRF.DEAL.NUM$(I%))) AND 03FFFh          ! 1.9 SM
+        IF IRF.LIST.ID%(I%) AND 1 THEN BEGIN                            ! 1.9 SM
+            DEAL.NUM% = DEAL.NUM% OR 04000h                             ! 1.9 SM
+        ENDIF                                                           ! 1.9 SM
+        IF IRF.LIST.ID%(I%) AND 2 THEN BEGIN                            ! 1.9 SM
+            DEAL.NUM% = DEAL.NUM% OR 08000h                             ! 1.9 SM
+        ENDIF                                                           ! 1.9 SM
+        IRF.DEAL.DATA%(I%) = DEAL.NUM%                                  ! 1.9 SM
+
+    NEXT I%                                                             ! 1.9 SM
+
+END FUNCTION
+
+
+\********************************************************************************
+\***
+\***    CONCAT.NEW.IRF.DATA$
+\***    Sets NEW.IRF.DATA$ from individual IRF variables.
+\***    The function is typically called immediately prior to calling the
+\***    UPDT.IRF.UPDT function defined within PSBF19.
+\***
+\***.............................................................................
+
+
+FUNCTION CONCAT.NEW.IRF.DATA$ PUBLIC             ! Entire function new for 1.7 RC
+
+    NEW.IRF.DATA$ =          \
+           IRF.BAR.CODE$   + \
+      CHR$(IRF.INDICAT0%)  + \
+      CHR$(IRF.INDICAT1%)  + \
+          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(0)
+      CHR$(IRF.INDICAT8%)  + \ ! New WEEE Item Flag                        ! 2.0 AC
+\!           IRF.UNUSED$     + \                                           ! 2.2 TT
+      CHR$(IRF.INDICAT9%)  + \                                             ! 2.2 TT
+      CHR$(IRF.INDICAT10%) + \                                             ! 2.2 TT
+           IRF.SALEPRIC$   + \
+      CHR$(IRF.INDICAT5%)  + \
+           IRF.ITEMNAME$   + \
+           IRF.BOOTS.CODE$ + \
+          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(1)
+          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(2)
+      CHR$(IRF.INDICAT3%)  + \                                             ! 1.9 RC
+      STRING$((IRF.MAX.DEALS% * 2) - 6, " ")                                ! 2.1 BG
+!          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(3)  ! 1.9 RC 2.1 BG
+!          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(4)  ! 1.9 RC 2.1 BG
+!          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(5)  ! 1.9 RC 2.1 BG
+!          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(6)  ! 1.9 RC 2.1 BG
+!          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(7)  ! 1.9 RC 2.1 BG
+!          "  "             + \ ! Reserves two bytes for IRF.DEAL.DATA%(8)  ! 1.9 RC 2.1 BG
+!          "  "                 ! Reserves two bytes for IRF.DEAL.DATA%(9)  ! 1.9 RC 2.1 BG
+
+    CALL IRF.CONCAT.RECORD ! Sets local IRF.DEAL.DATA%(n) variables from global
+                           ! IRF.LIST.ID%(n) and IRF.DEAL.NUM$(n) variables
+
+    CALL PUTN2 (NEW.IRF.DATA$, 13, IRF.DEAL.DATA%(0)) ! Inserts IRF.DEAL.DATA%(n)
+    CALL PUTN2 (NEW.IRF.DATA$, 45, IRF.DEAL.DATA%(1)) ! variables into string
+    CALL PUTN2 (NEW.IRF.DATA$, 47, IRF.DEAL.DATA%(2)) ! NEW.IRF.DATA$
+!    CALL PUTN2 (NEW.IRF.DATA$, 50, IRF.DEAL.DATA%(3))                      ! 1.9 RC 2.1 BG
+!    CALL PUTN2 (NEW.IRF.DATA$, 52, IRF.DEAL.DATA%(4))                      ! 1.9 RC 2.1 BG
+!    CALL PUTN2 (NEW.IRF.DATA$, 54, IRF.DEAL.DATA%(5))                      ! 1.9 RC 2.1 BG
+!    CALL PUTN2 (NEW.IRF.DATA$, 56, IRF.DEAL.DATA%(6))                      ! 1.9 RC 2.1 BG
+!    CALL PUTN2 (NEW.IRF.DATA$, 58, IRF.DEAL.DATA%(7))                      ! 1.9 RC 2.1 BG
+!    CALL PUTN2 (NEW.IRF.DATA$, 60, IRF.DEAL.DATA%(8))                      ! 1.9 RC 2.1 BG
+!    CALL PUTN2 (NEW.IRF.DATA$, 62, IRF.DEAL.DATA%(9))                      ! 1.9 RC 2.1 BG
+
+    OFFSET% = 50                                                            ! 2.1 BG
+    FOR I% = 3 TO IRF.MAX.DEALS% - 1                                        ! 2.1 BG
+        CALL PUTN2 (NEW.IRF.DATA$, OFFSET%, IRF.DEAL.DATA%(I%))             ! 2.1 BG
+        OFFSET% = OFFSET% + 2                                               ! 2.1 BG
+    NEXT I%                                                                 ! 2.1 BG
+
+
+END FUNCTION
+
+
+\********************************************************************************
+\***
+\***    SPLIT.NEW.IRF.DATA$
+\***    Sets individual IRF variables from NEW.IRF.DATA$
+\***    The function is typically called from within the UPDT.IRF.UPDT function
+\***    defined within PSBF19.
+\***
+\***.............................................................................
+
+
+FUNCTION SPLIT.NEW.IRF.DATA$ PUBLIC              ! Entire function new for 1.7 RC
+
+    IRF.BAR.CODE$      =      MID$(NEW.IRF.DATA$, 1,11)
+    IRF.INDICAT0%      =  ASC(MID$(NEW.IRF.DATA$,12, 1))
+    IRF.INDICAT1%      =  ASC(MID$(NEW.IRF.DATA$,13, 1))
+!   IRF.DEAL.DATA%(0) from    MID$(NEW.IRF.DATA$,14, 2)
+    IRF.INDICAT8%      =  ASC(MID$(NEW.IRF.DATA$,16, 1))                 ! 2.0 AC
+!   IRF.UNUSED$        =      MID$(NEW.IRF.DATA$,17, 2)                  ! 2.0 AC 2.2 TT
+    IRF.INDICAT9%      =  ASC(MID$(NEW.IRF.DATA$,17, 1))                 ! 2.2 TT
+    IRF.INDICAT10%     =  ASC(MID$(NEW.IRF.DATA$,18, 1))                 ! 2.2 TT
+    IRF.SALEPRIC$      =      MID$(NEW.IRF.DATA$,19, 5)
+    IRF.INDICAT5%      =  ASC(MID$(NEW.IRF.DATA$,24, 1))
+    IRF.ITEMNAME$      =      MID$(NEW.IRF.DATA$,25,18)
+    IRF.BOOTS.CODE$    =      MID$(NEW.IRF.DATA$,43, 3)
+!   IRF.DEAL.DATA%(1) from    MID$(NEW.IRF.DATA$,46, 2)
+!   IRF.DEAL.DATA%(2) from    MID$(NEW.IRF.DATA$,48, 2)
+    IRF.INDICAT3%      =  ASC(MID$(NEW.IRF.DATA$,50, 1))
+
+    IRF.DEAL.DATA%(0) = GETN2 (NEW.IRF.DATA$, 13) ! Extracts IRF.DEAL.DATA%(n)
+    IRF.DEAL.DATA%(1) = GETN2 (NEW.IRF.DATA$, 45) ! variables from string
+    IRF.DEAL.DATA%(2) = GETN2 (NEW.IRF.DATA$, 47) ! NEW.IRF.DATA$
+!    IRF.DEAL.DATA%(3) = GETN2 (NEW.IRF.DATA$, 50)                       ! 1.9 RC 2.1 BG
+!    IRF.DEAL.DATA%(4) = GETN2 (NEW.IRF.DATA$, 52)                       ! 1.9 RC 2.1 BG
+!    IRF.DEAL.DATA%(5) = GETN2 (NEW.IRF.DATA$, 54)                       ! 1.9 RC 2.1 BG
+!    IRF.DEAL.DATA%(6) = GETN2 (NEW.IRF.DATA$, 56)                       ! 1.9 RC 2.1 BG
+!    IRF.DEAL.DATA%(7) = GETN2 (NEW.IRF.DATA$, 58)                       ! 1.9 RC 2.1 BG
+!    IRF.DEAL.DATA%(8) = GETN2 (NEW.IRF.DATA$, 60)                       ! 1.9 RC 2.1 BG
+!    IRF.DEAL.DATA%(9) = GETN2 (NEW.IRF.DATA$, 62)                       ! 1.9 RC 2.1 BG
+
+    OFFSET% = 50                                                        ! 2.1 BG
+    FOR I% = 3 TO IRF.MAX.DEALS% - 1                                    ! 2.1 BG
+        IRF.DEAL.DATA%(I%) = GETN2 (NEW.IRF.DATA$, OFFSET%)             ! 2.1 BG
+        OFFSET% = OFFSET% + 2                                           ! 2.1 BG
+    NEXT I%                                                             ! 2.1 BG
+
+    CALL IRF.SPLIT.RECORD ! Sets global IRF.LIST.ID%(n) and IRF.DEAL.NUM$(n)
+                          ! variables from local IRF.DEAL.DATA%(n) variables
+
+END FUNCTION
+
+
+\----------------------------------------------------------------------------
+
+    FUNCTION READ.IRFDEX                                                  ! 1.9 SM
+
+    INTEGER*2 READ.IRFDEX                                                 ! 1.9 SM
+
+    READ.IRFDEX = 1                                                       ! 1.9 SM
+
+    IF IRFDEX.SESS.NUM% <> 0 AND                                          \ 1.9 SM
+       IRF.DEAL.DATA%(2) <> 0 AND                                         \ 1.9 SM
+       IRF.BOOTS.CODE$ <> PACK$("000000") THEN BEGIN                      ! 1.9 SM
+
+        IF END #IRFDEX.SESS.NUM% THEN READ.IRFDEX.ERROR                   ! 1.9 SM
+        READ FORM "T4,37I2,C7"; #IRFDEX.SESS.NUM%                         \ 1.9 SM 2.1 BG
+        KEY IRF.BOOTS.CODE$;                                              \ 1.9 SM
+            IRF.DEAL.DATA%(3),                                            \ 1.9 SM
+            IRF.DEAL.DATA%(4),                                            \ 1.9 SM
+            IRF.DEAL.DATA%(5),                                            \ 1.9 SM
+            IRF.DEAL.DATA%(6),                                            \ 1.9 SM
+            IRF.DEAL.DATA%(7),                                            \ 1.9 SM
+            IRF.DEAL.DATA%(8),                                            \ 1.9 SM
+            IRF.DEAL.DATA%(9),                                            \ 1.9 SM 2.1 BG
+            IRF.DEAL.DATA%(10),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(11),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(12),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(13),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(14),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(15),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(16),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(17),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(18),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(19),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(20),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(21),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(22),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(23),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(24),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(25),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(26),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(27),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(28),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(29),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(30),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(31),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(32),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(33),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(34),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(35),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(36),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(37),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(38),                                           \ 2.1 BG
+            IRF.DEAL.DATA%(39),                                           \ 2.1 BG
+            FILLER$                                                       ! 2.1 BG
+
+    ENDIF ELSE BEGIN                                                      ! 1.9 SM
+
+READ.IRFDEX.ERROR:                                                        ! 1.9 SM
+        FOR I% = 3 TO IRF.MAX.DEALS% - 1                                  ! 1.9 SM
+            IRF.DEAL.DATA%(I%) = 0                                        ! 1.9 SM
+        NEXT I%                                                           ! 1.9 SM
+
+    ENDIF                                                                 ! 1.9 SM
+
+    READ.IRFDEX = 0                                                       ! 1.9 SM
+    EXIT FUNCTION                                                         ! 1.9 SM
+
+    END FUNCTION                                                          ! 1.9 SM
+
+\----------------------------------------------------------------------------
+
+    FUNCTION WRITE.IRFDEX                                                 ! 1.9 SM
+
+    INTEGER*2 WRITE.IRFDEX                                                ! 1.9 SM
+
+    WRITE.IRFDEX = 1                                                      ! 1.9 SM
+
+    IF IRFDEX.SESS.NUM% THEN BEGIN                                        ! 1.9 SM
+
+        IF IRF.BAR.CODE$ = PACK$("0000000000000000")+IRF.BOOTS.CODE$ THEN BEGIN ! 1.9 SM
+
+            IF IRF.DEAL.DATA%(3) <> 0 THEN BEGIN                          ! 1.9 SM
+
+                !Ensure filler is packed zero's.                          ! 2.1 BG
+                FILLER$ = PACK$("00000000000000")                         ! 2.1 BG
+
+                IF END #IRFDEX.SESS.NUM% THEN WRITE.IRFDEX.ERROR          ! 1.9 SM
+                WRITE FORM "C3,37I2,C7"; #IRFDEX.SESS.NUM%;               \ 1.9 SM 2.1 BG
+                    IRF.BOOTS.CODE$,                                      \ 1.9 SM
+                    IRF.DEAL.DATA%(3),                                    \ 1.9 SM
+                    IRF.DEAL.DATA%(4),                                    \ 1.9 SM
+                    IRF.DEAL.DATA%(5),                                    \ 1.9 SM
+                    IRF.DEAL.DATA%(6),                                    \ 1.9 SM
+                    IRF.DEAL.DATA%(7),                                    \ 1.9 SM
+                    IRF.DEAL.DATA%(8),                                    \ 1.9 SM
+                    IRF.DEAL.DATA%(9),                                    \ 1.9 SM 2.1 BG
+                    IRF.DEAL.DATA%(10),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(11),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(12),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(13),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(14),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(15),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(16),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(17),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(18),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(19),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(20),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(21),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(22),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(23),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(24),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(25),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(26),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(27),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(28),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(29),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(30),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(31),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(32),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(33),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(34),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(35),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(36),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(37),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(38),                                   \ 2.1 BG
+                    IRF.DEAL.DATA%(39),                                   \ 2.1 BG
+                    FILLER$                                               ! 2.1 BG
+
+            ENDIF ELSE BEGIN                                              ! 1.9 SM
+
+                IF END #IRFDEX.SESS.NUM% THEN NO.IRFDEX.RECORD            ! 1.9 SM
+                DELREC IRFDEX.SESS.NUM%; IRF.BOOTS.CODE$                  ! 1.9 SM
+NO.IRFDEX.RECORD:                                                         ! 1.9 SM
+            ENDIF                                                         ! 1.9 SM
+
+        ENDIF                                                             ! 1.9 SM
+
+    ENDIF                                                                 ! 1.9 SM
+
+    WRITE.IRFDEX = 0                                                      ! 1.9 SM
+    EXIT FUNCTION                                                         ! 1.9 SM
+
+WRITE.IRFDEX.ERROR:                                                       ! 1.9 SM
+    CURRENT.REPORT.NUM% = IRFDEX.REPORT.NUM%                              ! 1.9 SM
+    FILE.OPERATION$ = "W"                                                 ! 1.9 SM
+    CURRENT.CODE$ = PACK$("00000000") + IRF.BOOTS.CODE$                   ! 1.9 SM
+
+    EXIT FUNCTION                                                         ! 1.9 SM
+
+    END FUNCTION                                                          ! 1.9 SM
+
+\---------------------------------------------------------------------------------
+
+  FUNCTION READ.IRF PUBLIC
+
+   INTEGER*2 READ.IRF
+
+   READ.IRF = 1
+
+   IF END#IRF.SESS.NUM% THEN READ.IRF.ERROR
+
+    READ FORM  "T12,2I1,I2,I1,2I1,C5,I1,C18,C3,I2,I2,I1"; \               ! 1.6.RC ! 2.0 AJC ! 2.2 TT
+         #IRF.SESS.NUM%                                             \ MW96A
+         KEY IRF.BAR.CODE$;                                         \
+             IRF.INDICAT0%,                                         \
+             IRF.INDICAT1%,                                         \
+             IRF.DEAL.DATA%(0),                                     \     ! 1.6 RC
+             IRF.INDICAT8%,                                         \     ! 2.0 AJC
+\!            IRF.UNUSED$,                                          \     ! 1.6 RC 2.2 TT
+             IRF.INDICAT9%,                                         \     ! 2.2 TT
+             IRF.INDICAT10%,                                        \     ! 2.2 TT
+             IRF.SALEPRIC$,                                         \
+             IRF.INDICAT5%,                                         \ SBH 31/1/96
+             IRF.ITEMNAME$,                                         \
+             IRF.BOOTS.CODE$,                                       \
+             IRF.DEAL.DATA%(1),                                     \     ! 1.6 RC
+             IRF.DEAL.DATA%(2),                                     \     ! 1.6 RC
+             IRF.INDICAT3%
+
+    IF READ.IRFDEX THEN EXIT FUNCTION                                     ! 1.9 SM
+
+    CALL IRF.SPLIT.RECORD                                                 ! 1.6 RC
+
+    READ.IRF = 0
+
+    IRF.RECORD$ = "CONVERTED RECORD"                                ! DS96A
+
+   EXIT FUNCTION
+
+   READ.IRF.ERROR:
+
+   CURRENT.REPORT.NUM% = IRF.REPORT.NUM%
+   FILE.OPERATION$ = "R"
+   CURRENT.CODE$ = RIGHT$(IRF.BAR.CODE$,7)                          ! FMW
+
+   EXIT FUNCTION
+  END FUNCTION
+
+\----------------------------------------------------------------------------
+
+  FUNCTION READ.IRF.ALT PUBLIC
+
+   INTEGER*2 I%                                                           ! 1.9 SM
+   INTEGER*2 READ.IRF.ALT
+
+   READ.IRF.ALT = 1
+
+   IF END#IRF.ALT.SESS.NUM% THEN READ.IRF.ALT.ERROR
+
+    READ FORM  "T12,2I1,I2,I1,2I1,C5,I1,C18,C3,I2,I2,I1"; \               ! 1.6.RC ! 2.0 AJC ! 2.2 TT
+         #IRF.ALT.SESS.NUM%                                         \
+         KEY IRF.BAR.CODE$;                                         \
+             IRF.INDICAT0%,                                         \
+             IRF.INDICAT1%,                                         \
+             IRF.DEAL.DATA%(0),                                     \     ! 1.6 RC
+             IRF.INDICAT8%,                                         \     ! 2.0 AJC
+\!            IRF.UNUSED$,                                          \     ! 1.6 RC 2.2 TT
+             IRF.INDICAT9%,                                         \     ! 2.2 TT
+             IRF.INDICAT10%,                                        \     ! 2.2 TT
+             IRF.SALEPRIC$,                                         \
+             IRF.INDICAT5%,                                         \ SBH 31/1/96
+             IRF.ITEMNAME$,                                         \
+             IRF.BOOTS.CODE$,                                       \
+             IRF.DEAL.DATA%(1),                                     \     ! 1.6 RC
+             IRF.DEAL.DATA%(2),                                     \     ! 1.6 RC
+             IRF.INDICAT3%
+
+    IF READ.IRFDEX THEN EXIT FUNCTION                                     ! 1.9 RC
+
+!   FOR I% = 3 TO IRF.MAX.DEALS% - 1                                      ! 1.9 SM-RC
+!       IRF.DEAL.DATA%(I%) = 0                                            ! 1.9 SM-RC
+!   NEXT I%                                                               ! 1.9 SM-RC
+
+    CALL IRF.SPLIT.RECORD                                                 ! 1.6 RC
+
+    READ.IRF.ALT = 0
+
+    IRF.RECORD$ = "CONVERTED RECORD"                                ! DS96A
+
+   EXIT FUNCTION
+
+   READ.IRF.ALT.ERROR:
+
+   CURRENT.REPORT.NUM% = IRF.ALT.REPORT.NUM%
+   FILE.OPERATION$ = "R"
+   CURRENT.CODE$ = RIGHT$(IRF.BAR.CODE$,7)                          ! FMW
+
+   EXIT FUNCTION
+  END FUNCTION
+
+\----------------------------------------------------------------------------
+
+  FUNCTION READ.IRF.LOCK PUBLIC
+
+   INTEGER*2 READ.IRF.LOCK
+
+   READ.IRF.LOCK = 1
+
+   IF END#IRF.SESS.NUM% THEN READ.IRF.LOCK.ERROR
+
+    READ FORM  "T12,2I1,I2,I1,2I1,C5,I1,C18,C3,I2,I2,I1"; \               ! 1.6.RC ! 2.0 AJC ! 2.2 TT
+         #IRF.SESS.NUM%                                             \ MW96A
+         AUTOLOCK                                                   \
+         KEY IRF.BAR.CODE$;                                         \
+             IRF.INDICAT0%,                                         \
+             IRF.INDICAT1%,                                         \
+             IRF.DEAL.DATA%(0),                                     \     ! 1.6 RC
+             IRF.INDICAT8%,                                         \     ! 2.0 AJC
+\!            IRF.UNUSED$,                                          \     ! 1.6 RC 2.2 TT
+             IRF.INDICAT9%,                                         \     ! 2.2 TT
+             IRF.INDICAT10%,                                        \     ! 2.2 TT
+             IRF.SALEPRIC$,                                         \
+             IRF.INDICAT5%,                                         \ SBH 31/1/96
+             IRF.ITEMNAME$,                                         \
+             IRF.BOOTS.CODE$,                                       \
+             IRF.DEAL.DATA%(1),                                     \     ! 1.6 RC
+             IRF.DEAL.DATA%(2),                                     \     ! 1.6 RC
+             IRF.INDICAT3%
+
+    IF READ.IRFDEX THEN EXIT FUNCTION                                     ! 1.9 SM
+
+    CALL IRF.SPLIT.RECORD                                                 ! 1.6 RC
+
+    READ.IRF.LOCK = 0
+
+    IRF.RECORD$ = "CONVERTED RECORD"                                ! DS96A
+
+   EXIT FUNCTION
+
+   READ.IRF.LOCK.ERROR:
+
+   CURRENT.REPORT.NUM% = IRF.REPORT.NUM%
+   FILE.OPERATION$ = "R"
+   CURRENT.CODE$ = RIGHT$(IRF.BAR.CODE$,7)                          ! FMW
+
+   EXIT FUNCTION
+  END FUNCTION
+
+\----------------------------------------------------------------------------
+
+  FUNCTION WRITE.IRF PUBLIC
+
+   INTEGER*2 WRITE.IRF
+
+    WRITE.IRF = 1
+
+    CALL IRF.CONCAT.RECORD                                                ! 1.6 RC
+
+    IF END#IRF.SESS.NUM% THEN WRITE.IRF.ERROR
+
+    WRITE FORM "C11,2I1,I2,I1,2I1,C5,I1,C18,C3,I2,I2,I1"; \               ! 1.6 RC ! 2.0 AJC ! 2.2 TT
+          #IRF.SESS.NUM%;                                         \ 96AM
+             IRF.BAR.CODE$,                                       \ 96AMW
+             IRF.INDICAT0%,                                       \
+             IRF.INDICAT1%,                                       \
+             IRF.DEAL.DATA%(0),                                   \       ! 1.6 RC
+             IRF.INDICAT8%,                                       \       ! 2.0 AJC
+\!            IRF.UNUSED$,                                        \       ! 1.6 RC 2.2 TT
+             IRF.INDICAT9%,                                       \       ! 2.2 TT
+             IRF.INDICAT10%,                                      \       ! 2.2 TT
+             IRF.SALEPRIC$,                                       \
+             IRF.INDICAT5%,                                       \ SBH 31/1/96
+             IRF.ITEMNAME$,                                       \
+             IRF.BOOTS.CODE$,                                     \
+             IRF.DEAL.DATA%(1),                                   \       ! 1.6 RC
+             IRF.DEAL.DATA%(2),                                   \       ! 1.6 RC
+             IRF.INDICAT3%
+
+    IF WRITE.IRFDEX THEN EXIT FUNCTION                                    ! 1.9 SM
+
+    WRITE.IRF = 0
+
+   EXIT FUNCTION
+
+   WRITE.IRF.ERROR:
+
+   CURRENT.REPORT.NUM% = IRF.REPORT.NUM%
+   FILE.OPERATION$ = "W"
+   CURRENT.CODE$ = RIGHT$(IRF.BAR.CODE$,7)                        ! FMW
+   EXIT FUNCTION
+
+  END FUNCTION
+
+\----------------------------------------------------------------------------
+
+  FUNCTION WRITE.IRF.UNLOCK PUBLIC
+
+   INTEGER*2 WRITE.IRF.UNLOCK
+
+    WRITE.IRF.UNLOCK = 1
+
+    CALL IRF.CONCAT.RECORD                                                ! 1.6 RC
+
+    IF END#IRF.SESS.NUM% THEN WRITE.IRF.UNLOCK.ERROR
+
+    WRITE FORM "C11,2I1,I2,I1,2I1,C5,I1,C18,C3,I2,I2,I1"; \               ! 1.6 RC ! 2.0 AJC ! 2.2 TT
+         #IRF.SESS.NUM% AUTOUNLOCK;                               \ MW96A
+             IRF.BAR.CODE$,                                       \
+             IRF.INDICAT0%,                                       \
+             IRF.INDICAT1%,                                       \
+             IRF.DEAL.DATA%(0),                                   \       ! 1.6 RC
+             IRF.INDICAT8%,                                       \       ! 2.0 AJC
+\!            IRF.UNUSED$,                                        \       ! 1.6 RC 2.2 TT
+             IRF.INDICAT9%,                                       \       ! 2.2 TT
+             IRF.INDICAT10%,                                      \       ! 2.2 TT
+             IRF.SALEPRIC$,                                       \
+             IRF.INDICAT5%,                                       \ SBH 31/1/96
+             IRF.ITEMNAME$,                                       \
+             IRF.BOOTS.CODE$,                                     \
+             IRF.DEAL.DATA%(1),                                   \       ! 1.6 RC
+             IRF.DEAL.DATA%(2),                                   \       ! 1.6 RC
+             IRF.INDICAT3%
+
+    IF WRITE.IRFDEX THEN EXIT FUNCTION                                    ! 1.9 SM
+
+    WRITE.IRF.UNLOCK = 0
+
+   EXIT FUNCTION
+
+   WRITE.IRF.UNLOCK.ERROR:
+
+   CURRENT.REPORT.NUM% = IRF.REPORT.NUM%
+   FILE.OPERATION$ = "W"
+   CURRENT.CODE$ = RIGHT$(IRF.BAR.CODE$,7)                        ! FMW
+
+   EXIT FUNCTION
+
+  END FUNCTION
+
+\----------------------------------------------------------------------------
+
+  FUNCTION WRITE.IRF.HOLD PUBLIC
+
+   INTEGER*2 WRITE.IRF.HOLD
+
+    WRITE.IRF.HOLD = 1
+
+    CALL IRF.CONCAT.RECORD                                                ! 1.6 RC
+
+     IF END#IRF.SESS.NUM% THEN WRITE.IRF.HOLD.ERROR
+
+     WRITE FORM "C11,2I1,I2,I1,2I1,C5,I1,C18,C3,I2,I2,I1"; HOLD \         ! 1.6 RC ! 2.0 AJC ! 2.2 TT
+             #IRF.SESS.NUM%;                                      \
+             IRF.BAR.CODE$,                                       \
+             IRF.INDICAT0%,                                       \
+             IRF.INDICAT1%,                                       \
+             IRF.DEAL.DATA%(0),                                   \       ! 1.6 RC
+             IRF.INDICAT8%,                                       \       ! 2.0 AJC
+\!            IRF.UNUSED$,                                        \       ! 1.6 RC 2.2 TT
+             IRF.INDICAT9%,                                       \       ! 2.2 TT
+             IRF.INDICAT10%,                                      \       ! 2.2 TT
+             IRF.SALEPRIC$,                                       \
+             IRF.INDICAT5%,                                       \ SBH 31/1/96
+             IRF.ITEMNAME$,                                       \
+             IRF.BOOTS.CODE$,                                     \
+             IRF.DEAL.DATA%(1),                                   \       ! 1.6 RC
+             IRF.DEAL.DATA%(2),                                   \       ! 1.6 RC
+             IRF.INDICAT3%
+
+    IF WRITE.IRFDEX THEN EXIT FUNCTION                                    ! 1.9 SM
+
+    WRITE.IRF.HOLD = 0
+
+   EXIT FUNCTION
+
+   WRITE.IRF.HOLD.ERROR:
+
+   CURRENT.REPORT.NUM% = IRF.REPORT.NUM%
+   FILE.OPERATION$ = "W"
+   CURRENT.CODE$ = RIGHT$(IRF.BAR.CODE$,7)                        ! FMW
+
+   EXIT FUNCTION
+
+  END FUNCTION
+
+\----------------------------------------------------------------------------
+
+  FUNCTION WRITE.IRF.HOLD.UNLOCK PUBLIC
+
+   INTEGER*2 WRITE.IRF.HOLD.UNLOCK
+
+   WRITE.IRF.HOLD.UNLOCK = 1
+
+    CALL IRF.CONCAT.RECORD                                                ! 1.6 RC
+
+    IF END#IRF.SESS.NUM% THEN WRITE.IRF.HOLD.UNLOCK.ERROR
+
+    WRITE FORM "C11,2I1,I2,I1,2I1,C5,I1,C18,C3,I2,I2,I1"; HOLD \          ! 1.6 RC ! 2.0 AJC ! 2.2 TT
+             #IRF.SESS.NUM% AUTOUNLOCK;                           \
+             IRF.BAR.CODE$,                                       \
+             IRF.INDICAT0%,                                       \
+             IRF.INDICAT1%,                                       \
+             IRF.DEAL.DATA%(0),                                   \       ! 1.6 RC
+             IRF.INDICAT8%,                                       \       ! 2.0 AJC
+\!            IRF.UNUSED$,                                        \       ! 1.6 RC 2.2 TT
+             IRF.INDICAT9%,                                       \       ! 2.2 TT
+             IRF.INDICAT10%,                                      \       ! 2.2 TT
+             IRF.SALEPRIC$,                                       \
+             IRF.INDICAT5%,                                       \ SBH 31/1/96
+             IRF.ITEMNAME$,                                       \
+             IRF.BOOTS.CODE$,                                     \
+             IRF.DEAL.DATA%(1),                                   \       ! 1.6 RC
+             IRF.DEAL.DATA%(2),                                   \       ! 1.6 RC
+             IRF.INDICAT3%
+
+    IF WRITE.IRFDEX THEN EXIT FUNCTION                                    ! 1.9 SM
+
+    WRITE.IRF.HOLD.UNLOCK = 0
+
+   EXIT FUNCTION
+
+   WRITE.IRF.HOLD.UNLOCK.ERROR:
+
+   CURRENT.REPORT.NUM% = IRF.REPORT.NUM%
+   FILE.OPERATION$ = "W"
+   CURRENT.CODE$ = RIGHT$(IRF.BAR.CODE$,7)                        ! FMW
+
+   EXIT FUNCTION
+
+  END FUNCTION
+

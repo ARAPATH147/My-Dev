@@ -1,0 +1,3649 @@
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***    PROGRAM  .....  MINPRINT
+\***    MODULE  ......  MINPRINT.BAS
+\***
+\***    REVISION 1.0.           ROBERT COWEY.                  01 NOV 1995.
+\***    Original version.
+\***
+\***    VERSION B (1.1)        Nik Sen                         06 FEB 1998
+\***    Re-written to use included code for file functions etc.
+\***
+\***    VERSION C              Nik Sen                         12 OCTOBER 1998
+\***    RF version. Changed to send count lists to RF files instead of
+\***    printing report if RF is active.
+\***
+\***    VERSION D              Charles Skadorwa                 7 DECEMBER 1998
+\***    Processing Statements added for debugging purposes.
+\***    RFSCF opened in NOWRITE NODEL mode instead of READONLY.
+\***    Check for List Driven Counting (RFSCF.ACTIVITY%) changed to check for
+\***    ASCII value "2" rather than bit value (& 64).
+\***
+\***    VERSION E              Charles Skadorwa                 15 January 1999
+\***    Program will now operate whether List Driven Counting is active or not.
+\***    Check removed from RF.PROCESS subroutine.
+\***
+\***    VERSION F              Charles Skadorwa                 18 January 1999
+\***    Items description now taken from the RPRPT file if one does not exist on
+\***    the ISF (this resulted in the item being ignored). In VALID.ITEM:,
+\***    IRF.DEAL.NUM$ should be initialised before the IRF is read,  otherwise
+\***    the next item will become a deal item if the previous one was!
+\***    CLILF size increased from 5,000 to 10,000 records to decrease chaining.
+\***    RFHOCNT.286 chained to if it is detected that MINPRINT is running outside
+\***    of normal hours (before 5pm or after 6am)- otherwise the Head Office
+\***    counts would be overwritten.
+\***    Barcode constructed from Boots Code if IDF barcode is null.
+\***    Initialise new CLILF field (CLILF.HO.SEQNO$)and CLOLF filed (CLOLF.TOTAL.ITEMS$).
+\***    Use pipe to instruct RF Server program (TRANSACT) to close down while
+\***    MINPRINT is executing (It will restart automatically at next signon).
+\***    If description not on ISF then description set to "X " in order that
+\***    TRANSACT will read the IDF and perform description formatting.
+\***
+\***    VERSION G              Julia Stones                  9th November 1999
+\***    Code removed that produced the RF report if RF was inactive on SOFTS
+\***    Please note that if RF is ACTIVE and DO MAIN gets set to 1 - before
+\***    changes were made this would have meant that the code would have
+\***    produced the RF report.  DO MAIN is not checked now and so the program
+\***    will just go into the termination part of the code.
+\***
+\***    VERSION H              Brian Greenfield              20th August 2003
+\***    Changes made for RF trial to accomodate IRF changes made in DEALS
+\***    rewrite.
+\***
+\***    REVISION 1.12.         ROBERT COWEY.                  09 SEP 2003.
+\***    Changes for RF trial.
+\***    Removed redundant PVCS revision control block from top of code.
+\***    Removed section of code at end of program that started RFHOCNT.
+\***    Corrected setting of HO.SEQNO within VALID.ITEMS routine.
+\***
+\***
+\***    VERSION I              Chris Combes (CC)            29th March 2004
+\***    Changes made to VALID.ITEM and CREATE.NEW.LIST procedures so lists are
+\***    divided into product groups rather than business units
+\***
+\***
+\***    Version J              Mark Goode                   17th September 2004
+\***    Changes made for OSSR Basic location project, additional information on
+\***    the CLILF/CLOLF files
+\***
+\***    Version K               Mark Goode                   14th January 2005
+\***    Changes made for OSSR WAN project, additioal information on the the CLOLF file.
+\***
+\***    Version L               Jamie Thorpe                 13th March 2006
+\***    Changes for Removal of RF Recounts project.This introduces the ability to
+\***    switch off the ability to perform recounts.
+\***
+\***    Version M               Jamie Thorpe                 4th April 2006
+\***    Updated the way that the CLOLF is initially created. This is to rectify
+\***    a hang reported in TRANSACT when it encounters 0 bytes in the file.
+\***
+\***    Version N              Charles Skadorwa              18th June 2009
+\***    CR006 - Change to ensure that if it is an MC70/POD store, then
+\***            processing will be identical to RF PPC processing. This is
+\***            achieved by checking SOFTS record 20 for " ACTIVE"
+\***
+\***    Version O              Arun Sudhakarannair           14th June 2012
+\***    The program is updated to support the following changes as part of
+\***    SFA Project
+\***        - Rerun and Rerun warning message
+\***              With the re-introduction of counts, it is important that
+\***              MINPRINT is not rerun without understanding what it will
+\***              do to the CLOLF.CLILF and the backups. Hence a new parameter
+\***              (RERUN) must be passed if run from command mode, with
+\***              help details. Format is "MINPRINT RERUN"
+\***        - Prepare a new RF Count report (RFCNTLST.DAY)
+\***              Report gives a summary for each count list type (Negative,
+\***              User Generated and Support Office) and also gives details
+\***              of which users performed the counts, and whether the list
+\***              was fully counted, part counted or not counted at all.
+\***        - For non RF/POD stores, create the CLOLF/CLILF
+\***              Currently, only RF/POD stores have the CLOLF/CLILF files
+\***              present. However as part of SFA, these files need creating
+\***              and populating like RF/POD stores
+\***        - Create daily backups of the CLOLF and CLILF files
+\***              Back up the CLOLF and CLILF files on a daily basis (rolling
+\***              7 days). Backup the files before RF.PROCESS subroutine is
+\***              called. The backup will be used to generate the weekly
+\***              store manager count report.
+\***        - Support the new CLOLF and CLILF formats
+\***        - Introduce a new OK file – MINOK.BIN
+\***              Introduce a new OK file to show success status of each step
+\***              of MINPRINT processing.
+\***
+\***    Version P              Bibin Thomas                  10th Aug 2012
+\***    Changes made to accommodate SFA CR7 requirements.
+\***    In case of a non trading day, MINPRINT is run any time b/w 21:05Hrs
+\***    and 00:30Hrs. So if MINPRINT is run after midnight, the program will
+\***    backup CLILF/CLOLF with Today's extension, where as it is actually
+\***    supposed to backup with yesterday's <DAY>.
+\***    Changes are made so that if MINPRINT is run after 00:00Hrs and before
+\***    04:00Hrs, CLILF/CLOLF is backed-up with file extension set to
+\***    yesterday, else with today.
+\***
+\***    Version Q              Charles Skadorwa (CCSk)       10th Sept 2012
+\***    SFA Defect 661 -  Summary counts are not updated.
+\***    Also corrected screen prompt from "u" to "you".
+\***
+\***    Version R              Tittoo Thomas (RTT)           21th Sept 2012
+\***    SFA Defect 688, 695 - Restricted multiple runs of MINPRINT in a day.
+\***    If MINPPRINT is found to have already run after 1200 noon the previous
+\***    day or before 12 noon today, the application stops without any further
+\***    processing.
+\***
+\***    Version S              Ranjith Gopalankutty(SRG)     10th Feb  2017
+\***    After 16A rollout MINPRINT is triggered after midnight as part of
+\***    end of the day reset, there is a date check happens in MINRFCNT
+\***    module before adding the records to RFCNTLST.DAY. Since the date
+\***    match doesn't happen, records are being ignored and count list 
+\***    are not appearing in controller screen. Fix is to ensure the date
+\***    parameter check is correct and record is added if the run is after
+\***    mid night.
+\*****************************************************************************
+\*****************************************************************************
+
+
+
+
+\*****************************************************************************
+\***
+\***    DEC included code defining file related fields
+\***
+\***..........................................................................
+
+    %INCLUDE   RPRPTDEC.J86    ! Report file
+\*****************************************************************************
+\***                                                                         *
+\***           %INCLUDE FOR RPRPT - MINSITS RP REPORT FILE                         *
+\***                                                                         *
+\***                    - FIELD DECLARATIONS                                 *
+\***                    - FILE REFERENCE PARAMETERS                          *
+\***                                                                         *
+\***                    REFERENCE: RPRPTDEC.J86                              *
+\***                                                                         *
+\***           Version A      Nik Sen       24th February 1998                *
+\***                                                                         *
+\*****************************************************************************
+
+   INTEGER*1 GLOBAL            \
+   RPRPT.SESS.NUM%
+
+   INTEGER*2 GLOBAL            \   
+   RPRPT.REPORT.NUM%    
+
+   STRING GLOBAL               \
+   RPRPT.FILE.NAME$
+
+    %INCLUDE   PRINTDEC.J86    ! Printer
+
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR PRINT FILE VARIABLE DECLARATIONS
+\***
+\***        REFERENCE   :   PRINTDE (J86)
+\***
+\***        FILE TYPE   :   Printer / Labeller
+\***
+\***    VERSION A.              ANDREW WEDGEWORTH                   09 JUL 1992.
+\***    Original version created by merging PRINTFLG and PRINTNUG.
+\***
+\***    VERSION B.              UNKNOWN.                            ?? ??? 1992.
+\***    Changes unknown.             
+\***
+\***    VERSION C.              ROBERT COWEY.                       18 NOV 1992.
+\***    No changes made to this file.
+\***
+\***    Version D               Andrew Wedgeworth                 24th May 1992
+\***    Variable added to contain condensed print record length.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+
+    STRING GLOBAL \
+        PRINT.LINE$, \
+        PRINT.FILE.NAME$, \
+        SELF.LAN.NAME$, \
+        SELF.NOLAN.NAME$
+
+    INTEGER*2 GLOBAL \
+        PRINT.CONDENSED.RECL%, \                                       ! DAW  
+        PRINT.SESS.NUM%, \
+        PRINT.REPORT.NUM%, \
+        PRINT.REPORT.RECL%, \
+        PRINT.SELF.RECL%
+
+    %INCLUDE   SOFTSDEC.J86    ! SOFTSTAT                      CNS
+REM \
+\******************************************************************************
+\******************************************************************************
+\***
+\***                 %INCLUDE FOR THE SOFTWARE STATUS FILE
+\***   
+\***                      FILE TYPE  :   Direct
+\***
+\***                      REFERENCE  :   SOFTSDEC.J86
+\***
+\***	Version A	       Andrew Wedgeworth	      24th June 1992
+\***
+\******************************************************************************
+\*******************************************************************************
+
+  STRING GLOBAL           \
+    SOFTS.RECORD$,        \           
+    SOFTS.SPACE$,         \           
+    SOFTS.FILE.NAME$    
+    
+  INTEGER*2 GLOBAL        \
+    SOFTS.RECL%,          \            
+    SOFTS.REPORT.NUM%,	  \      
+    SOFTS.SESS.NUM%
+
+  INTEGER*4 GLOBAL        \
+    SOFTS.REC.NUM% 	         
+    %INCLUDE   RFSCFDEC.J86    ! RF Control File               CNS
+\******************************************************************************
+\******************************************************************************
+\***
+\***   $Workfile:   RFSCFDEC.J86  $
+\***
+\***   $Revision:   1.7  $
+\***
+\******************************************************************************
+\******************************************************************************
+\***
+\***
+\***
+\***
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***               %INCLUDE FOR RFSCF - FIELD DECLARATIONS
+\***                                    FILE REFERENCE PARAMETERS
+\***
+\***                      FILE TYPE    : DIRECT
+\***
+\***                      REFERENCE    : RFSCFDEC
+\***
+\***           VERSION A : NIK SEN  5th October 1998
+\***
+\***
+\*******************************************************************************
+\*******************************************************************************
+\***           VERSIOB B       Mark Goode       23rd August 2004
+\***
+\***   Updated to reflect current RF version, also includes new fields for OSSR
+\*******************************************************************************
+\***           VERSION C       Jamie Thorpe      9th December 2004
+\***
+\***   Updated with record 3 variables.
+\*******************************************************************************
+\***           VERSION D       Jamie Thorpe     13th March 2006
+\***
+\***   Updated with record 1 variable.RFSCF.RECOUNT.DAYS.RETAIN%
+\*******************************************************************************
+\***           VERSION E       Peter Sserunkuma 28th September 2008
+\***
+\***   Added RFSCF.PLANNERS.ACTIVE$.  This was currently named
+\***   RFSCF.FILLER$ in record 1.
+\*******************************************************************************
+\***           VERSION F       Peter Sserunkuma   21st January 2009
+\***
+\***   Six new fields added to record 3 as part of SFSCF2 changes.
+\***   RFSCF.DIRECTS.ACTIVE$
+\***   RFSCF.ASN.ACTIVE$
+\***   RFSCF.POS.UOD.ACTIVE$
+\***   RFSCF.ONIGHT.DELIV$
+\***   RFSCF.ONIGHT.SCAN$
+\***   RFSCF.SCAN.BATCH$
+\*******************************************************************************
+\***           VERSION G       Tittoo Thomas          24th May 2012
+\***
+\***   Added RFSCF.PSP.LEAD.TIME$ in record 1, currently named RFSCF.FILLER$.
+\***   1 byte Packed and holds the number of days (usually 7 or 21 days). It
+\***   is used to indicate if a pending sales plan planner should be counted
+\***   if it becomes active in the next N days.
+\*******************************************************************************
+
+  STRING GLOBAL                 \
+    RFSCF.ACTIVE$,              \ CJT
+    RFSCF.BCENTRES$,            \ CJT
+    RFSCF.CCHIST.NUM.DAYS$,     \CJT
+    RFSCF.FILE.NAME$,           \
+    RFSCF.FILLER$,              \
+    RFSCF.FILLER3$,             \ CJT
+    RFSCF.OSSRSTORE$,           \ BMG
+    RFSCF.PLANNERS.ACTIVE$,     \      !EPS
+    RFSCF.PSP.LEAD.TIME$,       \      !GTT
+    RFSCF.DIRECTS.ACTIVE$,      \      !FPS
+    RFSCF.ASN.ACTIVE$,          \      !FPS
+    RFSCF.POS.UOD.ACTIVE$,      \      !FPS
+    RFSCF.ONIGHT.DELIV$,        \      !FPS
+    RFSCF.ONIGHT.SCAN$,         \      !FPS
+    RFSCF.SCAN.BATCH.SIZE$             !FPS
+
+  INTEGER*1 GLOBAL        \
+    RFSCF.ACTIVITY%,      \
+    RFSCF.EMUACTIVE%,     \
+    RFSCF.PRIMCURR%       ! BMG
+
+
+  INTEGER*2 GLOBAL        \
+    RFSCF.SESS.NUM%,      \
+    RFSCF.REPORT.NUM%,    \
+    RFSCF.RECL%,          \
+    RFSCF.PMEDTERM%,           \
+    RFSCF.QBUSTTERM%,          \
+    RFSCF.PMEDNEXTTXN%,        \
+    RFSCF.QBUSTNXTTXN%,        \
+    RFSCF.PCDATES%,            \
+    RFSCF.PCHKINC%,            \
+    RFSCF.HHTIPMIN%,           \
+    RFSCF.HHTIPMAX%,           \
+    RFSCF.RECOUNT.DAYS.RETAIN% ! DJT
+
+  INTEGER*4 GLOBAL        \
+    RFSCF.REC.NUM%,       \
+    RFSCF.PMEDTXNCNT%,         \
+    RFSCF.PMEDQTY%,            \
+    RFSCF.QBUSTTXNCNT%,        \
+    RFSCF.QBUSTQTY%,           \
+    RFSCF.LDCPARM1%,           \
+    RFSCF.LDCPARM2%,           \
+    RFSCF.LDCPARM3%,           \
+    RFSCF.PCHKTARGET%,         \
+    RFSCF.CNTPCHK%,            \
+    RFSCF.PCHKUPPER%,          \
+    RFSCF.PCHKLOWER%,          \
+    RFSCF.PCHKDEFAULT%,        \
+    RFSCF.PCHKERRCNT%,         \
+    RFSCF.PCHKERRLST%,         \
+    RFSCF.EMUCNVFACT%          ! BMG
+
+
+
+
+
+
+
+
+    %INCLUDE   CLOLFDEC.J86    ! RF Count List Of Lists File   CNS
+
+\******************************************************************************\******************************************************************************
+\******************************************************************************
+\***
+\***         %INCLUDE FOR RF LIST OF LISTS FILE FIELD DECLARATIONS
+\***
+\***               FILE TYPE    : DIRECT
+\***
+\***               REFERENCE    : CLOLFDEC.J86
+\***
+\***    VERSION A.           Nik Sen.               13 October 1998
+\***               New file for RF system. Holds list of counting lists. 
+\***
+\***    VERSION B            Charles Skadorwa        22nd January 1999
+\***               TOTAL.ITEMS added to keep track of total items in each list.
+\***                 
+\***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+\***    Changes for RF trial.
+\***    Removed redundant PVCS revision control block from top of code.
+\***    Recompiled to prevent future automatic recompiles.
+\***    No changes to actual code.
+\***
+\***    REVISION 1.5             ALAN CARR                     12 AUG 2004.
+\***    Changes for RF OSSR solution.
+\***    Added new flag "marked for OSSR count". This can be "Y" or "N"
+\***
+\***    REVISION 1.6            MARK GOODE                     5th January 2005.
+\***    Changes for RF OSSR WAN solution.
+\***    New field on the header record for remaining OSSR count figure and user ID
+\***
+\***    REVISION 1.7            SYAM JAYAN                     25th January 2012
+\***    The change is to rearrange/remove redundant fields and to add new
+\***    fields in CLOLF Format as part of Stock file accuracy project
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+STRING GLOBAL                   \
+    CLOLF.ACTIVE.STATUS$,       \                        ! 1.7 SJ
+    CLOLF.BULETT$,              \                        ! 1.7 SJ
+    CLOLF.CREATION.DATE$,       \Creation date           ! 1.7 SJ
+    CLOLF.CREATION.TIME$,       \Creation time           ! 1.7 SJ
+    CLOLF.CURRENT.LOCATION$,    \Current location        ! 1.7 SJ
+    CLOLF.EXPIRY.DATE$,         \Expiry date             ! 1.7 SJ
+    CLOLF.FILE.NAME$,           \                        ! 1.7 SJ
+    CLOLF.LISTID$,              \                        ! 1.7 SJ
+    CLOLF.LIST.NAME$,           \                        ! 1.7 SJ
+    CLOLF.LSTTYP$,              \                        ! 1.7 SJ
+    CLOLF.PICKER.USER.ID$,      \                        ! 1.7 SJ
+    CLOLF.PILST.ID$,            \                        ! 1.7 SJ
+    CLOLF.PICK.START.TIME$,     \Pick start time         ! 1.7 SJ
+    CLOLF.PICK.END.TIME$,       \Pick end time           ! 1.7 SJ
+    CLOLF.USERID$               ! 1.6 MG                 ! 1.7 SJ
+    !CLOLF.TOTAL.ITEMS$,        \ BCS                    ! 1.7 SJ
+    !CLOLF.SRITEMS$,            \                        ! 1.7 SJ
+    !CLOLF.BSITEMS$,            \                        ! 1.7 SJ
+    !CLOLF.BUNAME$,             \                        ! 1.7 SJ
+    !CLOLF.HOLISTID$,           \                        ! 1.7 SJ
+    !CLOLF.CNTDATE$,            \ 1.5 AC                 ! 1.7 SJ
+    !CLOLF.OSSR.FLAG$,          \ 1.5 AC                 ! 1.7 SJ
+    !CLOLF.OSSRITEMS$,          \ 1.6 MG                 ! 1.7 SJ
+  
+INTEGER*4 GLOBAL                \
+    CLOLF.RECORD.NUM%
+
+INTEGER*2 GLOBAL                \
+    CLOLF.BSITEMS%,             \                        ! 1.7 SJ
+    CLOLF.OSSRITEMS%,           \                        ! 1.7 SJ
+    CLOLF.REPORT.NUM%,          \                        ! 1.7 SJ
+    CLOLF.SESS.NUM%,            \                        ! 1.7 SJ
+    CLOLF.SRITEMS%,             \                        ! 1.7 SJ
+    CLOLF.TOTAL.ITEMS%          !                        ! 1.7 SJ
+                                                  
+INTEGER*1 GLOBAL                \
+    CLOLF.RECL%         
+
+
+    %INCLUDE   CLILFDEC.J86    ! RF Count Lists File           CNS
+
+\******************************************************************************\******************************************************************************
+\******************************************************************************
+\***
+\***         %INCLUDE FOR RF COUNT LISTS FILE FIELD DECLARATIONS
+\***
+\***               FILE TYPE    : KEYED
+\***
+\***               REFERENCE    : CLILFDEC.J86
+\***
+\***    VERSION A.              Nik Sen.                 13 October 1998
+\***                 New file for RF system. Holds count lists information.
+\***
+\***    VERSION B               Charles Skadorwa         22nd January 1999
+\***                 Head Office Sequence Number now held (from PIITM
+\***                 record) in order that a "complete" Type 13 transaction
+\***                 record is written to the STKMQ file. 
+\***
+\***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+\***    Changes for RF trial.
+\***    Removed redundant PVCS revision control block from top of code.
+\***    Recompiled to prevent future automatic recompiles.
+\***    No changes to actual code.
+\***
+\***    REVISION 1.5             ALAN CARR                      12 AUG 2004.
+\***    Changes for RF OSSR solution.
+\***    Added new fields for Off-Site StockRoom (OSSR) Basic Solution
+\***
+\***    REVISION 1.6             Mark Goode                     25th January 2005 
+\***
+\***    REVISION 1.7             Syam Jayan                     25th January 2012
+\***    The change is to rearrange/remove redundant fields and to add new
+\***    fields in CLILF Format as part of Stock file accuracy project
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+STRING GLOBAL                     \
+    CLILF.BOOTSCODE$,             \                                          ! 1.7 SJ
+    CLILF.COUNTED.STATUS$,        \ U-not counted, P-partially counted,      ! 1.7 SJ
+                                  \ C-counted                                ! 1.7 SJ
+    CLILF.DATE.LASTCNT$,          \ Date of Last Count field                 ! 1.7 SJ
+    CLILF.FILE.NAME$,             \                                          ! 1.7 SJ
+    CLILF.FILLER$(1),             \ Filler Array                             ! 1.7 SJ
+    CLILF.HO.SEQNO$,              \ Head Office Sequence No. from PIITM for  ! 1.7 SJ
+                                  \ Stock Support                            ! BCS ! 1.7 SJ
+    CLILF.ITEMSEQ$,               \ Item Sequence Number                     ! 1.7 SJ
+    CLILF.KEY$,                   \ LISTID + ITEMSEQ                         ! 1.7 SJ
+    CLILF.LISTID$,                \ List Number                              ! 1.7 SJ
+    CLILF.SPACE$                  ! Free space                               ! 1.7 SJ
+    !CLILF.BARCODE$,              \                                          ! 1.7 SJ
+    !CLILF.SELDESC$,              \ Shelf Edge Label Descriptor              ! 1.7 SJ
+    !CLILF.DEALMKR$,              \ Active Deal Marker                       ! 1.7 SJ
+    !CLILF.PRODGRP$,              \ Concept/Sequence Number                  ! 1.7 SJ
+    !CLILF.PRODGRPDESC$,          \ Product Group Descriptor                 ! 1.7 SJ 
+    !CLILF.BSCNT$,                \ Back Shop Counts                         ! 1.7 SJ
+    !CLILF.SFCNT$,                \ Shop Floor Counts                        ! 1.7 SJ
+    !CLILF.SALESSFCNT$,           \ Signed Sales at time of Shop Floor Count ! 1.7 SJ
+    !CLILF.SALEBSCNT$,            \ Sale at time of back shop count \ 1.5 AC ! 1.7 SJ
+    !CLILF.SALEOSSRCNT$,          \ Sale at time of OSSR count      \ 1.5 AC ! 1.7 SJ
+    !CLILF.OSSR.ITMSTKCNT$,       \ OSSR Item Stock count figure    \ 1.5 AC ! 1.7 SJ
+    !CLILF.TIMESFCNT$,            \ Time of Stock Floor count hh:mm \ 1.5 AC ! 1.7 SJ
+    !CLILF.TIMEBSCNT$,            \ Time of Back shop count hh:mm   \ 1.5 AC ! 1.7 SJ
+    !CLILF.TIMEOSSRCNT$,          \ Time of OSSR count hh:mm        \ 1.5 AC ! 1.7 SJ
+
+INTEGER*4 GLOBAL                 \
+    CLILF.MODULE.ID%(1)          ! Planner ID Array (SRITL.POGDB%)           ! 1.7 SJ
+
+INTEGER*2 GLOBAL                 \
+    CLILF.BSCNT%,                \ Main Backshop MBS Count                   ! 1.7 SJ
+    CLILF.BS.PEND.SA.CNT%,       \ Back Shop pending sales plan Count        ! 1.7 SJ
+    CLILF.COUNT%(1),             \ Count Array                               ! 1.7 SJ
+    CLILF.FILL.QUANTITY%(1),     \                                           ! 1.7 SJ
+    CLILF.OSSR.ITMSTKCNT%,       \ OSSR Item Stock count figure              ! 1.7 SJ
+    CLILF.OSSR.PEND.SA.CNT%,     \ OSSR pending sales plan Count field       ! 1.7 SJ
+    CLILF.RECL%,                 \                                           ! 1.7 SJ
+    CLILF.REPORT.NUM%,           \                                           ! 1.7 SJ
+    CLILF.SALESCNT%,             \ Sales count                               ! 1.7 SJ
+    CLILF.SESS.NUM%,             \ Clilf session number                      ! 1.7 SJ
+    CLILF.SFCNT%                 ! Shop floor count                          ! 1.7 SJ
+  
+INTEGER*1 GLOBAL                 \
+    CLILF.MODULE.SEQ%(1),        \ Module Seq Array (SRITL.MODULE.SEQ%)      ! 1.7 SJ
+    CLILF.REPEAT.CNT%(1)         ! Repeat Count Array (SRITL.REPEAT.CNT%)    ! 1.7 SJ
+    !CLILF.RECL%                 !                                           ! 1.7 SJ
+
+    !%INCLUDE   ISFDEC.J86      ! Item Shelf Edge Label Descriptor File  CNS OAS
+    !%INCLUDE   IRFDEC.J86      ! Item Record File             CNS OAS
+    %INCLUDE   IDFDEC.J86      ! Item Data File                CNS
+REM \
+\******************************************************************************
+\******************************************************************************
+\***
+\***         %INCLUDE FOR ITEM DATA FILE - FIELD DECLARATIONS
+\***                                       FILE REFERENCE PARAMETERS
+\***
+\***                  FILE TYPE    : Keyed
+\***
+\***                  REFERENCE    : IDFDEC.J86
+\***
+\***         VERSION A : Andrew Wedgeworth  29th June 1992    
+\***
+\***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+\***    Replaced un-used RANK$ with BSNS.CNTR$ and FILLER$.
+\***
+\***    VERSION D.              Andrew Wedgeworth               15th March 1995
+\***    Comments updated to reflect the fact that some bits on the file are
+\***    no longer used.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+  STRING GLOBAL           \
+    IDF.FILE.NAME$,       \  
+    IDF.BOOTS.CODE$,      \ 4 byte UPD with check digit (key)
+    IDF.FIRST.BAR.CODE$,  \ 6 byte UPD without check digit
+    IDF.SECOND.BAR.CODE$, \ 6 byte UPD without check digit
+    IDF.NO.OF.BAR.CODES$, \ 2 byte UPD. Total number of bar codes for this item
+    IDF.PRODUCT.GRP$,     \ 3 byte UPD. The first two digits are the concept
+                          \ group and the last four the concept sequence
+    IDF.STNDRD.DESC$,     \ 24 bytes
+    IDF.STATUS.1$,        \ 1 byte, values B,C,D,P,X,Z and blank
+    IDF.INTRO.DATE$,      \ 3 byte UPD YYMMDD. Date first added to this file
+    IDF.BSNS.CNTR$,       \ 1 byte ASC. Business Centre ID letter      ! CRC
+    IDF.FILLER$,          \ 1 byte un-used                             ! CRC
+    IDF.PARENT.CODE$,     \ 4 byte UPD with check digit ; may be zero if no
+                          \ flashpacks, current IDF.BOOTS.CODE$ if parent line
+                          \ or Boots Code of parent line if a flashpack.
+    IDF.DATE.OF.LAST.SALE$! 3 byte UPD. Date of last sale.
+
+  INTEGER*1 GLOBAL        \
+    IDF.BIT.FLAGS.1%,     \ 1 byte - bit values
+                          \ X"80"  - Group code flag
+                          \ X"40"  - Keylines flag
+                          \ X"20"  - Markdown flag
+                          \ X"10"  - Warehouse flag
+                          \ X"08"  - CSR flag
+                          \ X"04"  - Directs A flag
+                          \ X"02"  - Directs B flag
+                          \ X"01"  - Directs C flag
+    IDF.BIT.FLAGS.2%      \ 1 byte - bit values
+                          \ X"80"  - Own brand line flag
+                          \ X"40"  - Exclusive line flag
+                          \ X"20"  - Unused 
+                          \ X"10"  - Unused
+                          \ X"08"  - Stock system flag
+                          \ X"04"  - Pending count flag
+                          \ X"02"  - Reserved
+                          ! X"01"  - Reserved
+
+  INTEGER*2 GLOBAL        \
+    IDF.RECL%,            \  
+    IDF.REPORT.NUM%,      \ 
+    IDF.SESS.NUM%
+    %INCLUDE   PGFDEC.J86      ! Product Group File            JMG
+
+\REM
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR PRODUCT GROUP FILES VARIABLE DECLARATIONS
+\***
+\***        REFERENCE   :   PGFDEC (J86)
+\***
+\***        FILE TYPE   :   Direct (PGF and PGFD)
+\***                        Keyed (PGFO)
+\***
+\***    VERSION B.              ROBERT COWEY.                       30 SEP 1993.
+\***    Created by combining PGFDECA, PGFDFLDA, PGFOFLDA, PGFDNUMA and PGFONUMA.
+\***
+\***    REVISION 1.2.           ROBERT COWEY.                       27 OCT 2003.
+\***    Defined WRITE.PGF function.
+\***    No changes to this file.
+\***
+\***   Version C                Mark Goode                          21st December 2004
+\***   New field for Product groups marked as OSSR.
+\***   'Y' - OSSR Product group.
+\***   'N' - ' ' - Non-OSSR product group.
+\***
+\***    Version D               Tittoo Thomas                        2 SEP 2011
+\***    Changes to accomodate new csv format for PGDIR as part of
+\***    the Core Stores Release 2 project
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    OLD RECORD LAYOUT
+\***
+\***     1  3  UPD  PROD.GRP.NO$     Key
+\***     *  1  UPD  CON.GROUP$       Concept group
+\***     *  2  UPD  CON.SEQ$         Concept sequence
+\***     4 18  ASC  PROD.GRP.NAME$
+\***    22  1  ASC  SEL.FLAG$        "Y" Shelf edge labels not to be printed
+\***                                 "N" Shelf edge labels to be printed for
+\***                                     items in the product group
+\***    23  8  ASC  SPACE$
+\***
+\***    Record length 30
+\***
+\***    NEW CSV RECORD LAYOUT
+\***
+\***     1  ASC  REC.TYPE$        Hardcoded to 'P'
+\***     5  ASC  PROD.GRP.NO$     ccsss where,  cc is the Concept Group and
+\***                                            sss is the Sequence Number
+\***    18  ASC  PROD.GRP.NAME$
+\***     1  ASC  SEL.FLAG$        "Y" Shelf edge labels to be printed
+\***                              "N" Shelf edge labels not to be printed
+\***     1  UPD  OSSR.FLAG$       ALWAYS SET TO NULL - PLACEHOLDER ONLY
+\***
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    OTHER INFORMATION
+\***    Prefixes PGFDIR... and PGFO... are use for variables that are specific
+\***    to the direct (mainframe transmitted) of keyed (live store) usage of
+\***    the file.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+
+    STRING GLOBAL \
+        PGF.FILE.NAME$, \
+        PGF.PROD.GRP.NAME$, \
+        PGF.PROD.GRP.NO$, \
+        PGF.SEL.FLAG$, \
+        PGF.SPACE$, \
+        PGFDIR.FILE.NAME$, \
+        PGFDIR.REC.TYPE$, \                                             ! DTT
+        PGFO.FILE.NAME$,   \
+        PGF.OSSR.FLAG$
+
+    INTEGER*2 GLOBAL \
+        PGF.RECL%, \
+        PGF.REPORT.NUM%, \
+        PGF.SESS.NUM%, \
+        PGFDIR.RECL%, \
+        PGFDIR.REPORT.NUM%, \
+        PGFDIR.SESS.NUM%, \
+        PGFO.RECL%, \
+        PGFO.REPORT.NUM%, \
+        PGFO.SESS.NUM%
+
+    INTEGER*4 GLOBAL \
+        PGF.REC.NUM%, \
+        PGFDIR.REC.NO%
+
+    %INCLUDE   MINLSDEC.J86    ! Minsits Recount Information   LJT
+
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+\***
+\***                   FILE TYPE:  KEYED
+\***
+\***                   REFERENCE:  MINLSDEC.J86
+\***
+\***              DESCRIPTION:  MINSITS RP - SCREEN COUNT INFORMATION
+\***
+\***
+\***
+\***      VERSION 1 : Julia Stones             8th January 1998  
+\***      
+\*****************************************************************************
+\*****************************************************************************
+
+STRING GLOBAL   \
+   MINLS.FILE.NAME$,  \
+   MINLS.ITEM.CODE$,     \  4 byte UPD;  Record key
+   MINLS.RECOUNT.DATE$,  \  3 byte UPD;  YYMMDD      
+   MINLS.DISCREPANCY$,    \  3 byte UPD        
+   MINLS.COUNT.STATUS$     ! 1 byte ASCII 
+
+INTEGER*2 GLOBAL  \
+   MINLS.RECL%,   \
+   MINLS.REPORT.NUM%,  \
+   MINLS.SESS.NUM%   !
+
+
+
+    %INCLUDE   SRITLDEC.J86    ! Active Planner Details        OAS
+\********************************************************************
+\***      EXTERNAL FUNCTION DECLARATIONS FOR THE SRITL FILE
+\***      REFERENCE : SRITLDEC.J86
+\***      Version A           Neil Bennett            5th June 2006
+\***
+\********************************************************************
+
+  INTEGER*1 GLOBAL        \
+    SRITL.RECORD.CHAIN%,  \ Chain Sequence
+    SRITL.MODULE.COUNT%,  \ Family hierarchy key level
+    SRITL.MODULE.SEQ%(1), \ Module sequence
+    SRITL.REPEAT.CNT%(1)  ! Repeat count
+
+  INTEGER*2 GLOBAL        \
+    SRITL.CORE.COUNT%,    \ Sum of repeat count for core items
+    SRITL.MAX.MOD.KEYS%,  \ Maximum number of modules
+    SRITL.NON.CORE.CNT%,  \ Sum of repeat count for non core items
+    SRITL.SESS.NUM%,      \
+    SRITL.REPORT.NUM%,    \
+    SRITL.RECL%           !
+
+  INTEGER*4 GLOBAL        \
+    SRITL.POGDB%(1)       ! Unique POG Database key
+
+  STRING GLOBAL           \
+    SRITL.FILE.NAME$,     \ File name
+    SRITL.COPY.NAME$,     \ File name
+    SRITL.ITEM.CODE$,     \ Boots Item Code
+    SRITL.CORE.FLAG$(1),  \ Core/Non Core flag Y/N
+    SRITL.FILLER$         !
+
+
+
+\*****************************************************************************
+\***
+\***    Included code defining function related global variables
+\***
+\***..........................................................................
+
+    %INCLUDE PSBF01G.J86   !   APPLICATION.LOG
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***       %INCLUDE FOR GLOBAL DEFINITIONS FOR FUNCTION APPLICATION.LOG
+\***
+\***                FUNCTION NUMBER    : PSBF01
+\***
+\***                REFERENCE          : PSBF01G.J86
+\***
+\***                DATE OF LAST AMENDMENT  - 27/2/86
+\***
+\***
+\*******************************************************************************
+
+      INTEGER GLOBAL  F01.RETURN.CODE%
+
+
+    %INCLUDE PSBF02G.J86   !   Update Date
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : UPDATE.DATE globals
+\***
+\***        REFERENCE     : PSBF02G.J86
+\***
+\***        Version A     Bruce Scriver      4th March 1986
+\*** 
+\***        Version B     Andrew Wedgeworth   6th July 1992
+\***        Removal of return code field which no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING   GLOBAL F02.DATE$
+
+      ! 1 line deleted from here                                       ! BAW
+
+    %INCLUDE PSBF06G.J86   !   Barcode check digit calculation  FCS
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : CALC.BAR.CODE.CHECK.DIGIT globals
+\***
+\***        REFERENCE     : PSBF06G.J86
+\***
+\***        Version A     Bruce Scriver                 24th February 1986 
+\***
+\***        Version B     Andrew Wedgeworth                 15th July 1992
+\***        Removal of return code field which no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING   GLOBAL F06.CHECK.DIGIT$
+
+
+    %INCLUDE PSBF20G.J86   !   ALLOCATE.DEALLOCATE.SESS.NUM
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***     %INCLUDE GLOBAL VARIABLE DEFINITIONS FOR SESS.NUM.UTILITY FUNCTION
+\***
+\***                       REFERENCE     : PSBF20G.J86
+\*** 
+\***     Version A              Bruce Scrive                   5th May 1988   
+\*** 
+\***     Version B              Robert Cowey                   7th May 1991
+\***     Global variable F20.INTEGER.FILE.NO% changed from one byte integer
+\***     to two byte integer.
+\***
+\***     Version D              Andrew Wedgeworth             1st July 1992
+\***     F20.RETURN.CODE% removed as it is no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING    GLOBAL F20.FILE.NAME$,                                 \
+                       F20.STRING.FILE.NO$,                            \
+                       F20.TABLE.DIMENSIONED.FLAG$,                    \
+                       SESS.NUM.TABLE$(1)
+
+      INTEGER*2 GLOBAL F20.INTEGER.FILE.NO%
+
+      ! 1 line deleted from here                                       ! DAW 
+
+    %INCLUDE PSBF13G.J86   !   To find the day of the week      OAS
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : PSDATE globals
+\***
+\***        REFERENCE     : PSBF13G.J86
+\***
+\***     VERSION A                                  Bruce Scriver  6th Mar 86             
+\***            
+\***     VERSION B                                  Janet Lawrence 17 Aug 90
+\***     Add global to be used to indicate whether or not the function should
+\***     log an event when an invalid date is passed to it.
+\***
+\***     VERSION C                               Andrew Wedgeworth 17 July 92
+\***     Return code removed as no longer required.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+      STRING    GLOBAL F13.DAY$,			\
+                       F13.DISPLAY.MESSAGE$		! BJAL
+
+
+
+\*****************************************************************************
+\***
+\***    Global variable definitions
+\***
+\***..........................................................................
+
+    STRING GLOBAL                           \
+        BATCH.SCREEN.FLAG$,                 \
+        COMM.MODE.FLAG$,                    \ OAS Set to B-Background  C-Foreground mode
+        CURRENT.CODE$,                      \
+        FILE.OPERATION$,                    \
+        MODULE.NUMBER$,                     \
+        OPERATOR.NUMBER$,                   \ OAS
+        REPORTING.STATUS$                   ! OAS
+
+    INTEGER*2 GLOBAL                        \
+        CURRENT.REPORT.NUM%,                \
+        CURRENT.SESS.NUM%,                  \ OAS
+        FILE.RETURN.CODE%,                  \
+        FUNCTION.RETURN.CODE%
+
+    INTEGER*1 GLOBAL                        \ OAS
+        TRUE,                               \ OAS
+        FALSE                               ! OAS
+
+\*****************************************************************************
+\***
+\***    Variable definitions
+\***
+\***..........................................................................
+
+    STRING                                  \ OAS
+        ADXSERVE.DATA$,                     \ DCS  \ OAS \ Holds display message
+       \ADXSTART.NAME$,                     \ OAS        \ Variable not used
+       \ADXSTART.PARM$,                     \ OAS        \ Variable not used
+       \ADXSTART.MESS$,                     \ OAS        \ Variable not used
+        BSNS.CNTR$,                         \ OAS
+       \COMMAND.STRING$,                    \ OAS        \ Variable not used
+        CLILF.DDD$,                         \ OAS
+        CLILF.BKUP.STATUS$,                 \ OAS
+        CLOLF.DDD$,                         \ OAS
+        CLOLF.BKUP.STATUS$,                 \ OAS
+        CLOLF.PGNAME$,                      \ ICC  \ OAS
+       \COMM.MODE.FLAG$,                    \ DCS  \ OAS \ MOVED TO TOP
+       \CRLF$,                              \ OAS        \ Variable not used
+        CURRENT.CODE.LOGGED$,               \ OAS
+        CURR.RUN.DAY$,                      \ RTT
+        FUNCTION.FLAG$,                     \ OAS
+        GET.DAY$,                           \ OAS
+       \GET.DATE$,                          \ OAS \ PBT
+        MINLS.HK.STATUS$,                   \ OAS
+        MINOK.FILE.NAME$,                   \ OAS
+        MINOK.FILLER$,                      \ RTT
+        MINOK.RECORD$,                      \ OAS
+        MINOK.RUN.DATE$,                    \ RTT
+        MINOK.RUN.TIME$,                    \ RTT
+        MINOK.TIME.STAMP$,                  \ RTT
+        MODULE$,                            \ OAS
+        OLD.BULETT$,                        \ CNS  \ OAS
+        OLD.PGNAME$,                        \ ICC  \ OAS
+        PASSED.STRING$,                     \ OAS
+        PIPE.OPEN$,                         \ FCS  \ OAS
+        PROGRAM$,                           \ OAS
+        QUOTES$,                            \ RTT
+        RESPONSE$,                          \ OAS
+        RPRPT.RECORD$,                      \ CNS  \ OAS
+       \RPRPT.REP.DATA$,                    \ OAS        \ Variable not used
+        TIME.NOW$,                          \ PBT
+        UPDATE.DATE$,                       \ CNS  \ OAS
+        VAR.STRING.1$,                      \ OAS
+        VAR.STRING.2$,                      \ OAS
+        YESTERDAY$                          ! RTT
+
+    INTEGER*1                               \ OAS
+        COUNTER%,                           \ OAS
+        DO.MAIN,                            \ CNS  \ OAS
+        EOF,                                \ CNS  \ OAS
+        ERROR.COUNT%,                       \ OAS
+        EVENT.NUMBER%,                      \ OAS
+      \ LIST.ITEMS,                         \ CNS  \ OAS ! MOVED TO BOTTOM
+        MINPRINT.ALREADY.RUN%,              \ RTT
+        MINOK.ERROR.CHK%                    ! OAS
+
+    INTEGER*2                               \ OAS
+        ADX.FUNCTION%,                      \ DCS  \ OAS
+        ADX.INTEGER%,                       \ DCS  \ OAS
+      \ CURRENT.SESS.NUM%,                  \ CNS  \ OAS ! MOVED TO TOP
+        LOOPCNT%,                           \ OAS
+        LIST.ITEMS,                         \ OAS
+        MESSAGE.NUMBER%,                    \ OAS
+        MINOK.REPORT.NUM%,                  \ OAS
+        MINOK.SESS.NUM%,                    \ OAS
+        PASSED.INTEGER%,                    \ OAS
+        RC%                                 ! OAS
+        !EVENT.NO%,                         ! FCS  \ OAS  \ Variable not used
+        !MESSAGE.NO%                        ! FCS  \ OAS  \ Variable not used
+
+    INTEGER*4                               \ OAS
+        ADX.RETURN.CODE%,                   \ DCS  \ OAS
+        ADXCOPY.CHK%,                       \ OAS
+        FILE.SIZE%,                         \ OAS
+        RECORD.COUNT%                       ! OAS
+       !RPRPT.REC.MAX%,                     ! OAS         \ Variable not used
+       !RPRPT.REC.NUM%,                     ! OAS         \ Variable not used
+       !THE.TIME%                           ! FCS  \ OAS  \ Variable not used
+
+\*****************************************************************************
+\***
+\***    EXT included code defining file related external functions
+\***
+\***..........................................................................
+
+       %INCLUDE RPRPTEXT.J86
+\*****************************************************************************
+\***                                                                         *
+\*** EXTERNAL FUNCTION DEFINITIONS FOR THE MINSITS RP REPORT FILE            *
+\***                                                                         *
+\***                     REFERENCE : RPRPTEXT.J86                            *
+\***                                                                         *
+\***          Version A     Nik Sen            24th February 1998                *
+\***                                                                         *
+\*****************************************************************************
+
+       FUNCTION RPRPT.SET EXTERNAL                                      
+       END FUNCTION                                                   
+
+       %INCLUDE PRINTEXT.J86
+
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR PRINT FILE EXTERNAL FUNCTIONS
+\***
+\***        REFERENCE   :   PRINTEX (J86)
+\***
+\***        FILE TYPE   :   Printer / Labeller
+\***
+\***    VERSION A.              ANDREW WEDGEWORTH                   09 JUL 1992.
+\***    Original version created from PRINTEXG.
+\***
+\***    VERSION B.              UNKNOWN.                            ?? ??? 1992.
+\***    Changes unknown.
+\***
+\***    VERSION C.              ROBERT COWEY.                       18 NOV 1992.
+\***    Defined function variables for use as return codes.
+\***
+\***    Version C               Andrew Wedgeworth                 24th May 1992
+\***    Condensed print function added.
+\***
+\***    Version D               Stuart WIlliam McConnachie       31st July 2000.
+\***    Added function for PCL printing to LaserJet.
+\***
+\***    Version E               Charles Skadorwa                   4th Apr 2008.
+\***    Added parameter to WRITE.CONDENSED.PRINT function to
+\***    enable Alliance Pharmacy Brother Laser printers to print
+\***    in condensed mode.
+\***
+\***    Version F           Charles Skadorwa                       2nd Mar 2016.
+\***    It was found that certain reports would not print when stores
+\***    were converted to LAN attached printing.
+\***
+\***    Added new function: WRITE.PRINT.PLUS.LF based on WRITE.PRINT.
+\***    This adds a Line-Feed characters to every print line.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+
+    FUNCTION PRINT.SET EXTERNAL
+        INTEGER*2 PRINT.SET
+    END FUNCTION
+
+
+    FUNCTION WRITE.PRINT EXTERNAL
+       INTEGER*2 WRITE.PRINT
+    END FUNCTION
+
+
+    FUNCTION WRITE.PRINT.PLUS.LF EXTERNAL                               !FCS
+       INTEGER*2 WRITE.PRINT.PLUS.LF                                    !FCS
+    END FUNCTION                                                        !FCS
+
+
+    FUNCTION WRITE.CONDENSED.PRINT (AP.STORE) EXTERNAL                 ! ECSk
+       INTEGER*2 WRITE.CONDENSED.PRINT
+    END FUNCTION
+
+
+    FUNCTION WRITE.PCL.PRINT EXTERNAL                                  ! DSWM
+       INTEGER*2 WRITE.PCL.PRINT                                       ! DSWM
+    END FUNCTION                                                       ! DSWM
+
+
+    FUNCTION WRITE.LABEL EXTERNAL
+        INTEGER*2 WRITE.LABEL
+    END FUNCTION
+
+       %INCLUDE SOFTSEXT.J86                                   ! CNS
+\*******************************************************************************
+\***                                                                         ***
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE SOFTWARE STATUS FILE         ***
+\***                                                                         ***
+\***                     REFERENCE : SOFTSEXT.J86                            ***
+\***                                                                         ***
+\***      Version A         Andrew Wedgeworth          1st July 1992         ***
+\***
+\***   Version B
+\***                                                                      ***
+\***      Version C         Steve Wright               3rd May 1996          ***
+\***      Synchronise with function source.                                  ***
+\*******************************************************************************
+
+      FUNCTION SOFTS.SET EXTERNAL 
+      END FUNCTION
+      
+      FUNCTION READ.SOFTS EXTERNAL
+          INTEGER*2 I%, READ.SOFTS
+      END FUNCTION	                   
+
+      FUNCTION WRITE.SOFTS EXTERNAL
+          INTEGER*2 I%, WRITE.SOFTS
+      END FUNCTION
+
+
+       %INCLUDE RFSCFEXT.J86                                   ! CNS
+\******************************************************************************
+\******************************************************************************
+\***
+\***   $Workfile:   RFSCFEXT.J86  $
+\***
+\***   $Revision:   1.3  $
+\***
+\******************************************************************************
+\******************************************************************************
+\***
+\***
+\******************************************************************************
+\******************************************************************************
+\***
+\***                  FUNCTION DEFINITIONS FOR RFSCF
+\***
+\***                      REFERENCE    : RFSCFEXT
+\***
+\***           VERSION A : NIK SEN  5th October 1998
+\***
+\***
+\***   VERSION B             Mark Good
+\***   Added WRITE.RFSCF1
+\***
+\***   VERSION C             Jamie Thorpe
+\***   Added Read and Write dunctions for RFSCF record 3
+\***
+\***   VERSION D             Tittoo Thomas                         01 MAY 2013
+\***   Fixed READ and WRITE for RFSCF record 1 to have a return type set.
+\***
+\*****************************************************************************
+\*****************************************************************************
+
+   FUNCTION RFSCF.SET EXTERNAL
+   END FUNCTION
+
+   FUNCTION READ.RFSCF1 EXTERNAL
+      INTEGER*2 READ.RFSCF1            ! DTT
+   END FUNCTION
+
+   FUNCTION WRITE.RFSCF1 EXTERNAL      ! BMG
+      INTEGER*2 WRITE.RFSCF1           ! DTT
+   END FUNCTION                        ! BMG
+
+   FUNCTION READ.RFSCF3 EXTERNAL       ! CJT
+      INTEGER*2 READ.RFSCF3            ! CJT
+   END FUNCTION                        ! CJT
+
+   FUNCTION WRITE.RFSCF3 EXTERNAL      ! CJT
+      INTEGER*2 WRITE.RFSCF3           ! CJT
+   END FUNCTION                        ! CJT
+
+       %INCLUDE CLILFEXT.J86                                   ! CNS
+   
+\******************************************************************************
+\******************************************************************************\*****************************************************************************
+\***
+\***           FUNCTION DEFINITIONS FOR THE RF COUNT LISTS FILE
+\***
+\***           REFERENCE:   CLILFEXT.J86
+\***
+\***           VERSION A         Nik Sen         13th October 1998
+\***
+\***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+\***    Changes for RF trial.
+\***    Removed redundant PVCS revision control block from top of code.
+\***    Recompiled to prevent future automatic recompiles.
+\***    No changes to actual code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   
+   FUNCTION CLILF.SET EXTERNAL
+   END FUNCTION
+   
+   FUNCTION READ.CLILF EXTERNAL
+      INTEGER*2 READ.CLILF
+   END FUNCTION
+   
+   FUNCTION WRITE.CLILF EXTERNAL
+      INTEGER*2 WRITE.CLILF
+   END FUNCTION
+ 
+       %INCLUDE CLOLFEXT.J86                                   ! CNS
+
+\******************************************************************************
+\******************************************************************************\*****************************************************************************
+\***
+\***           FUNCTION DEFINITIONS FOR THE RF COUNT LIST OF LISTS FILE
+\***
+\***           REFERENCE:   CLOLFEXT.J86
+\***
+\***           VERSION A         Nik Sen         13th October 1998
+\***
+\***    REVISION 1.4.            ROBERT COWEY.                  09 SEP 2003.
+\***    Changes for RF trial.
+\***    Removed redundant PVCS revision control block from top of code.
+\***    Recompiled to prevent future automatic recompiles.
+\***    No changes to actual code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION CLOLF.SET EXTERNAL
+   END FUNCTION
+   
+   FUNCTION READ.CLOLF EXTERNAL
+      INTEGER*2 READ.CLOLF
+   END FUNCTION
+   
+   FUNCTION WRITE.CLOLF EXTERNAL
+      INTEGER*2 WRITE.CLOLF
+   END FUNCTION
+ 
+       !%INCLUDE ISFEXT.J86                                    ! CNS !OAS
+       !%INCLUDE IRFEXT.J86                                    ! CNS !OAS
+       %INCLUDE IDFEXT.J86                                     ! CNS
+\*******************************************************************************
+\***                                                                         ***
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE ITEM DESCRIPTION FILE        ***
+\***                                                                         ***
+\***                       REFERENCE : IDFEXT.J86                            ***
+\***                                                                         ***
+\***      Version A           Andrew Wedgeworth         9th July 1992        ***
+\***
+\***    VERSION C.              Robert Cowey.                       25 AUG 1993.
+\***    No changes to this file.
+\***
+\***   VERSION D               Nik Sen                 22nd December 1994
+\***   WRITE.IDF.HOLD added
+\***
+\*******************************************************************************
+
+       FUNCTION IDF.SET EXTERNAL                                      
+       END FUNCTION                                                   
+
+
+       FUNCTION READ.IDF EXTERNAL                                     
+          INTEGER*2 READ.IDF                                          
+       END FUNCTION                                                   
+
+
+       FUNCTION READ.IDF.LOCK EXTERNAL                                
+          INTEGER*2 READ.IDF.LOCK                                     
+       END FUNCTION                                                   
+
+       FUNCTION WRITE.IDF EXTERNAL
+          INTEGER*2 WRITE.IDF
+       END FUNCTION	       
+
+       FUNCTION WRITE.IDF.HOLD EXTERNAL
+          INTEGER*2 WRITE.IDF.HOLD
+       END FUNCTION
+
+       FUNCTION WRITE.IDF.UNLOCK EXTERNAL                                  
+          INTEGER*2 WRITE.IDF.UNLOCK                                      
+       END FUNCTION                                                   
+       %INCLUDE PGFEXT.J86                                     ! KMG
+
+\REM
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR PRODUCT GROUP FILES EXTERNAL FUNCTIONS
+\***
+\***        REFERENCE   :   PGFDEC (J86)
+\***
+\***        FILE TYPE   :   Direct (PGF and PGFD)
+\***                        Keyed (PGFO)
+\***
+\***    VERSION B.              ROBERT COWEY.                       30 SEP 1993.
+\***    Created from PGFFUNB.
+\***
+\***    REVISION 1.2.           ROBERT COWEY.                       27 OCT 2003.
+\***    Defined WRITE.PGF function.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+
+FUNCTION PGF.SET EXTERNAL
+    INTEGER*2 PGF.SET
+END FUNCTION
+
+FUNCTION READ.PGF EXTERNAL
+    INTEGER*2 READ.PGF
+END FUNCTION
+
+FUNCTION WRITE.PGF EXTERNAL                                                ! 1.2 RC
+    INTEGER*2 WRITE.PGF                                                    ! 1.2 RC
+END FUNCTION                                                               ! 1.2 RC
+
+FUNCTION READ.PGFDIR EXTERNAL
+    INTEGER*2 READ.PGFDIR
+END FUNCTION
+
+FUNCTION WRITE.PGFDIR EXTERNAL
+    INTEGER*2 WRITE.PGFDIR
+END FUNCTION
+
+FUNCTION READ.PGFO EXTERNAL
+    INTEGER*2 READ.PGFO
+END FUNCTION
+
+FUNCTION WRITE.PGFO EXTERNAL
+    INTEGER*2 WRITE.PGFO
+END FUNCTION
+
+       %INCLUDE MINLSEXT.J86   ! Minsits Recount Information   ! LJT
+
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***        %INCLUDE FOR FILE HANDLING FUNCTIONS EXTERNAL DEFINITIONS
+\***
+\***                   FILE TYPE:  KEYED
+\***
+\***                   REFERENCE:  MINLSEXT.J86
+\***
+\***	             DESCRIPTION:  MINSITS RP - SCREEN COUNT INFORMATION
+\***
+\***
+\***
+\***      VERSION 1 : Julia Stones             8th January 1998   
+\***      
+\*****************************************************************************
+\*****************************************************************************
+
+
+  FUNCTION MINLS.SET EXTERNAL
+     INTEGER*2 MINLS.SET
+  END FUNCTION
+
+
+  FUNCTION READ.MINLS EXTERNAL
+    INTEGER*2 READ.MINLS
+  END FUNCTION
+  
+
+  FUNCTION READ.MINLS.LOCKED EXTERNAL
+    INTEGER*2 READ.MINLS.LOCKED
+  END FUNCTION  
+
+
+  FUNCTION WRITE.HOLD.MINLS EXTERNAL
+    INTEGER*2 WRITE.HOLD.MINLS
+  END FUNCTION
+
+
+  FUNCTION WRITE.UNLOCK.MINLS EXTERNAL
+    INTEGER*2 WRITE.UNLOCK.MINLS
+  END FUNCTION
+
+
+  FUNCTION WRITE.HOLD.UNLOCK.MINLS EXTERNAL
+    INTEGER*2 WRITE.HOLD.UNLOCK.MINLS
+  END FUNCTION
+  
+
+  FUNCTION WRITE.MINLS EXTERNAL
+    INTEGER*2 WRITE.MINLS
+  END FUNCTION
+
+       %INCLUDE PSBF13E.J86    ! To initialise day variable    ! OAS
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : PSDATE external definition
+\***
+\***        REFERENCE     : PSBF13E.J86
+\***
+\***        Version A     Bruce Scriver                6th March 1986
+\*** 
+\***        Version B     Andrew Wedgeworth            17th July 1992  
+\***        Redundant parameters removed and PSDATE defined as a variable
+\***        to hold the return code. 
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION PSDATE (INPUT.DATE$)                                               \
+   EXTERNAL
+
+     STRING    INPUT.DATE$                                                   
+   
+     INTEGER*2 PSDATE 
+
+   END FUNCTION
+
+       %INCLUDE ADXCOPY.J86    ! To copy files                 ! OAS
+\******************************************************************************
+\******************************************************************************
+\***                                                                        ***
+\***    %INCLUDE FOR SUBROUTINE ADXCOPYF (an I.B.M. system subroutine)      ***
+\***                                                                        ***
+\***         DATE WRITTEN  :  13th May 1988                                 ***
+\***                                                                        ***
+\******************************************************************************
+\******************************************************************************
+
+   SUB  ADXCOPYF (RETC, INFILE, OUTFILE, OPT0, OPT1, OPT2) EXTERNAL
+
+      INTEGER*4   RETC
+      STRING      INFILE, OUTFILE
+      INTEGER*2   OPT0, OPT1, OPT2
+
+   END  SUB
+
+       %INCLUDE SRITLEXT.J86   ! Active Planner Details        ! OAS
+\********************************************************************
+\***      EXTERNAL FUNCTION DEFINITIONS FOR THE SRITL FILE
+\***      REFERENCE : SRITLEXT.J86
+\***      Version A           Neil Bennett            7th July 2006
+\***
+\********************************************************************
+
+       FUNCTION SRITL.SET EXTERNAL
+       END FUNCTION
+
+       FUNCTION READ.SRITL EXTERNAL
+          INTEGER*2 READ.SRITL
+       END FUNCTION
+
+       FUNCTION WRITE.SRITL EXTERNAL
+          INTEGER*2 WRITE.SRITL
+       END FUNCTION
+
+        SUB MINRFCNT EXTERNAL                                   ! OAS
+        END SUB
+
+\*****************************************************************************
+\***
+\***    Included code defining external Boots functions
+\***
+\***..........................................................................
+
+    %INCLUDE PSBF01E.J86   !   APPLICATION.LOG
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***      %INCLUDE FOR EXTERNAL DEFINITION OF FUNCTION APPLICATION.LOG
+\***
+\***                      FUNCTION NUMBER   : PSBF01
+\***
+\***                    INCLUDE REFERENCE : PSBF01E.J86
+\*** 
+\***      Version B           Andrew Wedgeworth          1st July 1992
+\***      Three parameters which passed to the function have been removed.
+\***      APPLICATION.LOG has been added as a variable name (this holds the
+\***      return code).
+\***
+\*******************************************************************************
+
+
+   FUNCTION APPLICATION.LOG (MESSAGE.NO%,                                     \
+                             VAR.STRING.1$,                                   \
+                             VAR.STRING.2$,                                   \
+                             EVENT.NO%)  EXTERNAL
+
+      INTEGER*1 EVENT.NO%
+
+      INTEGER*2 APPLICATION.LOG,                                       \ GAW
+                MESSAGE.NO%
+
+      STRING VAR.STRING.1$,                                            \
+             VAR.STRING.2$
+
+   END FUNCTION
+
+\*******************************************************************************
+    %INCLUDE PSBF02E.J86   !   Update Date
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***        INCLUDE       : UPDATE.DATE external definition
+\***        AUTHOR        : Bruce Scriver (Basic Code)
+\***        DATE WRITTEN  : 4th March 1986 (Basic Code)
+\***
+\***        REFERENCE     : PSBF02E.J86
+\***
+\***        Version A     Bruce Scriver          4th March 1986
+\***
+\***        Version B     Andrew Wedgeworth       6th July 1992
+\***        Removal of redundant parameters, and inclusion of UPDATE.DATE as
+\***        a variable to hold the return code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION UPDATE.DATE (INCREMENT%)                                   \
+   EXTERNAL
+   ! 3 parameters removed from here                                    ! BAW
+
+   ! 3 lines deleted from here                                         ! BAW
+   
+      INTEGER*2 UPDATE.DATE                                            ! BAW
+
+      INTEGER*4 INCREMENT%
+
+   END FUNCTION
+
+    %INCLUDE PSBF06E.J86   !   Barcode Check Digit Calculation   ! FCS ! OAS
+rem\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***
+\***         INCLUDE       : CALC.BAR.CODE.CHECK.DIGIT external definition
+\***
+\***         REFERENCE     : PSBF06E.J86
+\***
+\***         Version A     Bruce Scriver                  24th February 1986
+\***
+\***         Version B     Andrew Wedgeworth                  15th July 1992
+\***         Removal of redundant parameters, and inclusion of 
+\***         CALC.BAR.CODE.CHECK.DIGIT as a variable to hold the return code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION CALC.BAR.CODE.CHECK.DIGIT (BAR.CODE.12$)                           \
+   EXTERNAL
+   ! 3 parameters removed from here                                    ! BAW
+
+      STRING    BAR.CODE.12$
+   ! 3 variables removed from here                                     ! BAW
+   
+      INTEGER*2 CALC.BAR.CODE.CHECK.DIGIT                              ! BAW
+      
+
+   END FUNCTION
+
+    %INCLUDE PSBF08E.J86   !   Print Report Function
+rem\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***         INCLUDE       : PRINT.REPORT external definition
+\***
+\***         REFERENCE     : PSBF08E.J86
+\***
+\***         Version A     Bruce Scriver     27th February 1986
+\*** 
+\***         Version B     Andrew Wedgeworth      7th July 1992
+\***         Remove redundant parameters, and add PRINT.REPORT as a variable
+\***         to hold the return code.
+\*** 
+\***         Version C     Andrew Wedgeworth      24th May 1993
+\***         Extra parameter added to enable the printing of a condensed
+\***         report.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION PRINT.REPORT (SESSION.NUMBER%,CONDENSED.PRINT.FLAG$)       \ CAW
+   EXTERNAL
+
+   STRING    CONDENSED.PRINT.FLAG$                                     ! CAW
+ 
+   INTEGER   PRINT.REPORT,                                             \ BAW
+             SESSION.NUMBER%
+
+   END FUNCTION
+    %INCLUDE PSBF20E.J86   !   ALLOCATE.DEALLOCATE.SESS.NUM
+REM\
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***       %INCLUDE FOR EXTERNAL DEFINITION OF SESS.NUM.UTILITY
+\***
+\***                  REFERENCE     : PSBF20E.J86
+\***
+\***     VERSION C            Janet Smith                13th May 1992
+\***     Increased PASSED.INTEGER to 2 bytes to cater for more than
+\***     128 files.
+\***
+\***     VERSION D.           Andrew Wedgeworth          1st July 1992
+\***     Removal of redundant parameters and addition of SESS.NUM.UTILITY
+\***     as a variable.  This new variable contains the function's return
+\***     code.
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION SESS.NUM.UTILITY (FUNCTION.FLAG$,                          \
+                              PASSED.INTEGER%,                         \
+                              PASSED.STRING$)                          \
+   EXTERNAL
+
+   STRING    FUNCTION.FLAG$,                                           \
+             PASSED.STRING$
+   ! 3 variables removed from here                                     ! CAW
+
+
+   INTEGER*2 SESS.NUM.UTILITY,                                         \ CAW
+             PASSED.INTEGER%				               ! CJAS
+
+   END FUNCTION
+
+    %INCLUDE PSBF24E.J86   !   STANDARD.ERROR.DETECTED
+REM \
+\*******************************************************************************
+\*******************************************************************************
+\***
+\***    %INCLUDE FOR EXTERNAL DEFINITION OF STANDARD.ERROR.DETECTED FUNCTION
+\***
+\***                      REFERENCE     : PSBF24E.J86
+\***
+\***    Version A                 Janet Smith                  13th May 1992
+\***
+\*******************************************************************************
+\*******************************************************************************
+
+   FUNCTION STANDARD.ERROR.DETECTED(ERRN%,                 \
+				    ERRFILE%,              \
+				    ERRL%,                 \
+				    ERR$)        EXTERNAL
+				    
+          STRING    ERR$
+
+          INTEGER*2 ERRFILE%,              \
+	            ERRL%,                 \
+		    STANDARD.ERROR.DETECTED
+		    
+          INTEGER*4 ERRN%
+	  		    
+   END FUNCTION
+
+
+    %INCLUDE PSBF30E.J86   !   Process Keyed Record              ! LJT
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***                 EXTERNAL FUNCTION DEFINITION PSBF30
+\***
+\*****************************************************************************
+\*****************************************************************************
+
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***   Version 96A              Mark Walker                31st May 1995
+\***   Original version.
+\***
+\***   Version B                Andrew Wedgeworth          17th March 1997
+\***   Added READONLY$ variable.  This parameter may be used to specify 
+\***   whether the file is to be opened with the READONLY option.
+\***
+\*****************************************************************************
+\*****************************************************************************
+ 
+       FUNCTION PROCESS.KEYED.FILE(FILE.NAME$,                         \ 
+                                   REPORT.NUM%,                        \  
+                                   READONLY$) EXTERNAL
+
+       STRING FILE.NAME$,READONLY$
+       INTEGER*2 PROCESS.KEYED.FILE,REPORT.NUM%
+
+       END FUNCTION
+
+    %INCLUDE ADXSERVE.J86  !   Message Logging                   ! DCS ! OAS
+\******************************************************************************
+\******************************************************************************
+\***                                                                        ***
+\***    %INCLUDE FOR FUNCTION ADXSERVE (an I.B.M. system function)          ***
+\***                                                                        ***
+\***         AUTHOR        :  Bruce Scriver                                 ***
+\***                                                                        ***
+\***         DATE WRITTEN  :  14th March 1986                               ***
+\***                                                                        ***
+\***         DATE OF LAST REVISION  - 14th March 1986                       ***
+\***                                                                        ***
+\***                                                                        ***
+\******************************************************************************
+\******************************************************************************
+
+   SUB ADXSERVE (RETURN.CODE%,                                                \
+                 ADX.FUNCTION%,                                               \
+                 ADX.PARM.1%,                                                 \
+                 ADX.PARM.2$)                                                 \
+   EXTERNAL
+  
+      STRING     ADX.PARM.2$
+
+      INTEGER*2  ADX.FUNCTION%,                                               \
+                 ADX.PARM.1%
+
+      INTEGER*4  RETURN.CODE%                                                 \
+
+   END SUB     
+
+    %INCLUDE ADXSTART.J86  !   Chain to new program              ! FCS ! OAS
+\******************************************************************************
+\******************************************************************************
+\***                                                                        ***
+\***    %INCLUDE FOR FUNCTION ADXSTART (an I.B.M. system function)          ***
+\***                                                                        ***
+\***         AUTHOR        :  Barbara Holbrook                              ***
+\***                                                                        ***
+\***         DATE WRITTEN  :  26th June 1987                                ***
+\***                                                                        ***
+\***         DATE OF LAST REVISION  - 19th November 1987                    ***
+\***                                                                        ***
+\***                                                                        ***
+\******************************************************************************
+\******************************************************************************
+
+   FUNCTION ADXSTART (ADX.NAME$,                                       \
+                      ADX.PARM$,                                       \
+                      ADX.MESS$)                                       \
+   EXTERNAL
+
+      STRING     ADX.NAME$,                                            \
+                 ADX.PARM$,                                            \
+                 ADX.MESS$
+
+      INTEGER*2  ADXSTART
+
+   END FUNCTION
+
+    %INCLUDE CMPDATE.J86   !   Date compare for Y2K compliance   ! IMG ! OAS
+!********************************************************************
+!***
+!***    INCLUDED CODE:  CMPDATE.J86
+!***    AUTHOR:         Stuart William McConnachie
+!***    DATE:           27th January 1997
+!***
+!********************************************************************
+!***   
+!***    Version B            Nik Sen                 30th March 1998
+!***    Changes to cope with a date of '000000' by replacing it with
+!***    '850101' before comparison. An all zero's date is valid in 
+!***    certain date fields and CMPDATE was returning the wrong result
+!***    when comparing with an actual date. Also change to cope with
+!***    dates of '999999' as some date fields are initialised to this
+!***    as a high value.
+!***
+!***    Version C    Stuart William McConnachie   20th December 1999
+!***    Improved function efficiency by changing tests for high and
+!***    low values, added above, to integers (rather than strings).
+!***    Also, using 850101 as a replacement for 000000, will not give
+!***    valid results after 350101 because of the 50 year wrap, so
+!***    corrected this.
+!***
+!***    Version D.  Stuart William McConnachie    26th February 2006
+!***    Place this code in it's own module in FUNLIB.  Make all
+!***    the functions herein EXTERNAL accordingly.
+!***
+!********************************************************************
+!***    
+!***    The following functions compare dates, checking for
+!***    century boundries.  Dates in the 50 years prior to the
+!***    compared date are less than the compared date, dates in
+!***    50 years after the compared date are greater than the
+!***    compared date.
+!***    Can handle dates in both packed and unpacked formats, or
+!***    a mixture of both.
+!***    In the case of a error, for example IH after detecting
+!***    illegal characters in VAL, the functions default to
+!***    comparing strings without testing for a change of century.
+!***
+!***    DATE.GT(DATE1$, DATE2$)  same as  DATE1$ >  DATE2$
+!***    DATE.GE(DATE1$, DATE2$)  same as  DATE1$ >= DATE2$
+!***    DATE.LT(DATE1$, DATE2$)  same as  DATE1$ <  DATE2$
+!***    DATE.LE(DATE1$, DATE2$)  same as  DATE1$ <= DATE2$
+!***
+!********************************************************************
+
+FUNCTION DATE.GT(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.GT
+END FUNCTION
+
+
+FUNCTION DATE.GE(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.GE
+END FUNCTION
+
+
+FUNCTION DATE.LT(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.LT
+END FUNCTION
+
+
+FUNCTION DATE.LE(DATE1$, DATE2$) EXTERNAL                               !DSWM
+    STRING    DATE1$, DATE2$
+    INTEGER*1 DATE.LE
+END FUNCTION
+
+    %INCLUDE EALHSASC.J86  !                                           ! OAS
+\/* TIME STAMP BLOCK **********************************************
+\** END OF TIME STAMP BLOCK **************************************/
+!! THIS MODULE WAS CREATED BY APAR IR70269
+!*********************************************************************
+!
+! ASSEMBLER SUBROUTNE DEFINITIONS
+!
+! These definitions should be copied by any routine which wishes to
+! use the performanced enhanced assembler routines.
+!
+!*********************************************************************
+ 
+!*********************************************************************
+!
+! SUBSTR
+!
+! This routine performs a merge of two strings. String P3$, offset P4
+! is merged into string P1$ offset P2 for a length of P5 bytes
+!
+! CAUTION: P1$ must be long enough to totally contain P3$
+!
+! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION SUBSTR (P1$,P2,P3$,P4,P5) EXTERNAL
+ STRING P1$,P3$
+ INTEGER*2 P2,P4,P5
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! GETN2/GETN4
+!
+! These routines extract a two/four byte integer from a string.
+! P2 is the offset within the string
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION GETN2(P1$,P2) EXTERNAL
+ INTEGER*2 GETN2
+ STRING P1$
+ INTEGER*2 P2
+ END FUNCTION
+ 
+ FUNCTION GETN4(P1$,P2) EXTERNAL
+ INTEGER*4 GETN4
+ STRING P1$
+ INTEGER*2 P2
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! PUTN2/PUTN4
+!
+! These routines insert a two/four byte integer into a string.
+! P2 is the offset within the string and P3 is the source integer
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION PUTN2(P1$,P2,P3) EXTERNAL
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+ FUNCTION PUTN4(P1$,P2,P3) EXTERNAL
+ STRING P1$
+ INTEGER*2 P2
+ INTEGER*4 P3
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! PACKBIN2/4
+!
+! These routines take a packed decimal string and convert to integer
+! (The equivalent of CBASIC INT%(VAL(UNPACK$())) )
+! P1 is the source string, P2 the string offset and P3 the length
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION PACKBIN2(P1$,P2,P3) EXTERNAL
+ INTEGER*2 PACKBIN2
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+ FUNCTION PACKBIN4(P1$,P2,P3) EXTERNAL
+ INTEGER*4 PACKBIN4
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! ADDIN2/4
+!
+! These routines add an integer into an integer which is imbedded within
+! a string.  P1$ is the string containing at offset P2 the integer to be
+! updated.  P3 is the integer to be added into P1$.
+!
+! NOTE: THE OFFSET PASSED TO THIS ROUTINE IS ZERO INDEXED
+!
+!*********************************************************************
+ 
+ FUNCTION ADDIN4(P1$,P2,P3) EXTERNAL
+ INTEGER*4 ADDIN4
+ STRING P1$
+ INTEGER*2 P2
+ INTEGER*4 P3
+ END FUNCTION
+ 
+ FUNCTION ADDIN2(P1$,P2,P3) EXTERNAL
+ INTEGER*2 ADDIN2
+ STRING P1$
+ INTEGER*2 P2,P3
+ END FUNCTION
+ 
+!*********************************************************************
+!
+! MATCHB
+!
+! This routine performs a fast match function when the string being
+! searched for contains only a single character.  As with the MATCH
+! function, P1$ is the character to be found, P2$ is the string to be
+! searched, and P3 the offst at which to start the search.
+!
+!*********************************************************************
+ 
+ FUNCTION MATCHB(P1$,P2$,P3) EXTERNAL
+ INTEGER*2 MATCHB
+ STRING P1$
+ STRING P2$
+ INTEGER*2 P3
+ END FUNCTION
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 4 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN4 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 3 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN3 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 2 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN2 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 1 BYTE BINARY INTEGER REPRESENTED AS A STRING.               !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDBIN1 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 4 BYTE HEX REPRESENTATION OF A 2-BYTE INTEGER                !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDHEX2 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT A PACKED DECIMAL DATA STRING TO A        !!
+\ REM!! 2 BYTE HEX REPRESENTATION OF A 1-BYTE INTEGER                !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!! *************************************************************!!
+ 
+SUB UPDHEX1 (IN$,OUT$) EXTERNAL
+STRING IN$,OUT$
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+\ REM!! STRING TO A 2 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+\ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+\ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!!
+\ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+\ REM!! *************************************************************!!
+ 
+SUB INTBIN2 (IN$,IN%,OUT$,OUT%) EXTERNAL
+STRING IN$,OUT$
+INTEGER IN%,OUT%
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+\ REM!! STRING TO A 3 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+\ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+\ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!!
+\ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+\ REM!! *************************************************************!!
+ 
+SUB INTBIN3 (IN$,IN%,OUT$,OUT%) EXTERNAL
+STRING IN$,OUT$
+INTEGER IN%,OUT%
+END SUB
+ 
+\ REM!! *************************************************************!!
+\ REM!! PROCEDURE - CONVERT AN INPUT 4 BYTE INTEGER REPRESENTED AS A !!
+\ REM!! STRING TO A 4 BYTE BINARY INTEGER REPRESENTED AS A STRING    !!
+\ REM!! WHERE BOTH THE INPUT AND OUTPUT MAY BE IMBEDDED WITHIN THE   !!
+\ REM!! GIVEN STRING AT THE GIVEN OFFSET.                            !!
+\ REM!! STRING "OUT$" MUST BE INITIALIZED BEFORE CALLING THE ROUTINE.!!
+\ REM!!
+\ REM!! NOTE: THE OFFSETS PASSED TO THIS ROUTINE ARE UNIT INDEXED
+\ REM!! *************************************************************!!
+ 
+SUB INTBIN4 (IN$,IN%,OUT$,OUT%) EXTERNAL
+STRING IN$,OUT$
+INTEGER IN%,OUT%
+END SUB
+ 
+
+!**********************************************************************! LJT
+!***                                                                   ! LJT
+!***      PROCESS.KEYED.RECORD$                                        ! LJT
+!***                                                                   ! LJT
+!***      'User exit' for PROCESS.KEYED.FILE (PSBF30)                  ! LJT
+!***                                                                   ! LJT
+!**********************************************************************! LJT
+
+FUNCTION PROCESS.KEYED.RECORD$(RECORD$) PUBLIC                         ! LJT
+
+    STRING PROCESS.KEYED.RECORD$,RECORD$                               ! LJT
+
+       MINLS.ITEM.CODE$ = LEFT$(RECORD$,4)                             ! LJT
+       RC% = READ.MINLS                                                ! LJT
+
+       F02.DATE$ = UNPACK$(MINLS.RECOUNT.DATE$)                        ! LJT
+       CALL UPDATE.DATE(RFSCF.RECOUNT.DAYS.RETAIN%)                    ! LJT
+       IF DATE.LE(F02.DATE$, DATE$) THEN BEGIN                         ! LJT
+          DELREC MINLS.SESS.NUM%; MINLS.ITEM.CODE$                     ! LJT
+          !Turn off PENDING COUNT flag on the IDF                      ! LJT
+          IDF.BOOTS.CODE$ = MINLS.ITEM.CODE$                           ! LJT
+          RC% = READ.IDF                                               ! LJT
+          IF RC% = 0 THEN BEGIN                                        ! LJT
+          !Make sure the flag is set to on first                       ! LJT
+             IF (IDF.BIT.FLAGS.2% AND 00000100b) <> 0 THEN BEGIN       ! LJT
+             !It's on, so turn it off                                  ! LJT
+                 IDF.BIT.FLAGS.2% = (IDF.BIT.FLAGS.2% XOR 4)           ! LJT
+                 RC% = WRITE.IDF                                       ! LJT
+             ENDIF                                                     ! LJT
+          ENDIF                                                        ! LJT
+       ENDIF                                                           ! LJT
+
+    PROCESS.KEYED.RECORD$ = RECORD$                                    ! LJT
+
+END FUNCTION                                                           ! LJT
+
+\*****************************************************************************
+\***
+\***    PROGRAM.CONTROL
+\***
+\***..........................................................................
+
+
+MINPRINT.START:
+
+
+    ON ERROR GOTO ERROR.DETECTED
+
+    IF LEFT$(COMMAND$,8) = "BACKGRND" THEN BEGIN                       ! DCS ! OAS
+        COMM.MODE.FLAG$ = "B"                                          ! DCS ! OAS
+    ENDIF ELSE BEGIN                                                   ! OAS
+        COMM.MODE.FLAG$ = "C"                                          ! DCS ! OAS
+        IF LEFT$(COMMAND$,8) = "RERUN" THEN BEGIN                      ! OAS
+
+            !MINPRINT will run with the help of SLEEPER program in     ! OAS
+            !background. If MINPRINT has to be run manually, then      ! OAS
+            !user has to enter the following parameters in command     ! OAS
+            !mode, "MINPRINT RERUN".                                   ! OAS
+
+            GOSUB MINPRINT.HELP                                        ! OAS
+            INPUT "Do you really want to run MINPRINT? (Y/N) ";RESPONSE$ ! OAS ! CCSk
+
+            !If the user enters wrong option other than "Y", "N", "y"  ! OAS
+            !or "n", program will ask the user to enter the correct    ! OAS
+            !choice                                                    ! OAS
+
+            WHILE ((RESPONSE$ <> "Y" ) AND    \                        ! OAS
+                   (RESPONSE$ <> "y" ) AND    \                        ! OAS
+                   (RESPONSE$ <> "N" ) AND    \                        ! OAS
+                   (RESPONSE$ <> "n" ) )                               ! OAS
+
+                INPUT "Enter the correct option (Y/N) ";RESPONSE$      ! OAS
+            WEND                                                       ! OAS
+
+            !If the user response is "Y" or "y" then re-run MINPRINT   ! OAS
+            !If the user response is "N" or "n" then STOP the program  ! OAS
+
+            IF ((RESPONSE$ = "Y") OR       \                           ! OAS
+                (RESPONSE$ = "y")) THEN BEGIN                          ! OAS
+
+                ADXSERVE.DATA$ = "Re - running MINPRINT"               ! OAS
+                GOSUB DISPLAY.MESSAGE                                  ! OAS
+
+            ENDIF ELSE IF ((RESPONSE$ = "N") OR \                      ! OAS
+                           (RESPONSE$ = "n")) THEN BEGIN               ! OAS
+                STOP                                                   ! OAS
+            ENDIF                                                      ! OAS
+
+        ENDIF ELSE BEGIN                                               ! OAS
+
+            !If the user runs MINPRINT without any parameter,          ! OAS
+            !then the program will display the help details            ! OAS
+
+            GOSUB MINPRINT.HELP                                        ! OAS
+            STOP                                                       ! OAS
+        ENDIF                                                          ! OAS
+
+    ENDIF
+
+    ADXSERVE.DATA$ = "MINPRINT has started"                            ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    GOSUB CREATE.MINOK.FILE                                            ! OAS
+
+    IF MINPRINT.ALREADY.RUN% THEN BEGIN                                ! RTT
+       ADXSERVE.DATA$ = "MINPRINT already run. " +                     \ RTT
+                        "Rerun will overwrite CLILF/CLOLF backups"     ! RTT
+       GOSUB DISPLAY.MESSAGE                                           ! RTT
+       GOSUB STOP.PROGRAM                                              ! RTT
+    ENDIF                                                              ! RTT
+
+    !Processing of RFCNTLST.DAY report which is defined in MINRFCNT.BAS! OAS
+    GOSUB CALL.MINRFCNT                                                ! OAS
+
+    GOSUB INITIALISATION
+    GOSUB GET.SOFTS
+
+    DO.MAIN = 1                                                        ! CNS
+
+    !If RF is ON, then will instruct RF server to close all files and  ! OAS
+    !backup the CLILF and CLOLF files else it will continue with the   ! OAS
+    !backup of CLILF/CLOLF files                                       ! OAS
+
+    IF MATCH(" ACTIVE",SOFTS.RECORD$,1) THEN BEGIN                     ! NCS
+       ADXSERVE.DATA$ = "Detected RF / Network PDT  Store"             ! DCS ! NCS
+       GOSUB DISPLAY.MESSAGE                                           ! DCS
+       DO.MAIN = 0                                                     ! CNS
+
+       \***********************************************************    ! FCS ! OAS
+       \***                                                            ! OAS
+       \***  Instruct the RF Server to close all files                 ! FCS ! OAS
+       \***                                                            ! OAS
+       \***********************************************************    ! FCS ! OAS
+
+       IF END #64 THEN RFS.BYPASS                                      ! HBG
+       OPEN "PI:rfscomms" AS 64                                        ! FCS
+       PIPE.OPEN$ = "Y"                                                ! FCS
+       PRINT USING "&"; #64 ; "CLS*"                                   ! FCS
+       CLOSE 64                                                        ! FCS
+       PIPE.OPEN$ = "N"                                                ! FCS
+       ADXSERVE.DATA$ = "Waiting for RFS Close."                       ! FCS
+       GOSUB DISPLAY.MESSAGE                                           ! FCS
+       WAIT ;15000                                                     ! FCS
+
+    ENDIF                                                              ! OAS
+
+RFS.BYPASS:                                                            ! HBG
+    GOSUB BACKUP.CLILF.CLOLF.FILES                                     ! OAS
+    GOSUB RF.PROCESS                                                   ! CNS
+    !Earlier, only RF/POD stores have the CLOLF/CLILF files present
+    !(around 900 stores). All other stores are PDT stores and they do
+    !not use the CLOLF/CLILF. However as part of SFA, these files need
+    !creating and populating like RF/POD stores. Hence, removing the
+    !seprate processing section for the ‘non RF’ stores
+
+    !ENDIF ELSE BEGIN                                                  ! DCS ! OAS
+    !  ADXSERVE.DATA$ = "Detected NON-RF Store"                        ! DCS ! NCS
+    !  GOSUB DISPLAY.MESSAGE                                           ! DCS ! OAS
+    !                                                                        ! OAS
+    !  GOSUB PROCESS.RFSCF                                             ! LJT ! OAS
+    !                                                                        ! OAS
+    !  ADXSERVE.DATA$ = "Open MINLS file"                              ! LJT ! OAS
+    !  GOSUB DISPLAY.MESSAGE                                           ! LJT ! OAS
+    !  CURRENT.SESS.NUM% = MINLS.SESS.NUM%                             ! LJT ! OAS
+    !  IF END #MINLS.SESS.NUM% THEN FILE.ERROR.EXIT                    ! LJT ! OAS
+    !  OPEN MINLS.FILE.NAME$ KEYED RECL MINLS.RECL% AS MINLS.SESS.NUM% \ LJT ! OAS
+    !                                                            NODEL ! LJT ! OAS
+    !                                                                        ! OAS
+    !  ADXSERVE.DATA$ = "Open IDF file"                                ! LJT ! OAS
+    !  GOSUB DISPLAY.MESSAGE                                           ! LJT ! OAS
+    !  CURRENT.SESS.NUM% = IDF.SESS.NUM%                               ! LJT ! OAS
+    !  IF END #IDF.SESS.NUM% THEN FILE.ERROR.EXIT                      ! LJT ! OAS
+    !  OPEN IDF.FILE.NAME$ KEYED RECL IDF.RECL% AS IDF.SESS.NUM%       \ LJT ! OAS
+    !                                                           NODEL  ! LJT ! OAS
+    !                                                                        ! OAS
+    !  RC% = PROCESS.KEYED.FILE(MINLS.FILE.NAME$,MINLS.REPORT.NUM%,"N")! LJT ! OAS
+    !                                                                        ! OAS
+    !  CLOSE MINLS.SESS.NUM%                                           ! LJT ! OAS
+    !ENDIF                                                             ! DCS ! OAS
+
+    GOSUB WRITE.MINOK                                                  ! OAS
+
+    GOSUB TERMINATION
+
+
+STOP.PROGRAM:
+
+    ADXSERVE.DATA$ = "--- MINPRINT has finished ---"                   ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+
+    STOP
+
+
+\*****************************************************************************
+\***
+\***    MINPRINT.HELP
+\***
+\***..........................................................................
+
+MINPRINT.HELP:
+
+    PRINT "                         MINPRINT HELP                                       "! OAS
+    PRINT "                                                                             "! OAS
+    PRINT "This program requires the RERUN parameter to be entered for running          "! OAS
+    PRINT "from command mode. For a rerun, the complete program will run, and it        "! OAS
+    PRINT "must be noted that the following will take place:                            "! OAS
+    PRINT "                                                                             "! OAS
+    PRINT "-    backs up the CLOLF.BIN & CLILF.BIN count list files to CLOLF.nnn and    "! OAS
+    PRINT "     CLILF.nnn where nnn is MON or TUE etc depending on todays date. This    "! OAS
+    PRINT "     will overwrite any existing backup files which feed into the Weekly     "! OAS
+    PRINT "     Count reporting                                                         "! OAS
+    PRINT "-    creates empty CLOLF.BIN and CLILF.BIN files deleting any counts         "! OAS
+    PRINT "     currently on the files                                                  "! OAS
+    PRINT "-    it is recommended to manually backup all CLILF/CLOLF backups and BIN    "! OAS
+    PRINT "     before rerunning MINPRINT                                               "! OAS
+    PRINT "                                                                             "! OAS
+
+RETURN
+
+\*****************************************************************************
+\***
+\***    WRITE.MINOK
+\***
+\***..........................................................................
+
+WRITE.MINOK:                                                            ! OAS
+
+    ADXSERVE.DATA$ = "Updating MINOK file"                              ! OAS
+    GOSUB DISPLAY.MESSAGE                                               ! OAS
+
+    FUNCTION.FLAG$ EQ "C"                                               ! OAS
+    CURRENT.SESS.NUM% = MINOK.SESS.NUM%                                 ! OAS
+    IF END #MINOK.SESS.NUM% THEN FILE.ERROR.EXIT                        ! OAS
+    CREATE MINOK.FILE.NAME$ AS MINOK.SESS.NUM%                          ! OAS
+
+    FILE.OPERATION$ = "W"                                               ! OAS
+    CURRENT.REPORT.NUM% = MINOK.REPORT.NUM%                             ! OAS
+
+    MINOK.ERROR.CHK% = FALSE                                            ! OAS
+
+!                             MINOK FILE FORMAT                                    ! OAS
+!                                                                                  ! OAS
+!   |--------------------------|-------------|---------------------------------|   ! OAS
+!   |Field Name                |  Field Type | Description                     |   ! OAS
+!   |--------------------------|-------------|---------------------------------|   ! OAS
+!   |Run date                  |  8 ASC      | CCYYMMDD                        |   ! OAS
+!   |Run time                  |  6 ASC      | HHMMSS                          |   ! OAS
+!   |Reporting status          |  1 ASC      | E = Report processing successful|   ! OAS
+!   |                          |             | X = Report processing failed    |   ! OAS
+!   |CLILF backup status       |  1 ASC      | E = Backup successful           |   ! OAS
+!   |                          |             | X = Backup failed               |   ! OAS
+!   |CLOLF backup status       |  1 ASC      | E = Backup successful           |   ! OAS
+!   |                          |             | X = Backup failed               |   ! OAS
+!   |MINLS housekeeping status |  1 ASC      | E = Processing successful       |   ! OAS
+!   |                          |             | X = Processing failed           |   ! OAS
+!   |Filler                    |  62 ASC     | Spaces                          |   ! OAS
+!   |--------------------------|-------------|---------------------------------|   ! OAS
+
+!    WRITE #MINOK.SESS.NUM%;                             \               ! OAS  ! RTT
+!        LEFT$(MINOK.RECORD$, 14) +                      \               ! OAS  ! RTT
+!        REPORTING.STATUS$ +                             \               ! OAS  ! RTT
+!        CLILF.BKUP.STATUS$ +                            \               ! OAS  ! RTT
+!        CLOLF.BKUP.STATUS$ +                            \               ! OAS  ! RTT
+!        MINLS.HK.STATUS$ +                              \               ! OAS  ! RTT
+!        STRING$(62, " ")                                                ! OAS  ! RTT
+
+    WRITE #MINOK.SESS.NUM%;                             \               ! RTT
+        MINOK.RUN.DATE$ +                               \               ! RTT
+        MINOK.RUN.TIME$ +                               \               ! RTT
+        REPORTING.STATUS$ +                             \               ! RTT
+        CLILF.BKUP.STATUS$ +                            \               ! RTT
+        CLOLF.BKUP.STATUS$ +                            \               ! RTT
+        MINLS.HK.STATUS$ +                              \               ! RTT
+        STRING$(62, " ")                                                ! RTT
+
+       MINOK.ERROR.CHK% = TRUE                                          ! OAS
+
+MINOK.ERROR:                                                            ! OAS
+
+    IF MINOK.ERROR.CHK% = FALSE THEN BEGIN                              ! OAS
+
+        ADXSERVE.DATA$ = "MINOK file not processed successfully - ERROR"! OAS
+        GOSUB DISPLAY.MESSAGE                                           ! OAS
+
+    ENDIF ELSE IF MINOK.ERROR.CHK% = TRUE THEN BEGIN                    ! OAS
+
+        ADXSERVE.DATA$ = "MINOK file processed successfully"            ! OAS
+        GOSUB DISPLAY.MESSAGE                                           ! OAS
+
+    ENDIF                                                               ! OAS
+
+    CLOSE MINOK.SESS.NUM%                                               ! OAS
+
+RETURN                                                                  ! OAS
+
+\*****************************************************************************
+\***
+\***    INITIALISATION
+\***
+\***..........................................................................
+
+
+INITIALISATION:
+
+
+    ADXSERVE.DATA$ = "INITIALISATION"                                ! DCS
+    GOSUB DISPLAY.MESSAGE                                            ! DCS
+    GOSUB INITIALISE.VARIABLES
+
+    GOSUB ALLOCATE.SESSION.NUMBERS
+
+RETURN
+
+
+\*****************************************************************************
+\***
+\***    INITIALISATION SPECIFIC ROUTINES
+\***
+\***..........................................................................
+
+
+\*****************************************************************************
+\***
+\***    INITIALISE.VARIABLES
+\***    Sets program variables.
+\***
+\***..........................................................................
+
+
+INITIALISE.VARIABLES:
+
+    ADXSERVE.DATA$ = "INITIALISE.VARIABLES"                            ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    PROGRAM$           EQ "MINPRINT"
+    MODULE$            EQ "00"
+    MODULE.NUMBER$     EQ  PROGRAM$ + MODULE$
+    BATCH.SCREEN.FLAG$ EQ "B" ! Batch
+
+    FALSE = 0                                                          ! OAS
+    TRUE  = -1                                                         ! OAS
+
+    YESTERDAY$ = "      "                                              ! RTT
+
+    CLILF.BKUP.STATUS$ = "X"                                           ! OAS
+    CLOLF.BKUP.STATUS$ = "X"                                           ! OAS
+    MINLS.HK.STATUS$   = "E"                                           ! OAS
+
+RETURN
+
+!!!**************************************************************************
+!!!**************************************************************************
+!!!
+!!!   CALL.MINRFCNT
+!!!
+!!!   Call MINRFCNT module to write information to report file.
+!!!
+!!!**************************************************************************
+
+CALL.MINRFCNT:
+
+   CALL MINRFCNT
+
+RETURN
+
+\*****************************************************************************
+\***
+\***    ALLOCATE.SESSION.NUMBERS
+\***    Perform CALL.F20.SESS.NUM.UTILITY to allocate file session numbers
+\***    for all files referenced by the program.
+\***
+\***..........................................................................
+
+
+ALLOCATE.SESSION.NUMBERS:
+
+    ADXSERVE.DATA$ = "ALLOCATE.SESSION.NUMBERS"                        ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    CALL RPRPT.SET
+    CALL PRINT.SET
+    CALL SOFTS.SET                                                     ! CNS
+    CALL RFSCF.SET                                                     ! CNS
+    CALL CLOLF.SET                                                     ! CNS
+    CALL CLILF.SET                                                     ! CNS
+    !CALL ISF.SET                                                      ! CNS ! OAS
+    !CALL IRF.SET                                                      ! CNS ! OAS
+    CALL IDF.SET                                                       ! CNS
+    CALL PGF.SET                                                       ! KMG
+    CALL MINLS.SET                                                     ! LJT
+    CALL SRITL.SET                                                     ! OAS
+
+    FUNCTION.FLAG$ EQ "O"
+
+    PASSED.INTEGER% EQ RPRPT.REPORT.NUM%
+    PASSED.STRING$ EQ RPRPT.FILE.NAME$
+    GOSUB CALL.F20.SESS.NUM.UTILITY
+    RPRPT.SESS.NUM% EQ F20.INTEGER.FILE.NO%
+
+    PASSED.INTEGER% = PRINT.REPORT.NUM%
+    PASSED.STRING$ = PRINT.FILE.NAME$
+    GOSUB CALL.F20.SESS.NUM.UTILITY
+    PRINT.SESS.NUM% = F20.INTEGER.FILE.NO%
+
+    PASSED.INTEGER% EQ SOFTS.REPORT.NUM%                               ! CNS
+    PASSED.STRING$ EQ SOFTS.FILE.NAME$                                 ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+    SOFTS.SESS.NUM% EQ F20.INTEGER.FILE.NO%                            ! CNS
+
+    PASSED.INTEGER% EQ RFSCF.REPORT.NUM%                               ! CNS
+    PASSED.STRING$ EQ RFSCF.FILE.NAME$                                 ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+    RFSCF.SESS.NUM% EQ F20.INTEGER.FILE.NO%                            ! CNS
+
+    PASSED.INTEGER% EQ CLOLF.REPORT.NUM%                               ! CNS
+    PASSED.STRING$ EQ CLOLF.FILE.NAME$                                 ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+    CLOLF.SESS.NUM% EQ F20.INTEGER.FILE.NO%                            ! CNS
+
+    PASSED.INTEGER% EQ CLILF.REPORT.NUM%                               ! CNS
+    PASSED.STRING$ EQ CLILF.FILE.NAME$                                 ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+    CLILF.SESS.NUM% EQ F20.INTEGER.FILE.NO%                            ! CNS
+
+    !Commenting the below as it is not required any more                     ! OAS
+    !PASSED.INTEGER% EQ ISF.REPORT.NUM%                                ! CNS ! OAS
+    !PASSED.STRING$ EQ ISF.FILE.NAME$                                  ! CNS ! OAS
+    !GOSUB CALL.F20.SESS.NUM.UTILITY                                   ! CNS ! OAS
+    !ISF.SESS.NUM% EQ F20.INTEGER.FILE.NO%                             ! CNS ! OAS
+
+    !PASSED.INTEGER% EQ IRF.REPORT.NUM%                                ! CNS ! OAS
+    !PASSED.STRING$ EQ IRF.FILE.NAME$                                  ! CNS ! OAS
+    !GOSUB CALL.F20.SESS.NUM.UTILITY                                   ! CNS ! OAS
+    !IRF.SESS.NUM% EQ F20.INTEGER.FILE.NO%                             ! CNS ! OAS
+
+    PASSED.INTEGER% EQ IDF.REPORT.NUM%                                 ! CNS
+    PASSED.STRING$ EQ IDF.FILE.NAME$                                   ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+    IDF.SESS.NUM% EQ F20.INTEGER.FILE.NO%                              ! CNS
+
+    PASSED.INTEGER% EQ PGF.REPORT.NUM%                                 ! KMG
+    PASSED.STRING$ EQ PGF.FILE.NAME$                                   ! KMG
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! KMG
+    PGF.SESS.NUM% EQ F20.INTEGER.FILE.NO%                              ! KMG
+
+    PASSED.INTEGER% EQ MINLS.REPORT.NUM%                               ! LJT
+    PASSED.STRING$ EQ MINLS.FILE.NAME$                                 ! LJT
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! LJT
+    MINLS.SESS.NUM% EQ F20.INTEGER.FILE.NO%                            ! LJT
+
+    PASSED.INTEGER% = SRITL.REPORT.NUM%                                ! OAS
+    PASSED.STRING$ = SRITL.FILE.NAME$                                  ! OAS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! OAS
+    SRITL.SESS.NUM% = F20.INTEGER.FILE.NO%                             ! OAS
+
+    ADXSERVE.DATA$ = "Session numbers allocated "                      ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+RETURN
+
+\*****************************************************************************
+\***
+\***    CREATE.MINOK.FILE
+\***    Allocating Session number for MINOK file
+\***    Creating MINOK File
+\***    Writing initial values to the file
+\***
+\***..........................................................................
+
+CREATE.MINOK.FILE:                                                     ! OAS
+
+    ADXSERVE.DATA$ = "Creating MINOK File"                             ! OAS
+    GOSUB DISPLAY.MESSAGE                                              ! OAS
+
+    !Initialised a temporary report number for MINOK file              ! OAS
+    MINOK.REPORT.NUM% = 450                                            ! OAS
+    MINOK.FILE.NAME$ = "D:/ADX_UDT1/MINOK.BIN"                         ! OAS
+
+    FUNCTION.FLAG$ EQ "O"                                              ! OAS
+
+    PASSED.INTEGER% = MINOK.REPORT.NUM%                                ! OAS
+    PASSED.STRING$ = MINOK.FILE.NAME$                                  ! OAS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! OAS
+    MINOK.SESS.NUM% = F20.INTEGER.FILE.NO%                             ! OAS
+
+    FUNCTION.FLAG$ EQ "C"                                              ! OAS
+
+    CURRENT.SESS.NUM% = MINOK.SESS.NUM%                                ! OAS
+!    IF END #MINOK.SESS.NUM% THEN FILE.ERROR.EXIT                       ! OAS
+
+    IF END #MINOK.SESS.NUM% THEN NO.PREV.RUN.DETAILS                   ! RTT
+    OPEN MINOK.FILE.NAME$ AS MINOK.SESS.NUM%                           ! RTT
+
+    IF END #MINOK.SESS.NUM% THEN NO.PREV.RUN.DETAILS                   ! RTT
+    READ FORM "C1,C8,C6,4C1,C62"; #MINOK.SESS.NUM%;                    \ RTT
+        QUOTES$,                                                       \ RTT
+        MINOK.RUN.DATE$,                                               \ RTT
+        MINOK.RUN.TIME$,                                               \ RTT
+        REPORTING.STATUS$,                                             \ RTT
+        CLILF.BKUP.STATUS$,                                            \ RTT
+        CLOLF.BKUP.STATUS$,                                            \ RTT
+        MINLS.HK.STATUS$,                                              \ RTT
+        MINOK.FILLER$                                                  ! RTT
+
+    GOTO PROCESS.MINOK.RECORD                                          ! RTT
+
+NO.PREV.RUN.DETAILS:                                                   ! RTT
+
+PROCESS.MINOK.RECORD:                                                  ! RTT
+
+    F02.DATE$ = DATE$                                                  ! RTT
+    RC% = UPDATE.DATE(-1)                                              ! RTT
+    YESTERDAY$ = F02.DATE$                                             ! RTT
+
+    IF TIME$ > "120000" THEN BEGIN                                     ! RTT
+       CURR.RUN.DAY$ = DATE$ + "120000"                                ! RTT
+    ENDIF ELSE BEGIN                                                   ! RTT
+       CURR.RUN.DAY$ = YESTERDAY$ + "120000"                           ! RTT
+    ENDIF                                                              ! RTT
+
+    MINOK.TIME.STAMP$ = RIGHT$(MINOK.RUN.DATE$,6) + MINOK.RUN.TIME$    ! RTT
+
+    IF MINOK.TIME.STAMP$ > CURR.RUN.DAY$ THEN BEGIN                    ! RTT
+       MINPRINT.ALREADY.RUN% = -1                                      ! RTT
+    ENDIF                                                              ! RTT
+
+    IF NOT MINPRINT.ALREADY.RUN% THEN BEGIN                            ! RTT
+        MINOK.RUN.DATE$ = "20" + DATE$                                 ! RTT
+        MINOK.RUN.TIME$ = TIME$                                        ! RTT
+        CLOSE MINOK.SESS.NUM%                                          ! RTT
+        CREATE MINOK.FILE.NAME$ AS MINOK.SESS.NUM%                     ! OAS
+
+!        MINOK.RECORD$ = ("20" + DATE$) +               \               ! OAS ! RTT
+!                        TIME$ +                        \               ! OAS ! RTT
+!                        "XXXX" +                       \               ! OAS ! RTT
+!                        STRING$(62, " ")                               ! OAS ! RTT
+
+        MINOK.RECORD$ = MINOK.RUN.DATE$ +               \              ! RTT
+                        MINOK.RUN.TIME$ +               \              ! RTT
+                        "XXXX" +                        \              ! RTT
+                        STRING$(62, " ")                               ! RTT
+
+        WRITE #MINOK.SESS.NUM%; MINOK.RECORD$                          ! OAS
+    ENDIF                                                              ! RTT
+
+    CLOSE MINOK.SESS.NUM%                                              ! OAS
+
+RETURN                                                                 ! OAS
+
+\*****************************************************************************
+\***
+\***    GET.SOFTS
+\***
+\***..........................................................................
+
+GET.SOFTS:                                                             ! CNS
+
+    ADXSERVE.DATA$ = "GET.SOFTS"                                       ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    FILE.OPERATION$ = "O"                                              ! CNS
+    CURRENT.REPORT.NUM% = SOFTS.REPORT.NUM%                            ! CNS
+
+    CURRENT.SESS.NUM% = SOFTS.SESS.NUM%                                ! CNS
+    IF END # SOFTS.SESS.NUM% THEN FILE.ERROR.EXIT                      ! CNS
+    OPEN SOFTS.FILE.NAME$ DIRECT RECL SOFTS.RECL% \                      CNS
+      AS SOFTS.SESS.NUM% NOWRITE NODEL                                 ! CNS
+
+    FILE.SIZE% = SIZE(SOFTS.FILE.NAME$)                                ! CNS
+
+    IF FILE.SIZE% = 0 \ ! File is empty                                  CNS
+       OR MOD(FILE.SIZE%,SOFTS.RECL%) <> 0 THEN \ ! File is corrupt      CNS
+       BEGIN                                                           ! CNS
+          ADXSERVE.DATA$ = "SOFTS file is corrupted"                   ! DCS
+          GOSUB DISPLAY.MESSAGE                                        ! DCS
+          FILE.OPERATION$ = "S"                                        ! CNS
+          GOTO FILE.ERROR.EXIT                                         ! CNS
+       ENDIF                                                           ! CNS
+
+    SOFTS.REC.NUM% = FILE.SIZE% / SOFTS.RECL%                          ! CNS
+
+    SOFTS.RECORD$ = ""                                                 ! CNS
+
+    IF SOFTS.REC.NUM% >= 20 THEN BEGIN                                 ! CNS
+       SOFTS.REC.NUM% = 20                                             ! CNS
+       RC% = READ.SOFTS                                                ! CNS
+    ENDIF                                                              ! CNS
+
+    CLOSE SOFTS.SESS.NUM%                                              ! CNS
+
+RETURN                                                                 ! CNS
+
+\*****************************************************************************
+\***
+\***    BACKUP OF CLILF AND CLOLF FILES AT EOD
+\***
+\***..........................................................................
+
+BACKUP.CLILF.CLOLF.FILES:                                              ! OAS
+
+!   GET.DATE$ = DATE$                                                  ! OAS ! PBT
+
+    F02.DATE$ = DATE$                                                  ! PBT
+    TIME.NOW$ = TIME$                                                  ! PBT
+    IF TIME.NOW$ < "040000" THEN BEGIN                                 ! PBT
+        !If it comes here, we need to set yesterday as the backup file ! PBT
+        !extnesion.                                                    ! PBT
+        CALL UPDATE.DATE(-1) !FO2.DATE$ = FO2.DATE$ - 1Day             ! PBT
+    ENDIF                                                              ! PBT
+
+    !Getting day using PSDATE FN                                       ! PBT
+!   CALL PSDATE(GET.DATE$)                                             ! OAS ! OBT
+    CALL PSDATE(F02.DATE$)                                             ! OBT
+    GET.DAY$ = F13.DAY$                                                ! OAS
+
+    !First MINPRINT will backup CLILF.BIN. If CLILF backup is          ! OAS
+    !successful, then it will backup CLOLF.BIN                         ! OAS
+
+    !Taking backup of CLILF.BIN                                        ! OAS
+    ADXSERVE.DATA$ = "Taking backup of CLILF.BIN"                      ! OAS
+    GOSUB DISPLAY.MESSAGE                                              ! OAS
+
+    CLILF.DDD$ = "D:\ADX_UDT1\CLILF." + GET.DAY$                       ! OAS
+    CALL ADXCOPYF(ADXCOPY.CHK%,"D:\ADX_UDT1\CLILF.BIN",      \         ! OAS
+                                      CLILF.DDD$,0,1,0)                ! OAS
+
+   !Checking whether backup is created or not while using ADXCOPY FN   ! OAS
+    IF ADXCOPY.CHK% = 0 THEN BEGIN                                     ! OAS
+
+        ADXSERVE.DATA$ = "Backup of CLILF.BIN was completed successfully"    ! OAS
+        GOSUB DISPLAY.MESSAGE                                          ! OAS
+
+        CLILF.BKUP.STATUS$ = "E"                                       ! OAS
+
+        !Taking backup of CL0LF.BIN                                    ! OAS
+        ADXSERVE.DATA$ = "Taking backup of CLOLF.BIN"                  ! OAS
+        GOSUB DISPLAY.MESSAGE                                          ! OAS
+
+        CLOLF.DDD$ = "D:\ADX_UDT1\CLOLF." + GET.DAY$                   ! OAS
+        CALL ADXCOPYF(ADXCOPY.CHK%,"D:\ADX_UDT1\CLOLF.BIN",  \         ! OAS
+                                          CLOLF.DDD$,0,1,0)            ! OAS
+
+        !Checking whether backup is created using ADXCOPY FN           ! OAS
+        IF ADXCOPY.CHK% = 0 THEN BEGIN                                 ! OAS
+
+           ADXSERVE.DATA$ = "Backup of CLOLF.BIN was completed successfully" ! OAS
+           GOSUB DISPLAY.MESSAGE                                       ! OAS
+           CLOLF.BKUP.STATUS$ = "E"                                    ! OAS
+
+        ENDIF ELSE BEGIN                                               ! OAS
+
+           ADXSERVE.DATA$ = "*****ERROR: Could not backup CLOLF.BIN*****"    ! OAS
+           GOSUB DISPLAY.MESSAGE                                       ! OAS
+
+        ENDIF                                                          ! OAS
+
+    ENDIF ELSE BEGIN                                                   ! OAS
+
+       ADXSERVE.DATA$ = "*****ERROR: Could not backup CLILF.BIN  *****"! OAS
+       GOSUB DISPLAY.MESSAGE                                           ! OAS
+
+       ADXSERVE.DATA$ = "*****ERROR: So CLOLF.BIN backup not done*****"! OAS
+       GOSUB DISPLAY.MESSAGE                                           ! OAS
+
+    ENDIF                                                              ! OAS
+
+RETURN                                                                 ! OAS
+
+\*****************************************************************************
+\***
+\***    RF PROCESS
+\***
+\***    Open RFSCF
+\***    Read RFSCF
+\***    Create CLILF & CLOLF
+\***    Read through RPRPT and extract required information
+\***    Write to CLILF & CLOLF files
+\***..........................................................................
+
+RF.PROCESS:                                                            ! CNS
+
+      ADXSERVE.DATA$ = "RF.PROCESS"                                    ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+
+      GOSUB PROCESS.RFSCF                                              ! LJT
+
+      FILE.OPERATION$ = "O"                                            ! CNS
+
+      IF RC% = 1 THEN BEGIN                                            ! CNS
+         DO.MAIN = 1                                                   ! CNS
+         GOTO END.RF.PROCESS                                           ! CNS
+      ENDIF                                                            ! CNS
+
+      ADXSERVE.DATA$ = "Create CLILF file"                             ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+      CURRENT.SESS.NUM% = CLILF.SESS.NUM%                              ! CNS
+      IF END# CLILF.SESS.NUM% THEN CREATE.ERROR                        ! CNS
+      CREATE POSFILE CLILF.FILE.NAME$ KEYED 6,,,10000 RECL CLILF.RECL% \ FCS
+             AS CLILF.SESS.NUM% MIRRORED PERUPDATE                     ! CNS
+
+      ADXSERVE.DATA$ = "Create CLOLF file"                             ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+      CURRENT.SESS.NUM% = CLOLF.SESS.NUM%                              ! CNS
+      IF END# CLOLF.SESS.NUM% THEN CREATE.ERROR                        ! CNS
+      CREATE POSFILE CLOLF.FILE.NAME$ DIRECT 0 RECL CLOLF.RECL%        \ MJT
+             AS CLOLF.SESS.NUM% MIRRORED ATCLOSE                       ! CNS
+
+      !Commenting the below section as it not required anymore
+      !ADXSERVE.DATA$ = "Open ISF file"                                ! DCS !OAS
+      !GOSUB DISPLAY.MESSAGE                                           ! DCS !OAS
+      !CURRENT.SESS.NUM% = ISF.SESS.NUM%                               ! CNS !OAS
+      !IF END #ISF.SESS.NUM% THEN FILE.ERROR.EXIT                      ! CNS !OAS
+      !OPEN ISF.FILE.NAME$ KEYED RECL ISF.RECL% AS ISF.SESS.NUM%       \ CNS !OAS
+      !   NOWRITE NODEL                                                ! CNS !OAS
+
+      !ADXSERVE.DATA$ = "Open IRF file"                                ! DCS !OAS
+      !GOSUB DISPLAY.MESSAGE                                           ! DCS !OAS
+      !CURRENT.SESS.NUM% = IRF.SESS.NUM%                               ! CNS !OAS
+      !IF END #IRF.SESS.NUM% THEN FILE.ERROR.EXIT                      ! CNS !OAS
+      !OPEN IRF.FILE.NAME$ KEYED RECL IRF.RECL% AS IRF.SESS.NUM%       \ CNS !OAS
+      !   NOWRITE NODEL                                                ! CNS !OAS
+
+      ADXSERVE.DATA$ = "Open IDF file"                                 ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+      CURRENT.SESS.NUM% = IDF.SESS.NUM%                                ! CNS
+      IF END #IDF.SESS.NUM% THEN FILE.ERROR.EXIT                       ! CNS
+      OPEN IDF.FILE.NAME$ KEYED RECL IDF.RECL% AS IDF.SESS.NUM%        \ CNS
+         NODEL                                                         ! CNS
+
+      ADXSERVE.DATA$ = "Open RPRPT file"                               ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+      CURRENT.SESS.NUM% = RPRPT.SESS.NUM%                              ! CNS
+      IF END # RPRPT.SESS.NUM% THEN FILE.ERROR.EXIT                    ! CNS
+
+      OPEN RPRPT.FILE.NAME$ AS RPRPT.SESS.NUM%                         ! CNS
+
+      IF END #RPRPT.SESS.NUM% THEN RPRPT.EOF                           ! CNS
+
+      ADXSERVE.DATA$ = "Open PGF file"                                 ! KMG
+      GOSUB DISPLAY.MESSAGE                                            ! KMG
+      CURRENT.SESS.NUM% = PGF.SESS.NUM%                                ! KMG
+      IF END #PGF.SESS.NUM% THEN FILE.ERROR.EXIT                       ! KMG
+      OPEN PGF.FILE.NAME$ KEYED RECL PGF.RECL% AS PGF.SESS.NUM%        \ KMG
+         NOWRITE NODEL                                                 ! KMG
+
+      ADXSERVE.DATA$ = "Open MINLS file"                               ! LJT
+      GOSUB DISPLAY.MESSAGE                                            ! LJT
+      CURRENT.SESS.NUM% = MINLS.SESS.NUM%                              ! LJT
+      IF END #MINLS.SESS.NUM% THEN FILE.ERROR.EXIT                     ! LJT
+      OPEN MINLS.FILE.NAME$ KEYED RECL MINLS.RECL% AS MINLS.SESS.NUM%  ! LJT
+
+      ADXSERVE.DATA$ = "Open SRITML file"                              ! OAS
+      GOSUB DISPLAY.MESSAGE                                            ! OAS
+      CURRENT.SESS.NUM% = SRITL.SESS.NUM%                              ! OAS
+      IF END #SRITL.SESS.NUM% THEN FILE.ERROR.EXIT                     ! OAS
+      OPEN SRITL.FILE.NAME$ KEYED RECL SRITL.RECL% AS SRITL.SESS.NUM%  \ OAS
+         NOWRITE NODEL
+
+      ADXSERVE.DATA$ = "Set CLOLF/CLILF default values"                ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+      EOF = 0                                                          ! CNS
+
+     !OLD variables which are commented are put together,              ! OAS
+     !so that it can be taken out easily during the next release
+     !OLD.BULETT$ = " "                                                ! CNS ! OAS
+     !OLD.PGNAME$ = " "                                                ! ICC ! OAS
+     !CLOLF.CNTDATE$ = "19850101"                                      ! CNS ! OAS
+     !CLOLF.LISTID$ = "001"                                            ! CNS ! OAS
+     !CLOLF.HOLISTID$ = "0000"                                         ! CNS ! OAS
+     !CLOLF.OSSRITEMS$ = "000"                                         ! KMG ! OAS
+     !CLILF.BSCNT$ = "-001"                                            ! CNS ! OAS
+     !CLILF.SFCNT$ = "-001"                                            ! CNS ! OAS
+     !CLILF.SALESSFCNT$ = "0000"                                       ! CNS ! OAS
+     !CLILF.HO.SEQNO$   = "00"                                         ! FCS ! OAS
+     !CLILF.FILLER$ = "   "                                            ! CNS ! JMG
+     !CLILF.OSSR.ITMSTKCNT$ = "-001"                                   ! JMG ! OAS
+     !CLOLF.ACTIVE.STATUS$ = " "                                       ! CNS ! OAS
+
+      LIST.ITEMS = 1                                                   ! CNS
+      CLOLF.LISTID$ = "001"                    !Set to one             !     ! OAS
+      CLOLF.USERID$ = "000"                    !Set to zero            ! KMG ! OAS
+      CLOLF.LSTTYP$ = "R"                      !Recount List           ! CNS ! OAS
+      CLOLF.BULETT$ = " "                      !Set to space           !     ! OAS
+      CLOLF.LIST.NAME$ = "Recount List                  "              !     ! OAS
+      CLOLF.PICKER.USER.ID$ = "000"            !Initialise to zero     !     ! OAS
+      CLOLF.ACTIVE.STATUS$ = "I"               !Initial                !     ! OAS
+      CLOLF.PILST.ID$ = "0000"                 !Set to zero            !     ! OAS
+      CLOLF.EXPIRY.DATE$ = PACK$("000000")     !Set to zero            !     ! OAS
+      CLOLF.PICK.START.TIME$ = PACK$("0000")   !Set to zero            !     ! OAS
+      CLOLF.PICK.END.TIME$ = PACK$("0000")     !Set to zero            !     ! OAS
+      CLOLF.CURRENT.LOCATION$ = " "            !Set to space           !     ! OAS
+
+      CLOLF.RECORD.NUM% = 1         !REC position to write to CLOLF    ! CNS
+
+      CLILF.HO.SEQNO$   = "00"                 !Set to zero            !     ! OAS
+      CLILF.COUNTED.STATUS$ = "U"              !Not Counted            !     ! OAS
+      CLILF.DATE.LASTCNT$ = PACK$("000000")    !Set to zero            !     ! OAS
+      CLILF.SALESCNT% = 0                      !Set to zero            !     ! OAS
+      CLILF.BSCNT% = -1                        !Set to -1              !     ! OAS
+      CLILF.OSSR.ITMSTKCNT% = -1               !Set to -1              !     ! OAS
+      CLILF.BS.PEND.SA.CNT% = -1               !Set to -1              !     ! OAS
+      CLILF.OSSR.PEND.SA.CNT% = -1             !Set to -1              !     ! OAS
+      CLILF.SFCNT% = -1                        !Set to -1              !     ! OAS
+      CLILF.SPACE$ = STRING$(16," ")                                   !     ! OAS
+
+      ADXSERVE.DATA$ = "Start of Report File processing"               ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+
+      WHILE NOT EOF                                                    ! CNS
+
+         READ #RPRPT.SESS.NUM%; RPRPT.RECORD$                          ! CNS
+
+        !CLOLF.BULETT$ = LEFT$(RPRPT.RECORD$,1)                        ! CNS ! OAS
+        !Getting the Business Center letter                            ! OAS
+        BSNS.CNTR$ = LEFT$(RPRPT.RECORD$,1)                            ! OAS
+
+        !IF CLOLF.BULETT$ >= "A" AND CLOLF.BULETT$ <= "Z" THEN BEGIN   ! CNS ! OAS
+
+        IF BSNS.CNTR$ >= "A" AND BSNS.CNTR$ <= "Z" THEN BEGIN
+           IF MID$(RPRPT.RECORD$,2,1) = " " THEN BEGIN                 ! CNS
+              GOSUB EXTRACT.FIELDS                                     ! CNS
+              !ISF.BOOTS.CODE$ = PACK$("0" + CLILF.BOOTSCODE$)         ! CNS ! OAS
+              !ISF.S.E.DESC$ = "X "                                    ! HBG ! OAS
+              !RC% = READ.ISF                                          ! CNS ! OAS
+
+              !Removed the addition of "0" in CLILF.BOOTSCODE$ as      ! OAS
+              !the new boots code contains 8 digits
+
+              !MINLS.ITEM.CODE$ = PACK$("0" + CLILF.BOOTSCODE$)        ! LJT ! OAS
+              MINLS.ITEM.CODE$ = PACK$(CLILF.BOOTSCODE$)               ! LJT ! OAS
+
+              RC% = READ.MINLS                                         ! LJT
+
+              IF RC% = 0 THEN BEGIN                                    ! LJT
+                 IF DATE.LE(UNPACK$(MINLS.RECOUNT.DATE$),DATE$)        \ LJT
+                    THEN BEGIN                                         ! LJT
+                    F02.DATE$ = UNPACK$(MINLS.RECOUNT.DATE$)           ! LJT
+                    CALL UPDATE.DATE(RFSCF.RECOUNT.DAYS.RETAIN%)       ! LJT
+
+                    IF DATE.LE(F02.DATE$, DATE$) THEN BEGIN            ! LJT
+
+                       !Setting FILE.OPERATION$ flag to "D" for        ! OAS
+                       !catching any error while deleting the record   ! OAS
+
+                       FILE.OPERATION$ = "D"                           ! OAS
+                       DELREC MINLS.SESS.NUM%; MINLS.ITEM.CODE$        ! LJT
+                       FILE.OPERATION$ = " "                           ! OAS
+
+                       !Turn off PENDING COUNT flag on the IDF         ! LJT
+                       IDF.BOOTS.CODE$ = MINLS.ITEM.CODE$              ! LJT
+                       RC% = READ.IDF                                  ! LJT
+                       IF RC% = 0 THEN BEGIN                           ! LJT
+                         !Make sure the flag is set to on first        ! LJT
+                         IF (IDF.BIT.FLAGS.2% AND 00000100b) <> 0      \ LJT
+                             THEN BEGIN                                ! LJT
+                             !It's on, so turn it off                  ! LJT
+                             IDF.BIT.FLAGS.2% = (IDF.BIT.FLAGS.2% XOR 4)!LJT
+                             RC% = WRITE.IDF                           ! LJT
+                         ENDIF                                         ! LJT
+                      ENDIF                                            ! LJT
+                    ENDIF ELSE BEGIN                                   ! LJT
+                       GOSUB VALID.ITEM                                ! CNS
+                    ENDIF                                              ! LJT
+                 ENDIF                                                 ! LJT
+              ENDIF                                                    ! LJT
+           ENDIF                                                       ! CNS
+        ENDIF                                                          ! OAS
+        !ELSE BEGIN                                                    ! CNS ! OAS
+        !   IF CLOLF.BULETT$ = "*" THEN BEGIN                          ! CNS ! OAS
+        !      UPDATE.DATE$ = MID$(RPRPT.RECORD$,41,2)                 ! CNS ! OAS
+        !      IF VAL(UPDATE.DATE$) > 85 THEN BEGIN                    ! CNS ! OAS
+        !         UPDATE.DATE$ = "19" + UPDATE.DATE$                   ! CNS ! OAS
+        !      ENDIF ELSE BEGIN                                        ! CNS ! OAS
+        !         UPDATE.DATE$ = "20" + UPDATE.DATE$                   ! CNS ! OAS
+        !      ENDIF                                                   ! CNS ! OAS
+        !      CLOLF.CNTDATE$ = UPDATE.DATE$ +                         \ CNS ! OAS
+        !                       MID$(RPRPT.RECORD$,38,2) +             \ CNS ! OAS
+        !                       MID$(RPRPT.RECORD$,35,2)               ! CNS ! OAS
+        !   ENDIF                                                      ! CNS ! OAS
+        !ENDIF                                                         ! CNS ! OAS
+
+
+RPRPT.EOF.RETURN:                                                      ! CNS
+
+      WEND                                                             ! CNS
+
+      ADXSERVE.DATA$ = "End of Report File processing"                 ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+
+      !GOSUB CREATE.NEW.LIST                                           ! CNS ! OAS
+      GOSUB CREATE.RECOUNT.LIST                                        ! OAS
+
+      ADXSERVE.DATA$ = "Closing Files"                                 ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+
+      CLOSE RPRPT.SESS.NUM%                                            ! CNS
+      CLOSE CLILF.SESS.NUM%                                            ! CNS
+      CLOSE CLOLF.SESS.NUM%                                            ! CNS
+      !CLOSE ISF.SESS.NUM%                                             ! CNS ! OAS
+      !CLOSE IRF.SESS.NUM%                                             ! CNS ! OAS
+      CLOSE IDF.SESS.NUM%                                              ! CNS
+      CLOSE MINLS.SESS.NUM%                                            ! LJT
+      CLOSE SRITL.SESS.NUM%                                            ! OAS
+      ADXSERVE.DATA$ = "Files Closed"                                  ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+
+END.RF.PROCESS:                                                        ! CNS
+
+
+RETURN                                                                 ! CNS
+
+RPRPT.EOF:                                                             ! CNS
+
+       EOF = 1                                                         ! CNS
+       GOTO RPRPT.EOF.RETURN                                           ! CNS
+
+
+RFSCF.OPEN.ERROR:                                                      ! CNS
+
+       DO.MAIN = 1                                                     ! CNS
+       GOTO END.RF.PROCESS                                             ! CNS
+
+\*****************************************************************************
+\***
+\***   PROCESS.RFSCF
+\***
+\***   This code was originally in RF.PROCESS, I've moved it into a subroutine
+\***   so that it can also be used if RF is inactive.
+\***
+\*****************************************************************************
+
+      PROCESS.RFSCF:
+
+      FILE.OPERATION$ = "O"                                            ! CNS
+
+      ADXSERVE.DATA$ = "Open/Read/Close RFSCF file"                    ! DCS
+      GOSUB DISPLAY.MESSAGE                                            ! DCS
+
+      IF END #RFSCF.SESS.NUM% THEN RFSCF.OPEN.ERROR                    ! CNS
+      CURRENT.SESS.NUM% = RFSCF.SESS.NUM%
+      OPEN RFSCF.FILE.NAME$ DIRECT RECL RFSCF.RECL% AS RFSCF.SESS.NUM% \ DCS
+            NOWRITE NODEL                                              ! DCS
+      RC% = READ.RFSCF1                                                ! CNS
+
+      CLOSE RFSCF.SESS.NUM%                                            ! CNS
+
+      RETURN
+
+\*****************************************************************************
+\***
+\***   EXTRACT FIELDS
+\***
+\*****************************************************************************
+EXTRACT.FIELDS:                                                        ! CNS
+
+      !Below statements are commented out, since these are             ! OAS
+      !not present in the updated CLOLF file format                    ! OAS
+      !CLOLF.BUNAME$ = MID$(RPRPT.RECORD$,3,15)                        ! CNS ! OAS
+      !CLILF.PRODGRP$ = MID$(RPRPT.RECORD$,19,2) + "0" +               \ CNS ! OAS
+      !                 MID$(RPRPT.RECORD$,22,3)                       ! CNS ! OAS
+      !CLILF.PRODGRPDESC$ = MID$(RPRPT.RECORD$,28,12)                  ! CNS ! OAS
+
+      !Adding zero to CLILF.BOOTSCODE$ to make it to 8 digit item code ! OAS
+
+      CLILF.BOOTSCODE$ = "0" + MID$(RPRPT.RECORD$,48,2) +              \ CNS ! OAS
+                         MID$(RPRPT.RECORD$,51,2) +                    \ CNS ! OAS
+                         MID$(RPRPT.RECORD$,54,3)                      ! CNS ! OAS
+
+RETURN                                                                 ! CNS
+
+\*****************************************************************************
+\***
+\***   VALID ITEM
+\***
+\***   Extract information from IDF and IRF and write to CLILF
+\***
+\*****************************************************************************
+VALID.ITEM:
+
+       !The subroutine has undergone many changes as part of SFA project     ! OAS
+
+       !CLOLF.PGNAME$ = CLILF.PRODGRPDESC$+"   "                       ! ICC ! OAS
+       !IF CLOLF.PGNAME$<> OLD.PGNAME$ OR LIST.ITEMS > 30 THEN BEGIN   ! ICC ! OAS
+
+       !The below IF condition is changed to restrict the                    ! OAS
+       !list size to maximum of 999 records.                                 ! OAS
+       !IF LIST.ITEMS > 30 THEN BEGIN                                        ! OAS
+        IF LIST.ITEMS > 999 THEN BEGIN                                       ! OAS
+           GOSUB CREATE.RECOUNT.LIST                                   ! CNS ! OAS
+        ENDIF                                                          ! CNS ! OAS
+
+       !CLILF.HO.SEQNO$ = RIGHT$(CLILF.ITEMSEQ$,2)                     ! 1.12 RC ! OAS
+       !CLILF.DEALMKR$ = "N"                                           ! CNS ! OAS
+       !CLILF.BARCODE$= RIGHT$("000000000000" + \
+       !                LEFT$(UNPACK$(IDF.BOOTS.CODE$),7),13)          ! FCS ! OAS
+       !CALL CALC.BAR.CODE.CHECK.DIGIT(RIGHT$(CLILF.BARCODE$,12))      ! FCS ! OAS
+       !CLILF.BARCODE$ = RIGHT$(CLILF.BARCODE$,12) + F06.CHECK.DIGIT$  ! FCS ! OAS
+
+       CLILF.LISTID$ = CLOLF.LISTID$                                   ! CNS
+       CLILF.ITEMSEQ$  = RIGHT$("000" + STR$(LIST.ITEMS),3)            ! CNS
+
+       !IDF.BOOTS.CODE$ = ISF.BOOTS.CODE$                              ! CNS ! OAS
+       !IDF.STNDRD.DESC$ = "UNKNOWN ITEM"                              ! FCS ! OAS
+
+       !CLILF.DEALMKR is not present in the updated CLILF format.            ! OAS
+       !As CLILF.DEALMKR is not needed, the below code section is            ! OAS
+       !not required and hence commented                                     ! OAS
+
+       !IRF.BAR.CODE$ = PACK$("000000000000000" + \
+       !                LEFT$(UNPACK$(IDF.BOOTS.CODE$),7))             ! FCS ! OAS
+       !RC% = READ.IDF                                                 ! CNS ! OAS
+
+       !IF RC% = 0 THEN BEGIN
+         !CHECK TO SEE IF IDF HAS VALID EAN BARCODE TO REPLACE BTC BARCODE        ! FCS ! OAS
+         !IF IDF.FIRST.BAR.CODE$ <> PACK$("0000000000000000000000") THEN BEGIN    ! FCS ! OAS
+            !IF VAL(UNPACK$(IDF.NO.OF.BAR.CODES$)) > 1   \                        ! FCS ! OAS
+               !AND  (IDF.SECOND.BAR.CODE$ <> IRF.BAR.CODE$)  THEN BEGIN          ! FCS ! OAS
+
+               !CALL CALC.BAR.CODE.CHECK.DIGIT(UNPACK$(IDF.SECOND.BAR.CODE$))     ! FCS ! OAS
+
+               !CLILF.BARCODE$ = RIGHT$(UNPACK$(IDF.SECOND.BAR.CODE$) +  \        ! FCS ! OAS
+               !     F06.CHECK.DIGIT$,13)                                         ! FCS ! OAS
+               !IRF.BAR.CODE$ = PACK$("0000000000"+ UNPACK$(IDF.SECOND.BAR.CODE$))! FCS ! OAS
+            !ENDIF ELSE BEGIN                                                     ! FCS ! OAS
+               !CALL CALC.BAR.CODE.CHECK.DIGIT(UNPACK$(IDF.FIRST.BAR.CODE$))      ! FCS ! OAS
+
+               !CLILF.BARCODE$ = RIGHT$(UNPACK$(IDF.FIRST.BAR.CODE$) +   \        ! FCS ! OAS
+               !     F06.CHECK.DIGIT$,13)                                         ! FCS ! OAS
+               !IRF.BAR.CODE$ = PACK$("0000000000"+ UNPACK$(IDF.FIRST.BAR.CODE$)) ! FCS ! OAS
+            !ENDIF                                                                ! FCS ! OAS
+         !ENDIF                                                                   ! FCS ! OAS
+
+
+         !RC% = READ.IRF                                               ! CNS ! OAS
+         !IF RC% = 0 THEN BEGIN                                        ! CNS ! OAS
+            !IF IRF.DEAL.NUM$(0) = PACK$("0000") AND \                 ! HBG ! OAS
+            !   IRF.DEAL.NUM$(1) = PACK$("0000") AND \                 ! HBG ! OAS
+            !   IRF.DEAL.NUM$(2) = PACK$("0000") THEN BEGIN            ! HBG ! OAS
+            !   CLILF.DEALMKR$ = "N"                                   ! HBG ! OAS
+            !ENDIF ELSE BEGIN                                          ! HBG ! OAS
+            !   CLILF.DEALMKR$ = "Y"                                   ! HBG ! OAS
+            !ENDIF                                                     ! HBG ! OAS
+         !ENDIF                                                        ! CNS ! OAS
+       !ENDIF                                                          ! CNS ! OAS
+
+      ! If SEL description not available, use short one on IDF         ! HBG ! OAS
+
+      !CLILF.SELDESC$ is not present in the updated CLILF format.            ! OAS
+      !The conditional statement given below is used to set the              ! OAS
+      !variable CLILF.SELDESC$.As CLILF.SELDESC$ is not needed,              ! OAS
+      !the below conditional statement is also commented.                    ! OAS
+      !IF UCASE$(LEFT$(ISF.S.E.DESC$,2)) = "X " OR \                   ! HBG ! OAS
+      !   ISF.S.E.DESC$ = STRING$(45," ") THEN BEGIN                   ! HBG ! OAS
+      !   CLILF.SELDESC$ = IDF.STNDRD.DESC$ + STRING$(21," ")!length 45! HBG ! OAS
+      !ENDIF ELSE BEGIN                                                ! HBG ! OAS
+      !   CLILF.SELDESC$ = ISF.S.E.DESC$                               ! CNS ! OAS
+      !ENDIF                                                           ! HBG ! OAS
+
+       GOSUB PROCESS.SRITL   !To get the active planner details of an item   ! OAS
+
+       CLILF.BOOTSCODE$ = PACK$(CLILF.BOOTSCODE$)                      ! OAS
+       CURRENT.REPORT.NUM% = CLILF.REPORT.NUM%                         ! CNS
+       FILE.OPERATION$ = "W"                                           ! CNS
+       RC% = WRITE.CLILF                                               ! CNS
+       IF RC% <> 0 THEN GOTO FILE.ERROR.EXIT                           ! CNS
+
+       LIST.ITEMS = LIST.ITEMS + 1                                     ! CNS
+
+RETURN
+
+\*****************************************************************************
+\***
+\***   New functionality added -                                        ! OAS
+\***   PROCESS.SRITL
+\***   Extract information from SRITML (Active Planner Details)
+\***   for writing to CLILF
+\***
+\*****************************************************************************
+PROCESS.SRITL:
+
+    !Initialising the details for each possible sales floor site        ! OAS
+    FOR COUNTER% = 0 TO 31                                              ! OAS
+        CLILF.MODULE.ID%(COUNTER%) = 0                                  ! OAS
+        CLILF.MODULE.SEQ%(COUNTER%) = 0                                 ! OAS
+        CLILF.REPEAT.CNT%(COUNTER%) = 0                                 ! OAS
+        CLILF.COUNT%(COUNTER%) = -1                                     ! OAS
+        CLILF.FILL.QUANTITY%(COUNTER%) = 0                              ! OAS
+        CLILF.FILLER$(COUNTER%) = STRING$(4, " ")                       ! OAS
+    NEXT COUNTER%                                                       ! OAS
+
+    !Populate the Planner ID,Module and REPEAT COUNT from SRITML        ! OAS
+
+    !Item code without check digit                                      ! OAS
+    SRITL.ITEM.CODE$ = PACK$(MID$(CLILF.BOOTSCODE$,2, 6))               ! OAS
+
+    SRITL.RECORD.CHAIN% = 0                                             ! OAS
+    RC% = READ.SRITL                                                    ! OAS
+    RECORD.COUNT% = 0                                                   ! OAS
+
+    WHILE RC% = 0                                                       ! OAS
+
+        !For each module key                                                   ! OAS
+        FOR LOOPCNT% = 0 TO SRITL.MAX.MOD.KEYS% - 1                            ! OAS
+            IF SRITL.POGDB%(LOOPCNT%) AND     \                                ! OAS
+               RECORD.COUNT% <= 32 THEN BEGIN                                  ! OAS
+               !32 is the maximum limit in CLILF                               ! OAS
+                CLILF.MODULE.ID%(RECORD.COUNT%) = SRITL.POGDB%(LOOPCNT%)       ! OAS
+                CLILF.MODULE.SEQ%(RECORD.COUNT%) = SRITL.MODULE.SEQ%(LOOPCNT%) ! OAS
+                CLILF.REPEAT.CNT%(RECORD.COUNT%) = SRITL.REPEAT.CNT%(LOOPCNT%) ! OAS
+                RECORD.COUNT% = RECORD.COUNT% + 1                              ! OAS
+            ENDIF ELSE BEGIN                                                   ! OAS
+                LOOPCNT% = SRITL.MAX.MOD.KEYS%   !To quit the FOR Loop         ! OAS
+                RC% = 1                          !To quit the While Loop       ! OAS
+            ENDIF                                                              ! OAS
+        NEXT LOOPCNT%                                                          ! OAS
+
+        !Read the next record chain from SRITEM if the FOR loop         ! OAS
+        !is exited normally                                             ! OAS
+
+        IF (RECORD.COUNT% <= 32) AND (RC% = 0) THEN BEGIN               ! OAS
+            !32 is the maximum limit in CLILF                           ! OAS
+            SRITL.RECORD.CHAIN% = SRITL.RECORD.CHAIN% + 1               ! OAS
+            RC% = READ.SRITL                                            ! OAS
+        ENDIF ELSE IF RECORD.COUNT% > 32 THEN BEGIN                     ! OAS
+            !CLILF cannot accomodate > 32                               ! OAS
+            ADXSERVE.DATA$ = "Error: Item " + CLILF.BOOTSCODE$          ! OAS
+            GOSUB DISPLAY.MESSAGE                                       ! OAS
+            ADXSERVE.DATA$ = "       CLILF can only accomodate 32 sites"! OAS
+            GOSUB DISPLAY.MESSAGE                                       ! OAS
+        ENDIF                                                           ! OAS
+
+    WEND                                                                ! OAS
+
+RETURN                                                                  ! OAS
+
+\*****************************************************************************
+\***
+\***   CREATE RECOUNT LIST                                             ! OAS - Changed the subroutine name
+\***
+\*****************************************************************************
+!Renamed the sub routine CREATE.NEW.LIST to CREATE.RECOUNT.LIST        ! OAS
+CREATE.RECOUNT.LIST:
+       !Grouping all the variables commented since they were not in    ! OAS
+       !the new CLOLF RECORD. Need to remove these in the next release ! OAS
+       !IF OLD.PGNAME$ <> " " THEN BEGIN                               ! ICC
+         !CLOLF.SRITEMS$ = RIGHT$("000" + STR$(LIST.ITEMS - 1),3)      ! CNS ! OAS
+         !ADXSERVE.DATA$ = "CREATE.NEW.LIST: " + CLOLF.LISTID$         ! DCS ! OAS
+         !CLOLF.BSITEMS$ = CLOLF.SRITEMS$                              ! CNS ! OAS
+         !CLOLF.TOTAL.ITEMS$ = CLOLF.SRITEMS$                          ! FCS ! OAS
+         !CLOLF.OSSRITEMS$ = CLOLF.SRITEMS$                            ! KMG ! OAS
+         !CLOLF.BULETT$ = OLD.BULETT$                                  ! CNS ! OAS
+         !CLOLF.PGNAME$ = OLD.PGNAME$                                  ! ICC
+         !CLOLF.BUNAME$ = CLOLF.PGNAME$                                ! ICC  - Assignment needed to BUNAME as 1
+                                                                       ! this is the var the WRITE.CLOLF
+                                                                       ! uses to write to the relevant part of
+                                                                       ! the CLOLF record
+        IF (LIST.ITEMS <= 1) THEN BEGIN \! If no list to populate      ! OAS
+            ADXSERVE.DATA$ = "No list to create"                       ! OAS
+            GOSUB DISPLAY.MESSAGE
+        ENDIF \                                                        ! OAS
+        ELSE BEGIN
+            ADXSERVE.DATA$ = "CLOLF.LISTID: " + CLOLF.LISTID$          ! OAS
+            GOSUB DISPLAY.MESSAGE                                      ! DCS
+            CLOLF.TOTAL.ITEMS% = LIST.ITEMS - 1                        ! OAS
+            CLOLF.SRITEMS% = CLOLF.TOTAL.ITEMS%                        ! OAS
+            CLOLF.BSITEMS% = CLOLF.TOTAL.ITEMS%                        ! OAS
+            CLOLF.OSSRITEMS% = CLOLF.TOTAL.ITEMS%                      ! OAS
+            CURRENT.REPORT.NUM% = CLOLF.REPORT.NUM%                    ! CNS
+            FILE.OPERATION$ = "W"                                      ! CNS
+            CLOLF.CREATION.DATE$ = PACK$(DATE$)                        ! OAS
+            CLOLF.CREATION.TIME$ = PACK$(LEFT$(TIME$,4))               ! OAS
+
+            RC% = WRITE.CLOLF                                          ! CNS
+            IF RC% <> 0 THEN GOTO FILE.ERROR.EXIT                      ! CNS
+
+            !Grouping all the variables commented since they were not in the
+            !new CLOLF RECORD. Need to remove these in the next release
+            !CLOLF.OSSRITEMS$ = "000"                                  ! KMG ! OAS
+            !CLOLF.BULETT$ = LEFT$(RPRPT.RECORD$,1)                    ! CNS ! OAS
+            !CLOLF.PGNAME$ = MID$(RPRPT.RECORD$,28,12)+"   "           ! ICC ! OAS
+
+            CLOLF.RECORD.NUM% = CLOLF.RECORD.NUM% + 1                  ! CNS
+            CLOLF.LISTID$ = RIGHT$("000" + STR$(VAL(CLOLF.LISTID$) + 1),3)!CNS
+            LIST.ITEMS = 1                                             ! CNS
+
+        ENDIF
+       !ENDIF                                                          ! CNS ! OAS
+
+         !Commented since they were not in the new CLOLF RECORD.       ! OAS
+         !Need to remove these in the next release                     ! OAS
+         !OLD.BULETT$ = CLOLF.BULETT$                                  ! CNS ! OAS
+         !OLD.PGNAME$ = CLOLF.PGNAME$                                  ! ICC ! OAS
+
+RETURN
+
+
+
+\*******************************************************************   ! OAS
+\***    Display background message                                     ! OAS
+\***................................................................   ! OAS
+
+DISPLAY.MESSAGE:                                                       ! DCS
+                                                                       ! DCS
+     IF COMM.MODE.FLAG$ = "B" THEN BEGIN                               ! DCS
+         ADX.INTEGER%  = 0                                             ! DCS
+         ADX.FUNCTION% = 26                                            ! DCS
+         CALL ADXSERVE (ADX.RETURN.CODE%,                              \ DCS
+                        ADX.FUNCTION%,                                 \ DCS
+                        ADX.INTEGER%,                                  \ DCS
+                        ADXSERVE.DATA$)                                ! DCS
+     ENDIF ELSE BEGIN                                                  ! DCS
+        PRINT ADXSERVE.DATA$                                           ! DCS
+     ENDIF                                                             ! DCS
+RETURN                                                                 ! DCS
+
+\*****************************************************************************
+\***
+\***    TERMINATION
+\***
+\***..........................................................................
+
+
+TERMINATION:
+
+    ADXSERVE.DATA$ = "TERMINATION"                                     ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    GOSUB DEALLOCATE.SESSION.NUMBERS
+
+RETURN
+
+
+
+\*****************************************************************************
+\***
+\***    TERMINATION SPECIFIC ROUTINES
+\***
+\***..........................................................................
+
+
+\*****************************************************************************
+\***
+\***    DEALLOCATE.SESSION.NUMBERS
+\***    Perform CALL.F20.SESS.NUM.UTILITY to de-allocate file session numbers
+\***    from all files referenced by the program.
+\***
+\***..........................................................................
+
+
+DEALLOCATE.SESSION.NUMBERS:
+
+
+    ADXSERVE.DATA$ = "DEALLOCATE.SESSION.NUMBERS"                      ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    FUNCTION.FLAG$ EQ "C"
+
+    PASSED.INTEGER% EQ RPRPT.SESS.NUM%
+    PASSED.STRING$ EQ ""
+    GOSUB CALL.F20.SESS.NUM.UTILITY
+
+    PASSED.INTEGER% = PRINT.SESS.NUM%
+    PASSED.STRING$ = ""
+    GOSUB CALL.F20.SESS.NUM.UTILITY
+
+    PASSED.INTEGER% = SOFTS.SESS.NUM%                                  ! CNS
+    PASSED.STRING$ = ""                                                ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+
+    PASSED.INTEGER% = RFSCF.SESS.NUM%                                  ! CNS
+    PASSED.STRING$ = ""                                                ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+
+    PASSED.INTEGER% = CLOLF.SESS.NUM%                                  ! CNS
+    PASSED.STRING$ = ""                                                ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+
+    PASSED.INTEGER% = CLILF.SESS.NUM%                                  ! CNS
+    PASSED.STRING$ = ""                                                ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+
+    !PASSED.INTEGER% = ISF.SESS.NUM%                                   ! CNS ! OAS
+    !PASSED.STRING$ = ""                                               ! CNS ! OAS
+    !GOSUB CALL.F20.SESS.NUM.UTILITY                                   ! CNS ! OAS
+
+    !PASSED.INTEGER% = IRF.SESS.NUM%                                   ! CNS ! OAS
+    !PASSED.STRING$ = ""                                               ! CNS ! OAS
+    !GOSUB CALL.F20.SESS.NUM.UTILITY                                   ! CNS ! OAS
+
+    PASSED.INTEGER% = IDF.SESS.NUM%                                    ! CNS
+    PASSED.STRING$ = ""                                                ! CNS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! CNS
+
+    PASSED.INTEGER% = MINLS.SESS.NUM%                                  ! LJT
+    PASSED.STRING$ = ""                                                ! LJT
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! LJT
+
+    PASSED.INTEGER% = SRITL.SESS.NUM%                                  ! OAS
+    PASSED.STRING$ = ""                                                ! OAS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! OAS
+
+    PASSED.INTEGER% = MINOK.SESS.NUM%                                  ! OAS
+    PASSED.STRING$ = ""                                                ! OAS
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! OAS
+
+    ADXSERVE.DATA$ = "Session numbers deallocated"                     ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+RETURN
+
+
+\*****************************************************************************
+\***
+\***    CHECK.FUNCTION.RETURN.CODE:
+\***    If FUNCTION.RETURN.CODE% is zero ...
+\***        By-passes rest of procedure.
+\***    Displays error message on background screen.
+\***    Stops program.
+\***
+\***..........................................................................
+
+
+CHECK.FUNCTION.RETURN.CODE:
+
+    IF FUNCTION.RETURN.CODE% EQ 0 THEN \
+        BEGIN
+        RETURN
+        ENDIF
+
+    GOSUB STOP.PROGRAM
+
+RETURN
+
+
+\*****************************************************************************
+\***
+\***    FORMAT.CURRENT.CODE:
+\***    Sets CURRENT.CODE.LOGGED$ for use with application event log.
+\***
+\***..........................................................................
+
+
+FORMAT.CURRENT.CODE:
+
+    IF FILE.OPERATION$ EQ "C"                            \ ! Create
+      OR FILE.OPERATION$ EQ "O" THEN                     \ ! Open
+    BEGIN
+        CURRENT.CODE.LOGGED$ EQ PACK$("00000000000000")
+    ENDIF
+
+    IF FILE.OPERATION$ EQ "R"                            \ ! Read
+      OR FILE.OPERATION$ EQ "W" THEN                     \ ! Write
+    BEGIN
+        CURRENT.CODE.LOGGED$ EQ RIGHT$(CURRENT.CODE$,7)
+    ENDIF
+
+RETURN
+
+
+
+\*****************************************************************************
+\***
+\***    PROGRAM INDEPENDENT ROUTINES
+\***
+\***..........................................................................
+
+
+\*****************************************************************************
+\***
+\***    CALL.F01.APPLICATION.LOG:
+\***    References APPLICATION.LOG (F01) to write details of event defined
+\***    by EVENT.NUMBER% and VAR.STRING.1$ to Application Event Log, and to
+\***    display any message defined by MESSAGE.NUMBER% and VAR.STRING.2$.
+\***
+\***..........................................................................
+
+
+CALL.F01.APPLICATION.LOG:
+
+
+    FUNCTION.RETURN.CODE% EQ \
+      APPLICATION.LOG \
+       (MESSAGE.NUMBER%, \
+        VAR.STRING.1$, \
+        VAR.STRING.2$, \
+        EVENT.NUMBER%)
+
+    GOSUB CHECK.FUNCTION.RETURN.CODE
+
+RETURN
+
+
+\*****************************************************************************
+\***
+\***    CALL.F20.SESS.NUM.UTILITY:
+\***    References SESS.NUM.UTILITY (F20) to create, read, or delete entry on
+\***    Session Number Table as determined by FUNCTION.FLAG$ ("O" "R" "C").
+\***
+\***..........................................................................
+
+
+CALL.F20.SESS.NUM.UTILITY:
+
+
+    FUNCTION.RETURN.CODE% EQ \
+      SESS.NUM.UTILITY \
+       (FUNCTION.FLAG$, \
+        PASSED.INTEGER%, \
+        PASSED.STRING$)
+
+    GOSUB CHECK.FUNCTION.RETURN.CODE
+
+    IF FUNCTION.FLAG$ = "R" THEN CURRENT.REPORT.NUM% = F20.INTEGER.FILE.NO% !HBG
+
+RETURN
+
+
+\*****************************************************************************
+\***
+\***    LOG.AN.EVENT.106:
+\***    Writes details of Event 106 to application event log and displays
+\***    message B501 (for file open errors) or B514 (for other errors).
+\***
+\***..........................................................................
+
+
+LOG.AN.EVENT.106:
+
+
+    ADXSERVE.DATA$ = "LOG.AN.EVENT.106 File Op= " + FILE.OPERATION$    ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    EVENT.NUMBER% EQ 106
+
+    GOSUB FORMAT.CURRENT.CODE
+
+    !OBTAIN REPORT NUMBER                                              ! HBG
+    FUNCTION.FLAG$ = "R"                                               ! HBG
+    PASSED.INTEGER% = CURRENT.SESS.NUM%                                ! HBG
+    GOSUB CALL.F20.SESS.NUM.UTILITY                                    ! HBG
+
+    VAR.STRING.1$ EQ                         \ ! Application event log data
+        FILE.OPERATION$                    + \
+        CHR$(SHIFT(CURRENT.REPORT.NUM%,8)) + \ ! Two byte integer byte order
+        CHR$(SHIFT(CURRENT.REPORT.NUM%,0)) + \ ! reversed to give hex number
+        CURRENT.CODE.LOGGED$
+
+    GOSUB CALL.F01.APPLICATION.LOG
+
+RETURN
+
+
+
+\*****************************************************************************
+\***
+\***    IF END # AND ERROR.DETECTED ROUTINES
+\***
+\***..........................................................................
+
+
+\******************************************************************************
+\***
+\***   CREATE.ERROR:
+\***
+\***   LOG an event 106
+\***
+\***   GOTO PROGRAM.EXIT
+\***
+\******************************************************************************
+
+CREATE.ERROR:
+
+       GOSUB LOG.AN.EVENT.106
+
+       GOTO STOP.PROGRAM
+
+\*****************************************************************************
+\***
+\***    FILE.ERROR.EXIT:
+\***    Logs events for specific file errors.
+\***    Formats error message and displays on background screen.
+\***    Logs an event 106.
+\***    Stops program.
+\***
+\***..........................................................................
+
+
+FILE.ERROR.EXIT:
+
+
+    GOSUB FORMAT.CURRENT.CODE
+    GOSUB LOG.AN.EVENT.106
+    GOTO  STOP.PROGRAM
+
+\*****************************************************************************
+\***
+\***    ERROR.DETECTED:
+\***    Increments ERROR.COUNT% by one and tests it against values greater
+\***    than one before any other commands executed.
+\***    Further errors within ERROR.DETECTED causing control to be passed here
+\***    again result in this test being failed and the immediate diversion of
+\***    program control to STOP.PROGRAM.
+\***    If no chaining parameters passed ...
+\***        Diverts program control to OBTAIN.CHAIN.PARAMETERS.FROM.COMMAND
+\***    References STANDARD.ERROR.DETECTED to log Event 101 and display
+\***    message B550.
+\***
+\***..........................................................................
+
+
+ERROR.DETECTED:
+
+    ADXSERVE.DATA$ = "ERROR.DETECTED"                                  ! DCS
+    GOSUB DISPLAY.MESSAGE                                              ! DCS
+
+    ERROR.COUNT% EQ ERROR.COUNT% + 1
+
+    IF ERROR.COUNT% GT 1 THEN \
+        BEGIN
+        RESUME STOP.PROGRAM
+        ENDIF
+
+    IF FILE.OPERATION$ = "W" AND \                                     ! OAS
+       CURRENT.SESS.NUM% = MINOK.SESS.NUM% THEN BEGIN                  ! OAS
+
+        ADXSERVE.DATA$ = "Error while writing to MINOK File"           ! OAS
+        GOSUB DISPLAY.MESSAGE                                          ! OAS
+        ERROR.COUNT% = 0                                               ! OAS
+        RESUME MINOK.ERROR                                             ! OAS
+
+    ENDIF                                                              ! OAS
+
+    !Setting MINLS HOUSEKEEPING FLAG to FALSE when there is an error   ! OAS
+    !while deleting the record from the file                           ! OAS
+
+    IF FILE.OPERATION$ = "D" THEN BEGIN                                ! OAS
+
+        ADXSERVE.DATA$ = "Error while deleting MINLS record"           ! OAS
+        GOSUB DISPLAY.MESSAGE                                          ! OAS
+        MINLS.HK.STATUS$ = "X"                                         ! OAS
+        ERROR.COUNT% = 0                                               ! OAS
+        RESUME                                                         ! OAS
+
+    ENDIF                                                              ! OAS
+
+
+    IF ERR = "OE" THEN BEGIN                                           ! CNS
+       IF CURRENT.SESS.NUM% = RFSCF.SESS.NUM% THEN BEGIN               ! CNS
+          ERROR.COUNT% = 0                                             ! CNS
+          DO.MAIN = 1                                                  ! CNS
+          RESUME END.RF.PROCESS                                        ! CNS
+       ENDIF                                                           ! CNS
+    ENDIF                                                              ! CNS
+
+    IF ERR = "KF" AND CURRENT.SESS.NUM% = SRITL.SESS.NUM%             \! OAS
+      THEN BEGIN                                                       ! OAS
+      ERROR.COUNT% = 0                                                 ! OAS
+      RESUME                                                           ! OAS
+    ENDIF                                                              ! OAS
+
+    IF ERR = "CU" AND CURRENT.SESS.NUM% = MINOK.SESS.NUM%             \! RTT
+      THEN BEGIN                                                       ! RTT
+      ERROR.COUNT% = 0                                                 ! RTT
+      RESUME                                                           ! RTT
+    ENDIF                                                              ! RTT
+
+    FUNCTION.RETURN.CODE% EQ  \ OAS
+      STANDARD.ERROR.DETECTED \
+       (ERRN,                 \ OAS
+        ERRF%,                \ OAS
+        ERRL,                 \ OAS
+        ERR)
+
+RESUME STOP.PROGRAM
+
+
+\*****************************************************************************
+\*****************************************************************************
+\***
+\***    End of program MINPRINT
+\***
+\*****************************************************************************
+\*****************************************************************************
+
+
+
+

@@ -1,0 +1,170 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***           UOD ITEM FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***           REFERENCE   :  UODITFUN.BAS
+   7: 0000: \***
+   8: 0000: \***           VERSION A   :  Les Cook       23rd December 1992
+   9: 0000: \***
+  10: 0000: \*****************************************************************************
+  11: 0000: \*****************************************************************************
+  12: 0000: 
+  13: 0000:   INTEGER*2 GLOBAL            \
+  14: 0000:          CURRENT.REPORT.NUM% 
+  15: 0000:          
+  16: 0000:   STRING GLOBAL               \
+  17: 0000:          CURRENT.CODE$,       \
+  18: 0000:          FILE.OPERATION$           
+  19: 0000: 
+  20: 0000:   %INCLUDE UODITDEC.J86
+  21: 0000: \*****************************************************************************
+  22: 0000: \*****************************************************************************
+  23: 0000: \***
+  24: 0000: \***         %INCLUDE FOR UOD ITEM FILE - FIELD DECLARATIONS
+  25: 0000: \***                                      FILE REFERENCE PARAMETERS
+  26: 0000: \***
+  27: 0000: \***                 FILE TYPE : KEYED
+  28: 0000: \***
+  29: 0000: \***                 REFERENCE : UODITDEC.J86
+  30: 0000: \***
+  31: 0000: \***         VERSION A :     Les Cook         23rd December 1992
+  32: 0000: \***
+  33: 0000: \***         27 byte item record with 7 byte key
+  34: 0000: \***
+  35: 0000: \*****************************************************************************
+  36: 0000: \*****************************************************************************
+  37: 0000: 
+  38: 0000: STRING GLOBAL			\
+  39: 0000:    UODIT.FILE.NAME$,		\
+  40: 0000:    UODIT.KEY$,			\ 7 byte key composed of:
+  41: 0000:    UODIT.DIST.CENTRE$,		\ 1 byte UPD.  High Values for Retro. all UOD
+  42: 0000:    UODIT.WAREHOUSE.NUM$,	\ 1 byte UPD.  High Values for Retro. all UOD
+  43: 0000:    UODIT.UOD.NUMBER$,		\ 3 byte UPD.  High Values for Retro. all UOD
+  44: 0000:    UODIT.OCCUR.NUMBER$,		\ 2 byte UPD. 
+  45: 0000:    				\
+  46: 0000:    UODIT.REC.TYPE$,		\ 1 byte ASC. "U" - UOD; "Q" - Quantity 
+  47: 0000:    				\              Alteration; "A" - Actual
+  48: 0000: 				\              Receipt.
+  49: 0000:    UODIT.ITEM.CODE$,		\ 4 byte UPD. With check digit.
+  50: 0000:    UODIT.FSI$,			\ 1 byte ASC
+  51: 0000:    UODIT.FOLIO.YEAR$,		\ 1 byte UPD
+  52: 0000:    UODIT.FOLIO.MONTH$,		\ 1 byte UPD
+  53: 0000:    UODIT.STORE.SUFFIX$,		\ 1 byte ASC
+  54: 0000:    UODIT.FOLIO.NUM$,		\ 2 byte UPD
+  55: 0000:    UODIT.CSR.MARKER$,		\ 1 byte ASC. "Y" = CSR line.
+  56: 0000:    UODIT.FILLER$,		\ 6 byte ASC
+  57: 0000:    UODIT.RETRO.DATE$,		\ 3 byte UPD
+  58: 0000:    UODIT.RETRO.FILLER$ 		! 17 byte ASC
+  59: 0000:    
+  60: 0000: INTEGER*2 GLOBAL		\
+  61: 0000:    UODIT.QUANTITY%,		\
+  62: 0000:    UODIT.RECL%,			\
+  63: 0000:    UODIT.SESS.NUM%,		\
+  64: 0000:    UODIT.REPORT.NUM%   				
+  65: 0000: 
+  66: 0000: 
+  67: 0000:   FUNCTION UODIT.SET PUBLIC
+  68: 0014: \***************************
+  69: 0014: 
+  70: 0014:      UODIT.REPORT.NUM% = 262
+  71: 001d:      UODIT.RECL%      = 27
+  72: 0026:      UODIT.FILE.NAME$ = "UODIT"
+  73: 0035: 
+  74: 0035:   END FUNCTION
+  75: 0041: \------------------------------------------------------------------------------
+  76: 0041: REM EJECT^L  
+  77: 0041: 
+  78: 0041:   FUNCTION READ.UODIT PUBLIC
+  79: 0055: \****************************  
+  80: 0055: 
+  81: 0055:     INTEGER*2 READ.UODIT
+  82: 0055:     
+  83: 0055:     READ.UODIT = 1    
+  84: 005a: 
+  85: 005a:     IF LEFT$(UODIT.KEY$,5) = PACK$(STRING$(5,"??")) THEN BEGIN  ! header record
+  86: 0093:        IF END #UODIT.SESS.NUM% THEN READ.ERROR   
+  87: 00a7:        READ FORM "T8,C3,C17";                                           \ 
+  88: 00e4:             #UODIT.SESS.NUM%                                            \
+  89: 00e4:             KEY UODIT.KEY$;                                             \
+  90: 00e4:                 UODIT.RETRO.DATE$,                                      \
+  91: 00e4:                 UODIT.RETRO.FILLER$
+  92: 00e4:          
+  93: 00e4:        READ.UODIT = 0
+  94: 00e9:        EXIT FUNCTION     
+  95: 00ef:     ENDIF ELSE BEGIN                                    ! detail record
+  96: 00ef:        IF END #UODIT.SESS.NUM% THEN READ.ERROR
+  97: 0103:        READ FORM "T8,C1,C4,I2,4C1,C2,C1,C6"; # UODIT.SESS.NUM%          \
+  98: 0198:            KEY UODIT.KEY$;                                              \
+  99: 0198:                UODIT.REC.TYPE$,                                         \
+ 100: 0198:                UODIT.ITEM.CODE$,                                        \
+ 101: 0198:                UODIT.QUANTITY%,                                         \
+ 102: 0198:                UODIT.FSI$,                                              \
+ 103: 0198:                UODIT.FOLIO.YEAR$,                                       \
+ 104: 0198:                UODIT.FOLIO.MONTH$,                                      \
+ 105: 0198:                UODIT.STORE.SUFFIX$,                                     \
+ 106: 0198:                UODIT.FOLIO.NUM$,                                        \
+ 107: 0198:                UODIT.CSR.MARKER$,                                       \
+ 108: 0198:                UODIT.FILLER$
+ 109: 0198:        READ.UODIT = 0
+ 110: 019d:        EXIT FUNCTION
+ 111: 019f:     ENDIF
+ 112: 019f:         
+ 113: 019f:     READ.ERROR:
+ 114: 019f: 
+ 115: 019f:         CURRENT.CODE$ = UODIT.KEY$
+ 116: 01b5:         FILE.OPERATION$ = "R"
+ 117: 01c4:         CURRENT.REPORT.NUM% = UODIT.REPORT.NUM%
+ 118: 01d2:            
+ 119: 01d2:         EXIT FUNCTION
+ 120: 01d4: 
+ 121: 01d4:   END FUNCTION
+ 122: 01e3: \------------------------------------------------------------------------------
+ 123: 01e3: REM EJECT^L  
+ 124: 01e3: 
+ 125: 01e3: 
+ 126: 01e3:   FUNCTION WRITE.UODIT PUBLIC
+ 127: 01f7: \*****************************
+ 128: 01f7: 
+ 129: 01f7:     INTEGER*2 WRITE.UODIT
+ 130: 01f7:     
+ 131: 01f7:     WRITE.UODIT = 1
+ 132: 01fc:       
+ 133: 01fc:     IF LEFT$(UODIT.KEY$,5) = PACK$(STRING$(5,"??")) THEN BEGIN  ! Retro Record
+ 134: 0235:        IF END #UODIT.SESS.NUM% THEN WRITE.ERROR
+ 135: 0249:        WRITE FORM "C7,C3,C17"; #UODIT.SESS.NUM%;                        \
+ 136: 028b:              UODIT.KEY$,                                                \
+ 137: 028b:              UODIT.RETRO.DATE$,                                         \
+ 138: 028b:              UODIT.RETRO.FILLER$             
+ 139: 028b: 
+ 140: 028b:        WRITE.UODIT = 0
+ 141: 0290:        EXIT FUNCTION         
+ 142: 0296:     ENDIF ELSE BEGIN                                    ! Detail Record
+ 143: 0296:        IF END #UODIT.SESS.NUM% THEN WRITE.ERROR
+ 144: 02aa:        WRITE FORM "C7,C1,C4,I2,4C1,C2,C1,C6"; #UODIT.SESS.NUM%;         \
+ 145: 0368:              UODIT.KEY$,                                                \
+ 146: 0368:              UODIT.REC.TYPE$,                                           \
+ 147: 0368:              UODIT.ITEM.CODE$,                                          \
+ 148: 0368:              UODIT.QUANTITY%,                                           \
+ 149: 0368:              UODIT.FSI$,                                                \
+ 150: 0368:              UODIT.FOLIO.YEAR$,                                         \
+ 151: 0368:              UODIT.FOLIO.MONTH$,                                        \
+ 152: 0368:              UODIT.STORE.SUFFIX$,                                       \
+ 153: 0368:              UODIT.FOLIO.NUM$,                                          \
+ 154: 0368:              UODIT.CSR.MARKER$,                                         \
+ 155: 0368:              UODIT.FILLER$
+ 156: 0368:        WRITE.UODIT = 0
+ 157: 036d:        EXIT FUNCTION
+ 158: 036f:     ENDIF
+ 159: 036f:      
+ 160: 036f:     WRITE.ERROR:
+ 161: 036f:      
+ 162: 036f:        FILE.OPERATION$ = "O"
+ 163: 037e:        CURRENT.REPORT.NUM% = UODIT.REPORT.NUM%
+ 164: 038c:        CURRENT.CODE$ = UODIT.KEY$
+ 165: 03a2:     
+ 166: 03a2:        EXIT FUNCTION    
+ 167: 03a4: 
+ 168: 03a4:   END FUNCTION
+ 169: 03b3: 
+ 170: 03b3: End of Compilation

@@ -1,0 +1,261 @@
+   1: 0000: \******************************************************************************
+   2: 0000: \******************************************************************************
+   3: 0000: \***
+   4: 0000: \***   $Workfile:   CCITMFUN.BAS  $
+   5: 0000: \***
+   6: 0000: \***   $Revision:   1.1  $
+   7: 0000: \***
+   8: 0000: \******************************************************************************
+   9: 0000: \******************************************************************************
+  10: 0000: \***
+  11: 0000: \***   $Log:   V:\archive\bas\ccitmfun.bav  $
+  12: 0000: \***   
+  13: 0000: \***      Rev 1.1   28 Jul 1994 12:12:36   DEVSJPS
+  14: 0000: \***   Recompile without version letter on included code
+  15: 0000: \***   
+  16: 0000: \******************************************************************************
+  17: 0000: \******************************************************************************
+  18: 0000: \*****************************************************************************
+  19: 0000: \*****************************************************************************
+  20: 0000: \***
+  21: 0000: \***                 FILE HANDLING FUNCTIONS SOURCE CODE
+  22: 0000: \***
+  23: 0000: \***                   FILE TYPE:  KEYED
+  24: 0000: \***
+  25: 0000: \***                   REFERENCE:  CCITMFUN.BAS
+  26: 0000: \***
+  27: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  28: 0000: \***				   FILE OF ITEMS PER OPEN/CLOSED UODS
+  29: 0000: \***
+  30: 0000: \***
+  31: 0000: \***      VERSION A : Michael J. Kelsall      13th September 1993
+  32: 0000: \***      
+  33: 0000: \*****************************************************************************
+  34: 0000: \*****************************************************************************
+  35: 0000: 
+  36: 0000:   INTEGER*2 GLOBAL            \
+  37: 0000:          CURRENT.REPORT.NUM% 
+  38: 0000: 	 
+  39: 0000:   STRING GLOBAL               \
+  40: 0000:          CURRENT.CODE$,       \
+  41: 0000:          FILE.OPERATION$     	   
+  42: 0000: 
+  43: 0000:   %INCLUDE CCITMDEC.J86
+  44: 0000: 
+  45: 0000: \*****************************************************************************
+  46: 0000: \*****************************************************************************
+  47: 0000: \***
+  48: 0000: \***        %INCLUDE FIELD DECLARATIONS AND FILE REFERENCE PARAMETERS
+  49: 0000: \***
+  50: 0000: \***                   FILE TYPE:  KEYED
+  51: 0000: \***
+  52: 0000: \***                   REFERENCE:  CCUODITM.J86
+  53: 0000: \***
+  54: 0000: \***	             DESCRIPTION:  RETURNS / AUTOMATIC CREDIT CLAIMING
+  55: 0000: \***				   FILE OF ITEMS PER OPEN/CLOSED UOD
+  56: 0000: \***
+  57: 0000: \***
+  58: 0000: \***      VERSION A : Michael J. Kelsall      13th September 1993
+  59: 0000: \***      
+  60: 0000: \*****************************************************************************
+  61: 0000: \*****************************************************************************
+  62: 0000: 
+  63: 0000: STRING GLOBAL			\
+  64: 0000:    CCITM.FILE.NAME$,		\
+  65: 0000:    CCITM.KEY$,			\  Consists of next two fields;
+  66: 0000:    CCITM.UOD.NUM$,		\  7 byte UPD
+  67: 0000:    CCITM.ITEM.NUM$,		\  2 byte UPD
+  68: 0000:    				\
+  69: 0000:    CCITM.BOOTS.BAR.CODE.FLAG$,	\  1 byte ASC;  "I" = Boots code,
+  70: 0000:    				\		"B" = Bar code.
+  71: 0000:    CCITM.BOOTS.BAR.CODE$,	\  7 byte UPD
+  72: 0000:    				\  CCITM.QTY% here (I2)
+  73: 0000:    CCITM.FILLER$                !  4 byte ASC;  Spaces
+  74: 0000:       				
+  75: 0000: 
+  76: 0000: INTEGER*2 GLOBAL		\
+  77: 0000:    CCITM.RECL%,			\
+  78: 0000:    CCITM.REPORT.NUM%,		\
+  79: 0000:    CCITM.SESS.NUM%,		\
+  80: 0000: 				\
+  81: 0000:    CCITM.QTY%			!  2 byte INT
+  82: 0000: 
+  83: 0000: 
+  84: 0000: 
+  85: 0000: 
+  86: 0000:   FUNCTION CCITM.SET PUBLIC
+  87: 0014: 
+  88: 0014:      INTEGER*2 CCITM.SET
+  89: 0014:      CCITM.SET = 1
+  90: 0019: 
+  91: 0019:        CCITM.REPORT.NUM% = 315
+  92: 0022:        CCITM.RECL%      = 23
+  93: 002b:        CCITM.FILE.NAME$ = "CCITM"
+  94: 003a:   
+  95: 003a:      CCITM.SET = 0
+  96: 003f: 
+  97: 003f:   END FUNCTION
+  98: 004e: 
+  99: 004e: 
+ 100: 004e: 
+ 101: 004e:   FUNCTION READ.CCITM PUBLIC
+ 102: 0062: 
+ 103: 0062:     INTEGER*2 READ.CCITM
+ 104: 0062:     
+ 105: 0062:        READ.CCITM = 1    
+ 106: 0067:        IF END #CCITM.SESS.NUM% THEN READ.ERROR   
+ 107: 007b:        READ FORM "T10,C1,C7,I2,C4"; #CCITM.SESS.NUM% 			\
+ 108: 00ce:          KEY CCITM.KEY$;						\
+ 109: 00ce: 	     CCITM.BOOTS.BAR.CODE.FLAG$,				\
+ 110: 00ce: 	     CCITM.BOOTS.BAR.CODE$,					\
+ 111: 00ce: 	     CCITM.QTY%,						\
+ 112: 00ce: 	     CCITM.FILLER$
+ 113: 00ce:        READ.CCITM = 0
+ 114: 00d3:        EXIT FUNCTION     
+ 115: 00d5: 
+ 116: 00d5:     READ.ERROR:
+ 117: 00d5: 
+ 118: 00d5:        CURRENT.CODE$ = CCITM.UOD.NUM$
+ 119: 00eb:        FILE.OPERATION$ = "R"
+ 120: 00fa:        CURRENT.REPORT.NUM% = CCITM.REPORT.NUM%
+ 121: 0108:        EXIT FUNCTION
+ 122: 010a: 
+ 123: 010a:   END FUNCTION
+ 124: 0119:   
+ 125: 0119: 
+ 126: 0119: 
+ 127: 0119:   FUNCTION READ.CCITM.LOCKED PUBLIC
+ 128: 012d: 
+ 129: 012d:     INTEGER*2 READ.CCITM.LOCKED
+ 130: 012d:     
+ 131: 012d:        READ.CCITM.LOCKED = 1    
+ 132: 0132:        IF END #CCITM.SESS.NUM% THEN READ.LOCKED.ERROR   
+ 133: 0146:        READ FORM "T10,C1,C7,I2,C4"; #CCITM.SESS.NUM% AUTOLOCK		\
+ 134: 0199:          KEY CCITM.KEY$;     						\
+ 135: 0199: 	     CCITM.BOOTS.BAR.CODE.FLAG$,				\
+ 136: 0199: 	     CCITM.BOOTS.BAR.CODE$,					\
+ 137: 0199: 	     CCITM.QTY%,						\
+ 138: 0199: 	     CCITM.FILLER$
+ 139: 0199:        READ.CCITM.LOCKED = 0
+ 140: 019e:        EXIT FUNCTION     
+ 141: 01a0: 	
+ 142: 01a0:     READ.LOCKED.ERROR:
+ 143: 01a0: 
+ 144: 01a0:         CURRENT.CODE$ = CCITM.UOD.NUM$
+ 145: 01b6: 	FILE.OPERATION$ = "R"
+ 146: 01c5: 	CURRENT.REPORT.NUM% = CCITM.REPORT.NUM%
+ 147: 01d3: 	   
+ 148: 01d3: 	EXIT FUNCTION
+ 149: 01d5: 
+ 150: 01d5:   END FUNCTION  
+ 151: 01e4: 
+ 152: 01e4: 
+ 153: 01e4: 
+ 154: 01e4:   FUNCTION WRITE.HOLD.CCITM PUBLIC
+ 155: 01f8: 
+ 156: 01f8:     INTEGER*2 WRITE.HOLD.CCITM
+ 157: 01f8:     
+ 158: 01f8:        WRITE.HOLD.CCITM = 1
+ 159: 01fd:        IF END #CCITM.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 160: 0211:        WRITE FORM "C9,C1,C7,I2,C4"; HOLD #CCITM.SESS.NUM%;          	\     
+ 161: 026f:              CCITM.KEY$,     						\
+ 162: 026f: 	     CCITM.BOOTS.BAR.CODE.FLAG$,				\
+ 163: 026f: 	     CCITM.BOOTS.BAR.CODE$,					\
+ 164: 026f: 	     CCITM.QTY%,						\
+ 165: 026f: 	     CCITM.FILLER$
+ 166: 026f:        WRITE.HOLD.CCITM = 0
+ 167: 0274:        EXIT FUNCTION	     
+ 168: 0276:      
+ 169: 0276:     WRITE.HOLD.ERROR:
+ 170: 0276:      
+ 171: 0276:        FILE.OPERATION$ = "W"
+ 172: 0285:        CURRENT.REPORT.NUM% = CCITM.REPORT.NUM%
+ 173: 0293:        CURRENT.CODE$ = CCITM.UOD.NUM$
+ 174: 02a9:     
+ 175: 02a9:        EXIT FUNCTION    
+ 176: 02ab: 
+ 177: 02ab:   END FUNCTION
+ 178: 02ba: 
+ 179: 02ba: 
+ 180: 02ba: 
+ 181: 02ba:   FUNCTION WRITE.UNLOCK.CCITM PUBLIC
+ 182: 02ce: 
+ 183: 02ce:     INTEGER*2 WRITE.UNLOCK.CCITM
+ 184: 02ce:     
+ 185: 02ce:        WRITE.UNLOCK.CCITM = 1
+ 186: 02d3:        IF END #CCITM.SESS.NUM% THEN WRITE.UNLOCK.ERROR
+ 187: 02e7:        WRITE FORM "C9,C1,C7,I2,C4"; #CCITM.SESS.NUM% AUTOUNLOCK;   	\        
+ 188: 0345:              CCITM.KEY$,	     					\
+ 189: 0345: 	     CCITM.BOOTS.BAR.CODE.FLAG$,				\
+ 190: 0345: 	     CCITM.BOOTS.BAR.CODE$,					\
+ 191: 0345: 	     CCITM.QTY%,						\
+ 192: 0345: 	     CCITM.FILLER$
+ 193: 0345:        WRITE.UNLOCK.CCITM = 0
+ 194: 034a:        EXIT FUNCTION	     
+ 195: 034c:      
+ 196: 034c:     WRITE.UNLOCK.ERROR:
+ 197: 034c:      
+ 198: 034c:        FILE.OPERATION$ = "W"
+ 199: 035b:        CURRENT.REPORT.NUM% = CCITM.REPORT.NUM%
+ 200: 0369:        CURRENT.CODE$ = CCITM.UOD.NUM$
+ 201: 037f:     
+ 202: 037f:        EXIT FUNCTION    
+ 203: 0381: 
+ 204: 0381:   END FUNCTION
+ 205: 0390: 
+ 206: 0390: 
+ 207: 0390: 
+ 208: 0390:   FUNCTION WRITE.HOLD.UNLOCK.CCITM PUBLIC
+ 209: 03a4: 
+ 210: 03a4:     INTEGER*2 WRITE.HOLD.UNLOCK.CCITM
+ 211: 03a4:     
+ 212: 03a4:        WRITE.HOLD.UNLOCK.CCITM = 1
+ 213: 03a9:        IF END #CCITM.SESS.NUM% THEN WRITE.HOLD.UNLOCK.ERROR
+ 214: 03bd:        WRITE FORM "C9,C1,C7,I2,C4"; HOLD 				\
+ 215: 041b:             #CCITM.SESS.NUM% AUTOUNLOCK;     				\        
+ 216: 041b:              CCITM.KEY$,     						\
+ 217: 041b: 	     CCITM.BOOTS.BAR.CODE.FLAG$,				\
+ 218: 041b: 	     CCITM.BOOTS.BAR.CODE$,					\
+ 219: 041b: 	     CCITM.QTY%,						\
+ 220: 041b: 	     CCITM.FILLER$
+ 221: 041b:        WRITE.HOLD.UNLOCK.CCITM = 0
+ 222: 0420:        EXIT FUNCTION	     
+ 223: 0422:      
+ 224: 0422:     WRITE.HOLD.UNLOCK.ERROR:
+ 225: 0422:      
+ 226: 0422:        FILE.OPERATION$ = "W"
+ 227: 0431:        CURRENT.REPORT.NUM% = CCITM.REPORT.NUM%
+ 228: 043f:        CURRENT.CODE$ = CCITM.UOD.NUM$
+ 229: 0455:     
+ 230: 0455:        EXIT FUNCTION    
+ 231: 0457: 
+ 232: 0457:   END FUNCTION
+ 233: 0466: 
+ 234: 0466: 
+ 235: 0466: 
+ 236: 0466:   FUNCTION WRITE.CCITM PUBLIC
+ 237: 047a: 
+ 238: 047a:     INTEGER*2 WRITE.CCITM
+ 239: 047a:     
+ 240: 047a:        WRITE.CCITM = 1
+ 241: 047f:        IF END #CCITM.SESS.NUM% THEN WRITE.ERROR
+ 242: 0493:        WRITE FORM "C9,C1,C7,I2,C4"; #CCITM.SESS.NUM%;            	\     
+ 243: 04f1:              CCITM.KEY$,     						\
+ 244: 04f1: 	     CCITM.BOOTS.BAR.CODE.FLAG$,				\
+ 245: 04f1: 	     CCITM.BOOTS.BAR.CODE$,					\
+ 246: 04f1: 	     CCITM.QTY%,						\
+ 247: 04f1: 	     CCITM.FILLER$
+ 248: 04f1:        WRITE.CCITM = 0
+ 249: 04f6:        EXIT FUNCTION	     
+ 250: 04f8:      
+ 251: 04f8:     WRITE.ERROR:
+ 252: 04f8:      
+ 253: 04f8:        FILE.OPERATION$ = "W"
+ 254: 0507:        CURRENT.REPORT.NUM% = CCITM.REPORT.NUM%
+ 255: 0515:        CURRENT.CODE$ = CCITM.UOD.NUM$
+ 256: 052b:     
+ 257: 052b:        EXIT FUNCTION    
+ 258: 052d: 
+ 259: 052d:   END FUNCTION
+ 260: 053c: 
+ 261: 053c: End of Compilation

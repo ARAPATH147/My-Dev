@@ -1,0 +1,120 @@
+   1: 0000: REM \
+   2: 0000: \******************************************************************************
+   3: 0000: \******************************************************************************
+   4: 0000: \***
+   5: 0000: \***         ITEM EAN CODES FILE FUNCTIONS
+   6: 0000: \***
+   7: 0000: \***         REFERENCE    : IEFFUN.BAS
+   8: 0000: \***
+   9: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  10: 0000: \***    Corrected setting of FILE.OPERATION$ within WRITE function.
+  11: 0000: \***
+  12: 0000: \***    VERSION C.              Steve Perkins                       8th Feb 1996
+  13: 0000: \***    Version letter removed from IEFDEC.J86
+  14: 0000: \***
+  15: 0000: \***
+  16: 0000: \*******************************************************************************
+  17: 0000: ********************************************************************************
+  18: 0000: 
+  19: 0000:   INTEGER*2 GLOBAL 			\
+  20: 0000:      CURRENT.REPORT.NUM%
+  21: 0000:      
+  22: 0000:   STRING GLOBAL				\
+  23: 0000:      CURRENT.CODE$,			\
+  24: 0000:      FILE.OPERATION$
+  25: 0000:      
+  26: 0000:   %INCLUDE IEFDEC.J86                                                 ! BRC
+  27: 0000: REM \
+  28: 0000: \******************************************************************************
+  29: 0000: \******************************************************************************
+  30: 0000: \***
+  31: 0000: \***         %INCLUDE FOR ITEM EAN CODES FILE - FIELD DECLARATIONS
+  32: 0000: \***                                            FILE REFERENCE PARAMETERS
+  33: 0000: \***
+  34: 0000: \***               FILE TYPE    : Keyed
+  35: 0000: \***
+  36: 0000: \***               REFERENCE    : IEFDEC.J86
+  37: 0000: \***
+  38: 0000: \***    VERSION B.              ROBERT COWEY.                       21 OCT 1993.
+  39: 0000: \***    No changes to this file.
+  40: 0000: \***
+  41: 0000: \*******************************************************************************
+  42: 0000: \*******************************************************************************
+  43: 0000: 
+  44: 0000:   STRING GLOBAL                      \
+  45: 0000:     IEF.FILE.NAME$,		     \
+  46: 0000:     IEF.BOOTS.CODE.BAR.CODE$,        \ 9 byte UPD -                        BBAAS
+  47: 0000:                                      \ 3 bytes UPD boots code              BBAAS   
+  48: 0000:                                      \ + 6 UPD bar code,                   BBAAS
+  49: 0000:                                      \ no check digits. (key)              BBAAS
+  50: 0000:     IEF.NEXT.BAR.CODE$               ! 6 byte UPD without check digit
+  51: 0000: 
+  52: 0000:   INTEGER*2 GLOBAL        \
+  53: 0000:     IEF.REPORT.NUM%,	  \
+  54: 0000:     IEF.SESS.NUM%,	  \ 
+  55: 0000:     IEF.RECL%
+  56: 0000: 
+  57: 0000: 
+  58: 0000:   FUNCTION IEF.SET PUBLIC
+  59: 0014: \*************************
+  60: 0014: 
+  61: 0014:      IEF.REPORT.NUM% = 8
+  62: 001d:      IEF.RECL% = 15
+  63: 0026:      IEF.FILE.NAME$ = "IEF"
+  64: 0035:      
+  65: 0035:   END FUNCTION
+  66: 0041:   
+  67: 0041: 
+  68: 0041: \-----------------------------------------------------------------------------
+  69: 0041: 
+  70: 0041:   FUNCTION READ.IEF PUBLIC
+  71: 0055: \**************************
+  72: 0055: 
+  73: 0055:     INTEGER*2 READ.IEF
+  74: 0055:     
+  75: 0055:     READ.IEF = 1
+  76: 005a:       
+  77: 005a:     IF END #IEF.SESS.NUM% THEN READ.ERROR
+  78: 006e:     READ FORM "T10,C6"; #IEF.SESS.NUM%				    \   
+  79: 00a0:          KEY IEF.BOOTS.CODE.BAR.CODE$;                              \  	     
+  80: 00a0:              IEF.NEXT.BAR.CODE$
+  81: 00a0: 
+  82: 00a0:     READ.IEF = 0
+  83: 00a5:     EXIT FUNCTION
+  84: 00a7:     
+  85: 00a7:     READ.ERROR:
+  86: 00a7:     
+  87: 00a7:     CURRENT.CODE$ = IEF.BOOTS.CODE.BAR.CODE$
+  88: 00bd:     FILE.OPERATION$ = "R"
+  89: 00cc:     CURRENT.REPORT.NUM% = IEF.REPORT.NUM%	     
+  90: 00da:     
+  91: 00da:     EXIT FUNCTION
+  92: 00dc: 
+  93: 00dc:   END FUNCTION
+  94: 00eb: \-----------------------------------------------------------------------------
+  95: 00eb: 
+  96: 00eb:   FUNCTION WRITE.IEF PUBLIC
+  97: 00ff: \***************************
+  98: 00ff: 
+  99: 00ff:     INTEGER*2 WRITE.IEF
+ 100: 00ff:     
+ 101: 00ff:     WRITE.IEF = 1
+ 102: 0104:       
+ 103: 0104:     IF END #IEF.SESS.NUM% THEN WRITE.ERROR
+ 104: 0118:     WRITE FORM "C9,C6"; #IEF.SESS.NUM%;                             \     
+ 105: 014a:              IEF.BOOTS.CODE.BAR.CODE$,                              \     
+ 106: 014a:              IEF.NEXT.BAR.CODE$
+ 107: 014a: 
+ 108: 014a:     WRITE.IEF = 0
+ 109: 014f:     EXIT FUNCTION
+ 110: 0151:     
+ 111: 0151:     WRITE.ERROR:
+ 112: 0151:     
+ 113: 0151:     CURRENT.CODE$ = IEF.BOOTS.CODE.BAR.CODE$
+ 114: 0167:     FILE.OPERATION$ = "W"                                              ! BRC
+ 115: 0176:     CURRENT.REPORT.NUM% = IEF.REPORT.NUM%
+ 116: 0184:     
+ 117: 0184:     EXIT FUNCTION	     
+ 118: 0186: 
+ 119: 0186:   END FUNCTION
+ 120: 0195: End of Compilation

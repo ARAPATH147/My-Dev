@@ -1,0 +1,525 @@
+   1: 0000: \*****************************************************************************
+   2: 0000: \*****************************************************************************
+   3: 0000: \***
+   4: 0000: \***                  TERMINAL STATUS FILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***                      REFERENCE    : TSFFUN
+   7: 0000: \***
+   8: 0000: \***           VERSION A : STEVEN GOULDING              14.10.92
+   9: 0000: \***
+  10: 0000: \***           VERSION B : STEVE WINDSOR                15.09.93
+  11: 0000: \***           Updated to keep in step.
+  12: 0000: \***
+  13: 0000: \***           VERSION C : STUART WILLIAM MCCONNACHIE   18.03.97
+  14: 0000: \***           Added extra fields in user data.
+  15: 0000: \***          
+  16: 0000: \***           VERSION D : REBECCA DAKIN                19.02.99
+  17: 0000: \***           Added ACSAL.CUT.OFF, as part of Cash Accounting project.
+  18: 0000: \***
+  19: 0000: \***           VERSION E : AMY HOGGARD                  16.10.00
+  20: 0000: \***           Added TILLBAG.CUT.OFF, as part of ECO project.
+  21: 0000: \***
+  22: 0000: \***           VERSION F : STUART WILLIAM MCCONNACHIE   20.05.05
+  23: 0000: \***           Added "new" fields as no one else can be bothered.
+  24: 0000: \***           Corrected offset bug of controller ID.
+  25: 0000: \***
+  26: 0000: \***           VERSION G : JAMIE THORPE                 05.10.05
+  27: 0000: \***           Added new INVDUE.DATE record to the store record 
+  28: 0000: \***           (for Zero TSF proj.)
+  29: 0000: \***           This is the date that the most recent INVDUE file
+  30: 0000: \***           was created.
+  31: 0000: \***
+  32: 0000: \***    VERSION H               Mark Walker                      3rd Nov 2014
+  33: 0000: \***    F294 PCI Phase 1
+  34: 0000: \***    Includes the following changes:
+  35: 0000: \***    - Removed redundant 'smartcard software level' field.
+  36: 0000: \***    - Extended TSF.INDICAT2% integer field from 1 to 2 bytes.
+  37: 0000: \***    - Extended TSF.USER$ string field from 4 to 5 bytes.
+  38: 0000: \***    - Code formatting changes (uncommented).
+  39: 0000: \***
+  40: 0000: \*****************************************************************************
+  41: 0000: \*****************************************************************************
+  42: 0000: 
+  43: 0000:     INTEGER*2 GLOBAL                                                    \
+  44: 0000:         CURRENT.REPORT.NUM%
+  45: 0000: 
+  46: 0000:     STRING GLOBAL                                                       \
+  47: 0000:         CURRENT.CODE$,                                                  \
+  48: 0000:         FILE.OPERATION$
+  49: 0000: 
+  50: 0000: %INCLUDE TSFDEC.J86                                                        !CSWM
+  51: 0000: \*****************************************************************************
+  52: 0000: \*****************************************************************************
+  53: 0000: \***
+  54: 0000: \***      %INCLUDE FOR TERMINAL STATUS FILE - FIELD DECLARATIONS
+  55: 0000: \***                                          FILE REFERENCE PARAMETERS
+  56: 0000: \***
+  57: 0000: \***                      FILE TYPE    : KEYED
+  58: 0000: \***
+  59: 0000: \***                      REFERENCE    : TSFDEC
+  60: 0000: \***
+  61: 0000: \***           VERSION A : STEVEN GOULDING              13.10.92
+  62: 0000: \***
+  63: 0000: \***           VERSION B : STEVE WINDSOR                15.09.93
+  64: 0000: \***           Updated to keep in step.
+  65: 0000: \***
+  66: 0000: \***           VERSION C : STUART WILLIAM MCCONNACHIE   18.03.97
+  67: 0000: \***           Added extra fields in user data.
+  68: 0000: \*** 
+  69: 0000: \***           VERSION D : REBECCA DAKIN                22.02.99
+  70: 0000: \***           Added ACSALD.CUT.OFF, as part of Cash Accounting project.
+  71: 0000: \***
+  72: 0000: \***           VERSION E : AMY HOGGARD                  16.10.00
+  73: 0000: \***           Added TILLBAG.CUT.OFF, as part of ECO project.
+  74: 0000: \***
+  75: 0000: \***           VERSION F : STUART WILLIAM MCCONNACHIE   20.05.05
+  76: 0000: \***           Added "new" fields as no one else can be bothered.
+  77: 0000: \***           Corrected offset bug of controller ID.
+  78: 0000: \***
+  79: 0000: \***           VERSION G : JAMIE THORPE                 05.10.05
+  80: 0000: \***           Added new INVDUE.DATE record to the store record 
+  81: 0000: \***           (for Zero TSF proj.)
+  82: 0000: \***           This is the date that the most recent INVDUE file
+  83: 0000: \***           was created.
+  84: 0000: \***
+  85: 0000: \***    VERSION H               Mark Walker                      3rd Nov 2014
+  86: 0000: \***    F294 PCI Phase 1
+  87: 0000: \***    Includes the following changes:
+  88: 0000: \***    - Removed redundant 'smartcard software level' field.
+  89: 0000: \***    - Extended TSF.INDICAT2% integer field from 1 to 2 bytes.
+  90: 0000: \***
+  91: 0000: \*****************************************************************************
+  92: 0000: \*****************************************************************************
+  93: 0000: 
+  94: 0000:     STRING GLOBAL               \
+  95: 0000:         TSF.FILE.NAME$,         \
+  96: 0000:         TSF.REC$(1),            \ One dimensional array
+  97: 0000:         TSF.SECTOR.FILLER$,     \
+  98: 0000:         TSF.SECTOR.INFO$
+  99: 0000:         
+ 100: 0000:     INTEGER*1 GLOBAL            \
+ 101: 0000:         TSF.REC.SUB%            ! Subscript used with TSF.REC array
+ 102: 0000: 
+ 103: 0000:     INTEGER*2 GLOBAL            \
+ 104: 0000:         TSF.SESS.NUM%,          \
+ 105: 0000:         TSF.RECL%,              \
+ 106: 0000:         TSF.REPORT.NUM%,        \
+ 107: 0000:         TSF.SECTOR.NUM%
+ 108: 0000: 
+ 109: 0000:     STRING GLOBAL               \
+ 110: 0000:         TSF.TERM.STORE$,        \ 2 byte UPD.Terminal number or 
+ 111: 0000:                                 \ 9999 for store (key)
+ 112: 0000:         TSF.TSL.NAME$,          \ 8 bytes. Most recent old TSL file
+ 113: 0000:         TSF.MONITOR$,           \ 2 byte UPD last monitoring terminal
+ 114: 0000:         TSF.TLOGFLAG$,          \ 1 byte, EALLGHC processed flag
+ 115: 0000:         TSF.OPERATOR$,          \ Operator number
+ 116: 0000:         TSF.TRANSNUM$,          \ Most recent transaction
+ 117: 0000:         TSF.RCPSTATUS$,         \ Store close requested through RCF                                                             
+ 118: 0000:         TSF.SIGN.OFF.DELAY$,    \ 1 byte PD counter to auto sign off    \  !CSWM
+ 119: 0000:         TSF.USER$,              \ User data
+ 120: 0000:         TSF.CONTROLLER$,        \ Controller ID
+ 121: 0000:         TSF.INVDUE.DATE$,       \ Creation date of the INVDUE
+ 122: 0000:                                 \ (Updated by PSS33)                    \   !GJT
+ 123: 0000:         TSF.SPACE$              ! 34 bytes or 14 bytes
+ 124: 0000: 
+ 125: 0000:     INTEGER*1 GLOBAL            \
+ 126: 0000:         TSF.INDICAT0%,          \ Indicator byte 0
+ 127: 0000:         TSF.INDICAT1%,          \ Indicator byte 1
+ 128: 0000: \       TSF.INDICAT2%,          \ Indicator byte 2                      \   !HMW
+ 129: 0000:         TSF.MTSL.CUT.OFF%,      \ MTSL cut-off required flag            \  !CSWM
+ 130: 0000:         TSF.CUSTD.CUT.OFF%,     \ CUSTD cut-off required flag           \  !CSWM
+ 131: 0000:         TSF.ACSAL.CUT.OFF%,     \ ACSAL cut-off required flag               !DRD
+ 132: 0000:         TSF.TILLBAG.CUT.OFF%    ! TILLBAG cut-off required flag             !EAH
+ 133: 0000:     
+ 134: 0000:     INTEGER*2 GLOBAL            \
+ 135: 0000: \       TSF.SC.LEVEL%           ! Smartcard software level              \   !HMW
+ 136: 0000:         TSF.INDICAT2%           ! Indicator flags 2                         !HMW
+ 137: 0000: 
+ 138: 0000:     INTEGER*4 GLOBAL            \
+ 139: 0000:         TSF.GROSSPOS,           \ Gross plus
+ 140: 0000:         TSF.GROSSNEG,           \ Gross minus
+ 141: 0000:         TSF.NETCASH,            \ Net cash
+ 142: 0000:         TSF.NETNCASH,           \ Net non-cash
+ 143: 0000:         TSF.AMTLOAN,            \ Loans
+ 144: 0000:         TSF.AMTPICKU,           \ Withdrawals
+ 145: 0000:         TSF.AMTCASHC,           \ Cash count
+ 146: 0000:         TSF.NETCCURR,           \ Net cash currency face value
+ 147: 0000:         TSF.NETCCCURR           ! Net cash count currency face value
+ 148: 0000: 
+ 149: 0000: 
+ 150: 0000: FUNCTION TSF.SET PUBLIC
+ 151: 0014: 
+ 152: 0014:     TSF.FILE.NAME$  = "EALTERMS"
+ 153: 0023:     TSF.RECL%       = 63
+ 154: 002c:     TSF.REPORT.NUM% = 29
+ 155: 0035: 
+ 156: 0035:     DIM TSF.REC$(8) ! Dimension of TSF.REC array
+ 157: 005c: 
+ 158: 005c: END FUNCTION
+ 159: 0068: 
+ 160: 0068: \----------------------------------------------------------------------------
+ 161: 0068: 
+ 162: 0068: FUNCTION READ.TSF PUBLIC
+ 163: 007c: 
+ 164: 007c:     INTEGER*1 READ.TSF
+ 165: 007c: 
+ 166: 007c:     READ.TSF = 1
+ 167: 0080: 
+ 168: 0080:     IF END #TSF.SESS.NUM% THEN READ.TSF.ERROR
+ 169: 0094: 
+ 170: 0094:     IF TSF.TERM.STORE$ = PACK$("9999") THEN BEGIN                          !CSWM
+ 171: 00b5: 
+ 172: 00b5:         READ FORM "T3 2I1 C8 C2 2C1 4I1 C3 C40" ;                       \   !GJT 
+ 173: 0163:             #TSF.SESS.NUM% KEY TSF.TERM.STORE$;                         \  !CSWM
+ 174: 0163:                 TSF.INDICAT0%,                                          \
+ 175: 0163:                 TSF.INDICAT1%,                                          \
+ 176: 0163:                 TSF.TSL.NAME$,                                          \
+ 177: 0163:                 TSF.MONITOR$,                                           \
+ 178: 0163:                 TSF.TLOGFLAG$,                                          \
+ 179: 0163:                 TSF.RCPSTATUS$,                                         \  !CSWM
+ 180: 0163:                 TSF.MTSL.CUT.OFF%,                                      \  !CSWM
+ 181: 0163:                 TSF.CUSTD.CUT.OFF%,                                     \  !CSWM
+ 182: 0163:                 TSF.ACSAL.CUT.OFF%,                                     \   !DRD
+ 183: 0163:                 TSF.TILLBAG.CUT.OFF%,                                   \   !EAH
+ 184: 0163:                 TSF.INVDUE.DATE$,                                       \   !GJT
+ 185: 0163:                 TSF.SPACE$
+ 186: 0163: 
+ 187: 0163:     ENDIF ELSE BEGIN                                                       !CSWM
+ 188: 0163: 
+ 189: 0163: \       READ FORM "T3 2I1 7I4 C4 C2 C1 I1 I2 C4 C2 2I4 C7" ;            \   !HMW
+ 190: 0163:         READ FORM "T3 2I1 7I4 C4 C2 C1 I2 C5 C2 2I4 C7" ;               \   !HMW
+ 191: 0250:             #TSF.SESS.NUM% KEY TSF.TERM.STORE$;                         \  !CSWM
+ 192: 0250:                 TSF.INDICAT0%,                                          \
+ 193: 0250:                 TSF.INDICAT1%,                                          \
+ 194: 0250:                 TSF.GROSSPOS,                                           \
+ 195: 0250:                 TSF.GROSSNEG,                                           \
+ 196: 0250:                 TSF.NETCASH,                                            \
+ 197: 0250:                 TSF.NETNCASH,                                           \
+ 198: 0250:                 TSF.AMTLOAN,                                            \
+ 199: 0250:                 TSF.AMTPICKU,                                           \
+ 200: 0250:                 TSF.AMTCASHC,                                           \
+ 201: 0250:                 TSF.OPERATOR$,                                          \
+ 202: 0250:                 TSF.TRANSNUM$,                                          \
+ 203: 0250:                 TSF.SIGN.OFF.DELAY$,                                    \  !CSWM
+ 204: 0250:                 TSF.INDICAT2%,                                          \  !CSWM
+ 205: 0250: \               TSF.SC.LEVEL%,                                          \   !HMW
+ 206: 0250:                 TSF.USER$,                                              \
+ 207: 0250:                 TSF.CONTROLLER$,                                        \
+ 208: 0250:                 TSF.NETCCURR,                                           \  !FSWM
+ 209: 0250:                 TSF.NETCCCURR,                                          \  !FSWM
+ 210: 0250:                 TSF.SPACE$
+ 211: 0250: 
+ 212: 0250:     ENDIF                                                                  !CSWM
+ 213: 0250: 
+ 214: 0250:     READ.TSF = 0
+ 215: 0254:     EXIT FUNCTION
+ 216: 0256: 
+ 217: 0256: READ.TSF.ERROR:
+ 218: 0256: 
+ 219: 0256:     CURRENT.REPORT.NUM% = TSF.REPORT.NUM%
+ 220: 0264:     FILE.OPERATION$ = "R"
+ 221: 0273:     CURRENT.CODE$ = TSF.TERM.STORE$
+ 222: 0289: 
+ 223: 0289: END FUNCTION
+ 224: 0298: 
+ 225: 0298: \----------------------------------------------------------------------------
+ 226: 0298: 
+ 227: 0298: FUNCTION READ.TSF.LOCK PUBLIC
+ 228: 02ac: 
+ 229: 02ac:     INTEGER*1 READ.TSF.LOCK
+ 230: 02ac: 
+ 231: 02ac:     READ.TSF.LOCK = 1
+ 232: 02b0: 
+ 233: 02b0:     IF END #TSF.SESS.NUM% THEN READ.TSF.LOCK.ERROR
+ 234: 02c4: 
+ 235: 02c4:     IF TSF.TERM.STORE$ = PACK$("9999") THEN BEGIN                          !CSWM
+ 236: 02e5: 
+ 237: 02e5:         READ FORM "T3 2I1 C8 C2 2C1 4I1 C3 C40" ;                       \   !GJT 
+ 238: 0393:             #TSF.SESS.NUM% AUTOLOCK KEY TSF.TERM.STORE$;                \  !CSWM
+ 239: 0393:                 TSF.INDICAT0%,                                          \
+ 240: 0393:                 TSF.INDICAT1%,                                          \
+ 241: 0393:                 TSF.TSL.NAME$,                                          \
+ 242: 0393:                 TSF.MONITOR$,                                           \
+ 243: 0393:                 TSF.TLOGFLAG$,                                          \
+ 244: 0393:                 TSF.RCPSTATUS$,                                         \  !CSWM
+ 245: 0393:                 TSF.MTSL.CUT.OFF%,                                      \  !CSWM
+ 246: 0393:                 TSF.CUSTD.CUT.OFF%,                                     \  !CSWM
+ 247: 0393:                 TSF.ACSAL.CUT.OFF%,                                     \   !DRD
+ 248: 0393:                 TSF.TILLBAG.CUT.OFF%,                                   \   !EAH
+ 249: 0393:                 TSF.INVDUE.DATE$,                                       \   !GJT
+ 250: 0393:                 TSF.SPACE$
+ 251: 0393: 
+ 252: 0393:     ENDIF ELSE BEGIN                                                       !CSWM
+ 253: 0393: 
+ 254: 0393: \       READ FORM "T3 2I1 7I4 C4 C2 C1 I1 I2 C4 C2 2I4 C7" ;            \   !HMW
+ 255: 0393:         READ FORM "T3 2I1 7I4 C4 C2 C1 I2 C5 C2 2I4 C7" ;               \   !HMW
+ 256: 0480:             #TSF.SESS.NUM% AUTOLOCK KEY TSF.TERM.STORE$;                \  !CSWM
+ 257: 0480:                 TSF.INDICAT0%,                                          \
+ 258: 0480:                 TSF.INDICAT1%,                                          \
+ 259: 0480:                 TSF.GROSSPOS,                                           \
+ 260: 0480:                 TSF.GROSSNEG,                                           \
+ 261: 0480:                 TSF.NETCASH,                                            \
+ 262: 0480:                 TSF.NETNCASH,                                           \
+ 263: 0480:                 TSF.AMTLOAN,                                            \
+ 264: 0480:                 TSF.AMTPICKU,                                           \
+ 265: 0480:                 TSF.AMTCASHC,                                           \
+ 266: 0480:                 TSF.OPERATOR$,                                          \
+ 267: 0480:                 TSF.TRANSNUM$,                                          \
+ 268: 0480:                 TSF.SIGN.OFF.DELAY$,                                    \  !CSWM
+ 269: 0480:                 TSF.INDICAT2%,                                          \  !CSWM
+ 270: 0480: \               TSF.SC.LEVEL%,                                          \   !HMW
+ 271: 0480:                 TSF.USER$,                                              \
+ 272: 0480:                 TSF.CONTROLLER$,                                        \
+ 273: 0480:                 TSF.NETCCURR,                                           \  !FSWM
+ 274: 0480:                 TSF.NETCCCURR,                                          \  !FSWM
+ 275: 0480:                 TSF.SPACE$
+ 276: 0480: 
+ 277: 0480:     ENDIF                                                                  !CSWM
+ 278: 0480: 
+ 279: 0480:     READ.TSF.LOCK = 0
+ 280: 0484:     EXIT FUNCTION
+ 281: 0486: 
+ 282: 0486: READ.TSF.LOCK.ERROR:
+ 283: 0486: 
+ 284: 0486:     CURRENT.REPORT.NUM% = TSF.REPORT.NUM%
+ 285: 0494:     FILE.OPERATION$ = "R"
+ 286: 04a3:     CURRENT.CODE$ = TSF.TERM.STORE$
+ 287: 04b9: 
+ 288: 04b9: END FUNCTION
+ 289: 04c8: 
+ 290: 04c8: \----------------------------------------------------------------------------
+ 291: 04c8: 
+ 292: 04c8: FUNCTION WRITE.TSF PUBLIC
+ 293: 04dc: 
+ 294: 04dc:     INTEGER*1 WRITE.TSF
+ 295: 04dc: 
+ 296: 04dc:     WRITE.TSF = 1
+ 297: 04e0: 
+ 298: 04e0:     IF END #TSF.SESS.NUM% THEN WRITE.TSF.ERROR
+ 299: 04f4: 
+ 300: 04f4:     IF TSF.TERM.STORE$ = PACK$("9999") THEN BEGIN                          !CSWM
+ 301: 0515: 
+ 302: 0515:         WRITE FORM "C2 2I1 C8 C2 2C1 4I1 C3 C40" ;                      \   !GJT 
+ 303: 05ee:             #TSF.SESS.NUM%;                                             \  !CSWM
+ 304: 05ee:                 TSF.TERM.STORE$,                                        \
+ 305: 05ee:                 TSF.INDICAT0%,                                          \
+ 306: 05ee:                 TSF.INDICAT1%,                                          \
+ 307: 05ee:                 TSF.TSL.NAME$,                                          \
+ 308: 05ee:                 TSF.MONITOR$,                                           \
+ 309: 05ee:                 TSF.TLOGFLAG$,                                          \
+ 310: 05ee:                 TSF.RCPSTATUS$,                                         \  !CSWM
+ 311: 05ee:                 TSF.MTSL.CUT.OFF%,                                      \  !CSWM
+ 312: 05ee:                 TSF.CUSTD.CUT.OFF%,                                     \  !CSWM
+ 313: 05ee:                 TSF.ACSAL.CUT.OFF%,                                     \   !DRD
+ 314: 05ee:                 TSF.TILLBAG.CUT.OFF%,                                   \   !EAH
+ 315: 05ee:                 TSF.INVDUE.DATE$,                                       \   !GJT
+ 316: 05ee:                 TSF.SPACE$
+ 317: 05ee: 
+ 318: 05ee:     ENDIF ELSE BEGIN                                                       !CSWM
+ 319: 05ee: 
+ 320: 05ee: \       WRITE FORM "C2 2I1 7I4 C4 C2 C1 I1 I2 C4 C2 2I4 C7" ;           \   !HMW
+ 321: 05ee:         WRITE FORM "C2 2I1 7I4 C4 C2 C1 I2 C5 C2 2I4 C7" ;              \   !HMW
+ 322: 0728:             #TSF.SESS.NUM%;                                             \  !CSWM
+ 323: 0728:                 TSF.TERM.STORE$,                                        \
+ 324: 0728:                 TSF.INDICAT0%,                                          \
+ 325: 0728:                 TSF.INDICAT1%,                                          \
+ 326: 0728:                 TSF.GROSSPOS,                                           \
+ 327: 0728:                 TSF.GROSSNEG,                                           \
+ 328: 0728:                 TSF.NETCASH,                                            \
+ 329: 0728:                 TSF.NETNCASH,                                           \
+ 330: 0728:                 TSF.AMTLOAN,                                            \
+ 331: 0728:                 TSF.AMTPICKU,                                           \
+ 332: 0728:                 TSF.AMTCASHC,                                           \
+ 333: 0728:                 TSF.OPERATOR$,                                          \
+ 334: 0728:                 TSF.TRANSNUM$,                                          \
+ 335: 0728:                 TSF.SIGN.OFF.DELAY$,                                    \  !CSWM
+ 336: 0728:                 TSF.INDICAT2%,                                          \  !CSWM
+ 337: 0728: \               TSF.SC.LEVEL%,                                          \   !HMW
+ 338: 0728:                 TSF.USER$,                                              \
+ 339: 0728:                 TSF.CONTROLLER$,                                        \
+ 340: 0728:                 TSF.NETCCURR,                                           \  !FSWM
+ 341: 0728:                 TSF.NETCCCURR,                                          \  !FSWM
+ 342: 0728:                 TSF.SPACE$
+ 343: 0728: 
+ 344: 0728:     ENDIF                                                                  !CSWM
+ 345: 0728: 
+ 346: 0728:     WRITE.TSF = 0
+ 347: 072c:     EXIT FUNCTION
+ 348: 072e: 
+ 349: 072e: WRITE.TSF.ERROR:
+ 350: 072e: 
+ 351: 072e:     CURRENT.REPORT.NUM% = TSF.REPORT.NUM%
+ 352: 073c:     FILE.OPERATION$ = "W"
+ 353: 074b:     CURRENT.CODE$ = TSF.TERM.STORE$
+ 354: 0761: 
+ 355: 0761: END FUNCTION
+ 356: 0770: 
+ 357: 0770: \----------------------------------------------------------------------------
+ 358: 0770: 
+ 359: 0770: FUNCTION WRITE.TSF.UNLOCK PUBLIC
+ 360: 0784: 
+ 361: 0784:     INTEGER*1 WRITE.TSF.UNLOCK
+ 362: 0784: 
+ 363: 0784:     WRITE.TSF.UNLOCK = 1
+ 364: 0788: 
+ 365: 0788:     IF END #TSF.SESS.NUM% THEN WRITE.TSF.UNLOCK.ERROR
+ 366: 079c: 
+ 367: 079c:     IF TSF.TERM.STORE$ = PACK$("9999") THEN BEGIN                          !CSWM
+ 368: 07bd: 
+ 369: 07bd:         WRITE FORM "C2 2I1 C8 C2 2C1 4I1 C3 C40" ;                      \   !GJT  
+ 370: 0896:             #TSF.SESS.NUM% AUTOUNLOCK;                                  \  !CSWM
+ 371: 0896:                  TSF.TERM.STORE$,                                       \
+ 372: 0896:                  TSF.INDICAT0%,                                         \
+ 373: 0896:                  TSF.INDICAT1%,                                         \
+ 374: 0896:                  TSF.TSL.NAME$,                                         \
+ 375: 0896:                  TSF.MONITOR$,                                          \
+ 376: 0896:                  TSF.TLOGFLAG$,                                         \
+ 377: 0896:                  TSF.RCPSTATUS$,                                        \  !CSWM
+ 378: 0896:                  TSF.MTSL.CUT.OFF%,                                     \  !CSWM
+ 379: 0896:                  TSF.CUSTD.CUT.OFF%,                                    \  !CSWM
+ 380: 0896:                  TSF.ACSAL.CUT.OFF%,                                    \   !DRD
+ 381: 0896:                  TSF.TILLBAG.CUT.OFF%,                                  \   !EAH
+ 382: 0896:                  TSF.INVDUE.DATE$,                                      \   !GJT
+ 383: 0896:                  TSF.SPACE$
+ 384: 0896: 
+ 385: 0896:     ENDIF ELSE BEGIN                                                !CSWM
+ 386: 0896: 
+ 387: 0896: \       WRITE FORM "C2 2I1 7I4 C4 C2 C1 I1 I2 C4 C2 2I4 C7" ;           \   !HMW
+ 388: 0896:         WRITE FORM "C2 2I1 7I4 C4 C2 C1 I2 C5 C2 2I4 C7" ;              \   !HMW
+ 389: 09d0:             #TSF.SESS.NUM% AUTOUNLOCK;                                  \  !CSWM
+ 390: 09d0:                 TSF.TERM.STORE$,                                        \
+ 391: 09d0:                 TSF.INDICAT0%,                                          \
+ 392: 09d0:                 TSF.INDICAT1%,                                          \
+ 393: 09d0:                 TSF.GROSSPOS,                                           \
+ 394: 09d0:                 TSF.GROSSNEG,                                           \
+ 395: 09d0:                 TSF.NETCASH,                                            \
+ 396: 09d0:                 TSF.NETNCASH,                                           \
+ 397: 09d0:                 TSF.AMTLOAN,                                            \
+ 398: 09d0:                 TSF.AMTPICKU,                                           \
+ 399: 09d0:                 TSF.AMTCASHC,                                           \
+ 400: 09d0:                 TSF.OPERATOR$,                                          \
+ 401: 09d0:                 TSF.TRANSNUM$,                                          \
+ 402: 09d0:                 TSF.SIGN.OFF.DELAY$,                                    \  !CSWM
+ 403: 09d0:                 TSF.INDICAT2%,                                          \  !CSWM
+ 404: 09d0: \               TSF.SC.LEVEL%,                                          \   !HMW
+ 405: 09d0:                 TSF.USER$,                                              \
+ 406: 09d0:                 TSF.CONTROLLER$,                                        \
+ 407: 09d0:                 TSF.NETCCURR,                                           \  !FSWM
+ 408: 09d0:                 TSF.NETCCCURR,                                          \  !FSWM
+ 409: 09d0:                 TSF.SPACE$
+ 410: 09d0: 
+ 411: 09d0:     ENDIF                                                                  !CSWM
+ 412: 09d0: 
+ 413: 09d0:     WRITE.TSF.UNLOCK = 0
+ 414: 09d4:     EXIT FUNCTION
+ 415: 09d6: 
+ 416: 09d6: WRITE.TSF.UNLOCK.ERROR:
+ 417: 09d6: 
+ 418: 09d6:     CURRENT.REPORT.NUM% = TSF.REPORT.NUM%
+ 419: 09e4:     FILE.OPERATION$ = "W"
+ 420: 09f3:     CURRENT.CODE$ = TSF.TERM.STORE$
+ 421: 0a09:     
+ 422: 0a09: END FUNCTION
+ 423: 0a18: 
+ 424: 0a18: \----------------------------------------------------------------------------
+ 425: 0a18: 
+ 426: 0a18: FUNCTION WRITE.TSF.UNLOCK.HOLD PUBLIC
+ 427: 0a2c: 
+ 428: 0a2c:     INTEGER*1 WRITE.TSF.UNLOCK.HOLD
+ 429: 0a2c: 
+ 430: 0a2c:     WRITE.TSF.UNLOCK.HOLD = 1
+ 431: 0a30: 
+ 432: 0a30:     IF END #TSF.SESS.NUM% THEN WRITE.TSF.UNLOCK.HOLD.ERROR
+ 433: 0a44: 
+ 434: 0a44:     IF TSF.TERM.STORE$ EQ PACK$("9999") THEN BEGIN                         !CSWM
+ 435: 0a65: 
+ 436: 0a65:         WRITE FORM "C2 2I1 C8 C2 2C1 4I1 C3 C40" ; HOLD                 \   !GJT 
+ 437: 0b3e:             #TSF.SESS.NUM% AUTOUNLOCK;                                  \  !CSWM
+ 438: 0b3e:                  TSF.TERM.STORE$,                                       \
+ 439: 0b3e:                  TSF.INDICAT0%,                                         \
+ 440: 0b3e:                  TSF.INDICAT1%,                                         \
+ 441: 0b3e:                  TSF.TSL.NAME$,                                         \
+ 442: 0b3e:                  TSF.MONITOR$,                                          \
+ 443: 0b3e:                  TSF.TLOGFLAG$,                                         \
+ 444: 0b3e:                  TSF.RCPSTATUS$,                                        \  !CSWM
+ 445: 0b3e:                  TSF.MTSL.CUT.OFF%,                                     \  !CSWM
+ 446: 0b3e:                  TSF.CUSTD.CUT.OFF%,                                    \  !CSWM
+ 447: 0b3e:                  TSF.ACSAL.CUT.OFF%,                                    \   !DRD
+ 448: 0b3e:                  TSF.TILLBAG.CUT.OFF%,                                  \   !EAH 
+ 449: 0b3e:                  TSF.INVDUE.DATE$,                                      \   !GJT
+ 450: 0b3e:                  TSF.SPACE$
+ 451: 0b3e: 
+ 452: 0b3e:     ENDIF ELSE BEGIN                                                       !CSWM
+ 453: 0b3e: 
+ 454: 0b3e: \       WRITE FORM "C2 2I1 7I4 C4 C2 C1 I1 I2 C4 C2 2I4 C7" ; HOLD      \   !HMW
+ 455: 0b3e:         WRITE FORM "C2 2I1 7I4 C4 C2 C1 I2 C5 C2 2I4 C7" ;              \   !HMW
+ 456: 0c78:             #TSF.SESS.NUM% AUTOUNLOCK;                                  \  !CSWM
+ 457: 0c78:                 TSF.TERM.STORE$,                                        \
+ 458: 0c78:                 TSF.INDICAT0%,                                          \
+ 459: 0c78:                 TSF.INDICAT1%,                                          \
+ 460: 0c78:                 TSF.GROSSPOS,                                           \
+ 461: 0c78:                 TSF.GROSSNEG,                                           \
+ 462: 0c78:                 TSF.NETCASH,                                            \
+ 463: 0c78:                 TSF.NETNCASH,                                           \
+ 464: 0c78:                 TSF.AMTLOAN,                                            \
+ 465: 0c78:                 TSF.AMTPICKU,                                           \
+ 466: 0c78:                 TSF.AMTCASHC,                                           \
+ 467: 0c78:                 TSF.OPERATOR$,                                          \
+ 468: 0c78:                 TSF.TRANSNUM$,                                          \
+ 469: 0c78:                 TSF.SIGN.OFF.DELAY$,                                    \  !CSWM
+ 470: 0c78:                 TSF.INDICAT2%,                                          \  !CSWM
+ 471: 0c78: \               TSF.SC.LEVEL%,                                          \   !HMW
+ 472: 0c78:                 TSF.USER$,                                              \
+ 473: 0c78:                 TSF.CONTROLLER$,                                        \
+ 474: 0c78:                 TSF.NETCCURR,                                           \  !FSWM
+ 475: 0c78:                 TSF.NETCCCURR,                                          \  !FSWM
+ 476: 0c78:                 TSF.SPACE$
+ 477: 0c78: 
+ 478: 0c78:     ENDIF                                                                  !CSWM
+ 479: 0c78: 
+ 480: 0c78:     WRITE.TSF.UNLOCK.HOLD = 0
+ 481: 0c7c:     EXIT FUNCTION
+ 482: 0c7e: 
+ 483: 0c7e: WRITE.TSF.UNLOCK.HOLD.ERROR:
+ 484: 0c7e: 
+ 485: 0c7e:     CURRENT.REPORT.NUM% = TSF.REPORT.NUM%
+ 486: 0c8c:     FILE.OPERATION$ = "W"
+ 487: 0c9b:     CURRENT.CODE$ = TSF.TERM.STORE$
+ 488: 0cb1: 
+ 489: 0cb1: END FUNCTION
+ 490: 0cc0: 
+ 491: 0cc0: \----------------------------------------------------------------------------
+ 492: 0cc0: 
+ 493: 0cc0: FUNCTION READ.TSF.SECTOR PUBLIC
+ 494: 0cd4: 
+ 495: 0cd4:     INTEGER*1 READ.TSF.SECTOR
+ 496: 0cd4: 
+ 497: 0cd4:     READ.TSF.SECTOR = 1
+ 498: 0cd8: 
+ 499: 0cd8:     IF END #TSF.SESS.NUM% THEN READ.TSF.SECTOR.ERROR
+ 500: 0cec: 
+ 501: 0cec:     READ FORM "C4,8C63,C4";                                             \
+ 502: 0de0:         #TSF.SESS.NUM%,TSF.SECTOR.NUM%;                                 \
+ 503: 0de0:             TSF.SECTOR.INFO$,                                           \
+ 504: 0de0:             TSF.REC$(1),                                                \
+ 505: 0de0:             TSF.REC$(2),                                                \
+ 506: 0de0:             TSF.REC$(3),                                                \
+ 507: 0de0:             TSF.REC$(4),                                                \
+ 508: 0de0:             TSF.REC$(5),                                                \
+ 509: 0de0:             TSF.REC$(6),                                                \
+ 510: 0de0:             TSF.REC$(7),                                                \
+ 511: 0de0:             TSF.REC$(8),                                                \
+ 512: 0de0:             TSF.SECTOR.FILLER$
+ 513: 0de0: 
+ 514: 0de0:     READ.TSF.SECTOR = 0
+ 515: 0de4:     EXIT FUNCTION
+ 516: 0de6: 
+ 517: 0de6: READ.TSF.SECTOR.ERROR:
+ 518: 0de6: 
+ 519: 0de6:     CURRENT.REPORT.NUM% = TSF.REPORT.NUM%
+ 520: 0df4:     FILE.OPERATION$ = "R"
+ 521: 0e03:     CURRENT.CODE$ = TSF.SECTOR.INFO$
+ 522: 0e19: 
+ 523: 0e19: END FUNCTION
+ 524: 0e28: 
+ 525: 0e28: End of Compilation

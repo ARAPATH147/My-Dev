@@ -1,0 +1,981 @@
+:group.APPLDMP
+.******************************************************************************
+:help.
+:name.Introduction
+:descr.Introduction
+:body.
+:p.The debug dump feature of the 4680 Application Debugger allows a user
+to recreate the application status at the time of an application dump.
+You can then find the instruction that caused the dump and check the
+variables values. Special application dump routines are provided
+to help you with debugging application problems.
+
+:p.For the application debug dump feature to be useful, you must
+have the exact source and .CDV files for the application
+that dumped. If the executable, source, and .CDV files don't
+match exactly, the application dump feature may appear to work. But,
+the line number or variable values could be incorrect. Minor changes
+in any of these three files may cause major differences in the
+debug dump feature output.
+
+:p.Remember to change your configuration in the terminal or controller
+characteristics to take a dump when an application abends. Without an
+application dump the dump debug feature is useless.
+
+:p.Special application dump facilities are provided to allow a 4680 BASIC
+Application programmer to cause an application dump. They are provided
+in linkable object files: EWTDUMPM for medium memory model programs and
+EWTDUMPL for large memory model programs. These files are included on
+the 4680 Application Debugger diskette. To cause a 4680 BASIC
+application dump just call EWTDUMPM or EWTDUMPL from your ON ERROR
+routine and include the correct object file when you link your
+application.
+
+:p.C language programmers should cause a dump by storing
+data to a zero pointer. This will cause a privilege violation
+and cause a dump.
+
+:p.The Debug Dump (DEBUGDMP) program must have the application dump data
+extracted from the terminal or controller dump. To extract the data and
+determine which application caused the dump use the EWTXDMP
+program. It consists of the EWTXDMP.286 and EWTMSG.DAT files.
+Both files are available on the 4680 Application Debugger version 1.03
+diskette.
+:p.
+The extractor command syntax is:
+:xmp.
+  EWTXDMP TYPEDUMP [NODE=??][DIR=???][-QUERY][PROC=????][PID=????]
+:exmp.
+:ul.
+:li.TYPEDUMP required field, it must be CONTROLLER or TERMINAL.
+This field identifies the type of dump you want to
+extract.
+
+:li.NODE=??        Optional field, enter the node(??) of the controller
+that has the dump file on its disk.  An
+example is NODE=CC for the ADXLXCCN:: controller.
+The default is the controller that initiated the
+EWTXDMP program.  You must not specify NODE or
+NODE=AA on a non-LAN system.
+
+:li.DIR=???        Optional field, enter the directory that contains
+the APPLDUMP file.  If the APPLDUMP file does not
+exist in the directory specified, it is created.
+If the APPLDUMP file exists, the new extracted
+dump will append to the file.  The default is the
+current directory.
+
+:li.-QUERY         Optional field, lists all applications present in
+the dump that are available for extraction. The
+process name, the process ID, and the command line
+that started the process are listed.
+
+:li.PROC=????      Optional field, extracts the process with the name
+'????'. To obtain the correct PROCess number from a dump
+use the -QUERY option.
+If multiple processes have the
+same name only the first one is extracted.
+
+:li.PID=????       Optional field, extracts the process whose process
+ID is the hex number '????'.
+To obtain the correct PID (Process IDentification) number from a dump
+use the -QUERY option.
+:p.
+EWTXDMP extracts the necessary application information from the
+dump and appends it to the APPLDUMP file. Make sure that the
+correct system .BSX files are available.  The BSX file required
+is ADXCT4SY.BSX for controller dumps or ADXRT1SL.BSX for terminal
+dumps.  If the program that dumped was not an application,
+running EWTXDMP will not add an entry to the APPLDUMP file.
+
+:p.The application dump screen is very similar to the debugger screen.
+Certain debugger functions are not available, like run or single step.
+
+:p.The debug dump command syntax is:
+:xmp
+     DEBUGDMP [options] [directory]
+:exmp
+options
+:xmp.
+    /C = force case sensitivity for variable names.
+    /M = Use the Medium Memory model.
+:exmp.
+directory enter the directory that contains the APPLDUMP file.
+The default is the current directory.
+
+:p.DEBUGDMP displays a menu of the dump files
+ready for debug from the APPLDUMP file.
+Select the desired file and press enter.
+
+:p.The last line executed is automatically displayed. Use the
+memory display capabilities and the Display Function Call Trace option
+to diagnose the problem causing the dump.
+Refer to User's guide for information
+on the debug dump feature and active keys when using DEBUGDMP.                                       0
+:ehelp.
+.******************************************************************************
+:help.
+:name.Fast path commands
+:descr.Fast path commands
+:body.
+:p.
+A "Fast Path" command is activated by pressing the capital
+letter in the command name. For example, a W A would first pull down
+the Window menu and then select the Assembler screen.
+:ehelp.
+.******************************************************************************
+:help.
+:name.BASIC Language debugging
+:descr.BASIC Language debugging
+:body.
+:p.
+4680 BASIC source files must have a .BAS extension.
+:p.
+Two versions of the 4680 BASIC Compiler are available.
+BASIC Compiler versions prior to 3.0 limit
+debugger function.
+:p.
+Use the BAS.BAT file, included on the debugger diskette,
+to prepare BASIC version 3 programs for debugging
+or use these five steps. A detailed explanation follows.
+:xmp.
+4680 BASIC ver 3 or later
+-----------------------------
+"BASIC filename [DF]"
+"DEBUGFRM filename"
+"LINK86 filename [S,M,DBI]"
+"DEBUGCDV filename"
+"DEBUG filename"
+
+4680 BASIC prior to ver 3
+------------------------------
+"BASIC filename [VF]"
+"DEBUGFRM filename"
+"LINK86 filename [S,M]"
+"DEBUGCDV filename"
+"DEBUG filename"
+:exmp.
+:ol compact.
+:li."BASIC filename [ DF... ]" to compile a filename.BAS file.
+The "D" option generates debug information within the .OBJ file
+and the "F" option saves the listing file. The listing file
+is used in the next step.
+Versions of 4680 BASIC prior to version 3, use the [V,F] options.
+:li."DEBUGFRM filename nn" where nn is the read buffer
+size of 1 to 31 Kbytes, the default is 16K bytes. This operation
+adjusts the listing file for the debugger and creates a filename.LCV
+file. This LCV file will serve as the source file during debug.
+DEBUGFRM must be run on each listing file / object file.
+:li."LINK86 filename [S,M,DBI]" to Link and
+create a filename.286 file.
+This operation creates the .MAP, .LIN and .SYM
+files for DEBUGCDV.
+The S option instructs LINK86 to search the library and only link
+externally referenced modules.
+The M option creates the .MAP file.
+The DBI option creates the necessary information for the debugger.
+Don't use the DBI option with 4680 BASIC versions prior to version 3.
+Do not use the NOLIN option.
+:p.
+Don't use either the %NOLIST or the %DEBUG -V option in your source
+code. These options will cause problems when the debugger attempts
+to match the source line numbers with the executable file.
+:eol.
+:ehelp.
+.*******************************************************************
+:help.
+:name.COBOL Language Debug
+:descr.COBOL Language Debug
+:body.
+:p.
+The only COBOL compiler supported by the 4680 Application Debugger is the
+Micro Focus (R)** COBOL/2 (R) Compiler version 2.5.25 or later.
+The 4680 runtimes for COBOL are included in the
+IBM 4680 Support for COBOL Version 2 (product 5621-084 feature 5041).
+For the 4680 Application Debugger to support dynamic link the
+following APARS must be installed on the base 4680 operating system,
+Version 2 needs IR95441 and Version 4 needs IR95612.
+COBOL copy files containing code must be copied to the source
+file prior to compiling.
+Alternately, using the list option of the compiler will generate a
+listing file with the copy files imbedded. This listing can then be
+compiled for debugger use.
+:p.To prepare a COBOL program for debugging use the CBL.BAT file supplied
+with the debugger or use the following four steps:
+:ol compact.
+:li."COBOL filename EANIM OS(FLEXOS)"
+:li."LINK86 filename[S,M,DBI],LCOBOL.L86[S]"
+:li."DEBUGCDV filename"
+:li."DEBUG filename"
+:eol.
+A detailed explination of the four steps follows:
+:ol compact.
+:li."COBOL filename EANIM OS(FLEXOS)"
+to compile a COBOL source program for debugger use.
+The EANIM option will make the compiler put information on line
+numbers and symbols into the .OBJ file for use by the Application
+Debugger.
+The OS(FLEXOS) defines the base operating systems as 4680.
+:li."LINK86 filename[S,M,DBI],LCOBOL.L86[S]"
+to Link and create a filename.286 file.
+This operation creates the
+MAP, LIN and SYM files for the DEBUGCDV operation.
+The S option instructs LINK86 to search the library and only link
+externally referenced modules.
+The M option creates the MAP file.
+The DBI option creates the necessary information for the debugger.
+LCOBOL.L86 is the 4680 COBOL runtime support.
+If you are using an .INP file, make sure that the these options
+are included.
+:li."DEBUGCDV filename" to create a filename.CDV file required for
+debugging.
+:li."DEBUG filename" to start the debugger. Filename refers to the 286
+name created by the previous operations. The debugger will require the
+source, .CDV and .286 files.
+:ehelp.
+.****************************************************************************
+:help.
+:name.C Language debugging
+:descr.C Language debugging
+:body.
+:p.The only C compiler supported by the Application Debugger is
+the Meta Ware (R)** High C (R) Compiler 1.7 available through
+Digital Research (R)** as part of their EPOS Application Developers Kit.
+:p.Use the MW.BAT file, included on the 4680 Application Debugger
+diskette or use the following 4 steps to prepare C code for debugging:
+:ol compact.
+:li."HC filename -mm big -DEBUG -ON CODEVIEW -OFF OPTIMIZE_XJMP
+-OFF OPTIMIZE_FP -OFF OPTIMIZE_XJMP_SPACE"
+:li."LINK86 filename [S,M,DBI],HCBE.L86[S]"
+:li."DEBUGCDV filename"
+:li."DEBUG filename"
+:eol.
+A detailed explination of the four steps follows:
+:ol compact.
+:li."HC filename -mm big -DEBUG - ON CODEVIEW -OFF OPTIMIZE_XJMP
+-OFF OPTIMIZE_FP -OFF OPTIMIZE_XJMP_SPACE"
+to compile a filename.C file.
+The "-mm big option uses the BIG memory model for compiling.
+The "-DEBUG" and -ON CODEVIEW options provides support
+for the debugger.
+The -OFF OPTIMIZE_... options turn off optimization features that are
+confusing while debugging. For your production level compile using
+optimization options can significantly enhance the performance
+of your program.
+The DEBUG and ON CODEVIEW options should be turned
+on for your final compile. This will support codeview data for use
+with the DEBUG DUMP feature of the debugger.
+:li."LINK86 filename [S,M,DBI],HCBE.L86[S]"
+to Link and create a filename.286 file.
+This operation creates the
+MAP, LIN and SYM files for the DEBUGCDV operation.
+The S option instructs LINK86 to search the library and only link
+externally referenced modules.
+The M option creates the MAP file.
+The DBI option creates the necessary information for the debugger.
+The HCBE is linked in for the BIG memory model.
+If you are using an .INP file, make sure that the these options
+are included.
+:li."DEBUGCDV filename" to create a filename.CDV file required for
+debugging.
+:li."DEBUG filename" to start the debugger. Filename refers to the 286
+name created by the previous operations. The debugger will require the
+source, .CDV and .286 files.
+Refer to the section "Starting Debug"
+in this document for information on options and arguments.
+:eol.
+:ehelp.
+.****************************************************************************
+.****************************************************************************
+:help.
+:name.keys
+:descr.keys
+:body.
+:ul.
+:li.F1 - Displays context-sensitive help message.
+:li.F3 - Exit the debug dump feature.
+:li.F7 - Place the cursor at the last instruction executed.
+:li.F8 - Locate a given function name.
+:li.F10 - Jump to the action bar.
+:li.Plus(+) - Show the variable window.
+:li.Equal(=) - Display the variable at the cursor.
+:li.Minus(-) - Hide the variable window.
+:li.* - Display the data pointed to by the variable at the cursor.
+:li.Ins - Place the variable at the cursor into the data window.
+:li.Up Arrow - Move the cursor up one line.
+:li.Down Arrow - Move the cursor down one line.
+:li.Right Arrow - Move the cursor right one word.
+:li.Tab - Move the cursor right one word.
+:li.Backspace - Move the cursor left one word.
+:li.Left Arrow - Move the cursor left one word.
+:li.SHIFT+TAB - Move the cursor left one word.
+:li.PgUp - Scroll to the previous window.
+:li.PgDn - Scroll to the next window.
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.about
+:descr.about
+:body.
+:p.
+Use this option to find the release and version of this program.
+:ehelp.
+.******************************************************************************
+:help.
+:name.assembler window
+:descr.assembler window
+:body.
+:p.
+You are viewing the assembler code for the application being debugged.
+:p.
+The first character of the options on the pull down can be used to select
+that option. The letter H will jump into the Help pull-down.
+Many of the options on the pull-down windows are available on hot-key.
+For a list of the hot-keys press F1 then F9.
+:p.
+To switch to the source code window, press W to go to the window pull-down
+and select S for the source option. If you cannot switch to the source
+window or if the debug dump feature started in assembler window there is a problem
+with the method used to create the files used by DEBUGDMP. Refer to
+the section of help about 4680 Basic code. To see
+the index of help screens press F1 then F11.
+:ehelp.
+.******************************************************************************
+:help.
+:name.assembler window help
+:descr.assembler window help
+:body.
+:p.
+Use this option to switch to the assembler window
+from the source code window. Selecting this option will
+cause the screen to display the assembler code related to
+the source code that is currently displayed.
+:Note: Source screen only.
+:ehelp.
+.******************************************************************************
+:help.
+:name.basic real format
+:descr.basic real format
+:body.
+:p.
+A 4680 basic real number is represented by an 18 digit
+BCD floating point format. It is in engineering notation. The
+DEBUGGER or Debug Dump tool shows a basic real number as:
+:ul.
+:li.[-]3.1415926E[-]3
+:eol.
+A minus sign preceding the number makes the number negative. A minus sign
+after the E makes the engineering notation negative. For example:
+:ul.
+:li.3.1415926E3 is equal to 3141.5926
+:li.3.1415926E-3 is equal to 0.0031415926.
+:li.-3.1415926E-3 is equal to -0.0031415926.
+:eol.
+:ehelp.
+.******************************************************************************
+:help.
+:name.basic string format
+:descr.basic string format
+:body.
+:p.
+A string in 4680 basic is a string of ASCII characters preceded by
+its length.
+The DEBUGDMP shows the characters in the string for the specified length.
+First it shows the string in hexadecimal format followed by an ASCII
+interpretation of these characters.
+:ehelp.
+.******************************************************************************
+:help.
+:name.character format
+:descr.character format
+:body.
+:p.
+The DEBUGDMP shows a single character for a requested character format
+of a variable.
+:ehelp.
+.******************************************************************************
+:help.
+:name.commands
+:descr.commands
+:body.
+:p.
+Use this option to select a command. A menu of the commands will display
+in that window. The following command is available:
+:ul.
+:li.Find last line executed
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.continue debugging
+:descr.continue debugging
+:body.
+:p.
+Continue debugging the current program do not exit.
+:ehelp.
+.******************************************************************************
+:help.
+:name.Debug Dump overview
+:descr.Debug Dump overview
+:body.
+:p.
+The 4680 Application Debug Dump Feature is
+source level interactive debugging environment
+for 4680 application dumps that occurred while
+running under 4680 Operating System.
+Debug Dump is designed to speed up problem resolution of application dumps.
+:p.
+The Debug Dump Feature of the 4680 Application Debugger supports any 4680
+Controller PC or PS/2 that is running
+4680 OS V2R1 or later.  It will support terminal dumps.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display
+:descr.display
+:body.
+:p.
+Use this option to display an item. A menu of the items available will
+display in a pull down window. The following items are available:
+:ul.
+:li.Variable - display the contents of variable name.
+:li.What variable points to - display the contents of memory using a pointer.
+:li.Memory - display the memory location specified.
+:li.Function call trace - display a history of functions called.
+:li.Segment information - display the segment description.
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display memory
+:descr.display memory
+:body.
+:p.
+Display the contents of the memory location specified. You will be
+asked to enter the memory location in the hexadecimal format -> segment:
+offset.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display ptr variable
+:descr.display ptr variable
+:body.
+:p.
+Enter the name of the pointer and the DEBUGDMP will display the
+memory location contents associated with this pointer.
+:ehelp.
+.******************************************************************************
+:help.
+:name.display variable
+:descr.display variable
+:body.
+:p.
+Use this option to display the contents of a variable.
+You will be asked to enter a variable name.
+This option will only display global variables or local variables
+of the function you are executing. To display other variables use the
+insert key with the cursor on the variable.
+:ehelp.
+.******************************************************************************
+:help.
+:name.double format
+:descr.double format
+:body.
+:p.
+This is an eight byte floating point number. It is shown in
+scientific notation (1.2345E-3).
+:ehelp.
+.******************************************************************************
+:help.
+:name.dump selection
+:descr.dump selection
+:body.
+:p.
+Displayed is a list of the formatted dumps in the APPLDUMP file. To
+run the application debug dump program against a dump, select the
+desired dump and press enter.
+:p.
+If the debug dump screen is displayed in assembler you do not have
+the correct source or .CDV file for this dump. Refer to the 4680
+Application Debugger User's Guide Appendix F for more information.
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter address
+:descr.enter address
+:body.
+:p.
+Enter the address you want to display. It must be in the format
+segment:offset. 0 thru 9 and A thru F are valid input.
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter display variable
+:descr.enter display variable
+:body.
+:p.
+Enter the name of the variable you want to display.
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter function name
+:descr.enter function name
+:body.
+:p.
+Enter the name of the function you want to locate.
+:ehelp.
+.******************************************************************************
+:help.
+:name.enter search string
+:descr.enter search string
+:body.
+:p.
+Enter the string you wish to find.
+:p.
+If you enter the string in lower case, a case insensitive search is
+initiated. If, however, you enter any uppercase characters as a search
+argument, a case sensitive (exact) search is performed.
+:ehelp.
+.******************************************************************************
+:help.
+:name.exit
+:descr.exit
+:body.
+:p.
+This option allows you to exit Debug Dump.
+If you select this option a pull down menu will give
+you the option of exiting or continuing to debug the current program.
+:ehelp.
+.******************************************************************************
+:help.
+:name.exit debugger
+:descr.exit debugger
+:body.
+:p.
+Exit the debug dump and terminate the dump being debugged.
+:ehelp.
+.******************************************************************************
+:help.
+:name.extended help
+:descr.extended help
+:body.
+:p.
+The Application Debug Dump start syntax is:
+:p.
+DEBUGDMP
+:p.The debug dump feature of the 4680 Application Debugger allows a
+user to recreate the application status at the time an application dump
+occurred. You can then look at the variables at the time of the dump.
+The debug dump screen is very similar to the debugger screen. Certain
+debugger function are not available like run and single step.
+:p.Before using the debug dump feature a dump must have the necessary
+data extracted. To do this run the EWTXDMP program. EWTXDMP.286
+is on the 4680 application debugger diskette.
+This is the application dump extractor
+program. It extracts the necessary application information from the
+dump and appends it to the APPLDUMP file.
+If the program that dumped was not an application, running EWTXDMP
+on a dump file has no effect.
+:p.After your dump has been extracted, you now can
+initiate the DEBUGDMP program. It will display a menu of the dump files
+ready for debug from the APPLDUMP file.
+Select the desired file and press enter. The next screen will be a
+display of the source code associated with the program that dumped.
+The same rules apply to the DEBUGDMP as for DEBUG. If you don't have
+a .CDV and source file(s) that match the dump file, DEBUGDMP will
+not function correctly.
+:ehelp.
+.******************************************************************************
+:help.
+:name.find executing line
+:descr.find executing line
+:body.
+:p.
+Switch to the file containing the statement or instruction that was
+the last line executed and place the cursor on that line. Same function as
+F7.
+:ehelp.
+.******************************************************************************
+:help.
+:name.find next string
+:descr.find next string
+:body.
+:p.
+Locate the next occurrence of a given string.
+:p.
+Note: Source screen only.
+:ehelp.
+.******************************************************************************
+:help.
+:name.float format
+:descr.float format
+:body.
+:p.
+This is a four byte floating point number. It is in scientific
+notation (1.2345E-3).
+:ehelp.
+.******************************************************************************
+:help.
+:name.format variable
+:descr.format variable
+:body.
+:p.
+With the format variable option you can change the format
+that a variable is displayed. The format options are:
+:ul.
+:li.Hex - Series of hexadecimal values
+:li.Char - Hex value followed by ASCII character in quotes
+:li.Int - Two-byte decimal
+:li.Long - Four-byte decimal
+:li.Float - Four-byte floating-point
+:li.Double - Eight-byte floating-point
+:li.Ptr - Selector:Offset = memory contents
+:li.Char array - Hex value (16 bytes per line) followed by
+corresponding ASCII chars
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.function call trace
+:descr.function call trace
+:body.
+:p.
+Use this option to
+display a history of the functions called since the program started.
+:ehelp.
+.******************************************************************************
+:help.
+:name.function trace
+:descr.function trace
+:body.
+:p.
+The function call trace is a history of the functions called since
+the test application program started.
+:p.
+You can display the source code for any of the functions in the
+history by selecting that function and pressing enter.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help
+:descr.help
+:body.
+:p.
+Use the help option to select help on one of the available topics.
+The options are:
+:ol compact.
+:li. help for help
+:li. extended help
+:li. keys help
+:li. help index
+:li. about
+:eol.
+:p.
+When you request help, a help window is displayed. The kind of help you get
+is determined by the position of the cursor when you request help.
+:p.
+To get help for an action bar or pull-down selection, highlight the
+selection and then press F1.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help: extended help
+:descr.help: extended help
+:body.
+:p.
+Selecting the extended help option will display a description
+of the Debug Dump Feature  and its capabilities.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help: help for help
+:descr.help: help for help
+:body.
+:p.
+Selecting the help for help option will display a summary of how
+to use the help facility.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help for help
+:descr.help for help
+:body.
+:p.
+Help is always available. You can obtain help at any time by pressing the F1
+key.
+:p.
+When you request help, a help window is displayed. The kind of help you get
+is determined by the position of the cursor when you request help.
+:p.
+To get help for an action bar or pull-down selection, highlight the
+selection and then press F1.
+:p.
+A help choice appears on the action bar. The associated help pull-down
+include additional help for:
+:ul.
+:li. Extended help
+:li. Keys help
+:li. Help index
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help index
+:descr.help index
+:body.
+:p.
+Select this option or
+press F11 to display an index of all the available help screens.
+From this help index menu you can
+highlight the desired subject and press enter to get help with any
+subject in the index.
+:ehelp.
+.******************************************************************************
+:help.
+:name.help not available
+:descr.help not available
+:body.
+:p.
+Help is not available for this selection.
+:ehelp.
+.******************************************************************************
+:help.
+:name.hex format
+:descr.hex format
+:body.
+:p.
+The format of hex data is 16 bytes of hexadecimal data followed by an
+ASCII interpretation.
+:ehelp.
+.******************************************************************************
+:help.
+:name.index
+:descr.index
+:body.
+:p.
+Selecting this option will display a list of available help screens.
+Highlight the desired item you want help with and press enter.
+:ehelp.
+.******************************************************************************
+:help.
+:name.integer format
+:descr.integer format
+:body.
+:p.
+The format for integers is a signed number between -32,768 and
+32,767.
+:ehelp.
+.******************************************************************************
+:help.
+:name.keys help
+:descr.keys help
+:body.
+:p.
+Selecting the keys option will display a short description
+of the keys and their function.
+:ehelp.
+.******************************************************************************
+:help.
+:name.long format
+:descr.long format
+:body.
+:p.
+The format for long is a signed number between -2,147,483,648 and
+2,147,483,647.
+:ehelp.
+.******************************************************************************
+:help.
+:name.next file
+:descr.next file
+:body.
+:p.
+Switch to the next available window. Does nothing if only one
+debug window is active.
+:ehelp.
+:help.
+:name.other formats
+:descr.other formats
+:body.
+:p.
+The compiler determines the format of the variable.
+:ehelp.
+.******************************************************************************
+:help.
+:name.resume
+:descr.resume
+:body.
+:p.
+Resume the current debug session, this is the alternative to
+exiting.
+:ehelp.
+.******************************************************************************
+:help.
+:name.search
+:descr.search
+:body.
+:p.
+With this option you can start a search of the code being debugged.
+Search has the following options:
+:ul.
+:li.for a string
+:li.for the next string
+:li.for a function
+:eul.
+:ehelp.
+.******************************************************************************
+:help.
+:name.search for string
+:descr.search for string
+:body.
+:p.
+Locate the first occurrence of a given string. You will be asked to
+enter the string to be found.
+The search only searches the current displayed source code. It does not
+search all the modules.
+:p.
+Note: Source screen only.
+:ehelp.
+.******************************************************************************
+:help.
+:name.search for function
+:descr.search for function
+:body.
+:p.
+Locate a function. You will be asked to enter the name of the
+function.
+:p.
+Note: While in the assembler window you can enter a function as segment:offset.
+:ehelp.
+.******************************************************************************
+:help.
+:name.segment data
+:descr.segment data
+:body.
+:p.
+The information displayed is from the local descriptor table. It displays
+the protect mode address space for the application being debugged. For more
+information on the data refer to the Programmers Reference manual from "Intel
+Corporation" for the 80286 or 80386 microprocessor.
+:p.
+The segment data includes the segment number for each segment, the selector
+number, the selector limit or size, the flag bits associated with this
+segment, and the attributes which describe the type of access and whether or
+not it is active. The selectors all define 16 bit segments. The 32 bit mode
+of the 80386 is not used.
+:ehelp.
+.******************************************************************************
+:help.
+:name.segment information
+:descr.segment information
+:body.
+:p.
+Use this option to
+display information on all the code and data segments used by the current
+application. It will display the local descriptor table. The table defines
+the protect mode address space for the application.
+:ehelp.
+.******************************************************************************
+:help.
+:name.source window
+:descr.source window
+:body.
+:p.
+The source window is a look at the source code being debugged.
+:p.
+The first character of the options on the pull down can be used to select
+that option. The letter H will jump into the Help pull-down.
+Many of the options on the pull-down windows are available on hot-key.
+For a list of the hot-keys press F1 then F9.
+:p.
+To switch to the assembler code window, press W to go to the window pull-down
+and select A for the source option. Refer to
+the section of help on 4680 Basic language debug. To see
+the index of help screens press F1 then F11.
+:ehelp.
+.******************************************************************************
+:help.
+:name.source window help
+:descr.source window help
+:body.
+:p.
+Use this option to switch to the source window. Selecting this option will
+display the source window instead of the current window. The source window is
+used to display and control the application being debugged from a
+source level.
+:ehelp.
+.******************************************************************************
+:help.
+:name.storage pointed to
+:descr.storage pointed to
+:body.
+:p.
+Display the contents of the memory location that a given variable
+is pointing to. You will be asked to enter the name of the pointer.
+:ehelp.
+.******************************************************************************
+:help.
+:name.storage window
+:descr.storage window
+:body.
+:p.
+The storage window is a look at the selected variables from
+the application being debugged.
+To return to the previous screen press the ESCape key.
+:p.
+The action bar functions are not available in the storage window.
+Instead a function key line is shown on the next line after the storage
+window.
+:p.Displaying arrays in the storage window.
+:p.To display or change a specific element of an array use the storage
+window. For example, if I had a BASIC array XARRAY, which is a two
+dimensional array of strings (XARRAY (5,5)) 6 elements of 6 strings each.
+We will ignore the zero position for simplicity.
+Then it is 5 elements of 5 strings each.
+To modify the second string in the third array, I would go to the
+storage window, W S for window storage or use the pull down menus.
+Then, in the storage window, enter XARRAY(3,2) to display the string.
+To change the contents type over the contents of the displayed string.
+:p.Displaying the contents of an array will always show the element
+of the array as it was type defined in the program. If the program
+was 4680 BASIC and the array was not type defined, the result is a
+BASIC real array. A BASIC Real number is stored in binary coded decimal
+(BCD) floating point form. Each number occupies 10 byte of memory. The
+first byte is the sign and the exponent, the remaining nine bytes are the
+mantissa. Refer to the IBM 4680 BASIC Language Reference for more
+information on BASIC Real representation.
+:p.For the Debug Dump feature to display a C language array use square brackets.
+For example, the previously mentioned XARRAY in C is displayed by the
+command XARRAY[3][2].
+:p.
+:Note: The data displayed on the storage window can be modified. For example:
+You can change the value of a variable to test an error path of a function.
+:ehelp.
+.******************************************************************************
+:help.
+:name.storage window help
+:descr.storage window help
+:body.
+:p.
+Use this option to switch to the storage window. Selecting this option will
+display the storage window over your current window. The storage window is
+used to display the variables and pointers selected in the application being
+debugged.
+:ehelp.
+.******************************************************************************
+:help.
+:name.window
+:descr.window
+:body.
+:p.
+With this option you can switch the display screen to another window.
+The following windows are available:
+:ul.
+:li.Source or assembler
+:li.Storage
+:li.Registers (assembler screen only)
+:li.Next window in a ring
+:eul.
+:ehelp.
+.******************************************************************************
+:egroup.

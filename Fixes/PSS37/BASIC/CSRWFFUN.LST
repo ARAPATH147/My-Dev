@@ -1,0 +1,279 @@
+   1: 0000: \*******************************************************************************
+   2: 0000: \*******************************************************************************
+   3: 0000: \***
+   4: 0000: \***                CSR WORKFILE FUNCTIONS
+   5: 0000: \***
+   6: 0000: \***                REFERENCE    : CSRWFFUN.BAS
+   7: 0000: \***
+   8: 0000: \*******************************************************************************
+   9: 0000: \*******************************************************************************
+  10: 0000:                                                
+  11: 0000:    INTEGER*2 GLOBAL             \
+  12: 0000:       CURRENT.REPORT.NUM%
+  13: 0000:       
+  14: 0000:    STRING GLOBAL                \
+  15: 0000:       CURRENT.CODE$,            \
+  16: 0000:       FILE.OPERATION$
+  17: 0000:       
+  18: 0000:    %INCLUDE CSRWFDEC.J86
+  19: 0000: \******************************************************************************
+  20: 0000: \******************************************************************************
+  21: 0000: \***
+  22: 0000: \***         %INCLUDE FOR CSR WORKFILE - FIELD DECLARATIONS
+  23: 0000: \***                                     FILE REFERENCE PARAMETERS
+  24: 0000: \***        
+  25: 0000: \***               FILE TYPE    : Direct    
+  26: 0000: \***
+  27: 0000: \***               REFERENCE    : CSRWFDEC.J86
+  28: 0000: \***
+  29: 0000: \***               DATE OF LAST AMENDMENT -  09/10/92
+  30: 0000: \***
+  31: 0000: \******************************************************************************
+  32: 0000: \*******************************************************************************
+  33: 0000: 
+  34: 0000:   STRING GLOBAL                     \
+  35: 0000:     CSRWF.FILE.NAME$,		    \
+  36: 0000:     CSRWF.NULL$,		    \
+  37: 0000:     CSRWF.FILLER$,                  \ 1 byte ASC, contains "!" 
+  38: 0000:     CSRWF.DELETE.FLAG$,             \ 1 byte ASC "Y" or "N" 
+  39: 0000:     CSRWF.RECORD.TYPE$,             \ 2 byte ASC 
+  40: 0000:     CSRWF.RECORD$,                  \ 20 byte ASC 
+  41: 0000:     CSRWF.LIST.FREQ$,               \ 1 byte ASC 
+  42: 0000:     CSRWF.UNIT.NO$,                 \ 2 byte ASC 
+  43: 0000:     CSRWF.ORDER.DATE$,              \ 6 byte ASC YYMMDD
+  44: 0000:     CSRWF.ORDER.TIME$,              \ 4 byte ASC HHMM
+  45: 0000:     CSRWF.UNPROCESS.FLAG$,          \ 1 byte ASC "Y" or "N" 
+  46: 0000:     CSRWF.QTY.1$,                   \ 3 byte ASC 
+  47: 0000:     CSRWF.QTY.2$,                   \ 3 byte ASC 
+  48: 0000:     CSRWF.QTY.2.IN.SINGLES$,        \ 3 byte ASC 
+  49: 0000:     CSRWF.P.ITEM.CODE$,             \ 4 byte UPD, with check digit   
+  50: 0000:     CSRWF.CSRITEM.UPDATED.FLAG$,    \ 1 byte ASC "Y" or "N"
+  51: 0000:     CSRWF.CSRIMF.UPDATED.FLAG$,     \ 1 byte ASC "Y" or "N" 
+  52: 0000:     CSRWF.HD.ONORDER.UPDATED.FLAG$, \ 1 byte ASC "Y" or "N" 
+  53: 0000:     CSRWF.ONORDER.UPDATED.FLAG$,    \ 1 byte ASC "Y" or "N" 
+  54: 0000:     CSRWF.ITEM.CODE$,               \ 7 byte ASC, with check digit  
+  55: 0000:     CSRWF.ITEM.COUNT$,              \ 3 byte ASC
+  56: 0000:     CSRWF.LIST.COUNT$,              \ 3 byte ASC
+  57: 0000:     CSRWF.TERMINAL.NO$,             \ 3 byte ASC
+  58: 0000:     CSRWF.ZERO.OVERRIDE.FLAG$       ! 1 byte ASC "Y" or "N"
+  59: 0000:     
+  60: 0000: INTEGER*2 GLOBAL                 \
+  61: 0000:     CSRWF.REPORT.NUM%,		 \
+  62: 0000:     CSRWF.RECL%,		 \
+  63: 0000:     CSRWF.SESS.NUM%,		 \
+  64: 0000:     CSRWF.RECORD.NO%     
+  65: 0000:    
+  66: 0000:   FUNCTION CSRWF.SET PUBLIC
+  67: 0014: \***************************
+  68: 0014: 
+  69: 0014:     CSRWF.RECL% = 24
+  70: 001d:     CSRWF.FILLER$ = "!"
+  71: 002c:     CSRWF.REPORT.NUM%  = 189      
+  72: 0035:     CSRWF.FILE.NAME$  = "CSRWF"
+  73: 0044:     CSRWF.NULL$ = STRING$(24, CHR$(0))
+  74: 005d: 
+  75: 005d:   END FUNCTION
+  76: 0069: \-----------------------------------------------------------------------------
+  77: 0069:     
+  78: 0069:                                                                      
+  79: 0069:   FUNCTION READ.CSRWF PUBLIC
+  80: 007d: \****************************
+  81: 007d: 
+  82: 007d:     INTEGER*2 READ.CSRWF
+  83: 007d:     
+  84: 007d:     READ.CSRWF = 1
+  85: 0082:       
+  86: 0082:     IF END #CSRWF.SESS.NUM% THEN READ.ERROR
+  87: 0096:     READ FORM "C24"; #CSRWF.SESS.NUM%, CSRWF.RECORD.NO%; CSRWF.RECORD$
+  88: 00c7:     CSRWF.RECORD.TYPE$ = LEFT$(CSRWF.RECORD$,2)
+  89: 00e6:     IF CSRWF.RECORD.NO% = 1 THEN                                 \
+  90: 00f0:        CSRWF.DELETE.FLAG$ = MID$(CSRWF.RECORD$,2,1)             :\
+  91: 010f:        CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$,2)                    \
+  92: 0131:     ELSE                                                         \
+  93: 0131:        IF CSRWF.RECORD.TYPE$ = "XH" THEN                         \ Header
+  94: 014a:           CSRWF.LIST.FREQ$ = MID$(CSRWF.RECORD$,3,1)            :\
+  95: 0169:           CSRWF.UNIT.NO$ = MID$(CSRWF.RECORD$,4,2)              :\
+  96: 0188:           CSRWF.ORDER.DATE$ = MID$(CSRWF.RECORD$,6,6)           :\
+  97: 01a7:           CSRWF.ORDER.TIME$ = MID$(CSRWF.RECORD$,12,4)          :\ 
+  98: 01c6:           CSRWF.HD.ONORDER.UPDATED.FLAG$ = MID$(CSRWF.RECORD$,17,1):\
+  99: 01e5:           CSRWF.UNPROCESS.FLAG$ = MID$(CSRWF.RECORD$,18,1)      :\
+ 100: 0204:           CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$,19)                \
+ 101: 0226:        ELSE                                                      \
+ 102: 0226:           IF CSRWF.RECORD.TYPE$ = "XC" THEN                      \ Counted
+ 103: 023f:              CSRWF.QTY.1$ = MID$(CSRWF.RECORD$,3,3)             :\
+ 104: 025e:              CSRWF.QTY.2$ = MID$(CSRWF.RECORD$,6,3)             :\
+ 105: 027d:              CSRWF.P.ITEM.CODE$ = MID$(CSRWF.RECORD$,10,4)      :\
+ 106: 029c:              CSRWF.QTY.2.IN.SINGLES$ = MID$(CSRWF.RECORD$,14,3)     :\
+ 107: 02bb:              CSRWF.CSRITEM.UPDATED.FLAG$ = MID$(CSRWF.RECORD$,17,1) :\
+ 108: 02da:              CSRWF.CSRIMF.UPDATED.FLAG$ = MID$(CSRWF.RECORD$,18,1)  :\
+ 109: 02f9:              CSRWF.ONORDER.UPDATED.FLAG$ = MID$(CSRWF.RECORD$,19,1) :\
+ 110: 0318:              CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$,19)             \    
+ 111: 033a:           ELSE                                                   \
+ 112: 033a:              IF CSRWF.RECORD.TYPE$ = "XO" THEN                   \ Override
+ 113: 0353:                 CSRWF.ITEM.CODE$ = MID$(CSRWF.RECORD$,3,7)      :\
+ 114: 0372:                 CSRWF.QTY.1$ = MID$(CSRWF.RECORD$,10,3)         :\
+ 115: 0391:                 CSRWF.CSRITEM.UPDATED.FLAG$ = MID$(CSRWF.RECORD$,14,1) :\
+ 116: 03b0:                 CSRWF.CSRIMF.UPDATED.FLAG$ = MID$(CSRWF.RECORD$,15,1)  :\
+ 117: 03cf:                 CSRWF.ONORDER.UPDATED.FLAG$ = MID$(CSRWF.RECORD$,16,1) :\
+ 118: 03ee:                 CSRWF.ZERO.OVERRIDE.FLAG$ = MID$(CSRWF.RECORD$,17,1) :\
+ 119: 040d:                 CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$,17)         :\
+ 120: 042e:             ELSE                                                 \
+ 121: 042e:                IF CSRWF.RECORD.TYPE$ = "XT" THEN                :\
+ 122: 0444:                   CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$,5)         \
+ 123: 0465:                ELSE                                              \
+ 124: 0465:                   IF CSRWF.RECORD.TYPE$ = "XZ" THEN              \
+ 125: 047b:                      CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$,11)            
+ 126: 049a:     READ.CSRWF = 0
+ 127: 049f:     EXIT FUNCTION
+ 128: 04a1:     
+ 129: 04a1:     READ.ERROR:
+ 130: 04a1:     
+ 131: 04a1:        CURRENT.CODE$ = CSRWF.RECORD$
+ 132: 04b7:        FILE.OPERATION$ = "R"
+ 133: 04c6:        CURRENT.REPORT.NUM% = CSRWF.REPORT.NUM%
+ 134: 04d4:        
+ 135: 04d4:        EXIT FUNCTION   
+ 136: 04d6: 
+ 137: 04d6:    END FUNCTION
+ 138: 04e5: \-----------------------------------------------------------------------------
+ 139: 04e5:    
+ 140: 04e5:    
+ 141: 04e5:    FUNCTION WRITE.CSRWF PUBLIC
+ 142: 04f9: \*******************************   
+ 143: 04f9:    
+ 144: 04f9:       INTEGER*2 WRITE.CSRWF
+ 145: 04f9:       
+ 146: 04f9:       WRITE.CSRWF = 1
+ 147: 04fe:       
+ 148: 04fe:       IF CSRWF.RECORD.NO% = 1 THEN                              \
+ 149: 0508:          CSRWF.RECORD$ = CSRWF.FILLER$ +                        \
+ 150: 052f:                          CSRWF.DELETE.FLAG$                     \
+ 151: 052f:       ELSE                                                      \
+ 152: 052f:          IF CSRWF.RECORD.TYPE$ = "XH" THEN                      \               
+ 153: 0545:             CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +                \
+ 154: 05ae:                             CSRWF.LIST.FREQ$ +                  \
+ 155: 05ae:                             CSRWF.UNIT.NO$ +                    \
+ 156: 05ae:                             CSRWF.ORDER.DATE$ +                 \
+ 157: 05ae:                             CSRWF.ORDER.TIME$ +                 \               
+ 158: 05ae:                             CSRWF.FILLER$ +                     \
+ 159: 05ae:                             CSRWF.HD.ONORDER.UPDATED.FLAG$ +    \
+ 160: 05ae:                             CSRWF.UNPROCESS.FLAG$               \
+ 161: 05ae:          ELSE                                                   \
+ 162: 05ae:             IF CSRWF.RECORD.TYPE$ = "XC" THEN                   \               
+ 163: 05c4:                CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +             \
+ 164: 0638:                                CSRWF.QTY.1$ +                   \           
+ 165: 0638:                                CSRWF.QTY.2$ +                   \           
+ 166: 0638:                                CSRWF.FILLER$ +                  \
+ 167: 0638:                                CSRWF.P.ITEM.CODE$ +             \
+ 168: 0638:                                CSRWF.QTY.2.IN.SINGLES$ +        \
+ 169: 0638:                                CSRWF.CSRITEM.UPDATED.FLAG$ +    \
+ 170: 0638:                                CSRWF.CSRIMF.UPDATED.FLAG$ +     \
+ 171: 0638:                                CSRWF.ONORDER.UPDATED.FLAG$      \
+ 172: 0638:             ELSE                                                \
+ 173: 0638:                IF CSRWF.RECORD.TYPE$ = "XO" THEN                \               
+ 174: 064e:                   CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +          \
+ 175: 06b7:                                   CSRWF.ITEM.CODE$ +            \
+ 176: 06b7:                                   CSRWF.QTY.1$ +                \
+ 177: 06b7:                                   CSRWF.FILLER$ +               \           
+ 178: 06b7:                                   CSRWF.CSRITEM.UPDATED.FLAG$ + \
+ 179: 06b7:                                   CSRWF.CSRIMF.UPDATED.FLAG$ +  \
+ 180: 06b7:                                   CSRWF.ONORDER.UPDATED.FLAG$ + \
+ 181: 06b7:                                   CSRWF.ZERO.OVERRIDE.FLAG$     \
+ 182: 06b7:                ELSE                                             \                                   
+ 183: 06b7:                   IF CSRWF.RECORD.TYPE$ = "XT" THEN             \               
+ 184: 06cd:                      CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +       \
+ 185: 06f3:                                      CSRWF.ITEM.COUNT$          \
+ 186: 06f3:                   ELSE                                          \
+ 187: 06f3:                      IF CSRWF.RECORD.TYPE$ = "XZ" THEN          \
+ 188: 0709:                         CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +    \
+ 189: 0738:                                         CSRWF.TERMINAL.NO$ +    \
+ 190: 0738:                                         CSRWF.LIST.COUNT$                                            
+ 191: 0738: 
+ 192: 0738:       CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$ + CSRWF.NULL$, 24)
+ 193: 0774:       
+ 194: 0774:       IF END #CSRWF.SESS.NUM% THEN WRITE.ERROR
+ 195: 0788:       WRITE FORM "C24"; #CSRWF.SESS.NUM%, CSRWF.RECORD.NO%; CSRWF.RECORD$
+ 196: 07b9:       WRITE.CSRWF = 0
+ 197: 07be:       EXIT FUNCTION
+ 198: 07c0:       
+ 199: 07c0:       WRITE.ERROR:
+ 200: 07c0:       
+ 201: 07c0:          CURRENT.CODE$ = CSRWF.RECORD$
+ 202: 07d6:          FILE.OPERATION$ = "O"
+ 203: 07e5:          CURRENT.REPORT.NUM% = CSRWF.REPORT.NUM%
+ 204: 07f3:          
+ 205: 07f3:          EXIT FUNCTION 
+ 206: 07f5:                                                                                                   
+ 207: 07f5:    END FUNCTION 
+ 208: 0804: \-----------------------------------------------------------------------------
+ 209: 0804:    
+ 210: 0804:                                      
+ 211: 0804:   FUNCTION WRITE.CSRWF.HOLD PUBLIC
+ 212: 0818: \**********************************
+ 213: 0818: 
+ 214: 0818:       INTEGER*2 WRITE.CSRWF.HOLD
+ 215: 0818:       
+ 216: 0818:       WRITE.CSRWF.HOLD = 1  
+ 217: 081d:    
+ 218: 081d:       IF CSRWF.RECORD.NO% = 1 THEN                              \
+ 219: 0827:          CSRWF.RECORD$ = CSRWF.FILLER$ +                        \
+ 220: 084e:                          CSRWF.DELETE.FLAG$                     \
+ 221: 084e:       ELSE                                                      \
+ 222: 084e:          IF CSRWF.RECORD.TYPE$ = "XH" THEN                      \               
+ 223: 0864:             CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +                \
+ 224: 08cd:                             CSRWF.LIST.FREQ$ +                  \
+ 225: 08cd:                             CSRWF.UNIT.NO$ +                    \
+ 226: 08cd:                             CSRWF.ORDER.DATE$ +                 \
+ 227: 08cd:                             CSRWF.ORDER.TIME$ +                 \               
+ 228: 08cd:                             CSRWF.FILLER$ +                     \
+ 229: 08cd:                             CSRWF.HD.ONORDER.UPDATED.FLAG$ +    \
+ 230: 08cd:                             CSRWF.UNPROCESS.FLAG$               \
+ 231: 08cd:          ELSE                                                   \
+ 232: 08cd:             IF CSRWF.RECORD.TYPE$ = "XC" THEN                   \               
+ 233: 08e3:                CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +             \
+ 234: 0957:                                CSRWF.QTY.1$ +                   \           
+ 235: 0957:                                CSRWF.QTY.2$ +                   \           
+ 236: 0957:                                CSRWF.FILLER$ +                  \
+ 237: 0957:                                CSRWF.P.ITEM.CODE$ +             \
+ 238: 0957:                                CSRWF.QTY.2.IN.SINGLES$ +        \
+ 239: 0957:                                CSRWF.CSRITEM.UPDATED.FLAG$ +    \
+ 240: 0957:                                CSRWF.CSRIMF.UPDATED.FLAG$ +     \
+ 241: 0957:                                CSRWF.ONORDER.UPDATED.FLAG$      \
+ 242: 0957:             ELSE                                                \
+ 243: 0957:                IF CSRWF.RECORD.TYPE$ = "XO" THEN                \               
+ 244: 096d:                   CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +          \
+ 245: 09d6:                                   CSRWF.ITEM.CODE$ +            \
+ 246: 09d6:                                   CSRWF.QTY.1$ +                \
+ 247: 09d6:                                   CSRWF.FILLER$ +               \           
+ 248: 09d6:                                   CSRWF.CSRITEM.UPDATED.FLAG$ + \
+ 249: 09d6:                                   CSRWF.CSRIMF.UPDATED.FLAG$ +  \
+ 250: 09d6:                                   CSRWF.ONORDER.UPDATED.FLAG$ + \
+ 251: 09d6:                                   CSRWF.ZERO.OVERRIDE.FLAG$     \
+ 252: 09d6:                ELSE                                             \                                 
+ 253: 09d6:                   IF CSRWF.RECORD.TYPE$ = "XT" THEN             \               
+ 254: 09ec:                      CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +       \
+ 255: 0a12:                                      CSRWF.ITEM.COUNT$          \
+ 256: 0a12:                   ELSE                                          \
+ 257: 0a12:                      IF CSRWF.RECORD.TYPE$ = "XZ" THEN          \
+ 258: 0a28:                         CSRWF.RECORD$ = CSRWF.RECORD.TYPE$ +    \
+ 259: 0a57:                                         CSRWF.TERMINAL.NO$ +    \
+ 260: 0a57:                                         CSRWF.LIST.COUNT$                                            
+ 261: 0a57: 
+ 262: 0a57:       CSRWF.RECORD$ = LEFT$(CSRWF.RECORD$ + CSRWF.NULL$, 24)
+ 263: 0a93:       
+ 264: 0a93:       IF END #CSRWF.SESS.NUM% THEN WRITE.HOLD.ERROR
+ 265: 0aa7:       WRITE FORM "C24"; HOLD #CSRWF.SESS.NUM%, CSRWF.RECORD.NO%; CSRWF.RECORD$
+ 266: 0ad8:       WRITE.CSRWF.HOLD = 0
+ 267: 0add:       EXIT FUNCTION
+ 268: 0adf:       
+ 269: 0adf:       WRITE.HOLD.ERROR:
+ 270: 0adf:       
+ 271: 0adf:          CURRENT.CODE$ = CSRWF.RECORD$
+ 272: 0af5:          FILE.OPERATION$ = "O"
+ 273: 0b04:          CURRENT.REPORT.NUM% = CSRWF.REPORT.NUM%
+ 274: 0b12:          
+ 275: 0b12:          EXIT FUNCTION   
+ 276: 0b14:                                                                                                   
+ 277: 0b14:    END FUNCTION 
+ 278: 0b23:                                      
+ 279: 0b23: End of Compilation

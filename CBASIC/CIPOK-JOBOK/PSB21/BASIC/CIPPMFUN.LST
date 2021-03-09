@@ -1,0 +1,109 @@
+   1: 0000: \/******************************************************************/
+   2: 0000: \/*                                                                */
+   3: 0000: \/* CIPPM File Functions                                           */
+   4: 0000: \/*                                                                */
+   5: 0000: \/* REFERENCE   : CIPPMFUN.BAS                                     */
+   6: 0000: \/*                                                                */
+   7: 0000: \/* VERSION A.          Neil Bennett.              16 April 2007   */
+   8: 0000: \/*                                                                */
+   9: 0000: \/******************************************************************/
+  10: 0000: 
+  11: 0000:    INTEGER*2 GLOBAL CURRENT.REPORT.NUM%
+  12: 0000: 
+  13: 0000:    STRING GLOBAL    CURRENT.CODE$,                                  \
+  14: 0000:                     FILE.OPERATION$
+  15: 0000: 
+  16: 0000:    %INCLUDE CIPPMDEC.J86
+  17: 0000: \/******************************************************************/
+  18: 0000: \/*                                                                */
+  19: 0000: \/* CIPPM FILE GLOBAl VARIABLE DECLARATIONS                        */
+  20: 0000: \/*                                                                */
+  21: 0000: \/* REFERENCE   : CIPPMDEC.J86                                     */
+  22: 0000: \/*                                                                */
+  23: 0000: \/* VERSION A.          Neil Bennett.              16 APRIL 2007   */
+  24: 0000: \/*                                                                */
+  25: 0000: \/******************************************************************/
+  26: 0000: 
+  27: 0000:    STRING GLOBAL                \
+  28: 0000:       CIPPM.BKUP.NAME$,         \
+  29: 0000:       CIPPM.FILE.NAME$,         \
+  30: 0000:                                 \
+  31: 0000:       CIPPM.RCD$                !
+  32: 0000: 
+  33: 0000:    INTEGER*2 GLOBAL             \
+  34: 0000:       CIPPM.REPORT.NUM%,        \
+  35: 0000:       CIPPM.SESS.NUM%           !
+  36: 0000: 
+  37: 0000: \/******************************************************************/
+  38: 0000: 
+  39: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  40: 0000: \/* FUNCTION CIPPM.SET                                             */
+  41: 0000: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  42: 0000: 
+  43: 0000:    FUNCTION CIPPM.SET PUBLIC
+  44: 0014: 
+  45: 0014:       INTEGER*1 CIPPM.SET
+  46: 0014: 
+  47: 0014:       CIPPM.REPORT.NUM% = 741
+  48: 001d:       CIPPM.FILE.NAME$  = "CIPPMR"
+  49: 002c:       CIPPM.BKUP.NAME$  = "ADXLXACN::D:\ADX_UDT1\CIPPMR.BAK"
+  50: 003b: 
+  51: 003b:    END FUNCTION
+  52: 004a: 
+  53: 004a: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  54: 004a: \/* FUNCTION READ.CIPPM                                            */
+  55: 004a: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  56: 004a: 
+  57: 004a:    FUNCTION READ.CIPPM PUBLIC
+  58: 005e: 
+  59: 005e:       INTEGER*2 READ.CIPPM
+  60: 005e: 
+  61: 005e:       READ.CIPPM = 1
+  62: 0063: 
+  63: 0063:       IF END #CIPPM.SESS.NUM% THEN READ.ERROR
+  64: 0077:       READ #CIPPM.SESS.NUM%; LINE CIPPM.RCD$
+  65: 0090: 
+  66: 0090:       READ.CIPPM = 0
+  67: 0095:    EXIT FUNCTION
+  68: 0097: 
+  69: 0097: 
+  70: 0097: READ.ERROR:
+  71: 0097: 
+  72: 0097:       FILE.OPERATION$     = "R"
+  73: 00a6:       CURRENT.REPORT.NUM% = CIPPM.REPORT.NUM%
+  74: 00b4:       CURRENT.CODE$       = ""
+  75: 00c3: 
+  76: 00c3:    END FUNCTION
+  77: 00d2: 
+  78: 00d2: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  79: 00d2: \/* FUNCTION WRITE.CIPPM                                           */
+  80: 00d2: \/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+  81: 00d2: 
+  82: 00d2:    FUNCTION WRITE.CIPPM PUBLIC
+  83: 00e6: 
+  84: 00e6:       INTEGER*2 WRITE.CIPPM
+  85: 00e6:       STRING    form$
+  86: 00e6: 
+  87: 00e6:       WRITE.CIPPM = 1
+  88: 00eb: 
+  89: 00eb:       IF RIGHT$(CIPPM.RCD$, 2) <> CHR$(13) + CHR$(10) THEN BEGIN
+  90: 0133:          CIPPM.RCD$ = CIPPM.RCD$ + CHR$(13) + CHR$(10)
+  91: 0165:       ENDIF
+  92: 0165:       form$ = "C" + STR$(LEN(CIPPM.RCD$))
+  93: 0193: 
+  94: 0193:       IF END #CIPPM.SESS.NUM% THEN WRITE.ERROR
+  95: 01a7:       WRITE FORM form$; #CIPPM.SESS.NUM%; CIPPM.RCD$
+  96: 01cd: 
+  97: 01cd:       WRITE.CIPPM = 0
+  98: 01d2:       EXIT FUNCTION
+  99: 01d4: 
+ 100: 01d4: WRITE.ERROR:
+ 101: 01d4: 
+ 102: 01d4:       FILE.OPERATION$ = "W"
+ 103: 01e3:       CURRENT.REPORT.NUM% = CIPPM.REPORT.NUM%
+ 104: 01f1:       CURRENT.CODE$ = ""
+ 105: 0200: 
+ 106: 0200:    END FUNCTION
+ 107: 020f: 
+ 108: 020f: \/******************************************************************/
+ 109: 020f: End of Compilation
